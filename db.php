@@ -7,10 +7,10 @@ ini_set('log_errors', 1);
 error_reporting(E_ALL);
 
 /* =====================================================================
-   الإصدار 84: كل الأسرار (بيانات قاعدة البيانات، كلمة سر الإيميل، مفتاح الـ Cron)
-   اتنقلت لملف griffine_config.php برّه public_html (شوف griffine_config.sample.php).
-   الملف ده (db.php) بقى كود بس من غير أي سر، ومتسجّل في GitHub عادي.
-   ترتيب البحث: فوق فولدر الموقع بفولدر (الأأمن) ← جوه فولدر الموقع (احتياطي، مقفول بـ .htaccess)
+   كلمات السر (قاعدة البيانات، إيميل info@، مفتاح الـ Cron) في ملف griffine_config.php
+   اللي بتعمله مرة واحدة جنب db.php في public_html (من griffine_config.sample.php) - والتحديثات مبتلمسوش.
+   الملف ده (db.php) كود بس من غير أي سر، فبيتحدّث مع كل إصدار من غير ما يمسح كلمات السر.
+   ترتيب البحث: فولدر فوق الموقع (لو نقلته هناك بعدين) ← جنب db.php في public_html
    ===================================================================== */
 foreach ([dirname(__DIR__) . '/griffine_config.php', __DIR__ . '/griffine_config.php'] as $__cfg) {
     if (is_file($__cfg)) { require_once $__cfg; break; }

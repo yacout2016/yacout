@@ -1,5 +1,5 @@
 -- ============================================================
--- GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 85)
+-- GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 86)
 -- كل تحديثات قاعدة البيانات في ملف واحد.
 -- آمن تشغّله أي عدد من المرات: بيضيف الناقص بس ومبيمسحش أي بيانات.
 -- الاستخدام: phpMyAdmin ← اختار قاعدة البيانات ← تبويب SQL ← الصق الملف كله ← Go
@@ -22,6 +22,7 @@
 --              + جدول payment_orders (عمليات الدفع الأونلاين Paymob).
 -- الإصدار 85: شؤون الموظفين (HR): جداول job_titles (المسميات الوظيفية بقت بتتضاف وتتعدّل من لوحة التحكم)
 --              + hr_employees + hr_documents + hr_attendance (الحضور الشهري وحساب الراتب).
+-- الإصدار 86: مفيش تغييرات في قاعدة البيانات (ملف كلمات السر بقى جنب db.php + ملف RESET_ADMIN_LOGIN.sql منفصل للرجوع لدخول الإدارة العادي).
 -- ============================================================
 
 -- الإصدار 85: ترميز الاتصال UTF-8 عشان النصوص العربي اللي بتتضاف من الملف (زي المسميات الوظيفية) تتحفظ صح
@@ -776,4 +777,4 @@ CREATE TABLE IF NOT EXISTS hr_attendance (
 INSERT IGNORE INTO staff_permissions (staff_id, permission_key)
   SELECT staff_id, 'manage_testimonials' FROM staff_permissions WHERE permission_key = 'manage_content';
 
-SELECT 'GRIFFINE database is up to date (v85)' AS result;
+SELECT 'GRIFFINE database is up to date (v86)' AS result;

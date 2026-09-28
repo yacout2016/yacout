@@ -1,5 +1,5 @@
 /* GRIFFINE — كود الواجهة الأساسي (اتفصل من index.php في الإصدار 68) */
-const GRIFFINE_LOGO_B64 = location.origin + '/img/griffine-logo-light.webp?v=85';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
+const GRIFFINE_LOGO_B64 = location.origin + '/img/griffine-logo-light.webp?v=86';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
 /* ================== حسابات مساعدة ================== */
 function daysBetween(isoStart, isoEnd){
   if(!isoStart) return null;
@@ -1065,9 +1065,9 @@ async function renderAccessExpired(sub){
 }
 
 const app = document.getElementById('app');
-const TOP7_LOGO_B64 = location.origin + '/img/top7-logo-light.webp?v=85';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
-const GRIFFINE_LOGO_DARK_B64 = location.origin + '/img/griffine-logo-dark.webp?v=85';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
-const TOP7_LOGO_DARK_B64 = location.origin + '/img/top7-logo-dark.webp?v=85';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
+const TOP7_LOGO_B64 = location.origin + '/img/top7-logo-light.webp?v=86';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
+const GRIFFINE_LOGO_DARK_B64 = location.origin + '/img/griffine-logo-dark.webp?v=86';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
+const TOP7_LOGO_DARK_B64 = location.origin + '/img/top7-logo-dark.webp?v=86';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
 /* الوضع الحالي (فاتح/ليلي) - الإصدار 71: بيتقري من الصفحة نفسها (data-theme) مش من التخزين بس،
    عشان الشعار يطلع صح حتى لو المتصفح مانع التخزين (وضع التصفح الخفي)
    (السكربت الصغير في index.php بيحط data-theme من التخزين قبل تحميل أي ملف، فالاتنين دايمًا متطابقين) */
