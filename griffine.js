@@ -7996,7 +7996,7 @@ async function renderScreener(){
       <a id="screenerDisclaimerLink" style="color:#7a5c00;text-decoration:underline;cursor:pointer;">التفاصيل الكاملة</a>
     </div>
 
-    <div class="info">📊 البحث التلقائي على كل السوق مؤجل لحد ما نفعّل اشتراك بيانات حي. الشارت تحت للعرض والقراءة بس (مباشر من TradingView) — الحساب الفعلي بياخد الأرقام اللي تكتبها إنت في الفورم تحت.</div>
+    <div class="info">📊 اكتب رمز السهم واختار السوق والفترة، والأسعار (أعلى / أقل / آخر سعر) بتتجاب تلقائيًا ومتأخرة 15 دقيقة، وتقدر تعدّلها يدوي. البحث على كل السوق مرة واحدة مؤجل لحد ما نفعّل اشتراك بيانات حي. الشارت تحت للعرض والقراءة بس (مباشر من TradingView) — الحساب بياخد الأرقام الموجودة في الخانات تحت (التلقائية أو اللي عدّلتها إنت).</div>
 
     <h2>شارت مباشر (للقراءة والمرجعية)</h2>
     <div class="section-card">
@@ -8012,19 +8012,28 @@ async function renderScreener(){
     <div class="section-card">
       <div class="info" style="margin-bottom:10px;">هنا بتحسب مستويات الدعم والمقاومة بطريقتي فيبوناتشي ونقاط بيفوت مع بعض في نفس الوقت، من أعلى وأقل سعر خلال الفترة (+ آخر سعر إغلاق).</div>
 
-      <label>اسم السهم / الرمز <span style="color:var(--danger);">*</span></label>
-      <input type="text" id="ta_symbol" placeholder="مثال: COMI">
+      <div class="grid2">
+        <div><label>اسم السهم / الرمز <span style="color:var(--danger);">*</span></label>
+          <input type="text" id="ta_symbol" placeholder="مثال: COMI" dir="ltr" autocomplete="off"></div>
+        <div><label>السوق</label>
+          <select id="ta_market">${Object.keys(MARKET_TO_CURRENCY_MAP).map(m=>`<option value="${m}">${m}</option>`).join('')}</select></div>
+      </div>
 
       <label style="margin-top:10px;">الفترة الزمنية</label>
       <select id="ta_hlPeriod">${Object.keys(TA_HL_PERIOD_LABELS).map(k=>`<option value="${k}" ${k==='month'?'selected':''}>${TA_HL_PERIOD_LABELS[k]}</option>`).join('')}</select>
+
+      <!-- الإصدار 76: جلب أعلى/أقل/آخر سعر تلقائيًا (الخانات تحت بتفضل قابلة للتعديل اليدوي) -->
+      <button type="button" class="secondary" id="ta_fetchBtn" style="margin-top:10px;">⚡ جلب الأسعار تلقائيًا</button>
+      <div id="ta_fetchStatus" style="margin-top:8px;font-size:12.5px;"></div>
 
       <div class="grid2" style="margin-top:8px;">
         <div><label>أعلى قمة سعرية خلال الفترة <span style="color:var(--danger);">*</span></label><input type="number" step="any" id="ta_high" placeholder="مثال: 52.30"></div>
         <div><label>أقل قاع سعري خلال الفترة <span style="color:var(--danger);">*</span></label><input type="number" step="any" id="ta_low" placeholder="مثال: 44.10"></div>
       </div>
       <div style="margin-top:8px;">
-        <label>آخر سعر إغلاق <span style="color:var(--danger);">*</span></label>
+        <label>آخر سعر إغلاق <span style="color:var(--danger);">*</span> <span class="ta-delay-badge" title="الأسعار التلقائية من مصدر بيانات مجاني متأخر">⏱ متأخر 15 دقيقة</span></label>
         <input type="number" step="any" id="ta_pivotClose" placeholder="مثال: 48.00">
+        <div id="ta_closeNote" class="disclaimer" style="margin-top:4px;"></div>
       </div>
 
       <button id="ta_calcBtn" style="margin-top:12px;">🔍 احسب</button>
@@ -8038,6 +8047,46 @@ async function renderScreener(){
 
   document.getElementById('tv_loadBtn').onclick = () => renderTradingViewWidget(document.getElementById('tv_symbol').value.trim());
   renderTradingViewWidget('EGX:EGX30');
+
+  /* ---------- الإصدار 76: جلب الأسعار تلقائيًا من السيرفر (market_quote.php) ----------
+     بيتنفذ لما تكتب الرمز وتسيبه، أو تغيّر السوق أو الفترة، أو تدوس الزرار.
+     القيم بتتكتب في الخانات، وتقدر تعدّلها يدوي بعدها عادي. */
+  const taEl = (id) => document.getElementById(id);
+  let taFetchSeq = 0, taSource = 'manual', taLastKey = '';
+  const taStatus = (html, cls) => { const el = taEl('ta_fetchStatus'); if (el) el.innerHTML = html ? `<div class="${cls || 'info'}" style="margin:0;">${html}</div>` : ''; };
+  // force = من الزرار (بيجيب دايمًا). التلقائي بيتجاهل نفس السهم/السوق/الفترة عشان ميكتبش فوق تعديلك اليدوي
+  async function taFetchQuote(force){
+    const symbol = taEl('ta_symbol').value.trim();
+    if (!symbol) { taStatus('اكتب رمز السهم الأول (زي COMI).', 'error'); return; }
+    const key = [symbol.toUpperCase(), taEl('ta_market').value, taEl('ta_hlPeriod').value].join('|');
+    if (force !== true && key === taLastKey) return;
+    taLastKey = key;
+    if (!email) { promptSignupToContinue('سجّل حساب مجاني عشان تقدر تجيب الأسعار تلقائيًا وتستخدم أداة التحليل.', () => renderScreener()); return; }
+    const my = ++taFetchSeq;
+    const btn = taEl('ta_fetchBtn'); btn.disabled = true;
+    taStatus('⏳ جاري جلب الأسعار...');
+    let r;
+    try { r = await apiGet('/market_quote.php?symbol=' + encodeURIComponent(symbol) + '&market=' + encodeURIComponent(taEl('ta_market').value) + '&period=' + encodeURIComponent(taEl('ta_hlPeriod').value)); }
+    catch(e){ r = { success:false, message:'تعذّر الاتصال بمصدر الأسعار. اكتب الأرقام يدوي.' }; }
+    if (my !== taFetchSeq || !taEl('ta_fetchBtn')) return;   // طلب أحدث بدأ أو الشاشة اتقفلت
+    btn.disabled = false;
+    if (!r || !r.success) { taSource = 'manual'; taLastKey = ''; taStatus('⚠️ ' + escapeHtml((r && r.message) || 'تعذّر جلب الأسعار.') + ' — تقدر تكتب الأرقام يدوي.', 'error'); return; }
+    const f = (v) => (v == null ? '' : Number(v).toFixed(2));
+    taEl('ta_high').value = f(r.high);
+    taEl('ta_low').value = f(r.low);
+    taEl('ta_pivotClose').value = f(r.last);
+    taSource = 'auto';
+    const t = new Date(r.lastTime);
+    const when = isNaN(t) ? '' : t.toLocaleString('ar-EG', { dateStyle:'medium', timeStyle:'short' });
+    taStatus(`✅ ${escapeHtml(r.name || r.symbol)} (${escapeHtml(r.symbol)}) — ${escapeHtml(TA_HL_PERIOD_LABELS[r.period] || '')}: أعلى ${f(r.high)} · أقل ${f(r.low)} · آخر سعر ${f(r.last)}${r.prevClose != null ? ` · الإغلاق السابق ${f(r.prevClose)}` : ''}<br><small>المصدر: ${escapeHtml(r.source)} — الأسعار متأخرة ${r.delayMinutes || 15} دقيقة. تقدر تعدّل أي رقم يدوي.</small>`);
+    taEl('ta_closeNote').textContent = `⏱ آخر سعر متأخر ${r.delayMinutes || 15} دقيقة${when ? ' — آخر تحديث: ' + when : ''}`;
+  }
+  taEl('ta_fetchBtn').onclick = () => taFetchQuote(true);
+  taEl('ta_symbol').addEventListener('change', () => { if (taEl('ta_symbol').value.trim()) taFetchQuote(); });
+  taEl('ta_symbol').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); taFetchQuote(true); } });
+  ['ta_market', 'ta_hlPeriod'].forEach(id => taEl(id).addEventListener('change', () => { if (taEl('ta_symbol').value.trim()) taFetchQuote(); }));
+  // أي تعديل يدوي في الأرقام ← المصدر يبقى يدوي
+  ['ta_high', 'ta_low', 'ta_pivotClose'].forEach(id => taEl(id).addEventListener('input', () => { taSource = 'manual'; taEl('ta_closeNote').textContent = ''; }));
 
   document.getElementById('ta_calcBtn').onclick = () => {
     if (!email) { promptSignupToContinue('سجّل حساب مجاني عشان تقدر تستخدم أداة التحليل وتشوف النتيجة.', () => renderScreener()); return; }
@@ -8091,9 +8140,9 @@ async function renderScreener(){
           </div>
         </div>
 
-        <button class="small" style="width:auto;margin-top:14px;" onclick="window.__useForPlan('${symbol.replace(/'/g,"")}', ${((high+low)/2).toFixed(2)}, 'مصر')">أنشئ خطة لهذا السهم</button>
+        <button class="small" style="width:auto;margin-top:14px;" onclick="window.__useForPlan('${symbol.replace(/'/g,"")}', ${close.toFixed(2)}, '${taEl('ta_market').value.replace(/'/g,'')}')">أنشئ خطة لهذا السهم</button>
       </div>
-      <p class="disclaimer">تنويه: الحساب مبني على الأرقام اللي دخّلتها يدويًا فقط.</p>`;
+      <p class="disclaimer">${taSource === 'auto' ? 'تنويه: الأرقام متجابة تلقائيًا من مصدر بيانات مجاني (متأخرة 15 دقيقة) - راجعها قبل أي قرار.' : 'تنويه: الحساب مبني على الأرقام اللي دخّلتها يدويًا.'}</p>`;
   };
 
   window.__useForPlan = (symbol, price, market) => {
