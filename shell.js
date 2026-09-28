@@ -1,5 +1,5 @@
 /* =====================================================================
-   GRIFFINE App Shell — واجهة التطبيق (الإصدار 79)
+   GRIFFINE App Shell — واجهة التطبيق (الإصدار 80)
    ---------------------------------------------------------------------
    الملف ده هو "الهيكل" اللي بيلف كل شاشات الموقع القديمة (griffine.js):
      - شريط علوي + شريط تبويبات سفلي (موبايل) / شريط جانبي (كمبيوتر)
@@ -50,13 +50,14 @@
      ===================================================================== */
 
   // رقم الإصدار - بيظهر في شاشة "حسابي" (غيّره مع ?v= في index.php و VERSION في sw.js)
-  const APP_VERSION = 79;
+  const APP_VERSION = 80;
 
   /* الاستعلامات المتكررة (الدردشة/التوصيات) بتقف لما التبويب يكون مخفي أو الموبايل مقفول
      - بتوفّر ضغط على السيرفر وبطارية الموبايل، وبترجع تشتغل أول ما الصفحة تظهر
      - أي مؤقت أطول من دقيقة بيفضل شغال عادي */
   (function(){
     const nativeSetInterval = window.setInterval.bind(window);
+    window.__nativeSetInterval = nativeSetInterval;   // للحاجات اللي لازم تفضل شغالة في الخلفية (زي إشعارات شات الأدمن)
     window.setInterval = function(fn, ms){
       const rest = Array.prototype.slice.call(arguments, 2);
       if (typeof fn !== 'function' || !(ms < 60000)) return nativeSetInterval.apply(window, arguments);

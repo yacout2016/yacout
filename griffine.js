@@ -2777,6 +2777,7 @@ async function renderChatAdminPage(){
     openVisitorId = visitorId;
     if (window.__chatAdminMsgPoll) clearInterval(window.__chatAdminMsgPoll);
     // فتح المحادثة = اتقرت (على السيرفر) ← العلامة الحمرا والرقم بيختفوا فورًا
+    if (window.__adminChatSeen && convInfo) window.__adminChatSeen(convInfo.lastAt);
     if (currentView === 'active') {
       markChatRead(visitorId).then(() => {
         const c = conversations.find(x => x.visitorId === visitorId); if (c) c.unread = false;
@@ -2865,7 +2866,8 @@ async function renderChatAdminPage(){
       const msgs = (res2 && res2.success) ? res2.messages : [];
       if (msgs.length === lastCount) return;
       // رسايل جديدة وصلت والمحادثة مفتوحة قدام الأدمن ← تتعلم مقروءة تلقائيًا
-      if (lastCount !== -1 && msgs.length > lastCount && currentView === 'active') markChatRead(visitorId).then(refreshChatUnreadIndicators);
+      // الإصدار 80: بس لو المحادثة قدام الأدمن فعلًا (الصفحة ظاهرة ومركّز عليها) - مش مفتوحة في تبويب منسي
+      if (lastCount !== -1 && msgs.length > lastCount && currentView === 'active' && !document.hidden && document.hasFocus()) markChatRead(visitorId).then(refreshChatUnreadIndicators);
       lastCount = msgs.length;
       const wasNearBottom = (msgsWrap.scrollHeight - msgsWrap.scrollTop - msgsWrap.clientHeight) < 40;
       msgsWrap.innerHTML = msgs.length ? msgs.map(m => `
@@ -8226,7 +8228,7 @@ async function subscribeToPushNotifications(ownerKey){
 function chatWidgetMode(email){ return (email || 'guest') + '|' + ((window.__isAdmin && hasPermission('view_chat')) ? 'admin' : 'visitor'); }
 function teardownChatWidget(){
   ['__chatBgPoll', '__chatPollInterval', '__adminBubblePoll', '__adminBubbleHeartbeat', '__chatQuickPoll'].forEach(k => { if (window[k]) { clearInterval(window[k]); window[k] = null; } });
-  window.__adminBubbleCheck = null;
+  window.__adminBubbleCheck = null; window.__adminChatSeen = null;
   ['chatBubble', 'chatPanel'].forEach(id => { const el = document.getElementById(id); if (el) el.remove(); });
   window.__chatWidgetMode = null;
 }
@@ -8427,6 +8429,13 @@ function initAdminBubble(bubble, panel){
     updateBadge(false);
   }
 
+  // الإصدار 80: أي مكان بيفتح محادثة (صفحة الدردشة الكاملة / الرد السريع) بيبلّغ الأيقونة إن الرسالة اتشافت على الجهاز ده
+  window.__adminChatSeen = (at) => {
+    if (!at || at <= lastSeenAt) return;
+    lastSeenAt = at;
+    try { localStorage.setItem('griffine_admin_chat_seen', lastSeenAt); } catch(e){}
+  };
+
   let notifiedAt = {}; // آخر وقت بعتنا فيه تنبيه لكل محادثة، عشان مانكررش تنبيهات لنفس الرسالة
   async function backgroundCheck(){
     try{
@@ -8434,12 +8443,17 @@ function initAdminBubble(bubble, panel){
       if (!res || !res.success) { console.error('chat backgroundCheck: فشل جلب المحادثات', res); return; }
       let anyUnread = false;
       for (const c of res.conversations) {
-        // الإصدار 72: السيرفر هو اللي بيحدد المقروء (c.unread) - الطريقة القديمة (وقت آخر فتح على الجهاز) احتياطي بس
-        if (typeof c.unread === 'boolean') { if (!c.unread) continue; }
-        else { if (c.lastSender !== 'visitor') continue; if (c.lastAt <= lastSeenAt) continue; }
+        /* الإصدار 80: النقطة الحمرا والإشعار بيظهروا لو:
+             - رسالة جديدة من العميل بعد آخر مرة فتحت لوحة الشات على الجهاز ده (lastSeenAt)، أو
+             - المحادثة غير مقروءة على السيرفر (c.unread)
+           (في 72-79 كانوا معتمدين على c.unread بس - ولو المحادثة كانت مفتوحة في جهاز/تبويب تاني
+            كانت بتتعلّم مقروءة تلقائيًا والإشعار ميظهرش خالص) */
+        const newHere = c.lastSender === 'visitor' && c.lastAt > lastSeenAt;
+        const unreadServer = c.unread === true;
+        if (!newHere && !unreadServer) continue;
         anyUnread = true;
         const isCurrentlyOpen = panel.classList.contains('open') && panel.dataset.openConv === c.visitorId;
-        if (!isCurrentlyOpen && notifiedAt[c.visitorId] !== c.lastAt) {
+        if (newHere && !isCurrentlyOpen && notifiedAt[c.visitorId] !== c.lastAt) {
           notifiedAt[c.visitorId] = c.lastAt;
           fireBrowserNotification('💬 رسالة جديدة — ' + (c.email || 'زائر'), c.lastMessage || 'وصلت رسالة جديدة');
         }
@@ -8449,7 +8463,9 @@ function initAdminBubble(bubble, panel){
   }
   window.__adminBubbleCheck = backgroundCheck;
   backgroundCheck();
-  window.__adminBubblePoll = setInterval(backgroundCheck, 8000);
+  // الإصدار 80: فحص رسائل الأدمن بيفضل شغال والتبويب في الخلفية (عشان إشعار المتصفح يطلع وإنت على برنامج تاني)
+  // - باقي الاستعلامات المتكررة بتقف والصفحة مخفية (shell.js) لتوفير البطارية والسيرفر
+  window.__adminBubblePoll = (window.__nativeSetInterval || setInterval)(backgroundCheck, 10000);
   // heartbeat خفيف كمان من هنا عشان أي زائر يشوف "الأدمن متصل" حتى لو إنت في صفحة تانية غير لوحة الشات
   sendChatAdminHeartbeat();
   window.__adminBubbleHeartbeat = setInterval(sendChatAdminHeartbeat, 60000);
@@ -8488,6 +8504,7 @@ function initAdminBubble(bubble, panel){
 
   async function renderQuickThread(visitorId, convInfo){
     panel.dataset.openConv = visitorId;
+    if (window.__adminChatSeen && convInfo) window.__adminChatSeen(convInfo.lastAt);
     markChatRead(visitorId).then(refreshChatUnreadIndicators); // الإصدار 72
     panel.innerHTML = `
       <div class="chat-header">
