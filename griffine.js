@@ -7978,7 +7978,7 @@ const TA_INDICATORS = {
 const TA_PERIOD_LABELS = { '1m':'شهر', '2m':'شهرين', '3m':'3 شهور', '1y':'سنة' };
 const TA_TIMEFRAME_LABELS = { '5min':'5 دقائق', '15min':'ربع ساعة', '30min':'نص ساعة', '1h':'ساعة', '2h':'ساعتين', '3h':'3 ساعات', '4h':'4 ساعات', 'day':'يوم', 'week':'أسبوع', 'month':'شهر' };
 // الفترة الزمنية اللي حصل خلالها أعلى/أقل سعر مُدخل في أداة فيبوناتشي/بيفوت (وصفية بس للعرض في النتيجة - مش جزء من معادلة الحساب نفسها)
-const TA_HL_PERIOD_LABELS = { day:'يوم', month:'شهر', '2months':'شهرين', '3months':'3 شهور', '6months':'6 شهور', year:'سنة' };
+const TA_HL_PERIOD_LABELS = { day:'يوم', week:'أسبوع', month:'شهر', '2months':'شهرين', '3months':'3 شهور', '6months':'6 شهور', year:'سنة' };
 
 async function renderScreener(){
   pushNav(() => renderScreener());
@@ -8072,14 +8072,20 @@ async function renderScreener(){
     btn.disabled = false;
     if (!r || !r.success) { taSource = 'manual'; taLastKey = ''; taStatus('⚠️ ' + escapeHtml((r && r.message) || 'تعذّر جلب الأسعار.') + ' — تقدر تكتب الأرقام يدوي.', 'error'); return; }
     const f = (v) => (v == null ? '' : Number(v).toFixed(2));
-    taEl('ta_high').value = f(r.high);
-    taEl('ta_low').value = f(r.low);
+    // أعلى/أقل ممكن ميبقوش متاحين لفترة معيّنة (partial) ← بنكتب آخر سعر بس ونسيب الباقي للعميل
+    if (r.high != null) taEl('ta_high').value = f(r.high);
+    if (r.low != null) taEl('ta_low').value = f(r.low);
     taEl('ta_pivotClose').value = f(r.last);
     taSource = 'auto';
-    const t = new Date(r.lastTime);
+    const delay = (r.delayMinutes == null ? 15 : r.delayMinutes);
+    const delayTxt = delay > 0 ? `متأخر ${delay} دقيقة` : 'لحظي';
+    const badge = document.querySelector('.ta-delay-badge'); if (badge) badge.textContent = '⏱ ' + delayTxt;
+    const t = new Date(r.fetchedAt || r.lastTime);
     const when = isNaN(t) ? '' : t.toLocaleString('ar-EG', { dateStyle:'medium', timeStyle:'short' });
-    taStatus(`✅ ${escapeHtml(r.name || r.symbol)} (${escapeHtml(r.symbol)}) — ${escapeHtml(TA_HL_PERIOD_LABELS[r.period] || '')}: أعلى ${f(r.high)} · أقل ${f(r.low)} · آخر سعر ${f(r.last)}${r.prevClose != null ? ` · الإغلاق السابق ${f(r.prevClose)}` : ''}<br><small>المصدر: ${escapeHtml(r.source)} — الأسعار متأخرة ${r.delayMinutes || 15} دقيقة. تقدر تعدّل أي رقم يدوي.</small>`);
-    taEl('ta_closeNote').textContent = `⏱ آخر سعر متأخر ${r.delayMinutes || 15} دقيقة${when ? ' — آخر تحديث: ' + when : ''}`;
+    const range = r.partial ? `<b>أعلى وأقل سعر لفترة «${escapeHtml(TA_HL_PERIOD_LABELS[r.period] || '')}» مش متاحين من المصدر دلوقتي — اكتبهم يدوي أو اختار فترة تانية.</b><br>`
+      : `${escapeHtml(TA_HL_PERIOD_LABELS[r.period] || '')}: أعلى ${f(r.high)} · أقل ${f(r.low)} · `;
+    taStatus(`✅ ${escapeHtml(r.name || r.symbol)} (${escapeHtml(r.symbol)}) — ${range}آخر سعر ${f(r.last)}${r.prevClose != null ? ` · الإغلاق السابق ${f(r.prevClose)}` : ''}<br><small>المصدر: ${escapeHtml(r.source)} — الأسعار ${delayTxt}. تقدر تعدّل أي رقم يدوي.</small>`, r.partial ? 'error' : 'info');
+    taEl('ta_closeNote').textContent = `⏱ آخر سعر ${delayTxt}${when ? ' — وقت الجلب: ' + when : ''}`;
   }
   taEl('ta_fetchBtn').onclick = () => taFetchQuote(true);
   taEl('ta_symbol').addEventListener('change', () => { if (taEl('ta_symbol').value.trim()) taFetchQuote(); });
@@ -8217,7 +8223,10 @@ async function initChatWidget(sessionEmail){
   if (settings.chat_enabled === false) return; // الشات موقوف خالص
   if (settings.chat_icon_visible === false) return; // الأيقونة مخفية
 
-  const isAdminUser = window.__isAdmin;
+  // الإصدار 77: لوحة "محادثات العملاء" للي عنده صلاحية مشاهدة الشات بس.
+  // أي موظف تاني (أو أدمن من غير الصلاحية دي) بيشوف شات العميل العادي ويقدر يكلّم الدعم
+  // (قبل كده كانت بتفتحله لوحة الإدارة والسيرفر يرفض ← "حصل خطأ في تحميل المحادثات")
+  const isAdminUser = window.__isAdmin && hasPermission('view_chat');
 
   const bubble = document.createElement('div');
   bubble.id = 'chatBubble';
@@ -8439,7 +8448,10 @@ function initAdminBubble(bubble, panel){
     const body = document.getElementById('chatBody');
     if (!res || !res.success) {
       console.error('renderConvList: فشل جلب المحادثات', res);
-      body.innerHTML = '<p style="color:#c0392b;font-size:12px;padding:14px;text-align:center;">حصل خطأ في تحميل المحادثات، جرّب تاني.</p>';
+      // السبب الحقيقي من السيرفر (صلاحية / قاعدة بيانات) بدل رسالة عامة
+      body.innerHTML = `<p style="color:#c0392b;font-size:12px;padding:14px;text-align:center;">${escapeHtml((res && res.message) || 'حصل خطأ في تحميل المحادثات، جرّب تاني.')}</p>
+        <div style="text-align:center;"><button type="button" class="small secondary" id="chatRetryBtn" style="width:auto;">إعادة المحاولة</button></div>`;
+      const rb = document.getElementById('chatRetryBtn'); if (rb) rb.onclick = renderConvList;
       return;
     }
     const convs = res.conversations;

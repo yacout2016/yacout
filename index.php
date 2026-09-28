@@ -33,15 +33,15 @@ header("Content-Security-Policy: object-src 'none'; base-uri 'self'; frame-ances
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@500;700;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script>(function(){try{if(localStorage.getItem('griffine_theme')==='dark')document.documentElement.setAttribute('data-theme','dark');}catch(e){}})();</script>
-<link rel="stylesheet" href="griffine.css?v=76">
-<link rel="stylesheet" href="shell.css?v=76">
+<link rel="stylesheet" href="griffine.css?v=77">
+<link rel="stylesheet" href="shell.css?v=77">
 </head>
 <body>
 <div id="app"></div>
 
-<script src="shell.js?v=76"></script>
+<script src="shell.js?v=77"></script>
 <!-- الإصدار 72: استوديو التصميم - بيطبّق الثيم وتعديلات الأدمن على كل الشاشات (شاشة التعديل نفسها studio-editor.js بتتحمّل للأدمن بس) -->
-<script src="studio.js?v=76"></script>
-<script src="griffine.js?v=76"></script>
+<script src="studio.js?v=77"></script>
+<script src="griffine.js?v=77"></script>
 </body>
 </html>

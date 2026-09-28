@@ -15,8 +15,14 @@ requirePermission($conn, 'view_chat');
 // محادثة غير مقروءة = آخر رسالة فيها من العميل، وجاية بعد آخر مرة الأدمن فتحها (الإصدار 72)،
 // والمحادثة مش مؤرشفة ولا محذوفة
 $sql = "SELECT COUNT(*) AS cnt FROM (" . chat_conversations_sql($conn, "COALESCE(cm.archived, 0) = 0 AND COALESCE(cm.deleted, 0) = 0") . ") x WHERE x.unread = 1";
-$res = $conn->query($sql);
-$row = $res->fetch_assoc();
+// الإصدار 77: أي خطأ في قاعدة البيانات بيرجع رسالة واضحة (مش صفحة خطأ فاضية) ويتسجّل في اللوج
+try {
+    $res = $conn->query($sql);
+    $row = $res->fetch_assoc();
 
-echo json_encode(["success" => true, "unreadCount" => (int)$row['cnt']]);
+    echo json_encode(["success" => true, "unreadCount" => (int)$row['cnt']]);
+} catch (Throwable $e) {
+    error_log('GRIFFINE chat_unread_count: ' . $e->getMessage());
+    echo json_encode(["success" => false, "unreadCount" => 0]);
+}
 ?>
