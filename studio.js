@@ -175,7 +175,6 @@
 
     // ---- بطاقة قيمة المحفظة في الرئيسية ----
     const hero = {
-      light: `radial-gradient(120% 140% at 100% 0%, ${hsl(h, sat(.5, 40), 24)} 0%, ${hsl(h, sat(.45, 36), 12)} 55%, ${hsl(h, sat(.4, 30), 7)} 100%)`,
       dark:  `radial-gradient(120% 140% at 100% 0%, ${hsl(h, sat(.5, 40), 17)} 0%, ${hsl(h, sat(.4, 30), 9)} 50%, ${hsl(h, sat(.3, 20), 6)} 100%)`,
       glow:  rgba(Dbrand, .28)
     };
@@ -226,9 +225,9 @@
     if (!nativeColors) {
       css += `${LIGHT}{${vars(light)}--gold:${light['--gs-brand']};--gold-dark:${light['--gs-brand-strong']};}`;
       css += `${DARK}{${vars(dark)}--gold:${dark['--gs-brand']};--gold-dark:${dark['--gs-brand-strong']};}`;
-      css += `${LIGHT} .gs-hero{background:${hero.light} !important;}`;
+      // الوضع النهاري: البطاقة فاتحة (من shell.css بمتغيرات الثيم) - بنلوّن الليلي بس هنا (الإصدار 75)
       css += `${DARK} .gs-hero{background:${hero.dark} !important;border-color:${dark['--gs-border']} !important;}`;
-      css += `${APP} .gs-hero::after{background:radial-gradient(circle, ${hero.glow}, transparent 70%);}`;
+      css += `${DARK} .gs-hero::after{background:radial-gradient(circle, ${hero.glow}, transparent 70%);}`;
       css += `${APP} .gs-quick .ic.brand{color:var(--gs-on-brand) !important;}`;
       css += `${APP} .gs-switch input:checked + span{background:var(--gs-brand);border-color:var(--gs-brand);}`;
       // شاشات الترحيب والدخول
@@ -454,7 +453,7 @@
     if (!window.GStudioEditor) {
       await new Promise((res, rej) => {
         const s = document.createElement('script');
-        s.src = 'studio-editor.js?v=74'; s.onload = res; s.onerror = () => rej(new Error('تعذّر تحميل استوديو التصميم'));
+        s.src = 'studio-editor.js?v=75'; s.onload = res; s.onerror = () => rej(new Error('تعذّر تحميل استوديو التصميم'));
         document.head.appendChild(s);
       }).catch(e => { if (window.GShell) GShell.toast(e.message, 'err'); });
     }

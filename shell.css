@@ -652,3 +652,30 @@ body.g-shell.gs-sub:not(.gs-no-shell) #app > .container{ padding-top:14px !impor
   body.g-shell.gs-sub:not(.gs-no-shell) #chatBubble{ bottom:calc(18px + var(--gs-safe-b)) !important; }
   body.g-shell.gs-sub:not(.gs-no-shell) #chatPanel{ bottom:calc(80px + var(--gs-safe-b)) !important; }
 }
+
+/* =====================================================================
+   بطاقة "قيمة المحفظة" في الوضع النهاري (الإصدار 75)
+   كانت غامقة في الوضعين - دلوقتي في النهاري: خلفية فاتحة بلمسة من اللون الرئيسي + كلام غامق
+   (الوضع الليلي زي ما هو). كل الألوان من متغيرات الثيم عشان تمشي مع أي ثيم من استوديو التصميم.
+   ===================================================================== */
+html:not([data-theme="dark"]) body.g-shell:not(.gs-no-shell) .gs-hero{
+  color:var(--gs-text);
+  background:radial-gradient(120% 140% at 100% 0%, var(--gs-brand-tint) 0%, var(--gs-surface) 60%);
+  background-color:var(--gs-surface);
+  border:1px solid var(--gs-border);
+  box-shadow:var(--gs-shadow);
+}
+html:not([data-theme="dark"]) body.g-shell:not(.gs-no-shell) .gs-hero::after{ background:radial-gradient(circle, var(--gs-brand-tint), transparent 70%); }
+html:not([data-theme="dark"]) body.g-shell:not(.gs-no-shell) .gs-hero-label,
+html:not([data-theme="dark"]) body.g-shell:not(.gs-no-shell) .gs-hero-pl,
+html:not([data-theme="dark"]) body.g-shell:not(.gs-no-shell) .gs-legend,
+html:not([data-theme="dark"]) body.g-shell:not(.gs-no-shell) .gs-hero-stats div{ color:var(--gs-muted); }
+html:not([data-theme="dark"]) body.g-shell:not(.gs-no-shell) .gs-hero-value small{ color:var(--gs-muted); }
+html:not([data-theme="dark"]) body.g-shell:not(.gs-no-shell) .gs-hero-stats{ border-top-color:var(--gs-border); }
+html:not([data-theme="dark"]) body.g-shell:not(.gs-no-shell) .gs-hero-stats b{ color:var(--gs-text); }
+html:not([data-theme="dark"]) body.g-shell:not(.gs-no-shell) .gs-eye{ background:var(--gs-surface-3) !important; color:var(--gs-text) !important; }
+html:not([data-theme="dark"]) body.g-shell:not(.gs-no-shell) .gs-chip.pos{ background:var(--gs-pos-tint); color:var(--gs-pos) !important; }
+html:not([data-theme="dark"]) body.g-shell:not(.gs-no-shell) .gs-chip.neg{ background:var(--gs-neg-tint); color:var(--gs-neg) !important; }
+html:not([data-theme="dark"]) body.g-shell:not(.gs-no-shell) .gs-ccy button{ background:var(--gs-surface-3) !important; color:var(--gs-muted) !important; }
+html:not([data-theme="dark"]) body.g-shell:not(.gs-no-shell) .gs-ccy button.on{ background:var(--gs-ink) !important; color:var(--gs-on-ink) !important; }
+html:not([data-theme="dark"]) body.g-shell:not(.gs-no-shell) .gs-alloc{ background:var(--gs-surface-3); }
