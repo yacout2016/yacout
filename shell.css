@@ -633,3 +633,22 @@ html.gs-exporting *, html.gs-exporting *::before, html.gs-exporting *::after{ an
 .chat-unread-dot{ display:inline-block; vertical-align:middle; margin-inline-end:6px; }
 body.g-shell:not(.gs-no-shell) .plan-list-item.chat-unread strong{ font-weight:800; color:var(--gs-text); }
 body.g-shell:not(.gs-no-shell) .plan-list-item.chat-unread{ border-color:var(--gs-neg) !important; }
+
+/* =====================================================================
+   نظام التنقل بالمستويات (الإصدار 72 - على طريقة ثاندر)
+   body.gs-sub = شاشة داخلية (مستوى تاني أو أعمق) - من shell.js ← applyNavMode
+   ===================================================================== */
+/* الشريط العلوي: ثابت ومصمت، سهم رجوع + اسم الصفحة جنبه */
+body.g-shell.gs-sub:not(.gs-no-shell) .gs-appbar{ background:var(--gs-surface); border-bottom:1px solid var(--gs-border); -webkit-backdrop-filter:none; backdrop-filter:none; }
+body.g-shell.gs-sub:not(.gs-no-shell) .gs-appbar-title{ opacity:1; transform:none; text-align:right; font-size:18px; font-weight:800; padding-right:2px; }
+body.g-shell.gs-sub:not(.gs-no-shell) #gsBackBtn svg{ width:26px; height:26px; }
+/* العنوان مبيتكررش جوه الصفحة + أزرار "رجوع" القديمة */
+body.g-shell.gs-sub:not(.gs-no-shell) .gs-dup-title, body.g-shell.gs-sub:not(.gs-no-shell) .gs-dup-back{ display:none !important; }
+body.g-shell.gs-sub:not(.gs-no-shell) #app > .container{ padding-top:14px !important; }
+/* الموبايل: شريط التبويبات بيختفي في الشاشات الداخلية (الرجوع من فوق) */
+@media (max-width:1023px){
+  body.g-shell.gs-sub:not(.gs-no-shell) .gs-tabbar{ display:none !important; }
+  body.g-shell.gs-sub:not(.gs-no-shell){ padding-bottom:calc(24px + var(--gs-safe-b)) !important; }
+  body.g-shell.gs-sub:not(.gs-no-shell) #chatBubble{ bottom:calc(18px + var(--gs-safe-b)) !important; }
+  body.g-shell.gs-sub:not(.gs-no-shell) #chatPanel{ bottom:calc(80px + var(--gs-safe-b)) !important; }
+}

@@ -1,5 +1,5 @@
 /* =====================================================================
-   GRIFFINE App Shell — واجهة التطبيق (الإصدار 72)
+   GRIFFINE App Shell — واجهة التطبيق (الإصدار 73)
    ---------------------------------------------------------------------
    الملف ده هو "الهيكل" اللي بيلف كل شاشات الموقع القديمة (griffine.js):
      - شريط علوي + شريط تبويبات سفلي (موبايل) / شريط جانبي (كمبيوتر)
@@ -50,7 +50,7 @@
      ===================================================================== */
 
   // رقم الإصدار - بيظهر في شاشة "حسابي" (غيّره مع ?v= في index.php و VERSION في sw.js)
-  const APP_VERSION = 72;
+  const APP_VERSION = 73;
 
   /* الاستعلامات المتكررة (الدردشة/التوصيات) بتقف لما التبويب يكون مخفي أو الموبايل مقفول
      - بتوفّر ضغط على السيرفر وبطارية الموبايل، وبترجع تشتغل أول ما الصفحة تظهر
@@ -266,8 +266,65 @@
     renderDisclaimerPage:'account', renderPrivacyPolicyPage:'account', renderCheckoutForm:'account', renderPlanChangeCheckout:'account'
   };
 
-  // شاشات الجذر - مبيظهرش فيها زرار الرجوع
-  const ROOTS = { renderHome:1, renderPlansList:1, renderPortfolio:1, renderScreener:1, renderAccount:1, renderPublicHome:1 };
+  /* ---------------------------------------------------------------------
+     نظام التنقل بالمستويات (الإصدار 72 - على طريقة ثاندر)
+     المستوى الأول (الجذر) = الشاشات اللي ليها زرار مباشر في التبويبات / القائمة الجانبية
+         ← الشريط العلوي فيه الشعار، ومفيش زرار رجوع
+     المستوى التاني وأعمق = أي شاشة بتتفتح من جوه شاشة تانية
+         ← الشريط العلوي ثابت: سهم رجوع + اسم الصفحة (والعنوان مبيتكررش جوه الصفحة)
+         ← على الموبايل شريط التبويبات السفلي بيختفي (زي ثاندر)
+     الرجوع: للشاشة اللي جيت منها، ولو السجل فاضي (رابط مباشر / تحديث الصفحة) ← للشاشة الأم في PARENT
+     --------------------------------------------------------------------- */
+  const ROOTS = { renderHome:1, renderPlansList:1, renderGridPlansList:1, renderPortfolio:1, renderScreener:1, renderAccount:1, renderPublicHome:1, renderAdminHub:1 };
+  // التوصيات بتبقى جذر لو هي اللي واخدة مكان الكشاف في التبويبات
+  const isRootScreen = (name) => !!ROOTS[name] || (name === 'renderRecommendationsCustomerPage' && hidden('hide_screener_screen'));
+
+  /* الشاشة الأم لكل شاشة داخلية: (args) => فتح الشاشة الأم
+     args = نفس المدخلات اللي الشاشة الحالية اتفتحت بيها (زي رمز السهم) */
+  const toAccount = () => GS.email ? GS.renderAccount() : renderPublicHome();
+  const PARENT = {
+    renderPlanDetail: () => renderPlansList(),
+    renderEditPlanSettings: (a) => a[0] ? renderPlanDetail(a[0]) : renderPlansList(),
+    renderPlanTypeChooser: () => renderPlansList(),
+    renderNewPlanForm: () => renderPlanTypeChooser(),
+    renderGridPlanDetail: () => renderGridPlansList(),
+    renderGridEditPlanSettings: (a) => a[0] ? renderGridPlanDetail(a[0]) : renderGridPlansList(),
+    renderGridPlanForm: () => renderPlanTypeChooser(),
+    renderDiversificationReport: () => renderPortfolio(),
+    renderRecommendationsCustomerPage: () => renderHome(),
+    renderArticleDetailPage: () => renderArticlesListPage(),
+    renderCheckoutForm: () => renderSubscriptionPlans(),
+    renderPlanChangeCheckout: () => renderSubscriptionPlans(),
+    renderDeleteAccount: toAccount,
+    renderEmailCenter: () => renderAdminHub(),
+  };
+  ['renderProfilePage','renderSubscriptionPlans','renderMySubscriptionHistory','renderReferralPage','renderAboutPage','renderContactInfo',
+   'renderRefundPolicyPage','renderArticlesListPage','renderTestimonialsPage','renderSuggestionsPage','renderDisclaimerPage','renderPrivacyPolicyPage']
+    .forEach(n => { PARENT[n] = toAccount; });
+
+  function parentOf(name){
+    if (PARENT[name]) return PARENT[name];
+    if (ADMIN_SCREEN_RE.test(name)) return () => renderAdminHub();
+    return () => (GS.email ? renderHome() : renderPublicHome());
+  }
+
+  // زرار الرجوع في الشريط العلوي
+  GS.goBack = function(){
+    if (window.__screenIndex > 0) return history.back();          // فيه شاشة قبلها في السجل
+    const go = parentOf(GS.currentScreen);                          // مفيش ← الشاشة الأم
+    const args = GS.screenArgs || [];
+    // الشاشة الأم بتاخد مكان الشاشة الحالية في السجل (مش فوقها) - عشان الرجوع التاني يطلع لفوق مش يلف تاني
+    window.__screens = []; window.__screenIndex = -1;
+    try { go(args); } catch(e){ GS.email ? renderHome() : renderPublicHome(); }
+  };
+
+  // تطبيق شكل المستوى على الهيكل (body.gs-sub = شاشة داخلية)
+  GS.applyNavMode = function(){
+    const sub = !GS.isRoot;
+    document.body.classList.toggle('gs-sub', sub);
+    const bar = $('.gs-appbar'); if (bar) bar.classList.toggle('title-always', sub);
+    GS.setBackVisible(sub);
+  };
 
   // شاشات لوحة التحكم (بتنوّر تبويب "الإدارة")
   const ADMIN_SCREEN_RE = /^renderAdmin|^renderChatAdmin|^renderStaff|^renderBlacklist|^renderPlansManagement|^renderSiteDesign|^renderSiteTexts|^renderContentAdmin|^renderRecommendationsAdmin|^renderSuggestionsAdmin|^renderArchived/;
@@ -285,8 +342,10 @@
           GS.seq++;
           GS.sub = /Grid/.test(name) ? 'grid' : (tab === 'plans' ? 'dca' : null);
           if (tab) GS.setTab(tab);
-          GS.isRoot = !!ROOTS[name];
+          GS.isRoot = isRootScreen(name);
+          GS.screenArgs = Array.prototype.slice.call(arguments);
           GS.markScreen(name);
+          GS.applyNavMode();
           GS.titleHint = (name === 'renderPlanDetail' || name === 'renderGridPlanDetail') && arguments[0]
             ? `${arguments[0]} · ${name === 'renderGridPlanDetail' ? 'خطة شبكة Grid' : 'خطة DCA'}`
             : '';
@@ -389,7 +448,7 @@
         <div class="gs-appbar-title" id="gsTitle"></div>
         <div id="gsBarEnd" style="display:flex;align-items:center;"></div>`;
       document.body.appendChild(bar);
-      $('#gsBackBtn').onclick = () => (typeof goBack === 'function' ? goBack() : history.back());
+      $('#gsBackBtn').onclick = () => GS.goBack();
       $('#gsBrandBtn').onclick = () => GS.email ? renderHome() : renderPublicHome();
     }
     // شريط التبويبات السفلي (موبايل)
@@ -606,8 +665,11 @@
       const tt = $('#gsTitle'); if (tt) tt.textContent = GS.currentScreen === 'renderHome' ? '' : title.slice(0, 60);
       document.title = title && GS.currentScreen !== 'renderHome' ? `${title} — GRIFFINE` : 'GRIFFINE';
 
-      // 9) زرار الرجوع
-      GS.setBackVisible(!GS.isRoot);
+      // 9) الشاشات الداخلية: العنوان ظاهر في الشريط العلوي ← نخفي نسخته اللي في أول الصفحة + أزرار "رجوع" القديمة جوه الصفحة
+      markTopDuplicates(app, t);
+
+      // 9ب) زرار الرجوع وشكل المستوى
+      GS.applyNavMode();
 
       // 10) الجداول: كل جدول جوه غلاف بيتحرك يمين وشمال، والبيانات في سطر واحد (shell.css)
       wrapTables(app);
@@ -616,6 +678,24 @@
       applyStudio();
       // نسيب المراقب يتجاهل التعديلات اللي عملناها إحنا
       setTimeout(() => { processing = false; }, 0);
+    }
+  }
+
+  /* عنوان الصفحة لو هو أول حاجة في الشاشة ← class gs-dup-title (بيختفي في الشاشات الداخلية بس من shell.css)
+     + أزرار "رجوع ..." القديمة في أول الصفحة ← gs-dup-back (زرار الرجوع في الشريط العلوي بيغني عنها) */
+  function markTopDuplicates(app, t){
+    const c = app.querySelector(':scope > .container'); if (!c) return;
+    const skip = (el) => el.classList.contains('gs-hide') || el.matches('.logo-header, .screen-bg-layer, .gs-install, .gs-seg, script, style') || getComputedStyle(el).display === 'none';
+    const first = Array.from(c.children).find(el => !skip(el));
+    if (!first) return;
+    c.querySelectorAll(':scope > .topbar button').forEach(b => { if (/^\s*رجوع/.test(b.textContent)) b.classList.add('gs-dup-back'); });
+    if (!t) return;
+    if (t === first) { t.classList.add('gs-dup-title'); return; }
+    if (first.classList.contains('topbar') && t.parentElement === first) {
+      t.classList.add('gs-dup-title');
+      // التوب بار ملوش لازمة لو مفيهوش غير العنوان وأزرار الرجوع
+      const rest = Array.from(first.children).filter(el => el !== t && !el.classList.contains('gs-hide') && !el.classList.contains('gs-dup-back') && getComputedStyle(el).display !== 'none');
+      if (!rest.length) first.classList.add('gs-dup-title');
     }
   }
 
@@ -653,7 +733,7 @@
     seg.innerHTML = `<button type="button" role="tab" class="${active === 'dca' ? 'on' : ''}" data-k="dca">تعزيز المتوسط DCA</button><button type="button" role="tab" class="${active === 'grid' ? 'on' : ''}" data-k="grid">الشبكة Grid</button>`;
     seg.querySelectorAll('button').forEach(b => b.onclick = () => { if (b.dataset.k !== active) (b.dataset.k === 'dca' ? renderPlansList : renderGridPlansList)(); });
     c.insertBefore(seg, c.firstChild);
-    GS.isRoot = true; GS.setBackVisible(false);
+    GS.isRoot = true; GS.applyNavMode();
   };
 
 
@@ -853,7 +933,7 @@
   GS.renderAccount = async function(){
     pushNav(() => GS.renderAccount());
     try { window.scrollTo(0, 0); } catch(e){}
-    GS.seq++; GS.setTab('account'); GS.isRoot = true; GS.markScreen('renderAccount');
+    GS.seq++; GS.setTab('account'); GS.isRoot = true; GS.screenArgs = []; GS.markScreen('renderAccount'); GS.applyNavMode();
     const my = GS.seq;
     const email = await getSession();
     if (!email) return renderLogin();
@@ -962,7 +1042,7 @@
   GS.renderDeleteAccount = async function(){
     pushNav(() => GS.renderDeleteAccount());
     try { window.scrollTo(0, 0); } catch(e){}
-    GS.seq++; GS.setTab('account'); GS.isRoot = false; GS.markScreen('renderDeleteAccount');
+    GS.seq++; GS.setTab('account'); GS.isRoot = false; GS.screenArgs = []; GS.markScreen('renderDeleteAccount'); GS.applyNavMode();
     const email = await getSession();
     if (!email) { window.__afterLoginTarget = 'deleteAccount'; return renderLogin(); }
 
@@ -1034,7 +1114,7 @@
   GS.renderEmailCenter = async function(){
     pushNav(() => GS.renderEmailCenter());
     try { window.scrollTo(0, 0); } catch(e){}
-    GS.seq++; GS.setTab('admin'); GS.isRoot = false; GS.markScreen('renderEmailCenter');
+    GS.seq++; GS.setTab('admin'); GS.isRoot = false; GS.screenArgs = []; GS.markScreen('renderEmailCenter'); GS.applyNavMode();
     const my = GS.seq;
     const email = await getSession();
     if (!email) return renderLogin();
