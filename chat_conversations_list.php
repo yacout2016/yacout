@@ -33,6 +33,7 @@ try {
             // الإصدار 72: غير مقروءة = رسالة من العميل بعد آخر مرة الأدمن فتح المحادثة
             "unread" => (int)$r['unread'] === 1,
             "allowUpload" => (int)$r['allow_upload'] === 1,   // الإصدار 82: رفع الملفات مفتوح للعميل؟
+            "maxUploadMb" => ((int)$r['max_upload_mb'] > 0) ? chat_clamp_mb($r['max_upload_mb']) : CHAT_DEFAULT_UPLOAD_MB, // الإصدار 83
         ];
     }
 

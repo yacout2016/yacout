@@ -487,7 +487,21 @@ function invalidateSessionCache(){ __sessionPromise = null; }
 async function setSession(email){
   // بيتسجل فعليًا في login.php/register.php - الاستدعاء ده بيتعامل بس مع الخروج (تسجيل خروج)
   invalidateSessionCache();
-  if (!email) { try{ await apiPost('/logout.php', {}); }catch(e){} window.__isAdmin = false; window.__isSuperAdmin = false; window.__myPermissions = []; }
+  if (!email) {
+    try{ await apiPost('/logout.php', {}); }catch(e){}
+    window.__isAdmin = false; window.__isSuperAdmin = false; window.__myPermissions = [];
+    resetGuestChatIdentity();   // الإصدار 83: أيقونة الشات بعد الخروج تبدأ فاضية (مش محادثة الحساب)
+  }
+}
+/* الإصدار 83: بعد تسجيل الخروج الجهاز ياخد معرّف زائر جديد - فالزائر (أو أي حد تاني على نفس الجهاز)
+   ميشوفش محادثة الحساب اللي كان مسجّل. (قبل كده المعرّف القديم كان بيفضل وأيقونة الشات فيها المحادثة) */
+function resetGuestChatIdentity(){
+  try {
+    const old = localStorage.getItem('griffine_visitor_id');
+    if (old) { localStorage.removeItem('griffine_chat_started_' + old); localStorage.removeItem('griffine_chat_seen_admin_' + old); }
+    localStorage.removeItem('griffine_visitor_id');
+    localStorage.removeItem('griffine_chat_email');
+  } catch(e){}
 }
 
 async function getSubscription(email){ try{ return JSON.parse(localStorage.getItem('griffine_subscription:'+email)||'null'); }catch(e){ return null; } }
@@ -591,48 +605,236 @@ async function togglePlanActive(id){ return apiPost('/plans_toggle_active.php', 
 async function deletePlan(id){ return apiPost('/plans_delete.php', { id }); }
 async function sendChatAdminReply(visitorId, message, attachment, attachmentName){ return apiPost('/chat_admin_reply.php', { visitorId, message, attachment, attachmentName }); }
 // الإصدار 82: الأدمن/الموظف بيفتح أو يقفل رفع الملفات للعميل في محادثة معيّنة
-async function setChatUpload(visitorId, allow){ try{ return await apiPost('/chat_set_upload.php', { visitorId, allow: allow ? 1 : 0 }); }catch(e){ return {success:false, message:'تعذّر الاتصال'}; } }
+// الإصدار 83: + maxMb = أقصى حجم للمرفق بالميجا (allow = null ← من غير ما نغيّر حالة الفتح/القفل)
+async function setChatUpload(visitorId, allow, maxMb){
+  const data = { visitorId };
+  if (allow !== null && allow !== undefined) data.allow = allow ? 1 : 0;
+  if (maxMb) data.maxMb = maxMb;
+  try{ return await apiPost('/chat_set_upload.php', data); }catch(e){ return {success:false, message:'تعذّر الاتصال'}; }
+}
 /* رسالة شات واحدة (العميل والإدارة) - الصور بتتعرض، وملفات PDF رابط تحميل */
 function chatAttachmentHtml(m){
   if (!m.attachment) return '';
   const url = escapeHtml(m.attachment), name = escapeHtml(m.attachmentName || 'مرفق');
-  const isPdf = /\.pdf(\?|$)/i.test(m.attachment) || /^data:application\/pdf/i.test(m.attachment) || /\.pdf$/i.test(m.attachmentName || '');
-  return isPdf ? `<a class="chat-file" href="${url}" target="_blank" rel="noopener">📄 ${name}</a>`
-               : `<a href="${url}" target="_blank" rel="noopener"><img src="${url}" alt="${name}"></a>`;
+  const src = String(m.attachment) + ' ' + String(m.attachmentName || '');
+  const isPdf = /\.pdf(\?|$|\s)/i.test(src) || /^data:application\/pdf/i.test(m.attachment);
+  // الإصدار 83: فيديو بيتشغّل جوه الشات، وباقي الملفات (ZIP / Word / Excel ...) رابط تحميل
+  const isVideo = /\.(mp4|webm|mov)(\?|$|\s)/i.test(src);
+  const isDoc = /\.(zip|docx?|xlsx?|pptx)(\?|$|\s)/i.test(src);
+  if (isVideo) return `<video class="chat-video" src="${url}" controls preload="metadata" playsinline></video><a class="chat-file" href="${url}" target="_blank" rel="noopener">🎬 ${name}</a>`;
+  if (isPdf) return `<a class="chat-file" href="${url}" target="_blank" rel="noopener">📄 ${name}</a>`;
+  if (isDoc) return `<a class="chat-file" href="${url}" target="_blank" rel="noopener">🗂️ ${name}</a>`;
+  return `<a href="${url}" target="_blank" rel="noopener"><img src="${url}" alt="${name}"></a>`;
 }
 function chatMsgHtml(m, extra){
   return `<div class="chat-msg ${escapeHtml(m.sender)}">${m.message ? escapeHtml(m.message).replace(/\n/g, '<br>') : ''}${chatAttachmentHtml(m)}<span class="chat-msg-time">${formatChatTime(m.createdAt)}${extra || ''}</span></div>`;
 }
-/* الإصدار 82: زرار "السماح للعميل برفع ملف/صورة" (نفس الشكل في صفحة الدردشة والرد السريع) */
-function chatUploadBtnHtml(id, on){
-  return `<button type="button" class="small ${on ? 'btn-active' : 'secondary'} chat-upload-toggle" id="${id}" style="width:auto;" title="العميل مايقدرش يبعت ملفات إلا لو فتحتها له">${on ? '📎 رفع الملفات مفتوح للعميل (اقفل)' : '📎 افتح للعميل رفع ملف/صورة'}</button>`;
+/* =====================================================================
+   الإصدار 82 + 83: التحكم في رفع الملفات للعميل (نفس الشكل في صفحة الدردشة والرد السريع)
+   - زرار "افتح للعميل رفع ملف/صورة" (فتح / قفل)
+   - جنبه خانة "أقصى حجم للملف" بالميجا (مثلًا 100 أو 500) - بتتحفظ أول ما تغيّرها
+   state = { on: مفتوح؟, mb: الحد بالميجا, onChange(state) }
+   ===================================================================== */
+const CHAT_DEFAULT_UPLOAD_MB = 8, CHAT_MAX_UPLOAD_CAP_MB = 2048;
+const CHAT_FILE_ACCEPT = 'image/*,application/pdf,video/mp4,video/webm,video/quicktime,.mov,.zip,.doc,.docx,.xls,.xlsx,.pptx';
+function chatUploadBtnHtml(id, on, mb){
+  mb = +mb || CHAT_DEFAULT_UPLOAD_MB;
+  return `<span class="chat-upload-ctl" id="${id}">
+    <button type="button" class="small ${on ? 'btn-active' : 'secondary'} chat-upload-toggle" id="${id}Btn" style="width:auto;" title="العميل مايقدرش يبعت ملفات إلا لو فتحتها له">${on ? '📎 رفع الملفات مفتوح للعميل (اقفل)' : '📎 افتح للعميل رفع ملف/صورة'}</button>
+    <label class="chat-maxmb" title="أقصى حجم للملف اللي العميل يقدر يرفعه في المحادثة دي">أقصى حجم <input type="number" id="${id}Mb" min="1" max="${CHAT_MAX_UPLOAD_CAP_MB}" step="1" value="${mb}" inputmode="numeric"> ميجا <span class="chat-maxmb-ok" id="${id}Ok"></span></label>
+  </span>`;
 }
-function wireChatUploadBtn(id, visitorId, getOn, setOn){
-  const b = document.getElementById(id); if (!b) return;
+function wireChatUploadBtn(id, visitorId, state){
+  const wrap = document.getElementById(id); if (!wrap) return;
+  const b = document.getElementById(id + 'Btn'), inp = document.getElementById(id + 'Mb'), ok = document.getElementById(id + 'Ok');
+  const redraw = () => { wrap.outerHTML = chatUploadBtnHtml(id, state.on, state.mb); wireChatUploadBtn(id, visitorId, state); };
+  const apply = (r) => { state.on = !!r.allowUpload; if (r.maxUploadMb) state.mb = +r.maxUploadMb; if (state.onChange) state.onChange(state); };
   b.onclick = async () => {
     b.disabled = true;
-    const r = await setChatUpload(visitorId, !getOn());
+    const mbNow = Math.round(+inp.value);
+    const r = await setChatUpload(visitorId, !state.on, (mbNow >= 1 && mbNow !== state.mb) ? mbNow : null);
     b.disabled = false;
     if (!r || !r.success) { alert((r && r.message) || 'تعذّر التغيير'); return; }
-    setOn(!!r.allowUpload);
-    b.outerHTML = chatUploadBtnHtml(id, !!r.allowUpload);
-    wireChatUploadBtn(id, visitorId, getOn, setOn);
+    apply(r); redraw();
+  };
+  inp.onchange = async () => {
+    const mb = Math.round(+inp.value);
+    if (!(mb >= 1 && mb <= CHAT_MAX_UPLOAD_CAP_MB)) { alert('اكتب حجم من 1 لـ ' + CHAT_MAX_UPLOAD_CAP_MB + ' ميجا'); inp.value = state.mb; return; }
+    const r = await setChatUpload(visitorId, null, mb);
+    if (!r || !r.success) { alert((r && r.message) || 'تعذّر الحفظ'); inp.value = state.mb; return; }
+    apply(r);
+    if (ok) { ok.textContent = '✓ اتحفظ'; setTimeout(() => { if (ok) ok.textContent = ''; }, 1800); }
   };
 }
-/* إرفاق صورة/PDF من الإدارة: بيرجّع { get(), clear() } */
+// تحديث الزرار من السيرفر (جهاز تاني / إنهاء المحادثة) - من غير ما نقاطع الأدمن وهو بيكتب الرقم
+function syncChatUploadCtl(id, visitorId, state, res){
+  if (!res || !res.success) return;
+  const on = typeof res.allowUpload === 'boolean' ? res.allowUpload : state.on;
+  const mb = +res.maxUploadMb || state.mb;
+  if (on === state.on && mb === state.mb) return;
+  const inp = document.getElementById(id + 'Mb');
+  if (inp && document.activeElement === inp) return;
+  state.on = on; state.mb = mb;
+  const wrap = document.getElementById(id);
+  if (wrap) { wrap.outerHTML = chatUploadBtnHtml(id, on, mb); wireChatUploadBtn(id, visitorId, state); }
+}
+
+/* الإصدار 83: رفع ملف الشات على أجزاء (2 ميجا للجزء) ← بيرجّع { success, token, name } أو { success:false, message }
+   onProgress(0..1) لشريط التقدّم. كل جزء بيتعاد لحد 3 مرات لو النت قطع */
+async function chatUploadFile(file, visitorId, onProgress){
+  const CHUNK = 2 * 1024 * 1024;
+  const uploadId = Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('');
+  let offset = 0;
+  while (offset < file.size) {
+    const blob = file.slice(offset, offset + CHUNK);
+    let r = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try { r = await apiPost('/chat_upload_chunk.php', { visitorId, uploadId, offset, total: file.size, name: file.name, chunk: blob }); break; }
+      catch(e){ r = { success:false, message:'النت فصل أثناء الرفع - جرّب تاني.' }; await new Promise(res => setTimeout(res, 1200 * (attempt + 1))); }
+    }
+    if (!r || !r.success) return r || { success:false, message:'تعذّر رفع الملف' };
+    offset += blob.size;
+    if (onProgress) onProgress(Math.min(1, offset / file.size));
+    if (r.done) return r;
+  }
+  return { success:false, message:'تعذّر إكمال رفع الملف' };
+}
+function chatFileSizeLabel(bytes){ return bytes >= 1024 * 1024 ? (bytes / 1024 / 1024).toFixed(1) + ' ميجا' : Math.max(1, Math.round(bytes / 1024)) + ' ك.ب'; }
+
+/* إرفاق ملف من الإدارة: بيرجّع { get(), clear(), progress(p) } - الملف بيترفع وقت الإرسال (على أجزاء) */
 function wireAdminAttach(inputId, chipId){
-  let data = null, name = '';
+  let file = null;
   const input = document.getElementById(inputId), chip = document.getElementById(chipId);
-  const draw = () => { if (!chip) return; chip.style.display = data ? '' : 'none'; chip.innerHTML = data ? `📎 ${escapeHtml(name)} <button type="button" aria-label="إلغاء">✕</button>` : '';
+  const draw = (p) => { if (!chip) return; chip.style.display = file ? '' : 'none';
+    chip.innerHTML = file ? `<span>📎 ${escapeHtml(file.name)} <small>(${chatFileSizeLabel(file.size)})</small>${p != null ? ` <b class="chat-up-prog">⏳ ${Math.round(p * 100)}%</b>` : ''}</span> <button type="button" aria-label="إلغاء">✕</button>` : '';
     const x = chip.querySelector('button'); if (x) x.onclick = () => api.clear(); };
-  const api = { get: () => ({ data, name }), clear: () => { data = null; name = ''; if (input) input.value = ''; draw(); } };
+  const api = { get: () => ({ file, name: file ? file.name : '' }), clear: () => { file = null; if (input) input.value = ''; draw(); }, progress: (p) => draw(p) };
   if (input) input.addEventListener('change', (e) => {
     const f = e.target.files[0]; if (!f) return;
-    if (f.size > 8 * 1024 * 1024) { alert('حجم الملف كبير - أقصى حجم 8 ميجا.'); input.value = ''; return; }
-    const rd = new FileReader(); rd.onload = () => { data = rd.result; name = f.name; draw(); }; rd.readAsDataURL(f);
+    if (f.size > CHAT_MAX_UPLOAD_CAP_MB * 1024 * 1024) { alert('حجم الملف كبير - أقصى حجم ' + CHAT_MAX_UPLOAD_CAP_MB + ' ميجا.'); input.value = ''; return; }
+    file = f; draw();
   });
   return api;
 }
+// إرسال رد الإدارة مع ملف (لو فيه): الملف بيترفع الأول وبعدين الرسالة
+async function sendChatAdminReplyWithFile(visitorId, text, attachApi){
+  const att = attachApi ? attachApi.get() : { file: null };
+  let token = null, name = null;
+  if (att.file) {
+    const up = await chatUploadFile(att.file, visitorId, (p) => attachApi.progress(p));
+    if (!up || !up.success) { attachApi.progress(null); return up || { success:false }; }
+    token = up.token; name = up.name;
+  }
+  return apiPost('/chat_admin_reply.php', { visitorId, message: text, uploadToken: token, attachmentName: name });
+}
+
+/* =====================================================================
+   الإصدار 83: تنبيهات الشات - زي ماسنجر: نقطة حمرا على الأيقونة + صوت (من غير أي إشعار Push على الشاشة)
+   - الأدمن بيحدد من لوحة الدردشة: صورة أيقونة الشات + الصوت الافتراضي + يسمح للمشتركين يغيّروا ولا لأ
+   - كل مستخدم (مشترك / زائر / موظف) يقدر من ⚙️ في الشات: يكتم الصوت أو يغيّره، ويغيّر صورة الأيقونة عنده
+     (تفضيلات شخصية بتتحفظ على جهازه بس)
+   ===================================================================== */
+const CHAT_SOUNDS = { ding: '🔔 رنّة', pop: '💧 فقاعة', chime: '🎐 نغمة', bell: '🛎️ جرس', none: '🔇 بدون صوت' };
+const CHAT_ICON_PRESETS = {
+  bubble: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="32" fill="#1f8f5f"/><path d="M18 20h28a4 4 0 0 1 4 4v14a4 4 0 0 1-4 4H30l-9 7v-7h-3a4 4 0 0 1-4-4V24a4 4 0 0 1 4-4z" fill="#fff"/></svg>'),
+  bell: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="32" fill="#f5b700"/><path d="M32 15a11 11 0 0 1 11 11v8l4 6H17l4-6v-8a11 11 0 0 1 11-11zm-5 28h10a5 5 0 0 1-10 0z" fill="#1a1a1a"/></svg>'),
+  mail: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="32" fill="#2563eb"/><rect x="15" y="21" width="34" height="23" rx="3" fill="#fff"/><path d="M16 23l16 12 16-12" fill="none" stroke="#2563eb" stroke-width="3"/></svg>'),
+};
+window.__chatNotifyCfg = { icon: '', sound: 'ding', userIcon: true, userSound: true };
+async function loadChatNotifyCfg(){
+  try { const r = await apiGet('/chat_notify_get.php'); if (r && r.success && r.settings) window.__chatNotifyCfg = r.settings; } catch(e){}
+  return window.__chatNotifyCfg;
+}
+function chatPrefs(){ try { return JSON.parse(localStorage.getItem('griffine_chat_prefs') || '{}') || {}; } catch(e){ return {}; } }
+function saveChatPrefs(p){ try { localStorage.setItem('griffine_chat_prefs', JSON.stringify(p)); } catch(e){ alert('تعذّر حفظ التفضيل على الجهاز ده (مساحة المتصفح).'); } }
+function chatEffectiveSound(){ const cfg = window.__chatNotifyCfg, p = chatPrefs(); return (cfg.userSound && p.sound && CHAT_SOUNDS[p.sound]) ? p.sound : (cfg.sound || 'ding'); }
+function chatEffectiveIcon(){
+  const cfg = window.__chatNotifyCfg, p = chatPrefs();
+  if (cfg.userIcon && p.icon) { if (p.icon === 'logo') return null; if (CHAT_ICON_PRESETS[p.icon]) return CHAT_ICON_PRESETS[p.icon]; if (/^data:image\//.test(p.icon)) return p.icon; }
+  return cfg.icon || null;   // null = شعار GRIFFINE (بيتبدّل مع الوضع الليلي/النهاري)
+}
+// صورة أيقونة الشات: شعار الموقع (بيتبع الثيم) أو صورة مخصّصة (من الأدمن أو من المستخدم نفسه)
+function applyChatBubbleIcon(){
+  const img = document.querySelector('#chatBubble img'); if (!img) return;
+  const custom = chatEffectiveIcon();
+  img.classList.toggle('brand-logo-img', !custom);
+  img.classList.toggle('chat-custom-icon', !!custom);
+  img.src = custom || griffineLogoSrc();
+}
+// الأصوات بتتعمل بـ Web Audio (من غير ملفات صوت) - والمتصفح بيسمح بالصوت بعد أول لمسة/ضغطة في الصفحة
+let __chatAudioCtx = null;
+function chatAudioCtx(){
+  if (!__chatAudioCtx) { const C = window.AudioContext || window.webkitAudioContext; if (!C) return null; try { __chatAudioCtx = new C(); } catch(e){ return null; } }
+  if (__chatAudioCtx.state === 'suspended') __chatAudioCtx.resume().catch(() => {});
+  return __chatAudioCtx;
+}
+['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, () => { if (__chatAudioCtx || document.getElementById('chatBubble')) chatAudioCtx(); }, { once: true, capture: true }));
+function playChatSound(key){
+  key = key || chatEffectiveSound();
+  if (key === 'none' || !CHAT_SOUNDS[key]) return;
+  const ctx = chatAudioCtx(); if (!ctx || ctx.state !== 'running') return;
+  const notes = { ding: [[880, 0, .35]], pop: [[520, 0, .09], [780, .07, .1]], chime: [[659, 0, .3], [880, .14, .3], [1175, .28, .45]], bell: [[1320, 0, .6], [990, .02, .6]] }[key];
+  const t0 = ctx.currentTime;
+  notes.forEach(([f, at, dur]) => {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = key === 'pop' ? 'triangle' : 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t0 + at); g.gain.exponentialRampToValueAtTime(0.25, t0 + at + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t0 + at + dur);
+    o.connect(g); g.connect(ctx.destination); o.start(t0 + at); o.stop(t0 + at + dur + 0.05);
+  });
+}
+// التنبيه نفسه: النقطة الحمرا (بيحطها صاحب الاستدعاء) + هزّة خفيفة للأيقونة + الصوت
+function chatAlert(){
+  playChatSound();
+  const b = document.getElementById('chatBubble');
+  if (b) { b.classList.remove('chat-ring'); void b.offsetWidth; b.classList.add('chat-ring'); }
+}
+/* شاشة ⚙️ "تنبيهات الشات" جوه لوحة الشات نفسها - onBack بيرجّع للمحادثة */
+function renderChatPrefsPanel(panel, onBack, onClose){
+  const cfg = window.__chatNotifyCfg, p = chatPrefs();
+  const curSound = chatEffectiveSound();
+  const curIcon = (cfg.userIcon && p.icon) ? p.icon : '';
+  const iconOpt = (key, src, label) => `<button type="button" class="chat-icon-opt ${curIcon === key ? 'on' : ''}" data-icon="${key}" title="${label}"><img src="${src}" alt="${label}"><span>${label}</span></button>`;
+  panel.innerHTML = `
+    <div class="chat-header"><span>⚙️ تنبيهات الشات</span><span><button id="chatPrefsBack" style="font-size:13px;">◀ رجوع</button><button id="chatCloseBtn2">✕</button></span></div>
+    <div class="chat-body chat-prefs">
+      <p class="chat-prefs-note">التنبيه بيظهر كنقطة حمرا على أيقونة الشات بس (زي ماسنجر) - من غير رسائل منبثقة على الشاشة.</p>
+      ${cfg.userSound ? `<div class="chat-prefs-sec"><strong>🔊 صوت التنبيه</strong>
+        <div class="chat-sound-list">${Object.entries(CHAT_SOUNDS).map(([k, l]) => `<label class="chat-sound-opt"><input type="radio" name="chatSound" value="${k}" ${curSound === k ? 'checked' : ''}> ${l}</label>`).join('')}</div>
+        <button type="button" class="small secondary" id="chatSoundTest" style="width:auto;">▶️ جرّب الصوت</button></div>` : `<p class="chat-prefs-note">صوت التنبيه: ${CHAT_SOUNDS[cfg.sound] || ''} (محدد من الإدارة)</p>`}
+      ${cfg.userIcon ? `<div class="chat-prefs-sec"><strong>🖼️ صورة أيقونة الشات</strong>
+        <div class="chat-icon-list">
+          ${iconOpt('', cfg.icon || griffineLogoSrc(), 'الافتراضية')}
+          ${cfg.icon ? iconOpt('logo', griffineLogoSrc(), 'شعار GRIFFINE') : ''}
+          ${iconOpt('bubble', CHAT_ICON_PRESETS.bubble, 'فقاعة')}
+          ${iconOpt('bell', CHAT_ICON_PRESETS.bell, 'جرس')}
+          ${iconOpt('mail', CHAT_ICON_PRESETS.mail, 'رسالة')}
+          ${/^data:image\//.test(curIcon) ? iconOpt(curIcon, curIcon, 'صورتي') : ''}
+        </div>
+        <label class="small secondary chat-icon-upload">📷 اختار صورة من جهازك<input type="file" id="chatIconFile" accept="image/*" style="display:none;"></label></div>` : ''}
+    </div>`;
+  document.getElementById('chatPrefsBack').onclick = onBack;
+  document.getElementById('chatCloseBtn2').onclick = () => { panel.classList.remove('open'); if (onClose) onClose(); };
+  panel.querySelectorAll('input[name="chatSound"]').forEach(r => r.onchange = () => { const q = chatPrefs(); q.sound = r.value; saveChatPrefs(q); playChatSound(r.value); });
+  const test = document.getElementById('chatSoundTest'); if (test) test.onclick = () => { chatAudioCtx(); setTimeout(() => playChatSound(), 60); };
+  panel.querySelectorAll('.chat-icon-opt').forEach(b => b.onclick = () => { const q = chatPrefs(); if (b.dataset.icon) q.icon = b.dataset.icon; else delete q.icon; saveChatPrefs(q); applyChatBubbleIcon(); renderChatPrefsPanel(panel, onBack, onClose); });
+  const f = document.getElementById('chatIconFile');
+  if (f) f.onchange = () => {
+    const file = f.files[0]; if (!file) return;
+    // بنصغّر الصورة لـ 128×128 عشان تتحفظ على الجهاز من غير ما تتقل
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const c = document.createElement('canvas'); c.width = c.height = 128;
+      const s = Math.min(img.width, img.height), ctx = c.getContext('2d');
+      ctx.drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, 128, 128);
+      URL.revokeObjectURL(url);
+      const q = chatPrefs(); q.icon = c.toDataURL('image/png'); saveChatPrefs(q);
+      applyChatBubbleIcon(); renderChatPrefsPanel(panel, onBack, onClose);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); alert('الصورة دي مش مدعومة.'); };
+    img.src = url;
+  };
+}
+
 const CHAT_KIND = { subscriber: ['مشترك', 'sub'], member: ['مسجّل بدون اشتراك', 'mem'], guest: ['زائر - استفسار', 'guest'] };
 function chatKindBadge(c){ const k = CHAT_KIND[c.kind]; return k ? `<span class="chat-kind ${k[1]}">${k[0]}</span>` : ''; }
 async function sendChatAdminHeartbeat(){ try{ return await apiGet('/chat_admin_heartbeat.php'); }catch(e){ return {success:false}; } }
@@ -2743,13 +2945,15 @@ async function renderChatAdminPage(){
       <div>${pageTitle('chat_admin','💬 الدردشة الفورية')} <span style="color:var(--green);font-size:11px;">🟢 إنت متصل الآن</span></div>
       <button class="secondary small" id="backToAdminFromChatBtn">🛡️ رجوع للوحة التحكم</button>
     </div>
-    <div class="info">الشات هنا مباشر بينك وبين العميل. بيوصلك إيميل تنبيه على info@griffine.store أول ما عميل يبدأ محادثة جديدة (مش مع كل رسالة). لما تخلّص المحادثة دوس "📧 إنهاء وإرسال نسخة" وهتوصلك كاملة ومعاها الصور والملفات كمرفقات. فتح المحادثة بيعلّمها مقروءة تلقائيًا. العميل مايقدرش يبعت صور أو ملفات إلا لما تدوس "افتح للعميل رفع ملف/صورة"، وبيتقفل تلقائيًا مع إنهاء المحادثة. المحادثات بتتحدّث كل 3 ثواني.</div>
+    <div class="info">الشات هنا مباشر بينك وبين العميل. بيوصلك إيميل تنبيه على info@griffine.store أول ما عميل يبدأ محادثة جديدة (مش مع كل رسالة). لما تخلّص المحادثة دوس "📧 إنهاء وإرسال نسخة" وهتوصلك كاملة ومعاها الصور والملفات كمرفقات. فتح المحادثة بيعلّمها مقروءة تلقائيًا. العميل مايقدرش يبعت صور أو ملفات إلا لما تدوس "افتح للعميل رفع ملف/صورة"، وجنبه تكتب أقصى حجم للملف بالميجا (مثلًا 100 أو 500) - وبيتقفل تلقائيًا مع إنهاء المحادثة. التنبيهات نقطة حمرا + صوت على أيقونة الشات (من غير رسائل منبثقة). المحادثات بتتحدّث كل 3 ثواني.</div>
     <div class="radio-row std-filter-tabs" style="margin-bottom:10px;">
       <button class="small secondary period-preset std-filter-tab btn-active" id="tabActiveBtn">المحادثات النشطة</button>
       <button class="small secondary period-preset std-filter-tab" id="tabArchivedBtn">🗄️ الأرشيف</button>
       <button class="small secondary period-preset std-filter-tab" id="tabTrashBtn">🗑️ سلة المحذوفات</button>
       <button class="small secondary" id="chatMarkAllReadBtn" style="width:auto;margin-inline-start:auto;">✓ تعليم الكل كمقروء</button>
+      ${hasPermission('manage_admin_settings') ? '<button class="small secondary" id="chatNotifySettingsBtn" style="width:auto;">🔔 إعدادات التنبيهات</button>' : ''}
     </div>
+    <div class="section-card chat-notify-admin" id="chatNotifyAdminWrap" style="display:none;"></div>
     <div class="std-filter-bar">
       <div class="std-filter-search"><input type="text" id="chatConvSearch" placeholder="🔍 ابحث بالإيميل أو آخر رسالة..."></div>
     </div>
@@ -2778,6 +2982,11 @@ async function renderChatAdminPage(){
   document.getElementById('tabActiveBtn').onclick = () => setTab('active');
   document.getElementById('tabArchivedBtn').onclick = () => setTab('archived');
   document.getElementById('tabTrashBtn').onclick = () => setTab('trash');
+  const notifyBtn = document.getElementById('chatNotifySettingsBtn');
+  if (notifyBtn) notifyBtn.onclick = () => {
+    const w = document.getElementById('chatNotifyAdminWrap');
+    if (w.style.display === 'none') { w.style.display = ''; renderChatNotifyAdmin(w); } else w.style.display = 'none';
+  };
   document.getElementById('chatMarkAllReadBtn').onclick = async () => {
     await markAllChatRead();
     await refreshList();
@@ -2847,23 +3056,25 @@ async function renderChatAdminPage(){
         <button class="small danger" id="chatPurgeBtn" style="width:auto;">🗑️ حذف نهائي</button>`;
     }
 
-    let uploadOn = !!(convInfo && convInfo.allowUpload);
+    // الإصدار 83: حالة الرفع + أقصى حجم بالميجا (بيتكتب جنب زرار الفتح)
+    const upState = { on: !!(convInfo && convInfo.allowUpload), mb: +(convInfo && convInfo.maxUploadMb) || CHAT_DEFAULT_UPLOAD_MB,
+      onChange: (st) => { const c = conversations.find(x => x.visitorId === visitorId); if (c) { c.allowUpload = st.on; c.maxUploadMb = st.mb; } renderConvList(); } };
     detail.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
         <div style="font-size:13px;font-weight:bold;">${escapeHtml((convInfo&&convInfo.email) || 'زائر بدون إيميل')} ${convInfo ? chatKindBadge(convInfo) : ''}</div>
         <div>${actionsHtml}</div>
       </div>
-      ${currentView === 'active' ? `<div style="margin-bottom:8px;">${chatUploadBtnHtml('chatUploadToggle', uploadOn)}</div>` : ''}
+      ${currentView === 'active' ? `<div style="margin-bottom:8px;">${chatUploadBtnHtml('chatUploadToggle', upState.on, upState.mb)}</div>` : ''}
       <div id="chatAdminMsgs" class="chat-body" style="max-height:360px;overflow-y:auto;border-radius:8px;padding:10px;"></div>
       ${currentView === 'active' ? `
       <div class="chat-attach-chip" id="chatAdminAttachChip" style="display:none;"></div>
       <div style="display:flex;gap:6px;margin-top:10px;align-items:center;">
-        <label class="chat-attach-label" for="chatAdminFile" title="إرسال صورة أو PDF للعميل">📎</label>
-        <input type="file" id="chatAdminFile" accept="image/*,application/pdf" style="display:none;">
+        <label class="chat-attach-label" for="chatAdminFile" title="إرسال صورة / PDF / فيديو / ملف للعميل">📎</label>
+        <input type="file" id="chatAdminFile" accept="${CHAT_FILE_ACCEPT}" style="display:none;">
         <input type="text" id="chatAdminReplyInput" placeholder="اكتب الرد..." style="flex:1;margin:0;">
         <button id="chatAdminReplyBtn" style="width:auto;margin:0;">إرسال</button>
       </div>` : ''}`;
-    wireChatUploadBtn('chatUploadToggle', visitorId, () => uploadOn, (v) => { uploadOn = v; const c = conversations.find(x => x.visitorId === visitorId); if (c) c.allowUpload = v; renderConvList(); });
+    wireChatUploadBtn('chatUploadToggle', visitorId, upState);
     const adminAttach = wireAdminAttach('chatAdminFile', 'chatAdminAttachChip');
 
     const endBtn = document.getElementById('chatEndConvBtn');
@@ -2872,7 +3083,7 @@ async function renderChatAdminPage(){
       const r = await endChatConversation(visitorId);
       alert(r.message || (r.success ? 'تم إرسال نسخة المحادثة بالإيميل.' : 'حصل خطأ'));
       // الإصدار 82: إنهاء المحادثة بيقفل رفع الملفات عند العميل تلقائيًا
-      uploadOn = false; const t = document.getElementById('chatUploadToggle'); if (t) { t.outerHTML = chatUploadBtnHtml('chatUploadToggle', false); wireChatUploadBtn('chatUploadToggle', visitorId, () => uploadOn, (v) => { uploadOn = v; }); }
+      syncChatUploadCtl('chatUploadToggle', visitorId, upState, { success: true, allowUpload: false });
       refreshList();
     };
     const archiveBtn = document.getElementById('chatArchiveBtn');
@@ -2920,10 +3131,7 @@ async function renderChatAdminPage(){
       const res2 = await getChatHistory(visitorId);
       const msgs = (res2 && res2.success) ? res2.messages : [];
       // حالة رفع الملفات ممكن تتغيّر من جهاز تاني / إنهاء المحادثة
-      if (res2 && res2.success && typeof res2.allowUpload === 'boolean' && res2.allowUpload !== uploadOn) {
-        uploadOn = res2.allowUpload; const t = document.getElementById('chatUploadToggle');
-        if (t) { t.outerHTML = chatUploadBtnHtml('chatUploadToggle', uploadOn); wireChatUploadBtn('chatUploadToggle', visitorId, () => uploadOn, (v) => { uploadOn = v; }); }
-      }
+      syncChatUploadCtl('chatUploadToggle', visitorId, upState, res2);
       if (msgs.length === lastCount) return;
       // رسايل جديدة وصلت والمحادثة مفتوحة قدام الأدمن ← تتعلم مقروءة تلقائيًا
       // الإصدار 80: بس لو المحادثة قدام الأدمن فعلًا (الصفحة ظاهرة ومركّز عليها) - مش مفتوحة في تبويب منسي
@@ -2939,18 +3147,19 @@ async function renderChatAdminPage(){
     const replyBtn = document.getElementById('chatAdminReplyBtn');
     const sendReply = async () => {
       const text = document.getElementById('chatAdminReplyInput').value.trim();
-      const att = adminAttach ? adminAttach.get() : { data: null, name: '' };
-      if (!text && !att.data) return;
+      const att = adminAttach ? adminAttach.get() : { file: null };
+      if (!text && !att.file) return;
       replyBtn.disabled = true;
-      const r = await sendChatAdminReply(visitorId, text, att.data, att.name);
+      let r;
+      try { r = await sendChatAdminReplyWithFile(visitorId, text, adminAttach); } catch(e){ r = { success:false, message:'حصل خطأ في الاتصال بالسيرفر، جرّب تاني.' }; }
       replyBtn.disabled = false;
-      if (r.success){
+      if (r && r.success){
         document.getElementById('chatAdminReplyInput').value = '';
         if (adminAttach) adminAttach.clear();
         lastCount = -1;
         refreshMsgs();
       } else {
-        alert(r.message || 'حصل خطأ');
+        alert((r && r.message) || 'حصل خطأ');
       }
     };
     if (replyBtn) {
@@ -2958,6 +3167,61 @@ async function renderChatAdminPage(){
       document.getElementById('chatAdminReplyInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendReply(); });
     }
   }
+}
+
+/* =====================================================================
+   الإصدار 83: إعدادات تنبيهات الشات (للأدمن - صلاحية manage_admin_settings)
+   - صورة أيقونة الشات لكل الموقع (بدل شعار GRIFFINE)
+   - صوت التنبيه الافتراضي
+   - السماح للمشتركين/الزوار يغيّروا الصورة أو الصوت أو يكتموه من ⚙️ في الشات
+   ===================================================================== */
+async function renderChatNotifyAdmin(wrap){
+  const cfg = await loadChatNotifyCfg();
+  wrap.innerHTML = `
+    <div class="section-title">🔔 تنبيهات الشات</div>
+    <p style="font-size:12px;color:#888;line-height:1.8;margin:4px 0 10px;">التنبيه بقى زي ماسنجر: نقطة حمرا على أيقونة الشات + صوت، من غير أي رسائل منبثقة (Push) على الشاشة.</p>
+    <div class="chat-notify-grid">
+      <div>
+        <strong style="font-size:13px;">صورة أيقونة الشات</strong>
+        <div style="display:flex;align-items:center;gap:10px;margin:8px 0;">
+          <img src="${escapeHtml(cfg.icon || griffineLogoSrc())}" alt="أيقونة الشات" class="chat-notify-preview">
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <label class="small secondary chat-icon-upload">📷 رفع صورة جديدة<input type="file" id="cnIconFile" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none;"></label>
+            ${cfg.icon ? '<button type="button" class="small secondary" id="cnIconClear" style="width:auto;">↩️ رجوع لشعار GRIFFINE</button>' : ''}
+          </div>
+        </div>
+      </div>
+      <div>
+        <strong style="font-size:13px;">صوت التنبيه الافتراضي</strong>
+        <div style="display:flex;gap:6px;align-items:center;margin:8px 0;">
+          <select id="cnSound" style="margin:0;">${Object.entries(CHAT_SOUNDS).map(([k, l]) => `<option value="${k}" ${cfg.sound === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
+          <button type="button" class="small secondary" id="cnSoundTest" style="width:auto;margin:0;">▶️</button>
+        </div>
+      </div>
+    </div>
+    <label class="chat-notify-check"><input type="checkbox" id="cnUserIcon" ${cfg.userIcon ? 'checked' : ''}> المشترك/الزائر يقدر يغيّر صورة أيقونة الشات عنده</label>
+    <label class="chat-notify-check"><input type="checkbox" id="cnUserSound" ${cfg.userSound ? 'checked' : ''}> المشترك/الزائر يقدر يغيّر صوت التنبيه أو يكتمه (بدون صوت)</label>
+    <div id="cnMsg" style="font-size:12px;margin-top:6px;"></div>`;
+  const msg = (t, ok) => { const m = document.getElementById('cnMsg'); if (m) { m.textContent = t; m.style.color = ok ? 'var(--green)' : '#c0392b'; } };
+  async function save(data){
+    const r = await apiPost('/chat_notify_save.php', data).catch(() => null);
+    if (!r || !r.success) { msg((r && r.message) || 'تعذّر الحفظ', false); return false; }
+    window.__chatNotifyCfg = r.settings; applyChatBubbleIcon();
+    return true;
+  }
+  document.getElementById('cnSound').onchange = async (e) => { if (await save({ sound: e.target.value })) { msg('✓ اتحفظ الصوت', true); playChatSound(e.target.value); } };
+  document.getElementById('cnSoundTest').onclick = () => { chatAudioCtx(); setTimeout(() => playChatSound(document.getElementById('cnSound').value), 60); };
+  document.getElementById('cnUserIcon').onchange = async (e) => { if (await save({ userIcon: e.target.checked ? 1 : 0 })) msg('✓ اتحفظ', true); };
+  document.getElementById('cnUserSound').onchange = async (e) => { if (await save({ userSound: e.target.checked ? 1 : 0 })) msg('✓ اتحفظ', true); };
+  const clr = document.getElementById('cnIconClear');
+  if (clr) clr.onclick = async () => { if (await save({ clearIcon: 1 })) renderChatNotifyAdmin(wrap); };
+  document.getElementById('cnIconFile').onchange = (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    if (f.size > 2 * 1024 * 1024) { alert('الصورة كبيرة - أقصى حجم 2 ميجا.'); e.target.value = ''; return; }
+    const rd = new FileReader();
+    rd.onload = async () => { msg('جاري الرفع...', true); if (await save({ icon: rd.result })) renderChatNotifyAdmin(wrap); };
+    rd.readAsDataURL(f);
+  };
 }
 
 async function renderAdminSettingsPage(){
@@ -8230,58 +8494,8 @@ document.addEventListener('click', (e)=>{
 });
 
 /* ================== شات الدردشة العائم ================== */
-async function requestNotifyPermissionOnce(){
-  if (!('Notification' in window)) return;
-  if (Notification.permission === 'default') {
-    await Notification.requestPermission();
-  }
-}
-function fireBrowserNotification(title, body){
-  if (!('Notification' in window)) return;
-  if (Notification.permission !== 'granted') return;
-  try{
-    const n = new Notification(title, { body, icon: griffineLogoSrc() });
-    n.onclick = () => { window.focus(); n.close(); };
-  }catch(e){}
-}
-
-function urlBase64ToUint8Array(base64String){
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const rawData = atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
-  return outputArray;
-}
-
-/* يسجّل Service Worker ويشترك في إشعارات Push حقيقية (تشتغل حتى مع قفل المتصفح) لصاحب المحادثة ده */
-async function subscribeToPushNotifications(ownerKey){
-  try{
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-    if (Notification.permission !== 'granted') return;
-
-    const reg = await navigator.serviceWorker.register('/sw.js');
-    await navigator.serviceWorker.ready;
-
-    let sub = await reg.pushManager.getSubscription();
-    if (!sub) {
-      const keyRes = await apiGet('/push_public_key.php');
-      if (!keyRes || !keyRes.success) return;
-      sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(keyRes.publicKey),
-      });
-    }
-
-    const subJson = sub.toJSON();
-    await apiPost('/push_subscribe.php', {
-      ownerKey,
-      endpoint: subJson.endpoint,
-      p256dh: subJson.keys.p256dh,
-      auth: subJson.keys.auth,
-    });
-  }catch(e){ /* الإشعارات مش أساسية لتشغيل الموقع - نتجاهل أي فشل */ }
-}
+/* الإصدار 83: مفيش إشعارات منبثقة على الشاشة (Notification / Push) للشات خالص - زي ماسنجر:
+   التنبيه = نقطة حمرا على أيقونة الشات + صوت (المستخدم يقدر يكتمه) ← chatAlert() */
 
 /* الإصدار 78: الشات بيتظبط حسب الحساب الحالي - ولو الحساب اتغيّر (خروج / دخول بحساب تاني من غير تحديث الصفحة)
    بيتقفل ويتعمل من جديد. قبل كده كان بيفضل بوضع الحساب القديم: عميل يلاقي لوحة "محادثات العملاء"
@@ -8302,7 +8516,9 @@ async function syncChatWidget(email){
 
 async function initChatWidget(sessionEmail){
   window.__chatWidgetMode = chatWidgetMode(sessionEmail);
-  const settings = await getAdminSettings();
+  const myMode = window.__chatWidgetMode;
+  const [settings] = await Promise.all([getAdminSettings(), loadChatNotifyCfg()]);
+  if (window.__chatWidgetMode !== myMode) return;   // الحساب اتغيّر أثناء التحميل
   if (settings.chat_enabled === false) return; // الشات موقوف خالص
   if (settings.chat_icon_visible === false) return; // الأيقونة مخفية
 
@@ -8313,17 +8529,16 @@ async function initChatWidget(sessionEmail){
 
   const bubble = document.createElement('div');
   bubble.id = 'chatBubble';
-  // class="brand-logo-img" عشان الشعار يتبدّل تلقائيًا مع تبديل الوضع الليلي/النهاري (شعارين: فاتح وغامق)
-  bubble.innerHTML = `<img src="${griffineLogoSrc()}" alt="الدردشة الفورية GRIFFINE" class="brand-logo-img"><span id="chatBadge"></span>`;
+  // الصورة: شعار GRIFFINE (بيتبدّل مع الوضع الليلي/النهاري) أو صورة مخصّصة من الأدمن / من المستخدم (الإصدار 83)
+  bubble.innerHTML = `<img src="" alt="الدردشة الفورية"><span id="chatBadge"></span>`;
   document.body.appendChild(bubble);
+  applyChatBubbleIcon();
 
   const panel = document.createElement('div');
   panel.id = 'chatPanel';
   document.body.appendChild(panel);
 
-  await requestNotifyPermissionOnce();
-
-  if (isAdminUser) { initAdminBubble(bubble, panel); subscribeToPushNotifications('admin'); return; }
+  if (isAdminUser) { initAdminBubble(bubble, panel); return; }
 
   /* =====================================================================
      شات العميل / الزائر (الإصدار 82 - على طريقة ماسنجر)
@@ -8338,17 +8553,26 @@ async function initChatWidget(sessionEmail){
   if (sessionEmail) {
     try { const r = await apiGet('/chat_my_id.php?local=' + encodeURIComponent(visitorId)); if (r && r.success && r.visitorId) visitorId = r.visitorId; } catch(e){}
     if (window.__chatWidgetMode !== chatWidgetMode(sessionEmail)) return;   // الحساب اتغيّر أثناء التحميل
+    // الإصدار 83: معرّف الجهاز بقى بتاع الحساب ← الجهاز ياخد معرّف زائر جديد عشان بعد الخروج الزائر ميشوفش محادثة الحساب
+    if (visitorId === localStorage.getItem('griffine_visitor_id')) { try { localStorage.removeItem('griffine_visitor_id'); } catch(e){} }
   }
   let knownEmail = sessionEmail || localStorage.getItem('griffine_chat_email') || null;
-  let attachmentData = null, attachmentName = '';
   const startedKey = 'griffine_chat_started_' + visitorId;
   const seenKey = 'griffine_chat_seen_admin_' + visitorId;          // آخر رسالة من الإدارة اتشافت على الجهاز ده
   let hasStarted = localStorage.getItem(startedKey) === '1';
-  let allowUpload = false, adminReadAt = null;
+  let allowUpload = false, adminReadAt = null, maxUploadMb = CHAT_DEFAULT_UPLOAD_MB;
+  let attachFile = null;   // الإصدار 83: الملف نفسه (بيترفع على أجزاء وقت الإرسال) بدل Base64
   let lastNotifiedId = +(localStorage.getItem(seenKey) || 0);
   const isGuest = !sessionEmail;
   const headerTitle = isGuest ? '💬 استفسار قبل الاشتراك' : '💬 تواصل مع GRIFFINE';
-  subscribeToPushNotifications(visitorId);
+  // الإصدار 83: المحادثة طلعت بتاعة حساب (الزائر على جهاز كان مسجّل عليه حد) ← معرّف زائر جديد ونبدأ من الأول
+  function handleNotOwner(res){
+    if (!res || res.code !== 'not_owner' || !isGuest) return false;
+    resetGuestChatIdentity();
+    teardownChatWidget();
+    initChatWidget(null);
+    return true;
+  }
 
   const markStarted = () => { if (!hasStarted) { hasStarted = true; try { localStorage.setItem(startedKey, '1'); } catch(e){} } };
   const seenAdminId = () => +(localStorage.getItem(seenKey) || 0);
@@ -8360,21 +8584,18 @@ async function initChatWidget(sessionEmail){
     badge.style.display = hasUnread ? 'block' : 'none';
   }
 
-  // فحص في الخلفية حتى والشات مقفول: رد جديد من الإدارة ← نقطة حمرا + إشعار
+  // فحص في الخلفية حتى والشات مقفول: رد جديد من الإدارة ← نقطة حمرا + صوت (من غير أي إشعار منبثق)
   async function backgroundCheck(){
     if (!hasStarted || panel.classList.contains('open')) return;
     const res = await getChatHistory(visitorId);
+    if (handleNotOwner(res)) return;
     if (!res || !res.success) return;
-    allowUpload = !!res.allowUpload; adminReadAt = res.adminReadAt || null;
+    allowUpload = !!res.allowUpload; adminReadAt = res.adminReadAt || null; maxUploadMb = +res.maxUploadMb || CHAT_DEFAULT_UPLOAD_MB;
     const msgs = res.messages || [];
     const top = maxAdminId(msgs);
     if (top > seenAdminId()) {
       updateBadge(true);
-      if (top > lastNotifiedId) {
-        lastNotifiedId = top;
-        const last = msgs.filter(m => m.sender === 'admin').pop();
-        fireBrowserNotification('💬 رد جديد من GRIFFINE', (last && last.message) || '📎 وصلك مرفق جديد');
-      }
+      if (top > lastNotifiedId) { lastNotifiedId = top; chatAlert(); }
     }
   }
   if (hasStarted) backgroundCheck();
@@ -8382,13 +8603,14 @@ async function initChatWidget(sessionEmail){
 
   function renderEmailGate(){
     panel.innerHTML = `
-      <div class="chat-header"><span>${headerTitle}</span><button id="chatCloseBtn">✕</button></div>
+      <div class="chat-header"><span>${headerTitle}</span><span><button id="chatPrefsBtn" title="تنبيهات الشات (الصوت / الصورة)">⚙️</button><button id="chatCloseBtn">✕</button></span></div>
       <div class="chat-email-gate">
         <p style="font-size:13px;line-height:1.8;">${isGuest ? 'عندك سؤال عن GRIFFINE أو الاشتراك، أو مش عارف تشترك؟ ابعتلنا وفريقنا هيرد عليك.' : 'تقدر تبدأ تكلمنا على طول.'}<br><small style="opacity:.75">اكتب إيميلك لو حابب نرد عليك عليه كمان (اختياري).</small></p>
         <input type="email" id="chatEmailInput" placeholder="بريدك الإلكتروني (اختياري)" style="width:100%;padding:9px;border:1px solid #ddd;border-radius:8px;margin:8px 0;" dir="ltr">
         <button id="chatStartBtn" style="width:100%;">بدء المحادثة</button>
       </div>`;
     document.getElementById('chatCloseBtn').onclick = closeChat;
+    document.getElementById('chatPrefsBtn').onclick = () => renderChatPrefsPanel(panel, renderEmailGate, closeChat);
     document.getElementById('chatStartBtn').onclick = async () => {
       const val = document.getElementById('chatEmailInput').value.trim().toLowerCase();
       if (val) {
@@ -8406,16 +8628,16 @@ async function initChatWidget(sessionEmail){
     const label = document.getElementById('chatAttachLabel');
     const note = document.getElementById('chatUploadNote');
     if (label) label.style.display = allowUpload ? '' : 'none';
-    if (note) note.style.display = allowUpload ? '' : 'none';
-    if (!allowUpload && attachmentData) { attachmentData = null; attachmentName = ''; renderAttachChip(); }
+    if (note) { note.style.display = allowUpload ? '' : 'none'; note.textContent = `📎 فريق الدعم فتحلك إرسال صورة أو PDF أو فيديو أو ملف (لحد ${maxUploadMb} ميجا)`; }
+    if (!allowUpload && attachFile) { attachFile = null; renderAttachChip(); }
   }
-  function renderAttachChip(){
+  function renderAttachChip(progress){
     const chip = document.getElementById('chatAttachChip');
     if (!chip) return;
-    chip.style.display = attachmentData ? '' : 'none';
-    chip.innerHTML = attachmentData ? `📎 ${escapeHtml(attachmentName)} <button type="button" id="chatAttachClear" aria-label="إلغاء المرفق">✕</button>` : '';
+    chip.style.display = attachFile ? '' : 'none';
+    chip.innerHTML = attachFile ? `<span>📎 ${escapeHtml(attachFile.name)} <small>(${chatFileSizeLabel(attachFile.size)})</small>${progress != null ? ` <b class="chat-up-prog">⏳ جاري الرفع ${Math.round(progress * 100)}%</b>` : ''}</span> <button type="button" id="chatAttachClear" aria-label="إلغاء المرفق">✕</button>` : '';
     const x = document.getElementById('chatAttachClear');
-    if (x) x.onclick = () => { attachmentData = null; attachmentName = ''; document.getElementById('chatFileInput').value = ''; renderAttachChip(); };
+    if (x) x.onclick = () => { attachFile = null; const fi = document.getElementById('chatFileInput'); if (fi) fi.value = ''; renderAttachChip(); };
   }
 
   async function renderChatConversation(){
@@ -8426,7 +8648,7 @@ async function initChatWidget(sessionEmail){
     panel.innerHTML = `
       <div class="chat-header">
         <span>${headerTitle}</span>
-        <button id="chatCloseBtn">✕</button>
+        <span><button id="chatPrefsBtn" title="تنبيهات الشات (الصوت / الصورة)">⚙️</button><button id="chatCloseBtn">✕</button></span>
       </div>
       <div style="padding:6px 12px;font-size:11px;background:${isOnline?'#eafaf1':'#fdf6e3'};color:${isOnline?'var(--green)':'#8a6d1b'};text-align:center;">
         ${isOnline ? '🟢 فريق الدعم متصل الآن — هيردوا عليك في الحال' : '📩 هنرد عليك في أقرب وقت ممكن'}
@@ -8436,20 +8658,22 @@ async function initChatWidget(sessionEmail){
       <div class="chat-attach-chip" id="chatAttachChip" style="display:none;"></div>
       <div class="chat-input-area">
         <label class="chat-attach-label" id="chatAttachLabel" for="chatFileInput" style="display:none;" title="إرفاق صورة أو PDF">📎</label>
-        <input type="file" id="chatFileInput" accept="image/*,application/pdf" style="display:none;">
+        <input type="file" id="chatFileInput" accept="${CHAT_FILE_ACCEPT}" style="display:none;">
         <input type="text" id="chatTextInput" placeholder="اكتب رسالتك...">
         <button id="chatSendBtn">إرسال</button>
       </div>`;
     document.getElementById('chatCloseBtn').onclick = closeChat;
+    document.getElementById('chatPrefsBtn').onclick = () => { if (window.__chatPollInterval) { clearInterval(window.__chatPollInterval); window.__chatPollInterval = null; } renderChatPrefsPanel(panel, renderChatConversation, closeChat); };
 
     let lastSig = '';
     async function refreshMessages(){
       const body = document.getElementById('chatBody');
       if (!body) return; // البانل اتقفل
       const res = await getChatHistory(visitorId);
+      if (handleNotOwner(res)) return;
       if (!res || !res.success) return;
       const msgs = res.messages || [];
-      allowUpload = !!res.allowUpload; adminReadAt = res.adminReadAt || null;
+      allowUpload = !!res.allowUpload; adminReadAt = res.adminReadAt || null; maxUploadMb = +res.maxUploadMb || CHAT_DEFAULT_UPLOAD_MB;
       syncUploadUi();
       if (msgs.length) markStarted();
       // الرسائل اتشافت (الشات مفتوح) ← النقطة الحمرا تختفي
@@ -8481,29 +8705,40 @@ async function initChatWidget(sessionEmail){
       const file = e.target.files[0];
       if (!file) return;
       if (!allowUpload) { alert('رفع الملفات مقفول دلوقتي.'); e.target.value = ''; return; }
-      if (file.size > 8 * 1024 * 1024) { alert('حجم الملف كبير - أقصى حجم 8 ميجا.'); e.target.value = ''; return; }
-      const reader = new FileReader();
-      reader.onload = () => { attachmentData = reader.result; attachmentName = file.name; renderAttachChip(); };
-      reader.readAsDataURL(file);
+      // الإصدار 83: الحد اللي الأدمن كتبه للمحادثة دي (مثلًا 100 أو 500 ميجا)
+      if (file.size > maxUploadMb * 1024 * 1024) { alert(`حجم الملف (${chatFileSizeLabel(file.size)}) أكبر من المسموح - أقصى حجم ${maxUploadMb} ميجا.`); e.target.value = ''; return; }
+      attachFile = file; renderAttachChip();
     });
 
     async function doSend(){
       const input = document.getElementById('chatTextInput');
       const text = input.value.trim();
-      if (!text && !attachmentData) return;
+      if (!text && !attachFile) return;
       const btn = document.getElementById('chatSendBtn');
       btn.disabled = true;
-      const r = await sendChatMessage(visitorId, knownEmail, text, attachmentData, attachmentName);
+      let r;
+      try {
+        // الملف بيترفع الأول على أجزاء (مع نسبة التقدّم) وبعدين الرسالة بتتبعت ومعاها token الملف
+        let token = null, name = null;
+        if (attachFile) {
+          const up = await chatUploadFile(attachFile, visitorId, (p) => renderAttachChip(p));
+          if (!up || !up.success) { r = up; } else { token = up.token; name = up.name; }
+        }
+        if (!r) r = await apiPost('/chat_send.php', { visitorId, email: knownEmail, message: text, uploadToken: token, attachmentName: name });
+      } catch(e){ r = { success:false, message:'حصل خطأ في الاتصال بالسيرفر، جرّب تاني.' }; }
       btn.disabled = false;
       if (r && r.success){
         input.value = '';
-        attachmentData = null; attachmentName = ''; document.getElementById('chatFileInput').value = ''; renderAttachChip();
+        attachFile = null; document.getElementById('chatFileInput').value = ''; renderAttachChip();
         markStarted();
         lastSig = ''; // نجبر التحديث فورًا عشان رسالتنا تظهر على طول
         refreshMessages();
       } else {
+        renderAttachChip();
+        if (handleNotOwner(r)) return;
         alert((r && r.message) || 'حصل خطأ في الإرسال');
         if (r && /مقفول/.test(r.message || '')) { allowUpload = false; syncUploadUi(); }
+        if (r && r.maxUploadMb) { maxUploadMb = +r.maxUploadMb; syncUploadUi(); }
       }
     }
     document.getElementById('chatSendBtn').onclick = doSend;
@@ -8557,7 +8792,7 @@ function initAdminBubble(bubble, panel){
     try{
       const res = await getChatConversations('active');
       if (!res || !res.success) { console.error('chat backgroundCheck: فشل جلب المحادثات', res); return; }
-      let anyUnread = false;
+      let anyUnread = false, anyNew = false;
       for (const c of res.conversations) {
         /* الإصدار 80: النقطة الحمرا والإشعار بيظهروا لو:
              - رسالة جديدة من العميل بعد آخر مرة فتحت لوحة الشات على الجهاز ده (lastSeenAt)، أو
@@ -8571,15 +8806,17 @@ function initAdminBubble(bubble, panel){
         const isCurrentlyOpen = panel.classList.contains('open') && panel.dataset.openConv === c.visitorId;
         if (newHere && !isCurrentlyOpen && notifiedAt[c.visitorId] !== c.lastAt) {
           notifiedAt[c.visitorId] = c.lastAt;
-          fireBrowserNotification('💬 رسالة جديدة — ' + (c.email || 'زائر'), c.lastMessage || 'وصلت رسالة جديدة');
+          anyNew = true;
         }
       }
       updateBadge(anyUnread && !panel.classList.contains('open'));
+      // الإصدار 83: رسالة جديدة ← نقطة حمرا + صوت بس (مفيش إشعار منبثق على الشاشة)
+      if (anyNew) chatAlert();
     }catch(e){ console.error('chat backgroundCheck crashed:', e); }
   }
   window.__adminBubbleCheck = backgroundCheck;
   backgroundCheck();
-  // الإصدار 80: فحص رسائل الأدمن بيفضل شغال والتبويب في الخلفية (عشان إشعار المتصفح يطلع وإنت على برنامج تاني)
+  // الإصدار 80: فحص رسائل الأدمن بيفضل شغال والتبويب في الخلفية (عشان النقطة الحمرا والصوت يوصلوا وإنت على برنامج تاني)
   // - باقي الاستعلامات المتكررة بتقف والصفحة مخفية (shell.js) لتوفير البطارية والسيرفر
   window.__adminBubblePoll = (window.__nativeSetInterval || setInterval)(backgroundCheck, 10000);
   // heartbeat خفيف كمان من هنا عشان أي زائر يشوف "الأدمن متصل" حتى لو إنت في صفحة تانية غير لوحة الشات
@@ -8590,10 +8827,11 @@ function initAdminBubble(bubble, panel){
 
   async function renderConvList(){
     panel.innerHTML = `
-      <div class="chat-header"><span>💬 محادثات العملاء</span><button id="chatCloseBtn">✕</button></div>
+      <div class="chat-header"><span>💬 محادثات العملاء</span><span><button id="chatPrefsBtn" title="تنبيهات الشات (الصوت / الصورة)">⚙️</button><button id="chatCloseBtn">✕</button></span></div>
       <div class="chat-body" id="chatBody" style="padding:0;"><div style="text-align:center;font-size:12px;color:#888;padding:14px;">جاري التحميل...</div></div>
       <div style="padding:8px;text-align:center;"><a href="#" id="chatFullPageLink" style="font-size:11.5px;color:var(--green-dark);">فتح لوحة الدردشة الفورية الكاملة</a></div>`;
     document.getElementById('chatCloseBtn').onclick = closeChat;
+    document.getElementById('chatPrefsBtn').onclick = () => renderChatPrefsPanel(panel, renderConvList, closeChat);
     document.getElementById('chatFullPageLink').onclick = (e) => { e.preventDefault(); closeChat(); renderChatAdminPage(); };
 
     const res = await getChatConversations('active');
@@ -8622,24 +8860,25 @@ function initAdminBubble(bubble, panel){
     panel.dataset.openConv = visitorId;
     if (window.__adminChatSeen && convInfo) window.__adminChatSeen(convInfo.lastAt);
     markChatRead(visitorId).then(refreshChatUnreadIndicators); // الإصدار 72
-    let uploadOn = !!(convInfo && convInfo.allowUpload);
+    const upState = { on: !!(convInfo && convInfo.allowUpload), mb: +(convInfo && convInfo.maxUploadMb) || CHAT_DEFAULT_UPLOAD_MB,
+      onChange: (st) => { if (convInfo) { convInfo.allowUpload = st.on; convInfo.maxUploadMb = st.mb; } } };
     panel.innerHTML = `
       <div class="chat-header">
         <span>${escapeHtml((convInfo&&convInfo.email) || 'زائر')}</span>
         <span><button id="chatBackBtn" style="background:none;border:none;color:#fff;font-size:13px;cursor:pointer;">◀ رجوع</button><button id="chatCloseBtn">✕</button></span>
       </div>
-      <div style="padding:6px 10px;border-bottom:1px solid var(--border-soft);display:flex;gap:6px;align-items:center;flex-wrap:wrap;">${convInfo ? chatKindBadge(convInfo) : ''} ${chatUploadBtnHtml('chatQuickUpload', uploadOn)}</div>
+      <div style="padding:6px 10px;border-bottom:1px solid var(--border-soft);display:flex;gap:6px;align-items:center;flex-wrap:wrap;">${convInfo ? chatKindBadge(convInfo) : ''} ${chatUploadBtnHtml('chatQuickUpload', upState.on, upState.mb)}</div>
       <div class="chat-body" id="chatBody"></div>
       <div class="chat-attach-chip" id="chatQuickAttachChip" style="display:none;"></div>
       <div class="chat-input-area">
-        <label class="chat-attach-label" for="chatQuickFile" title="إرسال صورة أو PDF للعميل">📎</label>
-        <input type="file" id="chatQuickFile" accept="image/*,application/pdf" style="display:none;">
+        <label class="chat-attach-label" for="chatQuickFile" title="إرسال صورة / PDF / فيديو / ملف للعميل">📎</label>
+        <input type="file" id="chatQuickFile" accept="${CHAT_FILE_ACCEPT}" style="display:none;">
         <input type="text" id="chatTextInput" placeholder="اكتب الرد...">
         <button id="chatSendBtn">إرسال</button>
       </div>`;
     document.getElementById('chatCloseBtn').onclick = closeChat;
     document.getElementById('chatBackBtn').onclick = () => { panel.dataset.openConv=''; renderConvList(); };
-    wireChatUploadBtn('chatQuickUpload', visitorId, () => uploadOn, (v) => { uploadOn = v; if (convInfo) convInfo.allowUpload = v; });
+    wireChatUploadBtn('chatQuickUpload', visitorId, upState);
     const quickAttach = wireAdminAttach('chatQuickFile', 'chatQuickAttachChip');
 
     async function refresh(){
@@ -8649,10 +8888,7 @@ function initAdminBubble(bubble, panel){
         const res = await getChatHistory(visitorId);
         if (!res || !res.success) { console.error('renderQuickThread refresh: فشل جلب الرسائل', res); return; }
         const msgs = res.messages;
-        if (typeof res.allowUpload === 'boolean' && res.allowUpload !== uploadOn) {
-          uploadOn = res.allowUpload; const t = document.getElementById('chatQuickUpload');
-          if (t) { t.outerHTML = chatUploadBtnHtml('chatQuickUpload', uploadOn); wireChatUploadBtn('chatQuickUpload', visitorId, () => uploadOn, (v) => { uploadOn = v; }); }
-        }
+        syncChatUploadCtl('chatQuickUpload', visitorId, upState, res);
         const sig = msgs.length + '|' + (msgs.length ? msgs[msgs.length - 1].id : '');
         if (sig === body.dataset.sig) return;   // مفيش جديد ← منعيدش الرسم
         body.dataset.sig = sig;
@@ -8668,11 +8904,11 @@ function initAdminBubble(bubble, panel){
     async function doSend(){
       const text = document.getElementById('chatTextInput').value.trim();
       const att = quickAttach.get();
-      if (!text && !att.data) return;
+      if (!text && !att.file) return;
       const btn = document.getElementById('chatSendBtn');
       btn.disabled = true;
       try{
-        const r = await sendChatAdminReply(visitorId, text, att.data, att.name);
+        const r = await sendChatAdminReplyWithFile(visitorId, text, quickAttach);
         if (r && r.success){
           document.getElementById('chatTextInput').value='';
           quickAttach.clear();

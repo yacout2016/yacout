@@ -55,6 +55,41 @@ function upl_store($value, $category, $allowPdf = false){
     return 'file:' . $name;
 }
 
+/* ---------------------------------------------------------------------
+   الإصدار 83: ملفات الشات الكبيرة (رفع على أجزاء - chat_upload_chunk.php)
+   الأنواع المسموحة في الشات: صور + PDF + فيديو (mp4/webm/mov) + ملفات مضغوطة ومستندات Office
+   النوع بيتحدد من "بصمة" أول بايتات في الملف نفسه (مش من الاسم بس) عشان محدش يرفع سكريبت متسمي صورة
+   --------------------------------------------------------------------- */
+const UPL_CHAT_EXTS = ['png', 'jpg', 'webp', 'gif', 'pdf', 'mp4', 'webm', 'mov', 'zip', 'docx', 'xlsx', 'pptx', 'doc', 'xls'];
+const UPL_MIME_BY_EXT = [
+    'png' => 'image/png', 'jpg' => 'image/jpeg', 'webp' => 'image/webp', 'gif' => 'image/gif', 'pdf' => 'application/pdf',
+    'mp4' => 'video/mp4', 'webm' => 'video/webm', 'mov' => 'video/quicktime', 'zip' => 'application/zip',
+    'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'pptx' => 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'doc' => 'application/msword', 'xls' => 'application/vnd.ms-excel',
+];
+
+// بيرجّع امتداد الملف الحقيقي حسب محتواه، أو false لو النوع مش مسموح
+function upl_detect_file($path, $origName = ''){
+    $h = @fopen($path, 'rb'); if (!$h) return false;
+    $head = fread($h, 16); fclose($h);
+    if ($head === false || strlen($head) < 4) return false;
+    $orig = strtolower(pathinfo((string)$origName, PATHINFO_EXTENSION));
+    $img = null;
+    if (strncmp($head, "\x89PNG", 4) === 0) $img = 'png';
+    elseif (strncmp($head, "\xFF\xD8\xFF", 3) === 0) $img = 'jpg';
+    elseif (strncmp($head, 'GIF8', 4) === 0) $img = 'gif';
+    elseif (strncmp($head, 'RIFF', 4) === 0 && substr($head, 8, 4) === 'WEBP') $img = 'webp';
+    if ($img) return @getimagesize($path) !== false ? $img : false;
+    if (strncmp($head, '%PDF-', 5) === 0) return 'pdf';
+    if (substr($head, 4, 4) === 'ftyp') return substr($head, 8, 4) === 'qt  ' ? 'mov' : 'mp4';
+    if (strncmp($head, "\x1A\x45\xDF\xA3", 4) === 0) return 'webm';
+    if (strncmp($head, "PK\x03\x04", 4) === 0) return in_array($orig, ['docx', 'xlsx', 'pptx'], true) ? $orig : 'zip';
+    if (strncmp($head, "\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1", 8) === 0) return $orig === 'xls' ? 'xls' : 'doc';
+    return false;
+}
+
 // القيمة المخزّنة → رابط يتعرض في الصفحة
 function upl_url($stored){
     if ($stored === null || $stored === '') return $stored;

@@ -35,7 +35,13 @@ if (empty($visitorId)) {
 // ---------------------------------------------------------------------
 // 2) قراءة المرفق (ملف على السيرفر file:... أو Base64 قديم) ← [اسم، نوع، محتوى]
 // ---------------------------------------------------------------------
+// الإصدار 83: الملفات الكبيرة (فيديو 100/500 ميجا) مبتتضافش للإيميل - حد الإيميل حوالي 25 ميجا
+// أي ملف أكبر من 10 ميجا، أو لو مجموع المرفقات هيعدّي 20 ميجا ← بيتكتب في الإيميل إنه موجود على السيرفر بس
+const CHAT_MAIL_FILE_MAX = 10 * 1024 * 1024;
+const CHAT_MAIL_TOTAL_MAX = 20 * 1024 * 1024;
+$mailBytes = 0;
 function chat_attachment_bytes($stored, $name, $index){
+    global $mailBytes;
     if (!$stored) return null;
     $mime = null; $bin = null;
     if (strpos($stored, 'file:') === 0) {
@@ -43,15 +49,18 @@ function chat_attachment_bytes($stored, $name, $index){
         if (!preg_match('/^[a-z]+_[a-f0-9]{32}\.[a-z]+$/', $file)) return null;
         $dir = upl_dir();
         if (!$dir || !is_file($dir . '/' . $file)) return null;
+        $fsize = filesize($dir . '/' . $file);
+        if ($fsize > CHAT_MAIL_FILE_MAX || $mailBytes + $fsize > CHAT_MAIL_TOTAL_MAX) return 'too_big';
+        $mailBytes += $fsize;
         $bin = @file_get_contents($dir . '/' . $file);
         $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
-        $mime = array_search($ext, UPL_TYPES, true) ?: 'application/octet-stream';
+        $mime = UPL_MIME_BY_EXT[$ext] ?? 'application/octet-stream';
     } elseif (preg_match('#^data:([a-z0-9/+.-]+);base64,#i', $stored, $m)) {
         $mime = strtolower($m[1]);
         $bin = base64_decode(substr($stored, strlen($m[0])), true);
     }
     if (!$bin) return null;
-    $ext = UPL_TYPES[$mime] ?? 'bin';
+    $ext = UPL_TYPES[$mime] ?? (array_search($mime, UPL_MIME_BY_EXT, true) ?: 'bin');
     $clean = trim(preg_replace('/[\\\\\/:*?"<>|\r\n]/', '', (string)$name));
     if ($clean === '') $clean = 'مرفق-' . $index . '.' . $ext;
     elseif (!preg_match('/\.[a-z0-9]{2,4}$/i', $clean)) $clean .= '.' . $ext;
@@ -70,13 +79,15 @@ $visitorEmail = null;
 $lines = [];          // سطور المحادثة (نص)
 $attachments = [];    // المرفقات الحقيقية
 $missing = 0;         // مرفقات مش لاقيين ملفها
+$bigOnes = 0;         // مرفقات كبيرة فضلت على السيرفر (الإصدار 83)
 while ($r = $result->fetch_assoc()) {
     if ($r['visitor_email']) $visitorEmail = $r['visitor_email'];
     $who = $r['sender'] === 'admin' ? 'الإدارة' : 'العميل';
     $text = trim((string)$r['message']);
     if (!empty($r['attachment'])) {
         $att = chat_attachment_bytes($r['attachment'], $r['attachment_name'], count($attachments) + 1);
-        if ($att) { $attachments[] = $att; $text .= ($text ? ' ' : '') . '📎 [مرفق رقم ' . count($attachments) . ': ' . $att['name'] . ']'; }
+        if ($att === 'too_big') { $bigOnes++; $text .= ($text ? ' ' : '') . '📎 [ملف كبير: ' . ($r['attachment_name'] ?: 'مرفق') . ' - موجود في المحادثة على الموقع (أكبر من إنه يتبعت بالإيميل)]'; }
+        elseif ($att) { $attachments[] = $att; $text .= ($text ? ' ' : '') . '📎 [مرفق رقم ' . count($attachments) . ': ' . $att['name'] . ']'; }
         else { $missing++; $text .= ($text ? ' ' : '') . '📎 [مرفق - الملف مش متاح على السيرفر]'; }
     }
     $lines[] = "[" . $r['created_at'] . "] $who: " . ($text !== '' ? $text : '—');
@@ -95,7 +106,7 @@ $who = $visitorEmail ?: 'زائر بدون إيميل';
 $paragraphs = [
     "محادثة الشات كاملة مع: $who",
     "معرّف المحادثة: $visitorId",
-    "عدد الرسائل: " . count($lines) . " · المرفقات: " . count($attachments) . ($missing ? " (+$missing مش متاح)" : ''),
+    "عدد الرسائل: " . count($lines) . " · المرفقات: " . count($attachments) . ($missing ? " (+$missing مش متاح)" : '') . ($bigOnes ? " (+$bigOnes ملف كبير على الموقع)" : ''),
     implode("\n", $lines),
 ];
 if ($attachments) $paragraphs[] = 'الصور والملفات متضافة كمرفقات في الإيميل ده بنفس الترقيم.';

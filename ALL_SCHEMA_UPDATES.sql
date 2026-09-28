@@ -1,5 +1,5 @@
 -- ============================================================
--- GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 82)
+-- GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 83)
 -- كل تحديثات قاعدة البيانات في ملف واحد.
 -- آمن تشغّله أي عدد من المرات: بيضيف الناقص بس ومبيمسحش أي بيانات.
 -- الاستخدام: phpMyAdmin ← اختار قاعدة البيانات ← تبويب SQL ← الصق الملف كله ← Go
@@ -16,6 +16,8 @@
 -- الإصدار 80: مفيش تغييرات في قاعدة البيانات (إشعارات رسائل الشات للأدمن).
 -- الإصدار 81: مفيش تغييرات في قاعدة البيانات (رسالة العميل الجديدة بترجّع المحادثة المؤرشفة/المحذوفة للنشطة).
 -- الإصدار 82: عمود allow_upload في chat_conversation_meta (الأدمن بيفتح رفع الملفات للعميل في الشات) + users.chat_visitor_id (نفس المحادثة من أي جهاز).
+-- الإصدار 83: عمود max_upload_mb في chat_conversation_meta (أقصى حجم للمرفق بالميجا لكل محادثة - الأدمن بيكتبه جنب زرار فتح الرفع).
+--              إعدادات تنبيهات الشات (صورة الأيقونة + الصوت) بتتخزّن في جدول ui_customizations الموجود (ui_key = 'chat_notify') - مفيش جدول جديد.
 -- ============================================================
 
 -- ============================================================
@@ -661,4 +663,17 @@ DELIMITER ;
 CALL griffine_v82();
 DROP PROCEDURE griffine_v82;
 
-SELECT 'GRIFFINE database is up to date (v82)' AS result;
+-- الإصدار 83: أقصى حجم لمرفقات الشات بالميجا لكل محادثة (فاضي = الافتراضي 8 ميجا، والحد الأعلى 2048)
+DELIMITER $$
+DROP PROCEDURE IF EXISTS griffine_v83 $$
+CREATE PROCEDURE griffine_v83()
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='chat_conversation_meta' AND COLUMN_NAME='max_upload_mb') THEN
+    ALTER TABLE chat_conversation_meta ADD COLUMN max_upload_mb INT NULL DEFAULT NULL;
+  END IF;
+END $$
+DELIMITER ;
+CALL griffine_v83();
+DROP PROCEDURE griffine_v83;
+
+SELECT 'GRIFFINE database is up to date (v83)' AS result;

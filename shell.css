@@ -706,3 +706,39 @@ body.g-shell:not(.gs-no-shell) .chat-upload-toggle{ font-size:12px; }
 /* فقاعة الشات بتظهر كمان في شاشة الترحيب والدخول (عشان اللي لسه مشتركش يقدر يسأل) */
 body:has(.wl-screen, .gl-screen) #chatBubble{ bottom:max(16px, env(safe-area-inset-bottom)) !important; left:16px !important; width:52px !important; height:52px !important; }
 body:has(.wl-screen, .gl-screen) #chatPanel{ bottom:80px !important; left:12px !important; }
+
+/* =====================================================================
+   20. الإصدار 83 — الشات: أقصى حجم للمرفق + فيديو + تنبيهات زي ماسنجر (نقطة + صوت) + إعدادات ⚙️
+   ===================================================================== */
+/* زرار فتح الرفع + خانة الحجم بالميجا جنبه */
+.chat-upload-ctl{ display:inline-flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.chat-maxmb{ display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:600; white-space:nowrap; margin:0; }
+.chat-maxmb input{ width:78px !important; min-height:0 !important; margin:0 !important; padding:5px 7px !important; font-size:12.5px !important; text-align:center; direction:ltr; }
+.chat-maxmb-ok{ color:var(--gs-brand, #0E9F6E); font-size:11.5px; }
+/* فيديو جوه الرسالة + نسبة الرفع */
+.chat-msg .chat-video{ display:block; width:100%; max-width:260px; max-height:220px; margin-top:4px; border-radius:10px; background:#000; }
+.chat-up-prog{ color:var(--gs-brand, #0E9F6E); font-weight:700; }
+/* الأيقونة بصورة مخصّصة (من الأدمن / المستخدم) بتملا الدايرة */
+#chatBubble img.chat-custom-icon{ width:100% !important; height:100% !important; object-fit:cover !important; border-radius:50%; }
+/* هزّة خفيفة للأيقونة مع التنبيه */
+@keyframes chatRing{ 0%,100%{ transform:rotate(0); } 15%{ transform:rotate(-14deg); } 30%{ transform:rotate(12deg); } 45%{ transform:rotate(-8deg); } 60%{ transform:rotate(5deg); } 75%{ transform:rotate(-2deg); } }
+#chatBubble.chat-ring{ animation:chatRing .9s ease-in-out; }
+@media (prefers-reduced-motion: reduce){ #chatBubble.chat-ring{ animation:none; } }
+/* شاشة ⚙️ تنبيهات الشات */
+.chat-prefs{ display:flex; flex-direction:column; gap:12px; }
+.chat-prefs-note{ font-size:11.5px; opacity:.75; line-height:1.7; margin:0; }
+.chat-prefs-sec{ display:flex; flex-direction:column; gap:8px; }
+.chat-sound-list{ display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.chat-sound-opt{ display:flex; align-items:center; gap:6px; font-size:12.5px; padding:7px 9px; border-radius:10px; background:rgba(0,0,0,.04); cursor:pointer; margin:0; }
+html[data-theme="dark"] .chat-sound-opt{ background:rgba(255,255,255,.06); }
+.chat-sound-opt input{ width:auto !important; margin:0 !important; }
+.chat-icon-list{ display:flex; flex-wrap:wrap; gap:8px; }
+.chat-icon-opt{ width:auto !important; min-height:0 !important; margin:0 !important; padding:6px !important; display:flex !important; flex-direction:column; align-items:center; gap:3px; background:transparent !important; border:2px solid transparent !important; border-radius:12px !important; color:inherit !important; font-size:10.5px !important; box-shadow:none !important; cursor:pointer; }
+.chat-icon-opt img{ width:40px; height:40px; border-radius:50%; object-fit:cover; background:#fff; }
+.chat-icon-opt.on{ border-color:var(--gs-brand, #0E9F6E) !important; }
+.chat-icon-upload{ display:inline-flex !important; align-items:center; justify-content:center; width:auto !important; padding:7px 12px !important; border-radius:10px; cursor:pointer; font-size:12px; border:1px dashed currentColor; opacity:.9; margin:0; }
+/* إعدادات التنبيهات في لوحة الدردشة (الأدمن) */
+.chat-notify-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px 18px; }
+.chat-notify-preview{ width:56px; height:56px; border-radius:50%; object-fit:cover; background:#fff; border:2px solid var(--gs-brand, #0E9F6E); }
+.chat-notify-check{ display:flex !important; align-items:center; gap:8px; font-size:12.5px; margin:6px 0 !important; }
+.chat-notify-check input{ width:auto !important; margin:0 !important; }

@@ -22,10 +22,25 @@ $visitorEmail = isset($_POST['email']) ? trim(strtolower($_POST['email'])) : (is
 $message = trim($_POST['message'] ?? '');
 $attachment = $_POST['attachment'] ?? null;
 $attachmentName = trim($_POST['attachmentName'] ?? '');
+$uploadToken = trim($_POST['uploadToken'] ?? '');   // الإصدار 83: ملف اترفع على أجزاء (chat_upload_chunk.php)
 
 if (empty($visitorId)) {
     echo json_encode(["success" => false, "message" => "تعذّر تحديد هوية المحادثة."]);
     exit();
+}
+// الإصدار 83: محادثة مربوطة بحساب ← صاحب الحساب بس (وهو مسجّل دخول) يكتب فيها
+if (!chat_visitor_can_access($conn, $visitorId)) {
+    echo json_encode(["success" => false, "code" => "not_owner", "message" => "المحادثة دي مش متاحة - سجّل دخول بالحساب بتاعها."]);
+    exit();
+}
+// الإصدار 83: الملف المرفوع على أجزاء لازم يكون اترفع من نفس الجلسة ولنفس المحادثة
+if ($uploadToken !== '') {
+    if (($_SESSION['chat_files'][$uploadToken] ?? null) !== $visitorId) {
+        echo json_encode(["success" => false, "message" => "الملف المرفوع مش متاح - ارفعه تاني."]);
+        exit();
+    }
+    unset($_SESSION['chat_files'][$uploadToken]);
+    $attachment = $uploadToken;
 }
 if (!empty($visitorEmail) && !filter_var($visitorEmail, FILTER_VALIDATE_EMAIL)) {
     echo json_encode(["success" => false, "message" => "صيغة البريد الإلكتروني غير صحيحة."]);
@@ -46,12 +61,13 @@ if (!empty($attachment) && !chat_upload_allowed($conn, $visitorId)) {
     exit();
 }
 
-// المرفق بيتحفظ كملف (صورة أو PDF بحد أقصى ~8 ميجا)
-if (!empty($attachment) && strlen($attachment) > 11000000) {
+// المرفق القديم (Base64 من نسخة قديمة مخزّنة في المتصفح) بيتحفظ كملف - بحد أقصى الحجم اللي الأدمن حدده
+// (Base64 أكبر من الملف الأصلي بحوالي الثلث) وبحد أعلى 11 ميجا للطريقة دي. الملفات الكبيرة بتيجي بـ uploadToken
+if ($uploadToken === '' && !empty($attachment) && strlen($attachment) > min(11000000, chat_max_upload_mb($conn, $visitorId) * 1024 * 1024 * 1.37 + 100)) {
     echo json_encode(["success" => false, "message" => "حجم المرفق كبير جدًا."]);
     exit();
 }
-if (!empty($attachment)) {
+if ($uploadToken === '' && !empty($attachment)) {
     $attachment = upl_store($attachment, 'chat', true);
     if ($attachment === false) {
         echo json_encode(["success" => false, "message" => "نوع المرفق غير مدعوم. أرسل صورة أو ملف PDF."]);
@@ -75,11 +91,7 @@ if ($stmt->execute()) {
         $re->bind_param("s", $visitorId);
         $re->execute(); $re->close();
     } catch (Throwable $e) { error_log('GRIFFINE chat_send reactivate: ' . $e->getMessage()); }
-    // نبعت إشعار Push حقيقي للأدمن (لو معاه اشتراك مسجّل)
-    try {
-        $preview = $message ? mb_substr($message, 0, 80) : 'أرسل مرفقًا';
-        send_web_push($conn, 'admin', '💬 رسالة جديدة' . ($visitorEmail ? " من $visitorEmail" : ''), $preview, '/index.php');
-    } catch (Exception $e) { /* الإشعار مش أساسي - نتجاهل أي فشل فيه */ }
+    // الإصدار 83: مفيش إشعارات Push على الشاشة للشات - التنبيه بيبقى نقطة حمرا على أيقونة الشات بس (زي ماسنجر)
 
     // الإصدار 72: أول رسالة في محادثة جديدة ← إيميل تنبيه على info@griffine.store (مش مع كل رسالة)
     try {

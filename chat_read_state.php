@@ -42,9 +42,55 @@ function chat_set_upload($conn, $visitorKey, $allow){
     $st->bind_param("si", $visitorKey, $v); $st->execute(); $st->close();
     return true;
 }
+
+/* ---------------------------------------------------------------------
+   الإصدار 83: أقصى حجم للمرفق (بالميجا) لكل محادثة - الأدمن بيكتبه جنب زرار "افتح رفع ملف"
+   - افتراضي 8 ميجا لو الأدمن مكتبش حاجة (CHAT_DEFAULT_UPLOAD_MB)
+   - الحد الأعلى اللي ينفع يتكتب 2048 ميجا (CHAT_MAX_UPLOAD_CAP_MB)
+   - الرفع بيتم على أجزاء صغيرة (2 ميجا) فحدود PHP (upload_max_filesize / post_max_size) مش بتأثر
+   --------------------------------------------------------------------- */
+const CHAT_DEFAULT_UPLOAD_MB = 8;
+const CHAT_MAX_UPLOAD_CAP_MB = 2048;
+function chat_clamp_mb($mb){ $mb = (int)$mb; return max(1, min(CHAT_MAX_UPLOAD_CAP_MB, $mb)); }
+function chat_max_upload_mb($conn, $visitorKey){
+    if (!chat_meta_has($conn, 'max_upload_mb')) return CHAT_DEFAULT_UPLOAD_MB;
+    try {
+        $st = $conn->prepare("SELECT max_upload_mb FROM chat_conversation_meta WHERE visitor_key = ?");
+        $st->bind_param("s", $visitorKey); $st->execute();
+        $r = $st->get_result()->fetch_assoc(); $st->close();
+        return ($r && (int)$r['max_upload_mb'] > 0) ? chat_clamp_mb($r['max_upload_mb']) : CHAT_DEFAULT_UPLOAD_MB;
+    } catch (Throwable $e) { return CHAT_DEFAULT_UPLOAD_MB; }
+}
+function chat_set_max_upload($conn, $visitorKey, $mb){
+    if (!chat_meta_has($conn, 'max_upload_mb')) return false;
+    $v = chat_clamp_mb($mb);
+    $st = $conn->prepare("INSERT INTO chat_conversation_meta (visitor_key, max_upload_mb) VALUES (?, ?) ON DUPLICATE KEY UPDATE max_upload_mb = VALUES(max_upload_mb)");
+    $st->bind_param("si", $visitorKey, $v); $st->execute(); $st->close();
+    return true;
+}
+
+/* ---------------------------------------------------------------------
+   الإصدار 83: المحادثة دي بتاعة مين؟
+   لو معرّف المحادثة مربوط بحساب (users.chat_visitor_id) ← محدش يقرا أو يكتب فيها غير صاحب الحساب وهو مسجّل دخول.
+   (قبل كده بعد "تسجيل خروج" الزائر على نفس الجهاز كان بيفضل شايف محادثة الحساب في أيقونة الشات)
+   --------------------------------------------------------------------- */
+function chat_conversation_owner($conn, $visitorKey){
+    try {
+        $st = $conn->prepare("SELECT username FROM users WHERE chat_visitor_id = ? LIMIT 1");
+        $st->bind_param("s", $visitorKey); $st->execute();
+        $r = $st->get_result()->fetch_assoc(); $st->close();
+        return $r ? $r['username'] : null;
+    } catch (Throwable $e) { return null; } // العمود لسه متعملش
+}
+function chat_visitor_can_access($conn, $visitorKey){
+    $owner = chat_conversation_owner($conn, $visitorKey);
+    if ($owner === null) return true; // محادثة زائر عادي (المعرّف العشوائي بتاعه)
+    return !empty($_SESSION['user_email']) && strtolower($_SESSION['user_email']) === strtolower($owner);
+}
+
 // حالة المحادثة اللي العميل محتاجها (رفع الملفات مسموح؟ + آخر مرة الأدمن قرا)
 function chat_conversation_state($conn, $visitorKey){
-    $out = ["allowUpload" => !chat_meta_has($conn, 'allow_upload'), "adminReadAt" => null];
+    $out = ["allowUpload" => !chat_meta_has($conn, 'allow_upload'), "adminReadAt" => null, "maxUploadMb" => chat_max_upload_mb($conn, $visitorKey)];
     try {
         $cols = [];
         if (chat_meta_has($conn, 'allow_upload')) $cols[] = 'allow_upload';
@@ -92,6 +138,7 @@ function chat_conversations_sql($conn, $where){
                $readCol AS read_at,
                COALESCE(cm.archived, 0) AS archived, COALESCE(cm.deleted, 0) AS deleted,
                " . (chat_meta_has($conn, 'allow_upload') ? "COALESCE(cm.allow_upload, 0)" : "1") . " AS allow_upload,
+               " . (chat_meta_has($conn, 'max_upload_mb') ? "cm.max_upload_mb" : "NULL") . " AS max_upload_mb,
                $unread AS unread
         FROM (
             SELECT COALESCE(visitor_id, visitor_email) AS conv_key,
