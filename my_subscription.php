@@ -37,6 +37,8 @@ if ($row) {
         // لحد ما الأدمن يراجع ويفعّله بنفسه (نفس منطق أول اشتراك) - مش بيتفعّل تلقائيًا من غير مراجعة
         $requireManualActivation = getAdminSetting($conn, 'require_manual_activation', true);
         $newActive = ((float)$newAmount == 0 || !$requireManualActivation) ? 1 : 0;
+        // الإصدار 84: الباقة المؤجلة المدفوعة أونلاين عن طريق Paymob اتأكد دفعها من البوابة نفسها ← تتفعّل تلقائي
+        if ($newPayMethod === 'paymob' && strpos((string)$newPayRef, 'Paymob #') === 0) $newActive = 1;
 
         $upd = $conn->prepare("UPDATE subscribers SET plan_id=?, plan_name=?, amount=?, start_date=?, end_date=?, payment_method=?, payment_ref=?, payment_proof=?, active=?, pending_plan_id=NULL, pending_plan_name=NULL, pending_amount=NULL, pending_duration_days=NULL, pending_payment_method=NULL, pending_payment_ref=NULL, pending_payment_proof=NULL WHERE id=?");
         $upd->bind_param("ssdsssssii", $newPlanId, $newPlanName, $newAmount, $newStart, $newEnd, $newPayMethod, $newPayRef, $newPayProof, $newActive, $row['id']);

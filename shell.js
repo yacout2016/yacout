@@ -50,7 +50,7 @@
      ===================================================================== */
 
   // رقم الإصدار - بيظهر في شاشة "حسابي" (غيّره مع ?v= في index.php و VERSION في sw.js)
-  const APP_VERSION = 83;
+  const APP_VERSION = 84;
 
   /* الاستعلامات المتكررة (الدردشة/التوصيات) بتقف لما التبويب يكون مخفي أو الموبايل مقفول
      - بتوفّر ضغط على السيرفر وبطارية الموبايل، وبترجع تشتغل أول ما الصفحة تظهر
@@ -1038,7 +1038,7 @@
     on('gsAccRefund', () => renderRefundPolicyPage());
     on('gsAccDisc', () => renderDisclaimerPage({ backTo: () => GS.renderAccount() }));
     on('gsAccPriv', () => renderPrivacyPolicyPage());
-    on('gsAccLogout', async () => { if (confirm('تسجيل الخروج من GRIFFINE؟')) GS.logout(); });
+    on('gsAccLogout', async () => { if (await gConfirm('تسجيل الخروج من GRIFFINE؟', { ok: 'تسجيل الخروج' })) GS.logout(); });
     on('gsAccDelete', () => GS.renderDeleteAccount());
     const sw = $('#gsDarkSwitch'); if (sw) sw.onchange = () => GS.toggleTheme();
   };
@@ -1399,7 +1399,7 @@
     const total = list.length;
     const themeName = isDark() ? 'الوضع الليلي' : 'الوضع النهاري';
     const deviceName = window.innerWidth < 1024 ? 'موبايل' : 'كمبيوتر';
-    if (!confirm(`هيتم فتح ${total} شاشة وتصويرها واحدة واحدة وتجميعها في ملف PDF.\nالعملية بتاخد حوالي دقيقتين - متقفلش الصفحة.\n\nالصور هتطلع بالشكل الحالي (${themeName}، ${deviceName}).`)) return;
+    if (!await gConfirm(`هيتم فتح ${total} شاشة وتصويرها واحدة واحدة وتجميعها في ملف PDF.\nالعملية بتاخد حوالي دقيقتين - متقفلش الصفحة.\n\nالصور هتطلع بالشكل الحالي (${themeName}، ${deviceName}).`)) return;
 
     // 2) قفل الصفحة أثناء التصوير
     GS._exporting = true;

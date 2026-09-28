@@ -1,2 +1,4 @@
-# إعدادات قاعدة البيانات فيها كلمة سر - متترفعش على GitHub
-db.php
+# الإصدار 84: الأسرار (قاعدة البيانات / إيميل info@ / مفتاح الكرون) في griffine_config.php - متترفعش على GitHub أبدًا
+# db.php نفسه بقى كود من غير أسرار ومتسجّل عادي
+griffine_config.php
+griffine_uploads/

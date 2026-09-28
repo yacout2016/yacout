@@ -3,6 +3,11 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/session_boot.php';
 session_start();
 include 'db.php';
+require_once __DIR__ . '/security_lib.php';
+/* الإصدار 84:
+   - حسابات الإدارة/الموظفين: لو "رابط دخول الإدارة السري" متفعّل، الدخول بيبقى من الرابط ده بس
+   - كود تحقق OTP (إيميل/SMS) للإدارة و/أو العملاء حسب إعدادات لوحة التحكم ← otp_verify.php
+   - رقم جلسة جديد بعد الدخول (session_regenerate_id) */
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     requireCsrf();
@@ -37,8 +42,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $nh = password_hash($password, PASSWORD_DEFAULT);
                 $up = $conn->prepare("UPDATE users SET password = ? WHERE id = ?"); $up->bind_param("si", $nh, $row['id']); $up->execute(); $up->close();
             }
-            $_SESSION['user_email'] = $email;
-            $_SESSION['is_admin'] = (int)$row['is_admin'];
+            $isStaff = (int)$row['is_admin'] === 1;
+            // حساب إداري من غير فتح الرابط السري ← نفس رسالة الخطأ العادية (منكشفش إن الحساب إداري)
+            if ($isStaff && admin_gate_enabled($conn) && !admin_gate_is_open()) {
+                recordLoginFailure($conn, $email);
+                echo json_encode(["success" => false, "message" => "البريد الإلكتروني أو كلمة المرور غير صحيحة."]);
+                $stmt->close();
+                exit();
+            }
+            if (otp_required_for($conn, $isStaff)) {
+                [$ok, $channel, $to, $err] = otp_start($conn, $email, $isStaff);
+                if (!$ok) {
+                    echo json_encode(["success" => false, "message" => "تعذّر إرسال كود التحقق: $err. حاول تاني بعد شوية."]);
+                } else {
+                    echo json_encode(["success" => false, "otpRequired" => true, "channel" => $channel, "to" => $to,
+                        "message" => $channel === 'sms' ? "بعتنالك كود على الموبايل $to" : "بعتنالك كود على الإيميل $to"]);
+                }
+                $stmt->close();
+                exit();
+            }
+            login_complete($email, (int)$row['is_admin']);
             echo json_encode(["success" => true, "is_admin" => (bool)$row['is_admin'], "csrfToken" => csrf_token()]);
         } else {
             recordLoginFailure($conn, $email);

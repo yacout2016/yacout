@@ -174,7 +174,7 @@
   function buildUi(){
     if (!document.getElementById('gsStudioCss')) {
       const l = document.createElement('link');
-      l.id = 'gsStudioCss'; l.rel = 'stylesheet'; l.href = 'studio.css?v=83';
+      l.id = 'gsStudioCss'; l.rel = 'stylesheet'; l.href = 'studio.css?v=84';
       document.head.appendChild(l);
     }
     const root = document.createElement('div');
@@ -593,8 +593,8 @@
       state.draft[kind].splice(+i, 1);
       markO(); renderList();
     });
-    $('#gstClearAll').onclick = () => {
-      if (!confirm('مسح كل تعديلات النصوص والتنسيق في كل الشاشات؟ (الثيم مش هيتأثر)')) return;
+    $('#gstClearAll').onclick = async () => {
+      if (!await gConfirm('مسح كل تعديلات النصوص والتنسيق في كل الشاشات؟ (الثيم مش هيتأثر)')) return;
       state.draft = { v:1, texts:[], elTexts:[], styles:[] };
       markO(); renderList();
     };
@@ -617,8 +617,8 @@
     } finally { btn.disabled = false; updateCounters(); }
   }
 
-  function exit(){
-    if ((state.dirtyO || state.dirtyT) && !confirm('فيه تعديلات متحفظتش. تخرج وتلغيها؟')) return;
+  async function exit(){
+    if ((state.dirtyO || state.dirtyT) && !await gConfirm('فيه تعديلات متحفظتش. تخرج وتلغيها؟')) return;
     // رجوع لآخر نسخة محفوظة
     ST.overrides = clone(state.savedO) || { v:1, texts:[], elTexts:[], styles:[] };
     ST.theme = clone(state.savedT);

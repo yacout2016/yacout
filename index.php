@@ -1,4 +1,18 @@
 <?php
+/* الإصدار 84: رابط دخول الإدارة السري (?panel=<المفتاح>) - بيفتح بوابة الدخول لحسابات الإدارة 30 دقيقة
+   وبيحوّل على طول لرابط نضيف (المفتاح ميفضلش في شريط العنوان ولا في سجل المتصفح).
+   مفتاح غلط ← الصفحة الرئيسية عادي من غير أي رسالة (منكشفش إن فيه بوابة) */
+if (isset($_GET['panel'])) {
+    require_once __DIR__ . '/session_boot.php';
+    session_start();
+    include __DIR__ . '/db.php';
+    require_once __DIR__ . '/security_lib.php';
+    $ok = admin_gate_try_open($conn, (string)$_GET['panel']);
+    header('Cache-Control: no-store');
+    header('Referrer-Policy: no-referrer');
+    header('Location: /index.php' . ($ok ? '?staff=1' : ''), true, 302);
+    exit();
+}
 // منع أي تخزين مؤقت للملف ده خالص من المتصفح أو أي وسيط - ضمان حقيقي أقوى بكتير من meta tags
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header("Pragma: no-cache");
@@ -33,15 +47,15 @@ header("Content-Security-Policy: object-src 'none'; base-uri 'self'; frame-ances
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@500;700;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script>(function(){try{if(localStorage.getItem('griffine_theme')==='dark')document.documentElement.setAttribute('data-theme','dark');}catch(e){}})();</script>
-<link rel="stylesheet" href="griffine.css?v=83">
-<link rel="stylesheet" href="shell.css?v=83">
+<link rel="stylesheet" href="griffine.css?v=84">
+<link rel="stylesheet" href="shell.css?v=84">
 </head>
 <body>
 <div id="app"></div>
 
-<script src="shell.js?v=83"></script>
+<script src="shell.js?v=84"></script>
 <!-- الإصدار 72: استوديو التصميم - بيطبّق الثيم وتعديلات الأدمن على كل الشاشات (شاشة التعديل نفسها studio-editor.js بتتحمّل للأدمن بس) -->
-<script src="studio.js?v=83"></script>
-<script src="griffine.js?v=83"></script>
+<script src="studio.js?v=84"></script>
+<script src="griffine.js?v=84"></script>
 </body>
 </html>

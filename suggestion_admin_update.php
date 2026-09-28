@@ -9,6 +9,7 @@ if (!isset($_SESSION['user_email']) || empty($_SESSION['is_admin'])) {
     echo json_encode(["success" => false, "message" => "غير مصرح."]);
     exit();
 }
+requirePermission($conn, 'manage_suggestions');   // الإصدار 84: صلاحية محددة (مش أي موظف)
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') { http_response_code(405); echo json_encode(["success" => false]); exit(); }
 requireCsrf();

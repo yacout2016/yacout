@@ -10,6 +10,7 @@ if (!isset($_SESSION['user_email']) || empty($_SESSION['is_admin'])) {
     echo json_encode(["success" => false, "message" => "غير مصرح."]);
     exit();
 }
+requirePermission($conn, 'manage_suggestions');   // الإصدار 84: صلاحية محددة (مش أي موظف)
 
 $result = $conn->query("SELECT id, account_email, message, attachment_data, attachment_name, attachment_type, status, created_at FROM suggestions ORDER BY id DESC");
 if (!$result) {

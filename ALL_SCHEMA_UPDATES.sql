@@ -1,5 +1,5 @@
 -- ============================================================
--- GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 83)
+-- GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 84)
 -- كل تحديثات قاعدة البيانات في ملف واحد.
 -- آمن تشغّله أي عدد من المرات: بيضيف الناقص بس ومبيمسحش أي بيانات.
 -- الاستخدام: phpMyAdmin ← اختار قاعدة البيانات ← تبويب SQL ← الصق الملف كله ← Go
@@ -18,6 +18,8 @@
 -- الإصدار 82: عمود allow_upload في chat_conversation_meta (الأدمن بيفتح رفع الملفات للعميل في الشات) + users.chat_visitor_id (نفس المحادثة من أي جهاز).
 -- الإصدار 83: عمود max_upload_mb في chat_conversation_meta (أقصى حجم للمرفق بالميجا لكل محادثة - الأدمن بيكتبه جنب زرار فتح الرفع).
 --              إعدادات تنبيهات الشات (صورة الأيقونة + الصوت) بتتخزّن في جدول ui_customizations الموجود (ui_key = 'chat_notify') - مفيش جدول جديد.
+-- الإصدار 84: جدول site_config (رقم الخدمة + طرق الدفع + بيانات Paymob + رابط دخول الإدارة السري + إعدادات OTP)
+--              + جدول payment_orders (عمليات الدفع الأونلاين Paymob).
 -- ============================================================
 
 -- ============================================================
@@ -676,4 +678,33 @@ DELIMITER ;
 CALL griffine_v83();
 DROP PROCEDURE griffine_v83;
 
-SELECT 'GRIFFINE database is up to date (v83)' AS result;
+-- الإصدار 84: إعدادات نصية بيتحكم فيها الأدمن من لوحة التحكم (رقم الخدمة، طرق الدفع، Paymob، الدخول والأمان)
+CREATE TABLE IF NOT EXISTS site_config (
+  config_key VARCHAR(64) NOT NULL PRIMARY KEY,
+  config_value TEXT NULL,
+  updated_by VARCHAR(190) NULL,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- الإصدار 84: عمليات الدفع الأونلاين (Paymob) - الاشتراك بيتفعّل تلقائي بعد تأكيد البوابة
+CREATE TABLE IF NOT EXISTS payment_orders (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  provider VARCHAR(20) NOT NULL DEFAULT 'paymob',
+  merchant_ref VARCHAR(40) NOT NULL,
+  provider_order_id VARCHAR(40) NULL,
+  provider_txn_id VARCHAR(40) NULL,
+  kind VARCHAR(10) NOT NULL DEFAULT 'new',
+  subscriber_id INT NOT NULL DEFAULT 0,
+  account_email VARCHAR(190) NOT NULL,
+  plan_id VARCHAR(64) NOT NULL,
+  immediate TINYINT(1) NOT NULL DEFAULT 0,
+  amount_cents INT NOT NULL,
+  status VARCHAR(12) NOT NULL DEFAULT 'pending',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  paid_at DATETIME NULL,
+  UNIQUE KEY uq_payment_merchant (merchant_ref),
+  KEY idx_payment_provider_order (provider, provider_order_id),
+  KEY idx_payment_email (account_email)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+SELECT 'GRIFFINE database is up to date (v84)' AS result;

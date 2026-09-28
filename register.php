@@ -3,6 +3,7 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/session_boot.php';
 session_start();
 include 'db.php';
+require_once __DIR__ . '/security_lib.php';   // الإصدار 84: login_complete (رقم جلسة جديد)
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     requireCsrf();
@@ -68,8 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $upd = $conn->prepare("UPDATE users SET password = ?, is_admin = ?, archived = 0, archived_at = NULL, email_verified = ? WHERE id = ?");
         $upd->bind_param("siii", $hashed, $isAdmin, $verifiedFlag, $row['id']);
         if ($upd->execute()) {
-            $_SESSION['user_email'] = $email;
-            $_SESSION['is_admin'] = $isAdmin;
+            login_complete($email, $isAdmin);
             recordDisclaimerAcceptance($conn, $email);
             generateReferralCode($conn, $email);
             recordReferral($conn, $refCode, $email);
@@ -89,8 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt2->bind_param("ssii", $email, $hashed, $isAdmin, $verifiedFlag);
 
     if ($stmt2->execute()) {
-        $_SESSION['user_email'] = $email;
-        $_SESSION['is_admin'] = $isAdmin;
+        login_complete($email, $isAdmin);
         recordDisclaimerAcceptance($conn, $email);
         generateReferralCode($conn, $email);
         recordReferral($conn, $refCode, $email);

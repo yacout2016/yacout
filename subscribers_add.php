@@ -4,6 +4,8 @@ require_once __DIR__ . '/session_boot.php';
 session_start();
 include 'db.php';
 require_once __DIR__ . '/uploads.php';
+require_once __DIR__ . '/security_lib.php';
+require_once __DIR__ . '/paymob_lib.php';
 
 if (!isset($_SESSION['user_email'])) {
     http_response_code(401);
@@ -66,6 +68,18 @@ if ($amount <= 0 && hasEverSubscribed($conn, $accountEmail)) {
 }
 $endDate = date('Y-m-d', strtotime($startDate . ' +' . (int)$planRow['duration_days'] . ' days'));
 
+// الإصدار 84: التجربة المجانية مرة واحدة بس لكل رقم موبايل كمان (مش لكل حساب بس)
+if ($amount <= 0 && phone_used_trial($conn, $phone)) {
+    echo json_encode(["success" => false, "message" => "رقم الموبايل ده استخدم التجربة المجانية قبل كده. اختار باقة مدفوعة."]);
+    exit();
+}
+
+// الإصدار 84: طرق الدفع المتاحة (الأدمن بيشغّلها ويقفلها من لوحة التحكم)
+if ($amount > 0 && !payment_method_allowed($conn, $paymentMethod)) {
+    echo json_encode(["success" => false, "message" => "طريقة الدفع دي مش متاحة دلوقتي. اختار طريقة تانية."]);
+    exit();
+}
+
 // القائمة السوداء - الاسم أو الهاتف أو الإيميل الموقوف مايقدرش يكمّل اشتراك خالص
 if (isBlacklisted($conn, 'name', $name) || isBlacklisted($conn, 'phone', $phone)
     || isBlacklisted($conn, 'email', $contactEmail) || isBlacklisted($conn, 'email', $accountEmail)) {
@@ -74,7 +88,7 @@ if (isBlacklisted($conn, 'name', $name) || isBlacklisted($conn, 'phone', $phone)
 }
 
 // اشتراكات مدفوعة عن طريق تحويل لازم يكون معاها رقم عملية وصورة إثبات (حسب إعدادات الأدمن) - مفيش تفعيل بدونهم
-if ($amount > 0 && ($paymentMethod === 'wallet' || $paymentMethod === 'bank')) {
+if ($amount > 0 && is_transfer_method($paymentMethod)) {
     $needRef = getAdminSetting($conn, 'require_payment_ref', true);
     $needProof = getAdminSetting($conn, 'require_payment_proof', true);
     if (($needRef && empty($paymentRef)) || ($needProof && empty($paymentProof))) {
@@ -88,6 +102,8 @@ $requireManualActivation = getAdminSetting($conn, 'require_manual_activation', t
 $active = ($amount == 0 || !$requireManualActivation) ? 1 : 0;
 // الدفع بالبطاقة لسه مفيش بوابة دفع حقيقية بتتحقق منه - فلازم مراجعة يدوية دايمًا
 if ($amount > 0 && $paymentMethod === 'card') $active = 0;
+// Paymob: الاشتراك بيتفعّل تلقائي بس بعد ما البوابة تأكد الدفع (paymob_callback.php)
+if ($amount > 0 && $paymentMethod === 'paymob') { $active = 0; $paymentRef = 'بانتظار الدفع (Paymob)'; $paymentProof = null; }
 
 $stmt = $conn->prepare("INSERT INTO subscribers
     (account_email, name, phone, contact_email, plan_id, plan_name, amount, currency, market, payment_method, payment_ref, payment_proof, start_date, end_date, active)
@@ -103,6 +119,18 @@ if ($stmt->execute()) {
     logSubscriptionEvent($conn, $accountEmail, 'new_subscription', $planId, $planName, $amount);
     if ((int)$active === 1) {
         maybeRewardReferral($conn, $accountEmail);
+    }
+    // الإصدار 84: الدفع بالبطاقة ← نحوّل العميل لصفحة الدفع الآمنة بتاعة Paymob
+    if ($amount > 0 && $paymentMethod === 'paymob') {
+        [$payUrl, $err] = paymob_start($conn, ['kind' => 'new', 'subscriber_id' => $newId, 'account_email' => $accountEmail, 'plan_id' => $planId,
+            'amount' => $amount, 'name' => $name, 'phone' => $phone, 'email' => $contactEmail]);
+        if (!$payUrl) {
+            $d = $conn->prepare("DELETE FROM subscribers WHERE id = ? AND active = 0"); $d->bind_param("i", $newId); $d->execute(); $d->close();
+            echo json_encode(["success" => false, "message" => $err]);
+            exit();
+        }
+        echo json_encode(["success" => true, "id" => $newId, "active" => false, "redirect" => $payUrl]);
+        exit();
     }
     // الإصدار 72: إيميل للعميل (تم التفعيل / استلمنا طلبك) + تنبيه للإدارة لو محتاج مراجعة سداد
     mail_subscription_created($conn, $accountEmail, $name, $planName, $amount, (int)$active === 1, $endDate);

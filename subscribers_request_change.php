@@ -4,6 +4,8 @@ require_once __DIR__ . '/session_boot.php';
 session_start();
 include 'db.php';
 require_once __DIR__ . '/uploads.php';
+require_once __DIR__ . '/security_lib.php';
+require_once __DIR__ . '/paymob_lib.php';
 
 if (!isset($_SESSION['user_email'])) {
     http_response_code(401);
@@ -55,7 +57,11 @@ if ($amount <= 0 && hasEverSubscribed($conn, $email)) {
 }
 
 // اشتراكات مدفوعة عن طريق تحويل لازم يكون معاها رقم عملية وصورة إثبات (حسب إعدادات الأدمن) - مفيش تحويل بدونهم
-if ($amount > 0 && ($paymentMethod === 'wallet' || $paymentMethod === 'bank')) {
+if ($amount > 0 && !payment_method_allowed($conn, $paymentMethod)) {
+    echo json_encode(["success" => false, "message" => "طريقة الدفع دي مش متاحة دلوقتي. اختار طريقة تانية."]);
+    exit();
+}
+if ($amount > 0 && is_transfer_method($paymentMethod)) {
     $needRef = getAdminSetting($conn, 'require_payment_ref', true);
     $needProof = getAdminSetting($conn, 'require_payment_proof', true);
     if (($needRef && empty($paymentRef)) || ($needProof && empty($paymentProof))) {
@@ -81,6 +87,14 @@ $stmt->close();
 
 if (!$row) {
     echo json_encode(["success" => false, "message" => "لا يوجد اشتراك حالي لتطبيق الترقية عليه."]);
+    exit();
+}
+
+// الإصدار 84: الدفع بالبطاقة (Paymob) ← مفيش أي تغيير في الاشتراك لحد ما البوابة تأكد الدفع
+if ($amount > 0 && $paymentMethod === 'paymob') {
+    [$payUrl, $err] = paymob_start($conn, ['kind' => 'change', 'subscriber_id' => (int)$row['id'], 'account_email' => $email, 'plan_id' => $planId,
+        'immediate' => $immediate, 'amount' => $amount, 'name' => $row['name'], 'phone' => $row['phone'], 'email' => $row['contact_email'] ?: $email]);
+    echo json_encode($payUrl ? ["success" => true, "redirect" => $payUrl, "message" => "جاري تحويلك لصفحة الدفع الآمنة..."] : ["success" => false, "message" => $err]);
     exit();
 }
 

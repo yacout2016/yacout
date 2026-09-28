@@ -5,9 +5,10 @@ session_start();
 include 'db.php';
 
 // حماية الملف: يشتغل إما من زرار المدير (جلسة أدمن)، أو من Cron Job بمفتاح سري في الرابط
-$secretKey = 'GRIFFINE_CRON_9f3a7b2c1e'; // غيّرها لأي قيمة سرية تانية لو حابب، وحدّث نفس القيمة في رابط الـ Cron Job
+// الإصدار 84: المفتاح اتنقل لملف الأسرار griffine_config.php (CRON_KEY) - مبقاش مكتوب في الكود
+$secretKey = defined('CRON_KEY') ? (string)CRON_KEY : '';
 $hasAdminSession = isset($_SESSION['user_email']) && !empty($_SESSION['is_admin']);
-$hasValidKey = isset($_GET['key']) && hash_equals($secretKey, $_GET['key']);
+$hasValidKey = $secretKey !== '' && isset($_GET['key']) && hash_equals($secretKey, (string)$_GET['key']);
 
 if (!$hasAdminSession && !$hasValidKey) {
     http_response_code(403);

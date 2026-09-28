@@ -1,0 +1,38 @@
+# =====================================================================
+# GRIFFINE — .htaccess (الإصدار 84) — حماية ملفات السيرفر + رؤوس أمان
+# =====================================================================
+
+# 1) منع عرض محتوى الفولدرات
+Options -Indexes
+
+# 2) منع تحميل الملفات الحساسة مباشرة من الرابط:
+#    ملفات SQL والتوثيق وملف الأسرار (لو اترفع جوه الموقع) والسجلات والنسخ الاحتياطية
+<FilesMatch "(?i)(\.(sql|md|log|bak|ini|env|sh|zip|xlsx?|csv)$|^griffine_config(\.sample)?\.php$|^\.)">
+    Require all denied
+</FilesMatch>
+
+# 3) ملفات مساعدة PHP مبتتفتحش لوحدها (بيستخدمها الكود من جوه بس)
+<FilesMatch "^(db|mailer|uploads|session_boot|chat_read_state|chat_notify_lib|plans_store|otp_lib|paymob_lib|security_lib)\.php$">
+    Require all denied
+</FilesMatch>
+
+# 4) فولدر المرفوعات لو اتعمل جوه الموقع (الملفات بتتعرض عن طريق file_get.php بس)
+RedirectMatch 403 ^/griffine_uploads/
+
+# 5) رؤوس أمان لكل الصفحات
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(self)"
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains" env=HTTPS
+</IfModule>
+
+# 6) تحويل أي زيارة http إلى https
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{HTTPS} !=on
+    RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+    RewriteCond %{HTTP_HOST} ^(www\.)?griffine\.store$ [NC]
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+</IfModule>
