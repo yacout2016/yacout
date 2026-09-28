@@ -1914,6 +1914,12 @@ async function renderCheckoutForm(planInfo){
 function adminNavButtonsHtml(){
   // كل زرار: id, الصلاحية المطلوبة (null = يظهر دايمًا), الأيقونة, النص، وأي HTML إضافي (زي البادج)
   const groups = [
+    // الإصدار 73: المشتركين والموظفين أول قسم (كانوا ملهمش كارت في لوحة التحكم)
+    { title: 'المشتركون والفريق', items: [
+      { id:'goSubscribersBtn', perm:'manage_subscribers', icon:'👤', label:'المشتركون والاشتراكات' },
+      { id:'goStaffBtn', perm:'manage_staff', icon:'👥', label:'الموظفين والصلاحيات' },
+      { id:'goArchiveBtn', perm:'manage_subscribers', icon:'🗄️', label:'أرشيف العملاء المحذوفين' },
+    ]},
     { title: 'التواصل والدعم', items: [
       { id:'goChatAdminBtn', perm:'view_chat', icon:'💬', label:'الدردشة الفورية', extra:`<span id="chatUnreadBadge" class="nav-badge" style="display:none;">0</span>` },
       { id:'goContentBtn', perm:'manage_content', icon:'📰', label:'آراء العملاء والمقالات' },
@@ -1925,7 +1931,6 @@ function adminNavButtonsHtml(){
       { id:'goRecommendationsBtn', perm:'manage_recommendations', icon:'📢', label:'توصيات الشراء' },
     ]},
     { title: 'الإدارة والصلاحيات', items: [
-      { id:'goStaffBtn', perm:'manage_staff', icon:'👥', label:'الفريق والصلاحيات' },
       { id:'goSettingsBtn', perm:'manage_admin_settings', icon:'⚙️', label:'الصلاحيات والإعدادات الإلزامية' },
       { id:'goEmailCenterBtn', perm:'manage_admin_settings', icon:'📧', label:'مركز الإيميلات (اختبار وسجل الإرسال)' },
       { id:'goBlacklistBtn', perm:'manage_blacklist', icon:'🚫', label:'القائمة السوداء' },
@@ -1934,7 +1939,6 @@ function adminNavButtonsHtml(){
       { id:'goStudioBtn', perm:'edit_site_design', icon:'🖌️', label:'استوديو التصميم (الثيمات وتعديل أي شاشة)' },
       { id:'goSiteDesignBtn', perm:'edit_site_design', icon:'🎨', label:'تنسيق الموقع' },
       { id:'goSiteTextsBtn', perm:'manage_site_content', icon:'📝', label:'نصوص شاشات الموقع' },
-      { id:'goArchiveBtn', perm:'manage_subscribers', icon:'🗄️', label:'الأرشيف' },
     ]},
     { title: 'التصدير والطباعة', items: [
       { id:'goExportScreensBtn', perm:'view_reports', icon:'🖨️', label:'طباعة صور كل الشاشات (PDF)' },
@@ -1961,6 +1965,7 @@ function adminNavButtonsHtml(){
 function wireAdminNavButtons(){
   if (window.__recLogTick) { clearInterval(window.__recLogTick); window.__recLogTick = null; }
   const map = {
+    goSubscribersBtn: renderAdminSubscribers,
     goPlansMgmtBtn: renderPlansManagementPage,
     goChatAdminBtn: renderChatAdminPage,
     goSettingsBtn: renderAdminSettingsPage,

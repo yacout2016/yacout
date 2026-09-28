@@ -1,5 +1,5 @@
 /* =====================================================================
-   GRIFFINE App Shell — واجهة التطبيق (الإصدار 73)
+   GRIFFINE App Shell — واجهة التطبيق (الإصدار 74)
    ---------------------------------------------------------------------
    الملف ده هو "الهيكل" اللي بيلف كل شاشات الموقع القديمة (griffine.js):
      - شريط علوي + شريط تبويبات سفلي (موبايل) / شريط جانبي (كمبيوتر)
@@ -50,7 +50,7 @@
      ===================================================================== */
 
   // رقم الإصدار - بيظهر في شاشة "حسابي" (غيّره مع ?v= في index.php و VERSION في sw.js)
-  const APP_VERSION = 73;
+  const APP_VERSION = 74;
 
   /* الاستعلامات المتكررة (الدردشة/التوصيات) بتقف لما التبويب يكون مخفي أو الموبايل مقفول
      - بتوفّر ضغط على السيرفر وبطارية الموبايل، وبترجع تشتغل أول ما الصفحة تظهر
@@ -398,6 +398,7 @@
   GS.markScreen = function(name){
     GS.currentScreen = name;
     document.body.setAttribute('data-gs-screen', name);
+    GS.setTab(GS.tab);   // تنوير العنصر الصح في القائمة الجانبية (العناصر المربوطة بشاشة معيّنة)
   };
 
   // تطبيق تعديلات استوديو التصميم (لو الملف متحمّل)
@@ -429,7 +430,14 @@
       !hidden('hide_referral_screen') && { screen:'renderReferralPage', label:'ادعُ صديقك', ic:'gift', go:() => renderReferralPage() },
     ].filter(Boolean);
     // لوحة التحكم بتفتح شاشة الأزرار (renderAdminHub) - الشاشات الفرعية مبقتش بتكرر الأزرار دي (الإصدار 72)
-    if (window.__isAdmin) items.push({ sec:'الإدارة' }, { tab:'admin', label:'لوحة التحكم', ic:'admin', go:() => renderAdminHub() });
+    // + اختصارات مباشرة لأهم شاشات الإدارة حسب صلاحيات كل موظف (الإصدار 73)
+    if (window.__isAdmin) {
+      const can = (perm) => typeof hasPermission === 'function' && hasPermission(perm);
+      items.push({ sec:'الإدارة' }, { screen:'renderAdminHub', label:'لوحة التحكم', ic:'admin', go:() => renderAdminHub() });
+      if (can('manage_subscribers')) items.push({ screen:'renderAdminSubscribers', label:'المشتركون والاشتراكات', ic:'card', go:() => renderAdminSubscribers() });
+      if (can('manage_staff')) items.push({ screen:'renderStaffManagementPage', label:'الموظفين والصلاحيات', ic:'user', go:() => renderStaffManagementPage() });
+      if (can('view_chat')) items.push({ screen:'renderChatAdminPage', label:'الدردشة الفورية', ic:'chat', go:() => renderChatAdminPage() });
+    }
     return items;
   }
 
