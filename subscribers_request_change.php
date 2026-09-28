@@ -50,22 +50,22 @@ $planName = $planRow['name'];
 $amount = (float)$planRow['amount'];
 $durationDays = (int)$planRow['duration_days'];
 
-// التجربة المجانية مرة واحدة بس - مينفعش حد مشترك يرجع لها
+// التجربة المجانية مرة واحدة بس - غير ممكن حد مشترك يرجع لها
 if ($amount <= 0 && hasEverSubscribed($conn, $email)) {
-    echo json_encode(["success" => false, "message" => "التجربة المجانية متاحة مرة واحدة بس لكل حساب."]);
+    echo json_encode(["success" => false, "message" => "التجربة المجانية متاحة مرة واحدة فقط لكل حساب."]);
     exit();
 }
 
-// اشتراكات مدفوعة عن طريق تحويل لازم يكون معاها رقم عملية وصورة إثبات (حسب إعدادات الأدمن) - مفيش تحويل بدونهم
+// اشتراكات مدفوعة عن طريق تحويل لازم يكون معاها رقم عملية وصورة إثبات (حسب إعدادات الأدمن) - لا يوجد تحويل بدونهم
 if ($amount > 0 && !payment_method_allowed($conn, $paymentMethod)) {
-    echo json_encode(["success" => false, "message" => "طريقة الدفع دي مش متاحة دلوقتي. اختار طريقة تانية."]);
+    echo json_encode(["success" => false, "message" => "طريقة الدفع هذه غير متاحة الآن. اختر طريقة أخرى."]);
     exit();
 }
 if ($amount > 0 && is_transfer_method($paymentMethod)) {
     $needRef = getAdminSetting($conn, 'require_payment_ref', true);
     $needProof = getAdminSetting($conn, 'require_payment_proof', true);
     if (($needRef && empty($paymentRef)) || ($needProof && empty($paymentProof))) {
-        echo json_encode(["success" => false, "message" => "لازم إدخال رقم عملية التحويل وإرفاق صورة إثبات التحويل قبل تأكيد تغيير الباقة."]);
+        echo json_encode(["success" => false, "message" => "يجب إدخال رقم عملية التحويل وإرفاق صورة إثبات التحويل قبل تأكيد تغيير الباقة."]);
         exit();
     }
 }
@@ -90,7 +90,7 @@ if (!$row) {
     exit();
 }
 
-// الإصدار 84: الدفع بالبطاقة (Paymob) ← مفيش أي تغيير في الاشتراك لحد ما البوابة تأكد الدفع
+// الإصدار 84: الدفع بالبطاقة (Paymob) ← لا يوجد أي تغيير في الاشتراك حتى ما البوابة تأكد الدفع
 if ($amount > 0 && $paymentMethod === 'paymob') {
     [$payUrl, $err] = paymob_start($conn, ['kind' => 'change', 'subscriber_id' => (int)$row['id'], 'account_email' => $email, 'plan_id' => $planId,
         'immediate' => $immediate, 'amount' => $amount, 'name' => $row['name'], 'phone' => $row['phone'], 'email' => $row['contact_email'] ?: $email]);
@@ -100,12 +100,12 @@ if ($amount > 0 && $paymentMethod === 'paymob') {
 
 if ($immediate) {
     // الانتقال فورًا للباقة الجديدة - بيفقد العميل باقي أيام باقته الحالية
-    // الحساب يفضل موقوف لحد ما المدير يراجع السداد الجديد (إلا لو الباقة الجديدة مجانية)
+    // الحساب يفضل موقوف حتى ما المدير يراجع السداد الجديد (إلا لو الباقة الجديدة مجانية)
     $newStart = date('Y-m-d');
     $newEnd = date('Y-m-d', strtotime($newStart . " +$durationDays days"));
     $requireManualActivation = getAdminSetting($conn, 'require_manual_activation', true);
     $newActive = ($amount == 0 || !$requireManualActivation) ? 1 : 0;
-    if ($amount > 0 && $paymentMethod === 'card') $newActive = 0; // مفيش بوابة دفع حقيقية لسه
+    if ($amount > 0 && $paymentMethod === 'card') $newActive = 0; // لا يوجد بوابة دفع حقيقية بعد
 
     $upd = $conn->prepare("UPDATE subscribers SET
         plan_id=?, plan_name=?, amount=?, start_date=?, end_date=?,
@@ -119,7 +119,7 @@ if ($immediate) {
         if ($newActive) maybeRewardReferral($conn, $email);
         $msg = $newActive
             ? "تم الانتقال فورًا للباقة الجديدة ($planName)، وسريانها حتى $newEnd."
-            : "تم استلام طلب الانتقال الفوري وبيانات السداد — هيتم تفعيل الباقة الجديدة ($planName) فور مراجعة السداد من فريقنا.";
+            : "تم استلام طلب الانتقال الفوري وبيانات السداد — سيتم تفعيل الباقة الجديدة ($planName) فور مراجعة السداد من فريقنا.";
         mail_plan_change_requested($conn, $email, $planName, $msg); // الإصدار 72
         echo json_encode(["success" => true, "message" => $msg]);
     } else {
@@ -134,7 +134,7 @@ if ($immediate) {
         WHERE id=?");
     $upd->bind_param("ssdisssi", $planId, $planName, $amount, $durationDays, $paymentMethod, $paymentRef, $paymentProof, $row['id']);
     if ($upd->execute()) {
-        $msg = "تم استلام بيانات السداد — هتفضل مستفيد بمميزات باقتك الحالية حتى " . $row['end_date'] . "، وبعدها هتتفعّل الباقة الجديدة ($planName) تلقائيًا بعد مراجعة السداد.";
+        $msg = "تم استلام بيانات السداد — ستستمر في الاستفادة من مميزات باقتك الحالية حتى " . $row['end_date'] . "، وبعدها ستتفعّل الباقة الجديدة ($planName) تلقائيًا بعد مراجعة السداد.";
         mail_plan_change_requested($conn, $email, $planName, $msg); // الإصدار 72
         echo json_encode(["success" => true, "message" => $msg]);
     } else {

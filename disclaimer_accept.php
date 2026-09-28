@@ -13,7 +13,7 @@ requireCsrf();
 
 $agreed = $_POST['agreed'] ?? '';
 if ($agreed !== '1') {
-    echo json_encode(["success" => false, "message" => "لازم توافق على إخلاء المسؤولية للمتابعة."]);
+    echo json_encode(["success" => false, "message" => "يجب الموافقة على إخلاء المسؤولية للمتابعة."]);
     exit();
 }
 

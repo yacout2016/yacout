@@ -59,7 +59,7 @@
 
   /* الثيمات الجاهزة - كل ثيم = لون رئيسي + لون الأزرار (اختياري) + شوية لمسات
      باقي الألوان (الخلفية / البطاقات / الحدود / النص / الوضع الليلي) بتتولد تلقائيًا في قسم 02.
-     لإضافة ثيم جديد: سطر جديد هنا بس. */
+     لإضافة ثيم جديد: سطر جديد هنا فقط. */
   ST.PRESETS = [
     { id:'griffine', name:'ذهبي GRIFFINE',        note:'الهوية الأصلية: ذهبي مع كحلي غامق',        primary:'#C9A227', ink:'#0F172A', native:true },
     { id:'yellow',   name:'أصفر مشرق',            note:'أصفر قوي مع أسود - طابع تطبيق ثاندر',      primary:'#FFD200', ink:'#111111', bg:'#F6F6F1', buttons:'filled', radius:14 },
@@ -117,7 +117,7 @@
   // لون النص المناسب فوق لون معيّن (أبيض أو غامق)
   const onColor = (h) => contrast(h, '#FFFFFF') >= contrast(h, '#0F172A') ? '#FFFFFF' : '#0F172A';
   const rgba = (h, a) => { const [r, g, b] = hexToRgb(h); return `rgba(${r},${g},${b},${a})`; };
-  // غمّق/فتّح اللون لحد ما يبقى مقروء على خلفية معيّنة
+  // غمّق/فتّح اللون حتى ما يبقى مقروء على خلفية معيّنة
   function readableOn(color, bg, min){
     let [h, s, l] = hexToHsl(color); let c = color, i = 0;
     const darker = luminance(bg) > .4;
@@ -441,7 +441,7 @@
 
   // حفظ (للأدمن) - key = theme | overrides ، value = null لمسح التخصيص
   ST.save = async function(key, value){
-    if (typeof apiPost !== 'function') throw new Error('الموقع لسه بيحمّل');
+    if (typeof apiPost !== 'function') throw new Error('الموقع ما زال يُحمَّل');
     const r = await apiPost('/ui_custom_save.php', { key, value: JSON.stringify(value) });
     if (!r || !r.success) throw new Error((r && r.message) || 'تعذّر الحفظ');
     if (key === 'theme') ST.theme = r.value || null;
@@ -457,11 +457,11 @@
   ST.canEdit = () => !!window.__isAdmin && (typeof hasPermission !== 'function' || hasPermission('edit_site_design'));
 
   ST.openEditor = async function(){
-    if (!ST.canEdit()) { if (window.GShell) GShell.toast('استوديو التصميم متاح لمدير الموقع بس.', 'err'); return; }
+    if (!ST.canEdit()) { if (window.GShell) GShell.toast('استوديو التصميم متاح لمدير الموقع فقط.', 'err'); return; }
     if (!window.GStudioEditor) {
       await new Promise((res, rej) => {
         const s = document.createElement('script');
-        s.src = 'studio-editor.js?v=87'; s.onload = res; s.onerror = () => rej(new Error('تعذّر تحميل استوديو التصميم'));
+        s.src = 'studio-editor.js?v=88'; s.onload = res; s.onerror = () => rej(new Error('تعذّر تحميل استوديو التصميم'));
         document.head.appendChild(s);
       }).catch(e => { if (window.GShell) GShell.toast(e.message, 'err'); });
     }

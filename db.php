@@ -17,10 +17,10 @@ foreach ([dirname(__DIR__) . '/griffine_config.php', __DIR__ . '/griffine_config
 }
 unset($__cfg);
 if (!defined('DB_NAME')) {
-    error_log('GRIFFINE: griffine_config.php مش موجود (لا برّه public_html ولا جوه) - شوف griffine_config.sample.php');
+    error_log('GRIFFINE: griffine_config.php غير موجود (لا خارج public_html ولا داخله) - راجع griffine_config.sample.php');
     http_response_code(500);
     header('Content-Type: application/json');
-    echo json_encode(["success" => false, "message" => "الخدمة مش متاحة دلوقتي، حاول بعد شوية."]);
+    echo json_encode(["success" => false, "message" => "الخدمة غير متاحة الآن، حاول بعد قليل."]);
     exit();
 }
 
@@ -30,7 +30,7 @@ $conn = @new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
 if ($conn->connect_error) {
     error_log('GRIFFINE DB connect error: ' . $conn->connect_error);
     http_response_code(500);
-    echo json_encode(["success" => false, "message" => "الخدمة مش متاحة دلوقتي، حاول بعد شوية."]);
+    echo json_encode(["success" => false, "message" => "الخدمة غير متاحة الآن، حاول بعد قليل."]);
     exit();
 }
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
@@ -66,7 +66,7 @@ function isBlacklisted($conn, $type, $value){
     return $found;
 }
 
-// تحقق إضافي إن الدومين بتاع الإيميل موجود فعليًا وله سجلات بريد (يمنع إيميلات وهمية بدومين مش موجود)
+// تحقق إضافي إن الدومين بتاع الإيميل موجود فعليًا وله سجلات بريد (يمنع إيميلات وهمية بدومين غير موجود)
 function isEmailDomainValid($email){
     $parts = explode('@', $email);
     if (count($parts) !== 2) return false;
@@ -86,8 +86,8 @@ function sendVerificationEmail($conn, $email){
 
     // الإصدار 72: عن طريق mailer.php (من info@griffine.store + سجل الإيميلات)
     $verifyLink = MAIL_SITE_URL . "/index.php?verify_token=" . $token;
-    $r = griffine_notify($conn, $email, 'تفعيل بريدك الإلكتروني - GRIFFINE', 'مرحبًا بيك في GRIFFINE!',
-        ['اضغط على الزرار تحت عشان تفعّل حسابك (الرابط صالح لمدة 24 ساعة).', 'لو مسجلتش عندنا، تجاهل الرسالة دي.'],
+    $r = griffine_notify($conn, $email, 'تفعيل بريدك الإلكتروني - GRIFFINE', 'مرحبًا بك في GRIFFINE!',
+        ['اضغط على الزر أدناه لتفعيل حسابك (الرابط صالح لمدة 24 ساعة).', 'إذا لم تكن مسجّلًا لدينا، فتجاهل هذه الرسالة.'],
         ['label' => 'تفعيل الحساب', 'url' => $verifyLink], 'verification');
     return $r['ok'];
 }
@@ -195,7 +195,7 @@ function getAdminSetting($conn, $key, $default = true){
    بيغيّر حاجة في قاعدة البيانات (إضافة/تعديل/حذف)
    ============================================================ */
 
-// بيرجع توكن CSRF الحالي بتاع الجلسة، وبيولّد واحد جديد أول مرة لو مش موجود
+// بيرجع توكن CSRF الحالي بتاع الجلسة، وبيولّد واحد جديد أول مرة لو غير موجود
 function csrf_token(){
     if (empty($_SESSION['csrf_token'])) {
         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
@@ -209,7 +209,7 @@ function requireCsrf(){
     $sent = $_POST['csrf_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
     if (empty($_SESSION['csrf_token']) || empty($sent) || !hash_equals($_SESSION['csrf_token'], $sent)) {
         http_response_code(403);
-        echo json_encode(["success" => false, "message" => "انتهت صلاحية الجلسة، حدّث الصفحة وحاول تاني."]);
+        echo json_encode(["success" => false, "message" => "انتهت صلاحية الجلسة، حدّث الصفحة وحاول مرة أخرى."]);
         exit();
     }
 }
@@ -245,7 +245,7 @@ function getAllPermissionKeys(){
 }
 
 /* المسميات الوظيفية (الإصدار 85): بقت في جدول job_titles والأدمن بيضيف ويعدّل من لوحة التحكم
-   (الفريق والصلاحيات / شؤون الموظفين). لو الجدول لسه متعملش بترجع القائمة الأصلية. */
+   (الفريق والصلاحيات / شؤون الموظفين). لو الجدول بعد متعملش بترجع القائمة الأصلية. */
 function defaultJobTitlesSeed(){
     return [
         'site_manager'     => ['مدير موقع', ['manage_staff','manage_admin_settings','manage_subscribers','manage_plans','manage_blacklist','manage_reminders','view_chat','reply_chat','edit_site_design','view_reports','manage_recommendations','manage_content','manage_testimonials','manage_suggestions','manage_hr']],
@@ -318,7 +318,7 @@ function requirePermission($conn, $key){
     $perms = getCurrentUserPermissions($conn);
     if (!in_array($key, $perms, true)) {
         http_response_code(403);
-        echo json_encode(["success" => false, "message" => "مفيش صلاحية كافية لتنفيذ العملية دي."]);
+        echo json_encode(["success" => false, "message" => "لا توجد صلاحية كافية لتنفيذ هذه العملية."]);
         exit();
     }
 }

@@ -15,7 +15,7 @@ if (empty($token) || empty($password)) {
     exit();
 }
 if (!isStrongPassword($password)) {
-    echo json_encode(["success" => false, "message" => "كلمة المرور لازم تكون 8 أحرف على الأقل وفيها حرف ورقم."]);
+    echo json_encode(["success" => false, "message" => "يجب أن تكون كلمة المرور 8 أحرف على الأقل وتحتوي على حرف ورقم."]);
     exit();
 }
 
@@ -57,7 +57,7 @@ try {
     $mark->close();
 
     $conn->commit();
-    echo json_encode(["success" => true, "message" => "تم تغيير كلمة المرور بنجاح. تقدر تسجّل دخول دلوقتي."]);
+    echo json_encode(["success" => true, "message" => "تم تغيير كلمة المرور بنجاح. يمكنك تسجيل الدخول الآن."]);
 } catch (Exception $e) {
     $conn->rollback();
     echo json_encode(["success" => false, "message" => "حدث خطأ: " . $e->getMessage()]);

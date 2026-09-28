@@ -20,15 +20,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     }
     if (!isStrongPassword($password)) {
-        echo json_encode(["success" => false, "message" => "كلمة المرور لازم تكون 8 أحرف على الأقل وفيها حرف ورقم."]);
+        echo json_encode(["success" => false, "message" => "يجب أن تكون كلمة المرور 8 أحرف على الأقل وتحتوي على حرف ورقم."]);
         exit();
     }
     if (($_POST['acceptDisclaimer'] ?? '') !== '1') {
-        echo json_encode(["success" => false, "message" => "لازم توافق على إخلاء المسؤولية عشان تكمّل التسجيل."]);
+        echo json_encode(["success" => false, "message" => "يجب الموافقة على إخلاء المسؤولية لإكمال التسجيل."]);
         exit();
     }
     if (getAdminSetting($conn, 'require_valid_email_domain', true) && !isEmailDomainValid($email)) {
-        echo json_encode(["success" => false, "message" => "البريد الإلكتروني ده مش موجود أو الدومين بتاعه غير صحيح. تأكد من كتابته صح."]);
+        echo json_encode(["success" => false, "message" => "هذا البريد الإلكتروني غير موجود أو نطاقه غير صحيح. تأكد من كتابته بشكل صحيح."]);
         exit();
     }
 
@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $isAdmin = 0;
     $verifiedFlag = getAdminSetting($conn, 'require_email_verification', true) ? 0 : 1;
 
-    // نتأكد هل الإيميل ده مستخدم فعليًا (حساب مش مؤرشف) - لو مؤرشف، نعتبره كأنه مش موجود ونعيد تفعيله من جديد
+    // نتأكد هل الإيميل ده مستخدم فعليًا (حساب مش مؤرشف) - لو مؤرشف، نعتبره كأنه غير موجود ونعيد تفعيله من جديد
     $stmt = $conn->prepare("SELECT id, archived, is_admin FROM users WHERE username = ? LIMIT 1");
     $stmt->bind_param("s", $email);
     $stmt->execute();
@@ -52,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($result->num_rows > 0) {
         $row = $result->fetch_assoc();
-        // حسابات فريق الإدارة (حتى لو مؤرشفة) مينفعش حد يعيد تسجيلها من صفحة التسجيل
+        // حسابات فريق الإدارة (حتى لو مؤرشفة) غير ممكن حد يعيد تسجيلها من صفحة التسجيل
         if ((int)$row['is_admin'] === 1 || strtolower($email) === strtolower(ADMIN_EMAIL)) {
             echo json_encode(["success" => false, "message" => "هذا البريد الإلكتروني مسجل بالفعل."]);
             $stmt->close();
@@ -75,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             recordReferral($conn, $refCode, $email);
             $needsVerify = getAdminSetting($conn, 'require_email_verification', true);
             if ($needsVerify) sendVerificationEmail($conn, $email);
-            echo json_encode(["success" => true, "message" => $needsVerify ? "تم إنشاء الحساب بنجاح. بعتنالك رابط تفعيل على إيميلك." : "تم إنشاء الحساب بنجاح.", "is_admin" => (bool)$isAdmin]);
+            echo json_encode(["success" => true, "message" => $needsVerify ? "تم إنشاء الحساب بنجاح. أرسلنا إليك رابط تفعيل على بريدك." : "تم إنشاء الحساب بنجاح.", "is_admin" => (bool)$isAdmin]);
         } else {
             echo json_encode(["success" => false, "message" => "حدث خطأ أثناء حفظ البيانات."]);
         }
@@ -84,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     $stmt->close();
 
-    // مفيش حساب قديم خالص - تسجيل عادي
+    // لا يوجد حساب قديم خالص - تسجيل عادي
     $stmt2 = $conn->prepare("INSERT INTO users (username, password, is_admin, email_verified) VALUES (?, ?, ?, ?)");
     $stmt2->bind_param("ssii", $email, $hashed, $isAdmin, $verifiedFlag);
 
@@ -95,7 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         recordReferral($conn, $refCode, $email);
         $needsVerify = getAdminSetting($conn, 'require_email_verification', true);
         if ($needsVerify) sendVerificationEmail($conn, $email);
-        echo json_encode(["success" => true, "message" => $needsVerify ? "تم إنشاء الحساب بنجاح. بعتنالك رابط تفعيل على إيميلك." : "تم إنشاء الحساب بنجاح.", "is_admin" => (bool)$isAdmin]);
+        echo json_encode(["success" => true, "message" => $needsVerify ? "تم إنشاء الحساب بنجاح. أرسلنا إليك رابط تفعيل على بريدك." : "تم إنشاء الحساب بنجاح.", "is_admin" => (bool)$isAdmin]);
     } else {
         echo json_encode(["success" => false, "message" => "حدث خطأ أثناء حفظ البيانات."]);
     }

@@ -1,7 +1,7 @@
 /* =====================================================================
    GRIFFINE App Shell — واجهة التطبيق (الإصدار 82)
    ---------------------------------------------------------------------
-   الملف ده هو "الهيكل" اللي بيلف كل شاشات الموقع القديمة (griffine.js):
+   الملف ده هو "الهيكل" اللي بيلف كل شاشات الموقع القديمة (ملفات app-*.js - كانت griffine.js قبل الإصدار 88):
      - شريط علوي + شريط تبويبات سفلي (موبايل) / شريط جانبي (كمبيوتر)
      - الشاشة الرئيسية الجديدة (قيمة المحفظة والأرباح والاستثمارات)
      - شاشة "حسابي" بدل القائمة المنسدلة القديمة
@@ -50,7 +50,7 @@
      ===================================================================== */
 
   // رقم الإصدار - بيظهر في شاشة "حسابي" (غيّره مع ?v= في index.php و VERSION في sw.js)
-  const APP_VERSION = 87;
+  const APP_VERSION = 88;
 
   /* الاستعلامات المتكررة (الدردشة/التوصيات) بتقف لما التبويب يكون مخفي أو الموبايل مقفول
      - بتوفّر ضغط على السيرفر وبطارية الموبايل، وبترجع تشتغل أول ما الصفحة تظهر
@@ -65,14 +65,14 @@
     };
   })();
 
-  // الكائن العام للهيكل - متاح لـ griffine.js باسم window.GShell
+  // الكائن العام للهيكل - متاح لملفات app-*.js باسم window.GShell
   const GS = window.GShell = {
-    enabled: false,          // اتفعّل ولا لسه (init)
+    enabled: false,          // اتفعّل ولا بعد (init)
     seq: 0,                  // عدّاد الشاشات - أي تحميل متأخر لشاشة قديمة بيتلغي لو الرقم اتغيّر
     tab: 'home',             // التبويب النشط
     email: null,             // بريد المستخدم الحالي (null = زائر)
     settings: {},            // إعدادات إخفاء الشاشات من لوحة التحكم
-    deferredInstall: null,   // حدث تثبيت التطبيق (PWA) لحد ما المستخدم يدوس "تثبيت"
+    deferredInstall: null,   // حدث تثبيت التطبيق (PWA) حتى ما المستخدم يدوس "تثبيت"
     version: APP_VERSION
   };
 
@@ -161,7 +161,7 @@
   const SYMBOL_COLORS = ['#1F2A44','#0F766E','#7C3AED','#B45309','#1D4ED8','#BE123C','#047857','#374151'];
   const symColor = (s) => { let h = 0; for (const ch of String(s)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return SYMBOL_COLORS[h % SYMBOL_COLORS.length]; };
 
-  // تنسيق المبالغ (بيستخدم fmtMoney من griffine.js لو موجودة)
+  // تنسيق المبالغ (بيستخدم fmtMoney من app-core.js لو موجودة)
   const money = (n) => (typeof fmtMoney === 'function') ? fmtMoney(n) : Number(n || 0).toFixed(2);
 
   // هل الشاشة دي مخفية من لوحة التحكم؟
@@ -189,8 +189,8 @@
 
     // 1) تحديد النوع
     if (!type) {
-      if (/خطأ|فشل|تعذّر|تعذر|مينفعش|غير صحيح|غير صالح|لازم|مش موجود|مرفوض|لا يمكن|حدث خطأ/.test(msg)) type = 'err';
-      else if (/تم |تم$|بنجاح|اتحفظ|اتبعت|✅/.test(msg)) type = 'ok';
+      if (/خطأ|فشل|تعذّر|تعذر|غير ممكن|غير ممكن|غير صحيح|غير صالح|لازم|يجب|غير موجود|غير موجود|مرفوض|لا يمكن|حدث خطأ|انقطع|لم يصل|لم تتم|غير متاح/.test(msg)) type = 'err';
+      else if (/تم |تم$|بنجاح|تم الحفظ|أُرسلت|أُرسل|✅/.test(msg)) type = 'ok';
       else type = 'info';
     }
 
@@ -274,7 +274,7 @@
      المستوى التاني وأعمق = أي شاشة بتتفتح من جوه شاشة تانية
          ← الشريط العلوي ثابت: سهم رجوع + اسم الصفحة (والعنوان مبيتكررش جوه الصفحة)
          ← على الموبايل شريط التبويبات السفلي بيختفي (زي ثاندر)
-     الرجوع: للشاشة اللي جيت منها، ولو السجل فاضي (رابط مباشر / تحديث الصفحة) ← للشاشة الأم في PARENT
+     الرجوع: للشاشة اللي جيت منها، ولو السجل فارغ (رابط مباشر / تحديث الصفحة) ← للشاشة الأم في PARENT
      --------------------------------------------------------------------- */
   const ROOTS = { renderHome:1, renderPlansList:1, renderGridPlansList:1, renderPortfolio:1, renderScreener:1, renderAccount:1, renderPublicHome:1, renderAdminHub:1 };
   // التوصيات بتبقى جذر لو هي اللي واخدة مكان الكشاف في التبويبات
@@ -298,6 +298,12 @@
     renderPlanChangeCheckout: () => renderSubscriptionPlans(),
     renderDeleteAccount: toAccount,
     renderEmailCenter: () => renderAdminHub(),
+    // الإصدار 88
+    renderStockPage: () => renderWatchlistPage(),
+    renderWatchlistPage: () => renderHome(),
+    renderAlertsPage: () => renderHome(),
+    renderHrPage: () => renderAdminHub(),
+    renderJobTitlesPage: () => renderAdminHub(),
   };
   ['renderProfilePage','renderSubscriptionPlans','renderMySubscriptionHistory','renderReferralPage','renderAboutPage','renderContactInfo',
    'renderRefundPolicyPage','renderArticlesListPage','renderTestimonialsPage','renderSuggestionsPage','renderDisclaimerPage','renderPrivacyPolicyPage']
@@ -312,7 +318,7 @@
   // زرار الرجوع في الشريط العلوي
   GS.goBack = function(){
     if (window.__screenIndex > 0) return history.back();          // فيه شاشة قبلها في السجل
-    const go = parentOf(GS.currentScreen);                          // مفيش ← الشاشة الأم
+    const go = parentOf(GS.currentScreen);                          // لا يوجد ← الشاشة الأم
     const args = GS.screenArgs || [];
     // الشاشة الأم بتاخد مكان الشاشة الحالية في السجل (مش فوقها) - عشان الرجوع التاني يطلع لفوق مش يلف تاني
     window.__screens = []; window.__screenIndex = -1;
@@ -425,6 +431,9 @@
       !hidden('hide_portfolio_screen') && { tab:'portfolio', label:'المحفظة والتقارير', ic:'pie', go:() => renderPortfolio() },
       !hidden('hide_screener_screen') && { tab:'screener', label:'كشاف الأسهم', ic:'radar', go:() => renderScreener() },
       !hidden('hide_recommendations_screen') && { tab:'rec', label:'التوصيات', ic:'megaphone', go:() => renderRecommendationsCustomerPage() },
+      // الإصدار 88: قائمة المتابعة + تنبيهات الأسعار
+      { screen:'renderWatchlistPage', label:'قائمة المتابعة', ic:'star', go:() => renderWatchlistPage() },
+      { screen:'renderAlertsPage', label:'تنبيهات الأسعار', ic:'alert', badge:'alerts', go:() => renderAlertsPage() },
       { sec:'حسابي' },
       { tab:'account', label:'حسابي والإعدادات', ic:'settings', go:() => GS.renderAccount() },
       { screen:'renderSubscriptionPlans', label:'الاشتراك والباقات', ic:'card', go:() => renderSubscriptionPlans() },
@@ -475,7 +484,7 @@
     }
   }
 
-  // تحديث الهيكل كله حسب المستخدم الحالي (بتتنادى من refreshTopNav في griffine.js)
+  // تحديث الهيكل كله حسب المستخدم الحالي (بتتنادى من refreshTopNav في app-nav.js)
   GS.refresh = async function(email){
     if (!GS.enabled) return;
     GS.email = email || null;
@@ -512,7 +521,7 @@
       sb.innerHTML = `<div class="gs-side-brand" id="gsSideBrand"><img src="${brandSrc()}" alt="GRIFFINE"><span>GRIFFINE</span></div>
         ${items.map((it, i) => it.sec
           ? `<div class="gs-side-sec">${it.sec}</div>`
-          : `<button type="button" class="gs-side-item" data-i="${i}" ${it.tab ? `data-tab="${it.tab}"` : ''} ${it.screen ? `data-screen="${it.screen}"` : ''} ${it.sub ? `data-sub="${it.sub}"` : ''}>${icon(it.ic)}<span>${it.label}</span></button>`).join('')}
+          : `<button type="button" class="gs-side-item" data-i="${i}" ${it.tab ? `data-tab="${it.tab}"` : ''} ${it.screen ? `data-screen="${it.screen}"` : ''} ${it.sub ? `data-sub="${it.sub}"` : ''}>${icon(it.ic)}<span>${it.label}</span>${it.badge ? `<b class="gs-side-badge" data-gs-alerts-badge style="display:none"></b>` : ''}</button>`).join('')}
         <div class="gs-side-foot"><div class="gs-side-user" id="gsSideUser"><span class="gs-avatar" id="gsSideAvatar">${esc(email.charAt(0).toUpperCase())}</span><span class="t"><b>${esc(email)}</b><small>الملف الشخصي والإعدادات</small></span></div></div>`;
       sb.querySelectorAll('.gs-side-item').forEach(b => b.onclick = () => items[+b.dataset.i].go());
       $('#gsSideBrand').onclick = () => renderHome();
@@ -579,7 +588,7 @@
 
 
   /* =====================================================================
-     10. التوصيات: عداد الجرس (عدد التوصيات اللي المستخدم لسه مشافهاش)
+     10. التوصيات: عداد الجرس (عدد التوصيات اللي المستخدم بعد مشافهاش)
      ===================================================================== */
   GS.updateBell = async function(recs){
     const badge = $('#gsBellBadge'); if (!badge) return;
@@ -725,7 +734,7 @@
   let raf = 0;
   function scheduleProcess(){ if (processing) return; cancelAnimationFrame(raf); raf = requestAnimationFrame(processScreen); }
 
-  // خط تحت الشريط العلوي بعد السكرول
+  // تسطير الشريط العلوي بعد السكرول
   function onScroll(){
     const bar = $('.gs-appbar'); if (!bar) return;
     bar.classList.toggle('scrolled', window.scrollY > 40);
@@ -796,7 +805,7 @@
     try { all = computeAggregates(plans, grids, entries, null, null); } catch(e){ console.error(e); }
     const rowCcy = {}; entries.forEach(e => { rowCcy[`${e.sym}::${e.type}`] = ccyOf(e); });
 
-    // المحفظة مقسّمة حسب العملة (مينفعش نجمع جنيه على ريال)
+    // المحفظة مقسّمة حسب العملة (غير ممكن نجمع جنيه على ريال)
     const byCcy = {};
     entries.forEach(e => { const c = ccyOf(e) || '—'; (byCcy[c] = byCcy[c] || []).push(e.key); });
     const ccys = Object.keys(byCcy).map(c => {
@@ -833,6 +842,8 @@
       ${installCard}
       <div class="gs-home-cols"><div class="c1">
       <div id="gsHero"></div>
+      <div id="gsCurve"></div>
+      <div id="gsAlertsCard"></div>
       ${quick.length ? `<div class="gs-quick" style="grid-template-columns:repeat(${quick.length},1fr)">${quick.map((q, i) => `<button type="button" data-i="${i}"><span class="ic ${q.brand ? 'brand' : ''}">${icon(q.ic)}</span>${q.label}</button>`).join('')}</div>` : ''}
       <div id="gsRecs"></div>
       </div><div class="c2">
@@ -844,6 +855,7 @@
 
     $('#gsHomeAvatar').onclick = () => GS.renderAccount();
     wireAccessGateCard(acc);   // الإصدار 85
+    if (typeof mkAfterHome === 'function' && !window.__isAdmin) mkAfterHome(plans, grids, ccys, sel);   // الإصدار 88: منحنى الأداء + تنبيهات الأسعار
     document.querySelectorAll('.gs-quick button').forEach(b => b.onclick = () => quick[+b.dataset.i].go());
     GS.wireInstallCard();
 
@@ -909,7 +921,7 @@
     function drawHoldings(showAll){
       const el = $('#gsHoldings'); if (!el) return;
       if (!rows.length) {
-        el.innerHTML = `<div class="gs-empty"><div class="ic">${icon('trend')}</div><b>مفيش خطط لسه</b><p>أنشئ أول خطة لسهم (DCA أو Grid) وتابع متوسط التكلفة والأرباح من هنا.</p>
+        el.innerHTML = `<div class="gs-empty"><div class="ic">${icon('trend')}</div><b>لا توجد خطط بعد</b><p>أنشئ أول خطة لسهم (DCA أو Grid) وتابع متوسط التكلفة والأرباح من هنا.</p>
           ${quick.find(q => q.k === 'new') ? `<button type="button" id="gsEmptyNew">إنشاء خطة جديدة</button>` : ''}</div>`;
         const b = $('#gsEmptyNew'); if (b) b.onclick = () => renderPlanTypeChooser();
         return;
@@ -1062,11 +1074,11 @@
 
     app.innerHTML = `<div class="container">
       <div class="gs-page-title">حذف الحساب</div>
-      <div class="error" style="line-height:1.8">الحذف نهائي ومينفعش يرجع. هيتمسح حسابك <b dir="ltr">${esc(email)}</b> وكل خططك (DCA وGrid) وصفقاتك المغلقة وصورتك الشخصية ومقترحاتك ومحادثاتك.</div>
+      <div class="error" style="line-height:1.8">الحذف نهائي ولا يمكن التراجع عنه. سيُحذف حسابك <b dir="ltr">${esc(email)}</b> وكل خططك (DCA وGrid) وصفقاتك المغلقة وصورتك الشخصية ومقترحاتك ومحادثاتك.</div>
       <div class="section-card" style="font-size:14px;line-height:1.9">
-        <b>اللي بيفضل محفوظ (مطلوب قانونيًا ومحاسبيًا):</b><br>
+        <b>ما يبقى محفوظًا (مطلوب قانونيًا ومحاسبيًا):</b><br>
         سجل الاشتراكات والمبالغ المدفوعة بدون اسمك أو رقمك، وسجل موافقتك على إخلاء المسؤولية.<br>
-        لو عندك اشتراك مدفوع شغال، الحذف مش بيرجّع قيمته تلقائيًا — راجع سياسة الاسترداد قبل الحذف.
+        إذا كان لديك اشتراك مدفوع ساري، فالحذف لا يعيد قيمته تلقائيًا — راجع سياسة الاسترداد قبل الحذف.
       </div>
       <form id="gsDelForm">
         <label for="gsDelPw">كلمة المرور</label>
@@ -1116,7 +1128,7 @@
      ---------------------------------------------------------------------
      - حالة الإرسال: SMTP (كلمة سر info@griffine.store متحطة في db.php) ولا mail() العادية
      - إرسال إيميل تجربة لأي عنوان
-     - سجل آخر 150 إيميل (اتبعت / فشل + السبب) - من email_center.php
+     - سجل آخر 150 إيميل (أُرسلت / فشل + السبب) - من email_center.php
      ===================================================================== */
   const MAIL_TYPES = {
     verification:'تفعيل الحساب', password_reset:'استرجاع كلمة المرور', reminder:'تذكير انتهاء الاشتراك', chat_transcript:'نسخة محادثة شات',
@@ -1125,8 +1137,23 @@
     admin_new_subscription:'تنبيه: اشتراك جديد', admin_plan_change:'تنبيه: تغيير باقة', test:'تجربة', general:'عام', notify:'تنبيه'
   };
 
-  GS.renderEmailCenter = async function(){
-    pushNav(() => GS.renderEmailCenter());
+  // أزرار كل إيميل حسب المكان اللي هو فيه
+  function mailRowActions(view, id){
+    const B = (act, label, cls) => `<button type="button" class="small ${cls || 'secondary'}" data-mact="${act}" data-mid="${id}" style="width:auto;margin:0 2px;padding:4px 8px !important;min-height:0 !important;font-size:11.5px !important;">${label}</button>`;
+    if (view === 'trash') return B('restore', '↩️ استرجاع') + B('purge', '🗑️ نهائي', 'danger');
+    if (view === 'archive') return B('unarchive', '↩️ للوارد') + B('trash', '🗑️');
+    return B('archive', '🗄️ أرشفة') + B('trash', '🗑️');
+  }
+  function mailBulkButtons(view){
+    const B = (act, label, cls) => `<button type="button" class="small ${cls || 'secondary'}" data-mact="${act}" style="width:auto;margin:0;">${label}</button>`;
+    if (view === 'trash') return B('restore', '↩️ استرجاع المحدد') + B('purge', '🗑️ حذف المحدد نهائيًا', 'danger') + B('empty_trash', 'تفريغ السلة', 'danger');
+    if (view === 'archive') return B('unarchive', '↩️ رجوع المحدد للوارد') + B('trash', '🗑️ نقل المحدد للسلة');
+    return B('archive', '🗄️ أرشفة المحدد') + B('trash', '🗑️ نقل المحدد للسلة');
+  }
+
+  GS.renderEmailCenter = async function(view){
+    view = view || 'inbox';   // الإصدار 88: inbox | archive | trash
+    pushNav(() => GS.renderEmailCenter(view));
     try { window.scrollTo(0, 0); } catch(e){}
     GS.seq++; GS.setTab('admin'); GS.isRoot = false; GS.screenArgs = []; GS.markScreen('renderEmailCenter'); GS.applyNavMode();
     const my = GS.seq;
@@ -1135,31 +1162,34 @@
     if (!window.__isAdmin) return renderHome();
 
     app.innerHTML = `<div class="container wide"><div class="gs-page-title">مركز الإيميلات</div><div class="gs-skel" style="height:260px"></div></div>`;
-    let r; try { r = await apiGet('/email_center.php'); } catch(e){ r = null; }
+    let r; try { r = await apiGet('/email_center.php?view=' + view); } catch(e){ r = null; }
     if (GS.seq !== my) return;
     if (!r || !r.success) { app.innerHTML = `<div class="container"><div class="gs-page-title">مركز الإيميلات</div><div class="error">${esc((r && r.message) || 'تعذّر تحميل البيانات.')}</div></div>`; return; }
 
     const stats = r.stats7d || {};
-    const rows = (r.log || []).map(x => `<tr>
+    const rows = (r.log || []).map(x => `<tr data-id="${+x.id}">
+        ${r.canOrganize ? `<td><input type="checkbox" class="gsMailChk" value="${+x.id}" aria-label="تحديد"></td>` : ''}
         <td>${esc(x.created_at)}</td>
         <td dir="ltr" style="text-align:right">${esc(x.to_email)}</td>
         <td>${esc(MAIL_TYPES[x.mail_type] || x.mail_type)}</td>
         <td>${esc(x.subject)}</td>
-        <td>${x.status === 'sent' ? '<span class="tag" style="background:var(--gs-pos-tint);color:var(--gs-pos)">اتبعت</span>' : '<span class="tag" style="background:var(--gs-neg-tint);color:var(--gs-neg)">فشل</span>'}</td>
+        <td>${x.status === 'sent' ? '<span class="tag" style="background:var(--gs-pos-tint);color:var(--gs-pos)">أُرسلت</span>' : '<span class="tag" style="background:var(--gs-neg-tint);color:var(--gs-neg)">فشل</span>'}</td>
         <td>${esc(x.transport || '')}</td>
-        <td>${esc(x.error_text || '')}</td></tr>`).join('');
+        <td>${esc(x.error_text || '')}</td>
+        ${r.canOrganize ? `<td style="white-space:nowrap">${mailRowActions(view, +x.id)}</td>` : ''}</tr>`).join('');
+    const cnt = r.counts || {};
 
     app.innerHTML = `<div class="container wide">
       <div class="gs-page-title">مركز الإيميلات</div>
       <div class="summary-cards">
         <div class="summary-card"><div class="val" dir="ltr">${esc(r.from)}</div><div class="lbl">المرسل</div></div>
         <div class="summary-card"><div class="val ${r.smtp ? 'pos' : 'neg'}">${r.smtp ? 'SMTP هوستنجر' : 'mail() العادية'}</div><div class="lbl">طريقة الإرسال</div></div>
-        <div class="summary-card"><div class="val pos">${stats.sent || 0}</div><div class="lbl">اتبعت (آخر 7 أيام)</div></div>
+        <div class="summary-card"><div class="val pos">${stats.sent || 0}</div><div class="lbl">أُرسلت (آخر 7 أيام)</div></div>
         <div class="summary-card"><div class="val ${stats.failed ? 'neg' : ''}">${stats.failed || 0}</div><div class="lbl">فشل (آخر 7 أيام)</div></div>
       </div>
-      ${r.smtp ? '' : `<div class="info" style="margin-top:12px;line-height:1.9">الإيميلات بتتبعت دلوقتي بالطريقة العادية. عشان تضمن إنها توصل ومتروحش Spam:<br>
-        افتح <b>db.php</b> واكتب كلمة سر صندوق <b dir="ltr">${esc(r.from)}</b> في السطر <b dir="ltr">define('MAIL_SMTP_PASS', '')</b> وارفعه تاني.</div>`}
-      ${r.hasLog ? '' : `<div class="error" style="margin-top:12px">سجل الإيميلات مش شغال لسه — شغّل ملف ALL_SCHEMA_UPDATES.sql (جدول email_log).</div>`}
+      ${r.smtp ? '' : `<div class="info" style="margin-top:12px;line-height:1.9">تُرسل الرسائل الآن بالطريقة العادية. ولضمان وصولها وعدم ذهابها إلى Spam:<br>
+        افتح <b dir="ltr">griffine_config.php</b> واكتب كلمة سر صندوق <b dir="ltr">${esc(r.from)}</b> في السطر <b dir="ltr">define('MAIL_SMTP_PASS', '...')</b>.</div>`}
+      ${r.hasLog ? '' : `<div class="error" style="margin-top:12px">سجل الرسائل لا يعمل بعد — شغّل ملف ALL_SCHEMA_UPDATES.sql (جدول email_log).</div>`}
       <h2>إرسال إيميل تجربة</h2>
       <div class="section-card">
         <label for="gsMailTestTo">ابعت لـ</label>
@@ -1167,9 +1197,31 @@
         <button type="button" id="gsMailTestBtn" style="margin-top:12px">إرسال إيميل تجربة</button>
         <div id="gsMailTestMsg" style="margin-top:10px"></div>
       </div>
-      <h2>آخر الإيميلات</h2>
-      <div class="section-card">${rows ? `<table><thead><tr><th>الوقت</th><th>إلى</th><th>النوع</th><th>العنوان</th><th>الحالة</th><th>الطريقة</th><th>السبب لو فشل</th></tr></thead><tbody>${rows}</tbody></table>` : '<p class="disclaimer">مفيش إيميلات متسجلة لسه.</p>'}</div>
+      <h2>سجل الإيميلات</h2>
+      ${r.canOrganize ? `<div class="radio-row std-filter-tabs" style="margin-bottom:10px;">
+        <button class="small secondary std-filter-tab ${view === 'inbox' ? 'btn-active' : ''}" data-mview="inbox">📥 الوارد (${cnt.inbox || 0})</button>
+        <button class="small secondary std-filter-tab ${view === 'archive' ? 'btn-active' : ''}" data-mview="archive">🗄️ الأرشيف (${cnt.archive || 0})</button>
+        <button class="small secondary std-filter-tab ${view === 'trash' ? 'btn-active' : ''}" data-mview="trash">🗑️ سلة المحذوفات (${cnt.trash || 0})</button>
+      </div>
+      <div class="gs-mail-bulk" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">
+        <label style="display:flex;align-items:center;gap:6px;margin:0;font-size:13px;"><input type="checkbox" id="gsMailAll" style="width:auto;margin:0;"> تحديد الكل</label>
+        ${mailBulkButtons(view)}
+      </div>` : `<div class="info">شغّل ملف ALL_SCHEMA_UPDATES.sql (الإصدار 88) لتتمكن من أرشفة الرسائل وحذفها.</div>`}
+      <div class="section-card gs-mail-scroll" style="padding:0">${rows ? `<table><thead><tr>${r.canOrganize ? '<th></th>' : ''}<th>الوقت</th><th>إلى</th><th>النوع</th><th>العنوان</th><th>الحالة</th><th>الطريقة</th><th>السبب لو فشل</th>${r.canOrganize ? '<th></th>' : ''}</tr></thead><tbody>${rows}</tbody></table>` : `<p class="disclaimer" style="padding:14px">${view === 'trash' ? 'سلة المحذوفات فارغة.' : view === 'archive' ? 'الأرشيف فارغ.' : 'لا توجد رسائل هنا.'}</p>`}</div>
     </div>`;
+
+    // الإصدار 88: الأرشيف / سلة المحذوفات / الاسترجاع / الحذف النهائي (لإيميل واحد أو المحدد)
+    const go = async (action, ids) => {
+      if (!ids.length && action !== 'empty_trash') { alert('اختار إيميل واحد على الأقل.'); return; }
+      if ((action === 'purge' || action === 'empty_trash') && !await gConfirm(action === 'empty_trash' ? 'تفريغ سلة المحذوفات نهائيًا؟ لا يمكن التراجع.' : `حذف ${ids.length} رسالة نهائيًا؟ لا يمكن التراجع.`, { ok: 'حذف نهائي', danger: true })) return;
+      let x; try { x = await apiPost('/email_center.php', { action, ids: ids.join(',') }); } catch(e){ x = null; }
+      if (!x || !x.success) { alert((x && x.message) || 'تعذّر التنفيذ'); return; }
+      window.__navSilent = true; try { GS.renderEmailCenter(view); } finally { window.__navSilent = false; }
+    };
+    const selected = () => [...document.querySelectorAll('.gsMailChk:checked')].map(c => +c.value);
+    document.querySelectorAll('[data-mview]').forEach(b => b.onclick = () => GS.renderEmailCenter(b.dataset.mview));
+    document.querySelectorAll('[data-mact]').forEach(b => b.onclick = () => go(b.dataset.mact, b.dataset.mid ? [+b.dataset.mid] : selected()));
+    const all = $('#gsMailAll'); if (all) all.onchange = () => document.querySelectorAll('.gsMailChk').forEach(c => { c.checked = all.checked; });
 
     $('#gsMailTestBtn').onclick = async () => {
       const b = $('#gsMailTestBtn'), m = $('#gsMailTestMsg');
@@ -1197,7 +1249,7 @@
          3) إضافة شاشات التفاصيل (أول خطة DCA / Grid وتعديلها، أول مقال...)
 
      إضافة شاشة جديدة للطباعة: سطر جديد في SCREENS_TO_PRINT بالشكل
-         ['اسم الشاشة', 'اسم_الدالة']            ← دالة في griffine.js
+         ['اسم الشاشة', 'اسم_الدالة']            ← دالة في ملفات app-*.js
          ['اسم الشاشة', 'GS:اسم_الدالة']         ← دالة في الملف ده
          ['اسم الشاشة', 'اسم_الدالة', 'dca']     ← بتاخد رمز أول خطة DCA (أو grid / article)
      ===================================================================== */
@@ -1313,7 +1365,7 @@
       if (row.length === 1) { section = row[0].replace(/—/g, '').trim(); return; }
       const [label, fnName, argKey] = row;
       if (typeof fnOf(fnName) !== 'function') return;          // الشاشة مش موجودة في الإصدار ده
-      if (argKey && !args[argKey]) return;                      // مفيش خطة/مقال نعرض تفاصيله
+      if (argKey && !args[argKey]) return;                      // لا يوجد خطة/مقال نعرض تفاصيله
       list.push({ section, label: argKey ? `${label} (${args[argKey]})` : label, fnName, arg: argKey ? args[argKey] : undefined, fn: fnOf(fnName) });
     });
     return list;
@@ -1406,7 +1458,7 @@
     const total = list.length;
     const themeName = isDark() ? 'الوضع الليلي' : 'الوضع النهاري';
     const deviceName = window.innerWidth < 1024 ? 'موبايل' : 'كمبيوتر';
-    if (!await gConfirm(`هيتم فتح ${total} شاشة وتصويرها واحدة واحدة وتجميعها في ملف PDF.\nالعملية بتاخد حوالي دقيقتين - متقفلش الصفحة.\n\nالصور هتطلع بالشكل الحالي (${themeName}، ${deviceName}).`)) return;
+    if (!await gConfirm(`سيتم فتح ${total} شاشة وتصويرها واحدة واحدة وتجميعها في ملف PDF.\nتستغرق العملية حوالي دقيقتين - لا تغلق الصفحة.\n\nستخرج الصور بالشكل الحالي (${themeName}، ${deviceName}).`)) return;
 
     // 2) قفل الصفحة أثناء التصوير
     GS._exporting = true;
@@ -1454,7 +1506,7 @@
         try { shot = await captureCurrentScreen(bg); }
         catch(e){ reason = (e && e.message) || String(e); console.warn('screen capture failed:', item.label, reason); }
 
-        // ج) صفحة الشاشة (أو صفحة توضّح إنها فشلت - عشان مفيش شاشة تختفي من الملف)
+        // ج) صفحة الشاشة (أو صفحة توضّح إنها فشلت - عشان لا يوجد شاشة تختفي من الملف)
         if (shot) {
           const c = document.createElement('canvas');
           const head = PRINT.headerPx * PRINT.scale;
@@ -1525,7 +1577,7 @@
   GS.installCardHtml = function(){
     if (isStandalone() || store.get('gs_install_dismissed', '0') === '1') return '';
     if (!GS.deferredInstall && !isIOS()) return '';
-    return `<div class="gs-install" id="gsInstall"><img src="icon-192.png" alt=""><div class="t"><b>ثبّت تطبيق GRIFFINE ${window.innerWidth >= 1024 ? 'على جهازك' : 'على موبايلك'}</b>${isIOS() && !GS.deferredInstall ? 'من زر المشاركة اختر «إضافة إلى الشاشة الرئيسية»' : 'افتحه بضغطة واحدة زي أي تطبيق'}</div>
+    return `<div class="gs-install" id="gsInstall"><img src="icon-192.png" alt=""><div class="t"><b>ثبّت تطبيق GRIFFINE ${window.innerWidth >= 1024 ? 'على جهازك' : 'على موبايلك'}</b>${isIOS() && !GS.deferredInstall ? 'من زر المشاركة اختر «إضافة إلى الشاشة الرئيسية»' : 'افتحه بضغطة واحدة مثل أي تطبيق'}</div>
       ${GS.deferredInstall ? `<button type="button" id="gsInstallBtn">تثبيت</button>` : ''}<button type="button" class="x gs-iconbtn" id="gsInstallX" aria-label="إخفاء">${icon('x')}</button></div>`;
   };
 
@@ -1551,7 +1603,7 @@
 
 
   /* =====================================================================
-     19. التشغيل (بيتنادى مرة واحدة من init في griffine.js)
+     19. التشغيل (بيتنادى مرة واحدة من init في app-init.js)
      ===================================================================== */
   GS.init = function(email){
     if (GS.enabled) return;

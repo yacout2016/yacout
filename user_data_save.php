@@ -25,7 +25,7 @@ if (!in_array($key, $allowedKeys, true)) {
 // لازم تكون خريطة JSON (سهم ← بيانات خطته)
 $map = json_decode($value);
 if (json_last_error() !== JSON_ERROR_NONE || !is_object($map)) {
-    echo json_encode(["success" => false, "message" => "البيانات المرسلة مش JSON صحيح."]);
+    echo json_encode(["success" => false, "message" => "البيانات المرسلة ليست JSON صحيحًا."]);
     exit();
 }
 // الأسهم اللي الجهاز كان شايفها وقت آخر قراءة - بتفرّق بين "مسحته" و"متضاف من جهاز تاني"

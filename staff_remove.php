@@ -34,18 +34,18 @@ if (!$row) {
 
 // محدش يشيل نفسه ولا المدير الأصلي للموقع
 if ($mode !== 'restore' && (strtolower($row['email']) === strtolower($_SESSION['user_email']) || strtolower($row['email']) === strtolower(ADMIN_EMAIL))) {
-    echo json_encode(["success" => false, "message" => "مينفعش تشيل نفسك أو المدير الأصلي للموقع من الفريق."]);
+    echo json_encode(["success" => false, "message" => "لا يمكنك إزالة نفسك أو المدير الأصلي للموقع من الفريق."]);
     exit();
 }
 
 $conn->begin_transaction();
 try {
     if ($mode === 'restore') {
-        // الحساب لازم يكون لسه موجود ومش مؤرشف
+        // الحساب لازم يكون بعد موجود ومش مؤرشف
         $chk = $conn->prepare("SELECT id FROM users WHERE username = ? AND archived = 0 LIMIT 1");
         $chk->bind_param("s", $row['email']); $chk->execute();
         $exists = $chk->get_result()->num_rows > 0; $chk->close();
-        if (!$exists) { $conn->rollback(); echo json_encode(["success" => false, "message" => "حساب الشخص ده مش موجود (أو اتحذف) - لازم يسجّل حساب الأول."]); exit(); }
+        if (!$exists) { $conn->rollback(); echo json_encode(["success" => false, "message" => "حساب هذا الشخص غير موجود (أو تم حذفه) - يجب أن يسجّل حسابًا أولًا."]); exit(); }
         $a = $conn->prepare("UPDATE staff_members SET active = 1 WHERE id = ?"); $a->bind_param("i", $staffId); $a->execute(); $a->close();
         $u = $conn->prepare("UPDATE users SET is_admin = 1 WHERE username = ?"); $u->bind_param("s", $row['email']); $u->execute(); $u->close();
         $conn->commit();
@@ -53,7 +53,7 @@ try {
         exit();
     }
     if ($mode === 'purge') {
-        // حذف من الفريق نهائيًا (بصلاحياته) - حسابه العادي كعميل يفضل زي ما هو
+        // حذف من الفريق نهائيًا (بصلاحياته) - حسابه العادي كعميل يفضل كما هو
         $d = $conn->prepare("DELETE FROM staff_permissions WHERE staff_id = ?"); $d->bind_param("i", $staffId); $d->execute(); $d->close();
         $d = $conn->prepare("DELETE FROM staff_members WHERE id = ?"); $d->bind_param("i", $staffId); $d->execute(); $d->close();
         $u = $conn->prepare("UPDATE users SET is_admin = 0 WHERE username = ?"); $u->bind_param("s", $row['email']); $u->execute(); $u->close();

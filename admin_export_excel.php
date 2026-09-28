@@ -11,7 +11,7 @@ require_once __DIR__ . '/plans_store.php';
 if (!isset($_SESSION['user_email']) || !in_array('manage_staff', getCurrentUserPermissions($conn), true) || strtolower($_SESSION['user_email']) !== strtolower(ADMIN_EMAIL)) {
     http_response_code(403);
     header('Content-Type: text/plain; charset=utf-8');
-    echo "غير مصرح. التصدير الكامل متاح لمدير الموقع الأصلي بس.";
+    echo "غير مصرح. التصدير الكامل متاح لمدير الموقع الأصلي فقط.";
     exit();
 }
 @set_time_limit(300);
@@ -46,7 +46,7 @@ $rows = [['#', 'إيميل الحساب', 'الاسم', 'الهاتف', 'إيم�
 foreach ($subs as $s) $rows[] = [(int)$s['id'], $s['account_email'], $s['name'], $s['phone'], $s['contact_email'], $s['national_id'] ?? '', $s['address'] ?? '', $s['plan_name'], num($s['amount']), $s['currency'], $s['market'], $s['payment_method'], $s['payment_ref'], fileRef($s['payment_proof']), $s['start_date'], $s['end_date'], yesno($s['active']), yesno($s['is_comp'] ?? 0), yesno($s['archived'] ?? 0), $s['pending_plan_name'] ?? '', num($s['pending_amount'] ?? ''), $s['created_at']];
 $sheets['الاشتراكات'] = $rows;
 
-// ---------------- الخطط (من الصفوف الجديدة، أو من الجدول القديم لو لسه متنقلتش) ----------------
+// ---------------- الخطط (من الصفوف الجديدة، أو من الجدول القديم لو بعد متنقلتش) ----------------
 $planMaps = []; // [email][type] => map
 if (plans_table_ready($conn)) {
     foreach (q_rows($conn, "SELECT account_email, plan_type, symbol, data_value FROM user_plans WHERE deleted = 0 ORDER BY account_email, symbol") as $r)

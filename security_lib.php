@@ -11,13 +11,13 @@
    ===================================================================== */
 
 /* ---------------------------------------------------------------------
-   01. site_config — مفتاح/قيمة نصية. لو الجدول لسه متعملش (ملف SQL متشغّلش) بترجع الافتراضي
+   01. site_config — مفتاح/قيمة نصية. لو الجدول بعد متعملش (ملف SQL متشغّلش) بترجع الافتراضي
    --------------------------------------------------------------------- */
 function site_config_defaults(){
     return [
         // رقم الخدمة: رقم استقبال تحويلات فودافون كاش + بيظهر في رسائل الكود للتواصل
         'service_phone'      => '00201095125325',
-        'instapay_address'   => '',          // فاضي = نفس رقم الخدمة
+        'instapay_address'   => '',          // فارغ = نفس رقم الخدمة
         // طرق الدفع
         'pay_vodafone'       => '1',
         'pay_instapay'       => '1',
@@ -26,17 +26,23 @@ function site_config_defaults(){
         'paymob_integration' => '',          // Integration ID بتاع الكروت (Visa / Mastercard / Meeza)
         'paymob_iframe'      => '',
         'paymob_hmac'        => '',
+        'paymob_moto_integration' => '',     // الإصدار 88: Integration ID للخصم التلقائي (MOTO) - التجديد التلقائي
         // الدخول والأمان
-        'admin_gate_key'     => '',          // فاضي = رابط الإدارة السري مقفول (الدخول العادي زي الأول)
+        'admin_gate_key'     => '',          // فارغ = رابط الإدارة السري مقفول (الدخول العادي زي الأول)
         'admin_otp'          => '0',         // كود تحقق لحسابات الإدارة
         'otp_login'          => '0',         // كود تحقق للعملاء عند الدخول
-        'otp_channel'        => 'email',     // email | sms
+        'otp_channel'        => 'email',     // email | sms | whatsapp
+        // الإصدار 88: واتساب من رقم الموقع (WhatsApp Business Cloud API من Meta)
+        'wa_phone_id'        => '',          // Phone Number ID لرقم الموقع في Meta
+        'wa_token'           => '',          // Access Token (سر)
+        'wa_template'        => '',          // اسم قالب الكود (Authentication) المعتمد من Meta
+        'wa_lang'            => 'ar',
         'sms_url'            => '',          // رابط مزود الرسائل بـ {phone} و {message}
         'sms_method'         => 'GET',       // GET | POST
     ];
 }
 // المفاتيح السرية اللي عمرها ما بتترجع للمتصفح (بيترجع بس إنها متسجّلة ولا لأ)
-function site_config_secret_keys(){ return ['paymob_api_key', 'paymob_hmac', 'sms_url']; }
+function site_config_secret_keys(){ return ['paymob_api_key', 'paymob_hmac', 'sms_url', 'wa_token']; }
 
 function site_config_all($conn, $fresh = false){
     static $cache = null;
@@ -47,7 +53,7 @@ function site_config_all($conn, $fresh = false){
         while ($res && ($r = $res->fetch_assoc())) {
             if (array_key_exists($r['config_key'], $cache)) $cache[$r['config_key']] = (string)$r['config_value'];
         }
-    } catch (Throwable $e) { /* الجدول لسه متعملش */ }
+    } catch (Throwable $e) { /* الجدول بعد متعملش */ }
     return $cache;
 }
 function site_config_get($conn, $key){ $all = site_config_all($conn); return $all[$key] ?? ''; }
@@ -108,21 +114,22 @@ function otp_start($conn, $email, $isAdmin){
     $code = (string)random_int(100000, 999999);
     $channel = 'email'; $to = $email; $sent = false; $err = '';
     $service = service_phone($conn);
-    $msg = "كود الدخول لـ GRIFFINE: $code (صالح 10 دقايق). متشاركوش مع حد. للاستفسار: $service";
+    $msg = "كود الدخول لـ GRIFFINE: $code (صالح 10 دقائق). لا تشاركه مع أحد. للاستفسار: $service";
 
-    if (site_config_get($conn, 'otp_channel') === 'sms') {
+    $ch = site_config_get($conn, 'otp_channel');
+    if ($ch === 'sms' || $ch === 'whatsapp') {
         $phone = account_phone($conn, $email);
         if ($phone !== '') {
-            $r = sms_send($conn, $phone, $msg);
-            if ($r['ok']) { $channel = 'sms'; $to = $phone; $sent = true; }
+            $r = $ch === 'whatsapp' ? wa_send_code($conn, $phone, $code) : sms_send($conn, $phone, $msg);
+            if ($r['ok']) { $channel = $ch; $to = $phone; $sent = true; }
             else $err = $r['error'];
         }
     }
-    if (!$sent) {   // الإيميل: الأساس، واحتياطي لو مفيش رقم أو الرسالة فشلت
+    if (!$sent) {   // الإيميل: الأساس، واحتياطي لو لا يوجد رقم أو الرسالة فشلت
         // العنوان من غير الكود (العناوين بتتسجّل في سجل الإيميلات اللي بيشوفه فريق الإدارة) - الكود جوه الرسالة بس
         $res = griffine_notify($conn, $email, 'كود الدخول لـ GRIFFINE', 'كود التحقق لتسجيل الدخول', [
-            "كود الدخول بتاعك: $code",
-            'الكود صالح لمدة 10 دقايق. لو مش إنت اللي بتحاول تدخل، غيّر كلمة المرور فورًا.',
+            "كود الدخول الخاص بك: $code",
+            'الكود صالح لمدة 10 دقائق. إذا لم تكن أنت من يحاول الدخول، فغيّر كلمة المرور فورًا.',
             "للاستفسار: $service",
         ], null, 'otp');
         $sent = !empty($res['ok']);
@@ -134,14 +141,14 @@ function otp_start($conn, $email, $isAdmin){
         'email' => $email, 'is_admin' => (int)$isAdmin,
         'hash' => password_hash($code, PASSWORD_DEFAULT), 'at' => time(), 'tries' => 0,
     ];
-    return [true, $channel, $channel === 'sms' ? mask_phone($to) : mask_email($to), ''];
+    return [true, $channel, $channel === 'email' ? mask_email($to) : mask_phone($to), ''];
 }
 /* بيتحقق من الكود: بيرجّع [ok, message] ولو صح بيكمّل الدخول */
 function otp_verify($conn, $code){
     $p = $_SESSION['otp_pending'] ?? null;
     if (!$p) return [false, 'ابدأ تسجيل الدخول من الأول.'];
-    if (time() - (int)$p['at'] > OTP_TTL) { unset($_SESSION['otp_pending']); return [false, 'الكود انتهت صلاحيته - سجّل الدخول تاني.']; }
-    if ((int)$p['tries'] >= OTP_MAX_TRIES) { unset($_SESSION['otp_pending']); return [false, 'محاولات كتير - سجّل الدخول تاني.']; }
+    if (time() - (int)$p['at'] > OTP_TTL) { unset($_SESSION['otp_pending']); return [false, 'انتهت صلاحية الكود - سجّل الدخول مرة أخرى.']; }
+    if ((int)$p['tries'] >= OTP_MAX_TRIES) { unset($_SESSION['otp_pending']); return [false, 'محاولات كثيرة - سجّل الدخول مرة أخرى.']; }
     $_SESSION['otp_pending']['tries'] = (int)$p['tries'] + 1;
     $code = preg_replace('/\D/', '', (string)$code);
     if (strlen($code) !== 6 || !password_verify($code, $p['hash'])) {
@@ -166,7 +173,7 @@ function sms_normalize_phone($p){
 }
 function sms_send($conn, $phone, $message){
     $tpl = trim(site_config_get($conn, 'sms_url'));
-    if ($tpl === '' || !preg_match('#^https?://#i', $tpl)) return ['ok' => false, 'error' => 'مزود الرسائل مش متظبط'];
+    if ($tpl === '' || !preg_match('#^https?://#i', $tpl)) return ['ok' => false, 'error' => 'مزود الرسائل غير مضبوط'];
     $num = sms_normalize_phone($phone);
     if (strlen($num) < 10) return ['ok' => false, 'error' => 'رقم الموبايل غير صالح'];
     $post = strtoupper(site_config_get($conn, 'sms_method')) === 'POST';
@@ -214,11 +221,45 @@ function phone_used_trial($conn, $phone){
 }
 
 /* ---------------------------------------------------------------------
+   07. واتساب من رقم الموقع (الإصدار 88) — WhatsApp Business Cloud API
+   رقم الموقع (رقم الخدمة) بيتسجّل مرة واحدة في Meta Business ← بياخد Phone Number ID و Access Token
+   وقالب رسالة من نوع Authentication (فيه الكود). الرسالة بتوصل للعميل على واتساب من رقم الموقع نفسه.
+   --------------------------------------------------------------------- */
+if (!defined('WA_GRAPH_BASE')) define('WA_GRAPH_BASE', 'https://graph.facebook.com/v20.0');
+function wa_ready($conn){ return site_config_get($conn, 'wa_phone_id') !== '' && site_config_get($conn, 'wa_token') !== '' && site_config_get($conn, 'wa_template') !== ''; }
+function wa_send_code($conn, $phone, $code){
+    if (!wa_ready($conn)) return ['ok' => false, 'error' => 'واتساب رقم الموقع غير مضبوط'];
+    $to = sms_normalize_phone($phone);
+    if (strlen($to) < 10) return ['ok' => false, 'error' => 'رقم الموبايل غير صالح'];
+    $payload = [
+        'messaging_product' => 'whatsapp', 'to' => $to, 'type' => 'template',
+        'template' => [
+            'name' => site_config_get($conn, 'wa_template'),
+            'language' => ['code' => site_config_get($conn, 'wa_lang') ?: 'ar'],
+            'components' => [
+                ['type' => 'body', 'parameters' => [['type' => 'text', 'text' => (string)$code]]],
+                // قوالب Authentication فيها زرار "نسخ الكود" ومحتاج نفس الكود
+                ['type' => 'button', 'sub_type' => 'url', 'index' => '0', 'parameters' => [['type' => 'text', 'text' => (string)$code]]],
+            ],
+        ],
+    ];
+    $ch = curl_init(rtrim(WA_GRAPH_BASE, '/') . '/' . rawurlencode(site_config_get($conn, 'wa_phone_id')) . '/messages');
+    curl_setopt_array($ch, [CURLOPT_POST => true, CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 15,
+        CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'Authorization: Bearer ' . site_config_get($conn, 'wa_token')],
+        CURLOPT_POSTFIELDS => json_encode($payload)]);
+    $body = curl_exec($ch); $http = curl_getinfo($ch, CURLINFO_HTTP_CODE); curl_close($ch);
+    $j = json_decode((string)$body, true);
+    if ($http >= 200 && $http < 300 && !empty($j['messages'][0]['id'])) return ['ok' => true, 'error' => '', 'response' => $j['messages'][0]['id']];
+    error_log('GRIFFINE wa_send: HTTP ' . $http . ' ' . mb_substr((string)$body, 0, 300));
+    return ['ok' => false, 'error' => 'واتساب رد بخطأ' . (isset($j['error']['message']) ? ': ' . mb_substr($j['error']['message'], 0, 120) : ' (HTTP ' . $http . ')')];
+}
+
+/* ---------------------------------------------------------------------
    05. إتمام تسجيل الدخول — رقم جلسة جديد عشان محدش يثبّت جلسة مسبقًا (session fixation)
    --------------------------------------------------------------------- */
 function login_complete($email, $isAdmin){
     // الإصدار 87: false = رقم جلسة جديد من غير ما نمسح القديمة فورًا (المسح الفوري كان بيضيّع الجلسة
-    // في المتصفحات اللي شايلة كوكي قديم - والحماية من تثبيت الجلسة لسه شغالة لأن الرقم بيتغيّر)
+    // في المتصفحات اللي شايلة كوكي قديم - والحماية من تثبيت الجلسة بعد شغالة لأن الرقم بيتغيّر)
     session_regenerate_id(false);
     $_SESSION['user_email'] = $email;
     $_SESSION['is_admin'] = (int)$isAdmin;

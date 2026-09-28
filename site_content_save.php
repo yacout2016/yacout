@@ -32,7 +32,7 @@ switch ($key) {
     case 'accent_color':
         $value = trim($value);
         if (!$hexColorOk($value)) {
-            echo json_encode(["success" => false, "message" => "لون غير صحيح - لازم يكون بصيغة #RRGGBB."]);
+            echo json_encode(["success" => false, "message" => "لون غير صحيح - يجب أن يكون بصيغة #RRGGBB."]);
             exit();
         }
         break;
@@ -53,7 +53,7 @@ switch ($key) {
     case 'font_size_base':
         $intVal = intval($value);
         if ($intVal < 12 || $intVal > 22) {
-            echo json_encode(["success" => false, "message" => "حجم الخط لازم يكون بين 12 و22."]);
+            echo json_encode(["success" => false, "message" => "يجب أن يكون حجم الخط بين 12 و22."]);
             exit();
         }
         $value = (string)$intVal;
@@ -68,7 +68,7 @@ switch ($key) {
     case 'hero_banner_url':
         $value = trim($value);
         if ($value !== '' && !preg_match('#^https?://#i', $value)) {
-            echo json_encode(["success" => false, "message" => "رابط البانر لازم يبدأ بـ http:// أو https://"]);
+            echo json_encode(["success" => false, "message" => "يجب أن يبدأ رابط البانر بـ http:// أو https://"]);
             exit();
         }
         $value = mb_substr($value, 0, 500);

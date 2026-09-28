@@ -4,14 +4,14 @@
    ---------------------------------------------------------------------
    ليه ملف موحّد؟
      قبل كده كل ملف كان بيبعت بـ mail() لوحده ومن عنوان no-reply@www.griffine.store
-     (عنوان مش موجود) ومن غير تشفير للعنوان العربي - فالإيميلات كانت بتتحجز أو تروح Spam.
+     (عنوان غير موجود) ومن غير تشفير للعنوان العربي - فالإيميلات كانت بتتحجز أو تروح Spam.
    دلوقتي:
      1) المرسل دايمًا info@griffine.store (صندوق حقيقي على الدومين) + Return-Path صحيح
      2) لو كلمة سر الصندوق متحطة في db.php (MAIL_SMTP_PASS) ← الإرسال عن طريق SMTP هوستنجر
         (أضمن طريقة للوصول لـ Gmail/Outlook) - غير كده ← mail() العادية كاحتياطي
      3) العنوان العربي متشفّر (UTF-8)، والرسالة فيها نسخة نص + نسخة HTML منسّقة
      4) مرفقات (صور/PDF) - زي صور محادثات الشات
-     5) كل إيميل بيتسجّل في جدول email_log (اتبعت/فشل + السبب) ويظهر في "مركز الإيميلات"
+     5) كل إيميل بيتسجّل في جدول email_log (أُرسلت/فشل + السبب) ويظهر في "مركز الإيميلات"
 
    الاستخدام:
      require_once __DIR__ . '/mailer.php';
@@ -169,7 +169,7 @@ function gm_smtp_send($to, $subject, $headers, $body, &$err){
         if ($c !== null) fwrite($fp, $c . "\r\n");
         $r = $read();
         foreach ((array)$expect as $code) if (strpos($r, (string)$code) === 0) return true;
-        $err = 'SMTP: ' . trim($r ?: 'مفيش رد من السيرفر');
+        $err = 'SMTP: ' . trim($r ?: 'لا يوجد رد من السيرفر');
         return false;
     };
     $domain = substr(strrchr(MAIL_FROM, '@'), 1);
@@ -200,7 +200,7 @@ function gm_log($conn, $to, $subject, $type, $ok, $transport, $error){
     if (!$conn) return;
     try {
         $st = @$conn->prepare("INSERT INTO email_log (to_email, subject, mail_type, status, transport, error_text) VALUES (?, ?, ?, ?, ?, ?)");
-        if (!$st) return;   // الجدول لسه متعملش (ملف SQL متشغّلش) - الإرسال نفسه مبيتأثرش
+        if (!$st) return;   // الجدول بعد متعملش (ملف SQL متشغّلش) - الإرسال نفسه مبيتأثرش
         $status = $ok ? 'sent' : 'failed';
         $subject = mb_substr($subject, 0, 250); $error = $error ? mb_substr($error, 0, 500) : null;
         $st->bind_param("ssssss", $to, $subject, $type, $status, $transport, $error);
@@ -223,7 +223,7 @@ function griffine_mail($conn, $to, $subject, $opts = []){
         if (!$len || $total + $len > MAIL_MAX_ATTACH) { $skipped++; continue; }
         $total += $len; $atts[] = $a;
     }
-    if ($skipped) $opts['text'] = ($opts['text'] ?? '') . "\r\n\r\n(ملحوظة: $skipped مرفق متضافوش لأن حجمهم كبير - موجودين في لوحة الدردشة)";
+    if ($skipped) $opts['text'] = ($opts['text'] ?? '') . "\r\n\r\n(ملحوظة: $skipped مرفق لم تُضَف لكبر حجمها - موجودة في لوحة الدردشة)";
     $opts['attachments'] = $atts;
 
     list($headers, $body) = gm_build($to, $subject, $opts);
@@ -260,12 +260,12 @@ function mail_subscription_created($conn, $accountEmail, $name, $planName, $amou
     gm_safe(function() use ($conn, $accountEmail, $name, $planName, $amount, $active, $endDate){
         $to = gm_customer_email($conn, $accountEmail);
         if ($active) {
-            griffine_notify($conn, $to, 'تم تفعيل اشتراكك في GRIFFINE', 'اشتراكك اتفعّل ✅',
-                ["أهلًا $name،", "تم تفعيل باقة «$planName» على حسابك، وسارية لحد $endDate.", 'تقدر تبدأ دلوقتي تعمل خططك وتتابع محفظتك.'],
+            griffine_notify($conn, $to, 'تم تفعيل اشتراكك في GRIFFINE', 'تم تفعيل اشتراكك ✅',
+                ["أهلًا $name،", "تم تفعيل باقة «$planName» على حسابك، وسارية حتى $endDate.", 'يمكنك البدء الآن في إنشاء خططك ومتابعة محفظتك.'],
                 ['label' => 'افتح GRIFFINE', 'url' => MAIL_SITE_URL . '/index.php'], 'subscription_active');
         } else {
             griffine_notify($conn, $to, 'استلمنا طلب اشتراكك في GRIFFINE', 'طلبك وصلنا',
-                ["أهلًا $name،", "استلمنا طلب اشتراكك في باقة «$planName» وبيانات السداد.", 'فريقنا هيراجع السداد ويفعّل حسابك في أقرب وقت، وهيوصلك إيميل أول ما يتفعّل.'],
+                ["أهلًا $name،", "استلمنا طلب اشتراكك في باقة «$planName» وبيانات السداد.", 'سيراجع فريقنا السداد ويفعّل حسابك في أقرب وقت، وستصلك رسالة بريد فور التفعيل.'],
                 ['label' => 'متابعة حالة الاشتراك', 'url' => MAIL_SITE_URL . '/index.php'], 'subscription_pending');
             griffine_notify($conn, MAIL_ADMIN_TO, "طلب اشتراك جديد محتاج مراجعة - $name", 'طلب اشتراك جديد',
                 ["العميل: $name", "الحساب: $accountEmail", "الباقة: $planName", 'المبلغ: ' . number_format((float)$amount, 2), 'راجع السداد وفعّل الحساب من لوحة التحكم ← المشتركين.'],
@@ -278,11 +278,11 @@ function mail_subscription_created($conn, $accountEmail, $name, $planName, $amou
 function mail_subscription_toggled($conn, $accountEmail, $name, $planName, $active, $endDate){
     gm_safe(function() use ($conn, $accountEmail, $name, $planName, $active, $endDate){
         $to = gm_customer_email($conn, $accountEmail);
-        if ($active) griffine_notify($conn, $to, 'تم تفعيل اشتراكك في GRIFFINE', 'اشتراكك اتفعّل ✅',
-            ["أهلًا $name،", "تمت مراجعة السداد وتفعيل باقة «$planName»، وسارية لحد $endDate.", 'شكرًا لثقتك في GRIFFINE.'],
+        if ($active) griffine_notify($conn, $to, 'تم تفعيل اشتراكك في GRIFFINE', 'تم تفعيل اشتراكك ✅',
+            ["أهلًا $name،", "تمت مراجعة السداد وتفعيل باقة «$planName»، وسارية حتى $endDate.", 'شكرًا لثقتك في GRIFFINE.'],
             ['label' => 'افتح GRIFFINE', 'url' => MAIL_SITE_URL . '/index.php'], 'subscription_active');
         else griffine_notify($conn, $to, 'تم إيقاف اشتراكك في GRIFFINE مؤقتًا', 'اشتراكك موقوف',
-            ["أهلًا $name،", "تم إيقاف اشتراكك في باقة «$planName» مؤقتًا.", 'لو عندك أي استفسار رد على الإيميل ده أو كلّمنا من الشات في الموقع.'],
+            ["أهلًا $name،", "تم إيقاف اشتراكك في باقة «$planName» مؤقتًا.", 'إذا كان لديك أي استفسار، رُدّ على هذه الرسالة أو تواصل معنا عبر الشات في الموقع.'],
             null, 'subscription_paused');
     });
 }
@@ -303,7 +303,7 @@ function mail_subscription_extended($conn, $subscriberId, $days, $newEnd){
 function mail_subscription_gift($conn, $accountEmail, $planName, $endDate){
     gm_safe(function() use ($conn, $accountEmail, $planName, $endDate){
         griffine_notify($conn, gm_customer_email($conn, $accountEmail), 'باقة هدية من GRIFFINE 🎁', 'عندك باقة هدية',
-            ['أهلًا بيك،', "فريق GRIFFINE منحك باقة «$planName» هدية، وسارية لحد $endDate.", 'استمتع بكل المميزات.'],
+            ['أهلًا بك،', "فريق GRIFFINE منحك باقة «$planName» هدية، وسارية حتى $endDate.", 'استمتع بكل المميزات.'],
             ['label' => 'افتح GRIFFINE', 'url' => MAIL_SITE_URL . '/index.php'], 'subscription_gift');
     });
 }
@@ -312,7 +312,7 @@ function mail_subscription_gift($conn, $accountEmail, $planName, $endDate){
 function mail_plan_change_requested($conn, $accountEmail, $planName, $message){
     gm_safe(function() use ($conn, $accountEmail, $planName, $message){
         griffine_notify($conn, gm_customer_email($conn, $accountEmail), 'استلمنا طلب تغيير باقتك - GRIFFINE', 'طلب تغيير الباقة',
-            ['أهلًا بيك،', $message], ['label' => 'متابعة الاشتراك', 'url' => MAIL_SITE_URL . '/index.php'], 'plan_change');
+            ['أهلًا بك،', $message], ['label' => 'متابعة الاشتراك', 'url' => MAIL_SITE_URL . '/index.php'], 'plan_change');
         griffine_notify($conn, MAIL_ADMIN_TO, "طلب تغيير باقة - $accountEmail", 'طلب تغيير باقة',
             ["الحساب: $accountEmail", "الباقة المطلوبة: $planName", 'راجع السداد من لوحة التحكم ← المشتركين.'],
             ['label' => 'لوحة التحكم', 'url' => MAIL_SITE_URL . '/index.php'], 'admin_plan_change');
@@ -323,12 +323,12 @@ function mail_plan_change_requested($conn, $accountEmail, $planName, $message){
 function mail_email_change_reviewed($conn, $oldEmail, $newEmail, $approved, $note){
     gm_safe(function() use ($conn, $oldEmail, $newEmail, $approved, $note){
         if ($approved) {
-            $p = ['أهلًا بيك،', "تمت الموافقة على تغيير بريد حسابك في GRIFFINE من $oldEmail إلى $newEmail.", "من دلوقتي ادخل بالإيميل الجديد: $newEmail"];
+            $p = ['أهلًا بك،', "تمت الموافقة على تغيير بريد حسابك في GRIFFINE من $oldEmail إلى $newEmail.", "من الآن سجّل الدخول بالبريد الجديد: $newEmail"];
             griffine_notify($conn, $newEmail, 'تم تغيير بريد حسابك في GRIFFINE', 'تم تغيير الإيميل ✅', $p, ['label' => 'تسجيل الدخول', 'url' => MAIL_SITE_URL . '/index.php'], 'email_change');
-            griffine_notify($conn, $oldEmail, 'تنبيه: تم تغيير بريد حسابك في GRIFFINE', 'تم تغيير الإيميل', array_merge($p, ['لو مطلبتش التغيير ده، كلّمنا فورًا على ' . MAIL_FROM]), null, 'email_change');
+            griffine_notify($conn, $oldEmail, 'تنبيه: تم تغيير بريد حسابك في GRIFFINE', 'تم تغيير الإيميل', array_merge($p, ['إذا لم تطلب هذا التغيير، تواصل معنا فورًا على ' . MAIL_FROM]), null, 'email_change');
         } else {
             griffine_notify($conn, $oldEmail, 'بخصوص طلب تغيير بريد حسابك - GRIFFINE', 'طلب تغيير الإيميل',
-                array_filter(['أهلًا بيك،', "طلب تغيير بريد حسابك إلى $newEmail متقبلش.", $note ? "ملاحظة الإدارة: $note" : null, 'لو محتاج مساعدة كلّمنا من الشات في الموقع.']),
+                array_filter(['أهلًا بك،', "طلب تغيير بريد حسابك إلى $newEmail لم يُقبل.", $note ? "ملاحظة الإدارة: $note" : null, 'لو محتاج مساعدة كلّمنا من الشات في الموقع.']),
                 null, 'email_change');
         }
     });

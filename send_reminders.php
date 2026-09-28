@@ -39,7 +39,7 @@ while ($sub = $result->fetch_assoc()) {
     $endTs = strtotime($sub['end_date']);
     $daysLeft = (int)round(($endTs - $todayTs) / 86400);
 
-    // برّه نافذة التذكير (فات ميعاد الانتهاء، أو لسه بدري قوي)
+    // برّه نافذة التذكير (فات ميعاد الانتهاء، أو بعد بدري قوي)
     if ($daysLeft < 0 || $daysLeft > $startBeforeDays) continue;
 
     $daysSinceWindowStart = $startBeforeDays - $daysLeft;
@@ -53,9 +53,9 @@ while ($sub = $result->fetch_assoc()) {
     $daysWord = ($daysLeft === 0) ? 'النهاردة' : ($daysLeft . ' يوم');
 
     // الإصدار 72: عن طريق mailer.php (من info@griffine.store + سجل الإيميلات)
-    $res = griffine_notify($conn, $toEmail, 'تذكير بقرب انتهاء اشتراكك - GRIFFINE', 'اشتراكك قرب يخلص',
-        ["مرحبًا $name،", "نذكّرك إن اشتراكك في باقة «$planName» هينتهي بتاريخ: $endDateFormatted", "الأيام المتبقية: $daysWord",
-         'جدّد اشتراكك قبل انتهاء المدة عشان تفضل مستفيد من كل مميزات GRIFFINE بدون انقطاع.'],
+    $res = griffine_notify($conn, $toEmail, 'تذكير بقرب انتهاء اشتراكك - GRIFFINE', 'اشتراكك يقترب من الانتهاء',
+        ["مرحبًا $name،", "نذكّرك إن اشتراكك في باقة «$planName» سينتهي بتاريخ: $endDateFormatted", "الأيام المتبقية: $daysWord",
+         'جدّد اشتراكك قبل انتهاء المدة لتستمر في الاستفادة من كل مميزات GRIFFINE دون انقطاع.'],
         ['label' => 'تجديد الاشتراك', 'url' => MAIL_SITE_URL . '/index.php'], 'reminder');
     $ok = $res['ok'];
     if ($ok) $sentCount++;

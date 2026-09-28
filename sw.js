@@ -2,14 +2,14 @@
 // 1) إشعارات Push حقيقية (زي ما كانت)
 // 2) تشغيل كتطبيق: تخزين ملفات الواجهة الثابتة + صفحة "غير متصل" لما الإنترنت يقطع
 // ملحوظة: طلبات الـ API (ملفات .php) مش بتتخزن أبدًا - البيانات المالية لازم تيجي من السيرفر دايمًا
-const VERSION = 'griffine-v87';
+const VERSION = 'griffine-v88';
 const STATIC_ASSETS = [
   '/offline.html',
-  '/shell.css?v=87',
-  '/shell.js?v=87',
-  '/studio.js?v=87',
-  '/griffine-logo-light.webp?v=87',
-  '/griffine-logo-dark.webp?v=87',
+  '/shell.css?v=88',
+  '/shell.js?v=88',
+  '/studio.js?v=88',
+  '/griffine-logo-light.webp?v=88',
+  '/griffine-logo-dark.webp?v=88',
   '/icon-192.png',
   '/icon-512.png',
   '/manifest.json'
@@ -34,7 +34,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
-  // صفحة الموقع نفسها: دايمًا من الشبكة (أحدث نسخة)، ولو مفيش نت نعرض صفحة "غير متصل"
+  // صفحة الموقع نفسها: دايمًا من الشبكة (أحدث نسخة)، ولو لا يوجد نت نعرض صفحة "غير متصل"
   if (req.mode === 'navigate') {
     event.respondWith(fetch(req).catch(() => caches.match('/offline.html')));
     return;

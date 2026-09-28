@@ -20,7 +20,7 @@ if (!$isAdmin && !preg_match('/^[a-zA-Z0-9_-]{20,64}$/', $visitorId)) {
 }
 // الإصدار 83: محادثة مربوطة بحساب ← صاحبه بس وهو مسجّل دخول (بعد تسجيل الخروج الزائر على نفس الجهاز ميشوفهاش)
 if (!$isAdmin && !chat_visitor_can_access($conn, $visitorId)) {
-    echo json_encode(["success" => false, "code" => "not_owner", "message" => "المحادثة دي مش متاحة."]);
+    echo json_encode(["success" => false, "code" => "not_owner", "message" => "هذه المحادثة غير متاحة."]);
     exit();
 }
 
@@ -41,7 +41,7 @@ while ($r = $result->fetch_assoc()) {
     ];
 }
 $stmt->close();
-// الإصدار 82: حالة المحادثة (رفع الملفات مسموح؟ + آخر مرة الإدارة قرت - عشان "✓✓ اتشافت")
+// الإصدار 82: حالة المحادثة (رفع الملفات مسموح؟ + آخر مرة الإدارة قرت - عشان "✓✓ تمت القراءة")
 $state = chat_conversation_state($conn, $visitorId);
 // الإصدار 83: + أقصى حجم للمرفق بالميجا اللي الأدمن حدده للمحادثة دي
 echo json_encode(["success" => true, "messages" => $rows, "allowUpload" => $state['allowUpload'], "adminReadAt" => $state['adminReadAt'], "maxUploadMb" => $state['maxUploadMb']]);

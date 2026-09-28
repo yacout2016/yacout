@@ -22,7 +22,7 @@ header('Content-Type: application/sql; charset=utf-8');
 header('Content-Disposition: attachment; filename="griffine_backup_' . date('Y-m-d_His') . '.sql"');
 
 echo "-- نسخة احتياطية يدوية من GRIFFINE - " . date('Y-m-d H:i:s') . "\n";
-echo "-- تنويه: دي نسخة تكميلية بس، هوستنجر بتعمل نسخ احتياطي تلقائي أساسي للموقع كامل\n";
+echo "-- تنويه: هذه نسخة تكميلية فقط، وتقوم هوستنجر بنسخ احتياطي تلقائي أساسي للموقع كاملًا\n";
 echo "SET FOREIGN_KEY_CHECKS=0;\n\n";
 
 foreach ($tables as $table) {

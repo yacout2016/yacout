@@ -23,7 +23,7 @@ $attachmentName = mb_substr(trim($_POST['attachmentName'] ?? ''), 0, 120);
 $uploadToken = trim($_POST['uploadToken'] ?? '');   // الإصدار 83: ملف كبير اترفع على أجزاء (chat_upload_chunk.php)
 if ($uploadToken !== '') {
     if (($_SESSION['chat_files'][$uploadToken] ?? null) !== $visitorId) {
-        echo json_encode(["success" => false, "message" => "الملف المرفوع مش متاح - ارفعه تاني."]);
+        echo json_encode(["success" => false, "message" => "الملف المرفوع غير متاح - ارفعه مرة أخرى."]);
         exit();
     }
     unset($_SESSION['chat_files'][$uploadToken]);
@@ -50,7 +50,7 @@ if ($stmt->execute()) {
     $conn->query("INSERT INTO admin_presence (id, last_seen) VALUES (1, NOW()) ON DUPLICATE KEY UPDATE last_seen = NOW()");
     // الرد معناه إن الأدمن قرا المحادثة (الإصدار 72)
     try { chat_mark_read($conn, $visitorId); } catch (Throwable $e) {}
-    // الإصدار 83: مفيش إشعار Push على شاشة العميل - الرد بيظهر كنقطة حمرا على أيقونة الشات (زي ماسنجر)
+    // الإصدار 83: لا يوجد إشعار Push على شاشة العميل - الرد بيظهر كنقطة حمرا على أيقونة الشات (زي ماسنجر)
     echo json_encode(["success" => true]);
 } else {
     echo json_encode(["success" => false, "message" => "حدث خطأ: " . $conn->error]);

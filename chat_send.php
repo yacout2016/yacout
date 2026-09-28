@@ -30,13 +30,13 @@ if (empty($visitorId)) {
 }
 // الإصدار 83: محادثة مربوطة بحساب ← صاحب الحساب بس (وهو مسجّل دخول) يكتب فيها
 if (!chat_visitor_can_access($conn, $visitorId)) {
-    echo json_encode(["success" => false, "code" => "not_owner", "message" => "المحادثة دي مش متاحة - سجّل دخول بالحساب بتاعها."]);
+    echo json_encode(["success" => false, "code" => "not_owner", "message" => "هذه المحادثة غير متاحة - سجّل الدخول بالحساب الخاص بها."]);
     exit();
 }
 // الإصدار 83: الملف المرفوع على أجزاء لازم يكون اترفع من نفس الجلسة ولنفس المحادثة
 if ($uploadToken !== '') {
     if (($_SESSION['chat_files'][$uploadToken] ?? null) !== $visitorId) {
-        echo json_encode(["success" => false, "message" => "الملف المرفوع مش متاح - ارفعه تاني."]);
+        echo json_encode(["success" => false, "message" => "الملف المرفوع غير متاح - ارفعه مرة أخرى."]);
         exit();
     }
     unset($_SESSION['chat_files'][$uploadToken]);
@@ -57,7 +57,7 @@ if (empty($message) && empty($attachment)) {
 
 // الإصدار 82: رفع الملفات مقفول افتراضيًا - لازم الأدمن/الموظف يفتحه للمحادثة دي من شاشة الشات
 if (!empty($attachment) && !chat_upload_allowed($conn, $visitorId)) {
-    echo json_encode(["success" => false, "message" => "رفع الملفات والصور مقفول دلوقتي. اكتب رسالتك وفريق الدعم هيفتحلك الرفع لو محتاج تبعت ملف."]);
+    echo json_encode(["success" => false, "message" => "رفع الملفات والصور مغلق الآن. اكتب رسالتك وسيفتح لك فريق الدعم الرفع إذا احتجت إلى إرسال ملف."]);
     exit();
 }
 
@@ -91,7 +91,7 @@ if ($stmt->execute()) {
         $re->bind_param("s", $visitorId);
         $re->execute(); $re->close();
     } catch (Throwable $e) { error_log('GRIFFINE chat_send reactivate: ' . $e->getMessage()); }
-    // الإصدار 83: مفيش إشعارات Push على الشاشة للشات - التنبيه بيبقى نقطة حمرا على أيقونة الشات بس (زي ماسنجر)
+    // الإصدار 83: لا يوجد إشعارات Push على الشاشة للشات - التنبيه بيبقى نقطة حمرا على أيقونة الشات بس (زي ماسنجر)
 
     // الإصدار 72: أول رسالة في محادثة جديدة ← إيميل تنبيه على info@griffine.store (مش مع كل رسالة)
     try {

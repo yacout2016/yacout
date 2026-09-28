@@ -1,5 +1,5 @@
 -- ============================================================
--- GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 87)
+-- GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 88)
 -- كل تحديثات قاعدة البيانات في ملف واحد.
 -- آمن تشغّله أي عدد من المرات: بيضيف الناقص بس ومبيمسحش أي بيانات.
 -- الاستخدام: phpMyAdmin ← اختار قاعدة البيانات ← تبويب SQL ← الصق الملف كله ← Go
@@ -24,6 +24,8 @@
 --              + hr_employees + hr_documents + hr_attendance (الحضور الشهري وحساب الراتب).
 -- الإصدار 86: مفيش تغييرات في قاعدة البيانات (ملف كلمات السر بقى جنب db.php + ملف RESET_ADMIN_LOGIN.sql منفصل للرجوع لدخول الإدارة العادي).
 -- الإصدار 87: مفيش تغييرات في قاعدة البيانات (صور الشعار في جذر الموقع من غير فولدرات + إصلاح الدخول من المتصفح العادي - كوكي الجلسة القديم).
+-- الإصدار 88: email_log (أرشيف + سلة محذوفات) + user_watchlist (قائمة المتابعة) + user_alerts (تنبيهات الأسعار)
+--              + portfolio_snapshots (منحنى أداء المحفظة) + payment_cards / subscribers.auto_renew (التجديد التلقائي مع Paymob).
 -- ============================================================
 
 -- الإصدار 85: ترميز الاتصال UTF-8 عشان النصوص العربي اللي بتتضاف من الملف (زي المسميات الوظيفية) تتحفظ صح
@@ -778,4 +780,92 @@ CREATE TABLE IF NOT EXISTS hr_attendance (
 INSERT IGNORE INTO staff_permissions (staff_id, permission_key)
   SELECT staff_id, 'manage_testimonials' FROM staff_permissions WHERE permission_key = 'manage_content';
 
-SELECT 'GRIFFINE database is up to date (v87)' AS result;
+-- الإصدار 88: مركز الإيميلات - أرشيف وسلة محذوفات
+DELIMITER $$
+DROP PROCEDURE IF EXISTS griffine_v88 $$
+CREATE PROCEDURE griffine_v88()
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='email_log' AND COLUMN_NAME='archived') THEN
+    ALTER TABLE email_log ADD COLUMN archived TINYINT(1) NOT NULL DEFAULT 0, ADD COLUMN deleted TINYINT(1) NOT NULL DEFAULT 0;
+  END IF;
+END $$
+DELIMITER ;
+CALL griffine_v88();
+DROP PROCEDURE griffine_v88;
+
+-- الإصدار 88: قائمة المتابعة (أسهم العميل بأسعار تلقائية)
+CREATE TABLE IF NOT EXISTS user_watchlist (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  account_email VARCHAR(190) NOT NULL,
+  symbol VARCHAR(20) NOT NULL,
+  market VARCHAR(20) NOT NULL DEFAULT 'مصر',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_watch (account_email, symbol, market)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- الإصدار 88: مستويات التنبيه من خطط العميل (سعر الشراء التالي / هدف البيع)
+CREATE TABLE IF NOT EXISTS alert_targets (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  account_email VARCHAR(190) NOT NULL,
+  symbol VARCHAR(20) NOT NULL,
+  market VARCHAR(20) NOT NULL DEFAULT 'مصر',
+  plan_kind VARCHAR(5) NOT NULL DEFAULT 'DCA',
+  side VARCHAR(4) NOT NULL DEFAULT 'buy',
+  price DECIMAL(14,4) NOT NULL,
+  label VARCHAR(150) NULL,
+  triggered_at DATETIME NULL,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_target (account_email, symbol, market, plan_kind, side),
+  KEY idx_target_open (triggered_at, symbol)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- الإصدار 88: تنبيهات العميل جوه الموقع (الجرس)
+CREATE TABLE IF NOT EXISTS user_alerts (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  account_email VARCHAR(190) NOT NULL,
+  title VARCHAR(200) NOT NULL,
+  body VARCHAR(500) NULL,
+  symbol VARCHAR(20) NULL,
+  market VARCHAR(20) NULL,
+  is_read TINYINT(1) NOT NULL DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_alerts_user (account_email, is_read)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- الإصدار 88: لقطة يومية لقيمة المحفظة (منحنى الأداء في الرئيسية)
+CREATE TABLE IF NOT EXISTS portfolio_snapshots (
+  account_email VARCHAR(190) NOT NULL,
+  snap_date DATE NOT NULL,
+  currency VARCHAR(5) NOT NULL DEFAULT 'EGP',
+  value DECIMAL(16,2) NOT NULL DEFAULT 0,
+  cost DECIMAL(16,2) NOT NULL DEFAULT 0,
+  PRIMARY KEY (account_email, snap_date, currency)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- الإصدار 88: الكروت المحفوظة للتجديد التلقائي (التوكن من Paymob بس - مفيش أي رقم كارت عندنا)
+CREATE TABLE IF NOT EXISTS payment_cards (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  account_email VARCHAR(190) NOT NULL,
+  provider VARCHAR(20) NOT NULL DEFAULT 'paymob',
+  card_token VARCHAR(255) NOT NULL,
+  masked_pan VARCHAR(25) NULL,
+  brand VARCHAR(20) NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_card_owner (account_email, provider)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- الإصدار 88: العميل بيشغّل / يوقف التجديد التلقائي
+DELIMITER $$
+DROP PROCEDURE IF EXISTS griffine_v88b $$
+CREATE PROCEDURE griffine_v88b()
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='subscribers' AND COLUMN_NAME='auto_renew') THEN
+    ALTER TABLE subscribers ADD COLUMN auto_renew TINYINT(1) NOT NULL DEFAULT 0;
+  END IF;
+END $$
+DELIMITER ;
+CALL griffine_v88b();
+DROP PROCEDURE griffine_v88b;
+
+SELECT 'GRIFFINE database is up to date (v88)' AS result;

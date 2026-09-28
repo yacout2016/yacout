@@ -21,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $locked = loginLockedMinutes($conn, $email);
     if ($locked > 0) {
         http_response_code(429);
-        echo json_encode(["success" => false, "message" => "محاولات دخول كتير. حاول تاني بعد $locked دقيقة، أو استخدم «نسيت كلمة المرور»."]);
+        echo json_encode(["success" => false, "message" => "محاولات دخول كثيرة. حاول مرة أخرى بعد $locked دقيقة، أو استخدم «نسيت كلمة المرور»."]);
         exit();
     }
     if (isBlacklisted($conn, 'email', $email)) {
@@ -53,10 +53,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (otp_required_for($conn, $isStaff)) {
                 [$ok, $channel, $to, $err] = otp_start($conn, $email, $isStaff);
                 if (!$ok) {
-                    echo json_encode(["success" => false, "message" => "تعذّر إرسال كود التحقق: $err. حاول تاني بعد شوية."]);
+                    echo json_encode(["success" => false, "message" => "تعذّر إرسال كود التحقق: $err. حاول مرة أخرى بعد قليل."]);
                 } else {
                     echo json_encode(["success" => false, "otpRequired" => true, "channel" => $channel, "to" => $to,
-                        "message" => $channel === 'sms' ? "بعتنالك كود على الموبايل $to" : "بعتنالك كود على الإيميل $to"]);
+                        "message" => $channel === 'whatsapp' ? "أرسلنا لك كودًا على واتساب $to" : ($channel === 'sms' ? "أرسلنا لك كودًا على الموبايل $to" : "أرسلنا لك كودًا على البريد $to")]);
                 }
                 $stmt->close();
                 exit();

@@ -89,7 +89,7 @@ function bg_old_value($conn, $key){
 $image = $_POST['image'] ?? '';
 $previous = bg_old_value($conn, $key);
 
-// فاضي = حذف الخلفية المخصصة (رجوع للشكل الافتراضي)
+// فارغ = حذف الخلفية المخصصة (رجوع للشكل الافتراضي)
 if ($image === '') {
     $stmt = $conn->prepare("DELETE FROM page_backgrounds WHERE page_key = ?");
     $stmt->bind_param("s", $key);

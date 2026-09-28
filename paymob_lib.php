@@ -39,7 +39,7 @@ function paymob_http($path, $payload){
 /* بيبدأ عملية دفع ويرجّع [رابط صفحة الدفع, رسالة خطأ]
    $ctx = kind (new | change), subscriber_id, account_email, plan_id, immediate, amount, name, phone, email */
 function paymob_start($conn, $ctx){
-    if (!paymob_enabled($conn)) return [null, 'الدفع بالبطاقة مش متاح دلوقتي.'];
+    if (!paymob_enabled($conn)) return [null, 'الدفع بالبطاقة غير متاح الآن.'];
     $cents = (int)round(((float)$ctx['amount']) * 100);
     if ($cents <= 0) return [null, 'المبلغ غير صالح.'];
 
@@ -127,6 +127,7 @@ function paymob_apply_success($conn, $providerOrderId, $txnId, $amountCents){
 
     $ref = 'Paymob #' . $txnId;
     $email = $po['account_email'];
+    if ($po['kind'] === 'renew') { paymob_apply_renewal($conn, $po, $ref); return true; }
     if ($po['kind'] === 'new') {
         $u = $conn->prepare("UPDATE subscribers SET active = 1, payment_method = 'paymob', payment_ref = ? WHERE id = ? AND account_email = ?");
         $u->bind_param("sis", $ref, $po['subscriber_id'], $email); $u->execute(); $u->close();
@@ -153,8 +154,86 @@ function paymob_apply_success($conn, $providerOrderId, $txnId, $amountCents){
         $u = $conn->prepare("UPDATE subscribers SET pending_plan_id=?, pending_plan_name=?, pending_amount=?, pending_duration_days=?, pending_payment_method='paymob', pending_payment_ref=?, pending_payment_proof=NULL
             WHERE id=? AND account_email=?");
         $u->bind_param("ssdisis", $plan['id'], $plan['name'], $amount, $days, $ref, $po['subscriber_id'], $email); $u->execute(); $u->close();
-        mail_plan_change_requested($conn, $email, $plan['name'], "تم الدفع بنجاح - الباقة الجديدة ({$plan['name']}) هتتفعّل تلقائيًا بعد انتهاء باقتك الحالية.");
+        mail_plan_change_requested($conn, $email, $plan['name'], "تم الدفع بنجاح - الباقة الجديدة ({$plan['name']}) ستتفعّل تلقائيًا بعد انتهاء باقتك الحالية.");
     }
     return true;
+}
+/* =====================================================================
+   الإصدار 88: التجديد التلقائي بالكارت المحفوظ (Paymob Card Token + MOTO)
+   1) أول دفع بالكارت: لو "حفظ الكارت" مفعّل في Paymob، Paymob بيبعت إشعار TOKEN ← بنحفظ التوكن (مش رقم الكارت)
+   2) قبل ما الاشتراك يخلص بيوم (renew_subscriptions.php من الـ Cron) ← خصم تلقائي بالتوكن عن طريق Integration MOTO
+   3) الدفع نجح ← الاشتراك بيتمد بنفس مدة الباقة · فشل ← إيميل للعميل يجدّد يدويًا
+   ===================================================================== */
+function paymob_moto_ready($conn){ return paymob_ready($conn) && site_config_get($conn, 'paymob_moto_integration') !== ''; }
+
+// توقيع إشعار TOKEN من Paymob (الحقول مرتبة أبجديًا)
+function paymob_token_hmac_valid($conn, $o, $hmac){
+    $secret = site_config_get($conn, 'paymob_hmac');
+    if ($secret === '' || !is_string($hmac) || $hmac === '') return false;
+    $str = ($o['card_subtype'] ?? '') . ($o['created_at'] ?? '') . ($o['email'] ?? '') . ($o['id'] ?? '') . ($o['masked_pan'] ?? '') . ($o['merchant_id'] ?? '') . ($o['order_id'] ?? '') . ($o['token'] ?? '');
+    return hash_equals(hash_hmac('sha512', $str, $secret), strtolower($hmac));
+}
+// حفظ الكارت: التوكن مربوط بطلب دفع عندنا ← بنعرف صاحبه من payment_orders (مش من الإيميل اللي Paymob باعته)
+function paymob_save_card($conn, $o){
+    $orderId = (string)($o['order_id'] ?? '');
+    $st = $conn->prepare("SELECT account_email FROM payment_orders WHERE provider = 'paymob' AND provider_order_id = ? LIMIT 1");
+    $st->bind_param("s", $orderId); $st->execute(); $po = $st->get_result()->fetch_assoc(); $st->close();
+    if (!$po || empty($o['token'])) return false;
+    $tok = (string)$o['token']; $pan = mb_substr((string)($o['masked_pan'] ?? ''), 0, 25); $brand = mb_substr((string)($o['card_subtype'] ?? ''), 0, 20);
+    $st = $conn->prepare("INSERT INTO payment_cards (account_email, provider, card_token, masked_pan, brand) VALUES (?, 'paymob', ?, ?, ?)
+        ON DUPLICATE KEY UPDATE card_token = VALUES(card_token), masked_pan = VALUES(masked_pan), brand = VALUES(brand), updated_at = NOW()");
+    $st->bind_param("ssss", $po['account_email'], $tok, $pan, $brand); $st->execute(); $st->close();
+    return true;
+}
+function paymob_card_of($conn, $email){
+    $st = $conn->prepare("SELECT * FROM payment_cards WHERE account_email = ? AND provider = 'paymob' LIMIT 1");
+    $st->bind_param("s", $email); $st->execute(); $r = $st->get_result()->fetch_assoc(); $st->close();
+    return $r ?: null;
+}
+// خصم تجديد تلقائي لاشتراك واحد ← [نجح؟, رسالة]
+function paymob_charge_renewal($conn, $sub, $card){
+    if (!paymob_moto_ready($conn)) return [false, 'التجديد التلقائي غير مفعّل من الإدارة'];
+    $p = $conn->prepare("SELECT id, name, amount, duration_days FROM subscription_plans WHERE id = ? AND is_active = 1 LIMIT 1");
+    $p->bind_param("s", $sub['plan_id']); $p->execute(); $plan = $p->get_result()->fetch_assoc(); $p->close();
+    if (!$plan || (float)$plan['amount'] <= 0) return [false, 'الباقة غير متاحة للتجديد'];
+    $cents = (int)round((float)$plan['amount'] * 100);
+    $auth = paymob_http('/api/auth/tokens', ['api_key' => site_config_get($conn, 'paymob_api_key')]);
+    if (!$auth || empty($auth['token'])) return [false, 'تعذّر الاتصال ببوابة الدفع'];
+    $merchantRef = 'R' . date('ymdHis') . bin2hex(random_bytes(3));
+    $st = $conn->prepare("INSERT INTO payment_orders (provider, merchant_ref, kind, subscriber_id, account_email, plan_id, immediate, amount_cents, status) VALUES ('paymob', ?, 'renew', ?, ?, ?, 0, ?, 'pending')");
+    $sid = (int)$sub['id'];
+    $st->bind_param("sissi", $merchantRef, $sid, $sub['account_email'], $plan['id'], $cents); $st->execute(); $localId = $conn->insert_id; $st->close();
+    $order = paymob_http('/api/ecommerce/orders', ['auth_token' => $auth['token'], 'delivery_needed' => false, 'amount_cents' => $cents, 'currency' => 'EGP', 'merchant_order_id' => $merchantRef, 'items' => []]);
+    if (!$order || empty($order['id'])) return [false, 'تعذّر إنشاء طلب الدفع'];
+    $oid = (string)$order['id'];
+    $u = $conn->prepare("UPDATE payment_orders SET provider_order_id = ? WHERE id = ?"); $u->bind_param("si", $oid, $localId); $u->execute(); $u->close();
+    $np = preg_split('/\s+/u', trim((string)($sub['name'] ?: 'GRIFFINE Client')), 2);
+    $key = paymob_http('/api/acceptance/payment_keys', ['auth_token' => $auth['token'], 'amount_cents' => $cents, 'expiration' => 3600, 'order_id' => $oid, 'currency' => 'EGP',
+        'integration_id' => (int)site_config_get($conn, 'paymob_moto_integration'),
+        'billing_data' => ['first_name' => $np[0] ?: 'NA', 'last_name' => $np[1] ?? 'NA', 'email' => $sub['contact_email'] ?: $sub['account_email'], 'phone_number' => $sub['phone'] ?: 'NA',
+            'apartment' => 'NA', 'floor' => 'NA', 'street' => 'NA', 'building' => 'NA', 'shipping_method' => 'NA', 'postal_code' => 'NA', 'city' => 'NA', 'country' => 'EG', 'state' => 'NA']]);
+    if (!$key || empty($key['token'])) return [false, 'تعذّر تجهيز الدفع (راجع Integration MOTO)'];
+    $pay = paymob_http('/api/acceptance/payments/pay', ['source' => ['identifier' => $card['card_token'], 'subtype' => 'TOKEN'], 'payment_token' => $key['token']]);
+    if (!$pay) return [false, 'البوابة لم ترد'];
+    $ok = in_array($pay['success'] ?? false, [true, 'true'], true) && !in_array($pay['pending'] ?? false, [true, 'true'], true);
+    if ($ok) { paymob_apply_success($conn, $oid, (string)($pay['id'] ?? ''), (int)($pay['amount_cents'] ?? $cents)); return [true, 'تم التجديد']; }
+    $f = $conn->prepare("UPDATE payment_orders SET status = 'failed' WHERE id = ?"); $f->bind_param("i", $localId); $f->execute(); $f->close();
+    return [false, 'البنك رفض الخصم' . (!empty($pay['data']['message']) ? ': ' . mb_substr((string)$pay['data']['message'], 0, 100) : '')];
+}
+// مدّ الاشتراك بعد دفع تجديد ناجح (من تاريخ الانتهاء لو بعد سارٍ، أو من النهارده لو خلص)
+function paymob_apply_renewal($conn, $po, $ref){
+    $s = $conn->prepare("SELECT * FROM subscribers WHERE id = ? AND account_email = ?"); $s->bind_param("is", $po['subscriber_id'], $po['account_email']); $s->execute();
+    $sub = $s->get_result()->fetch_assoc(); $s->close();
+    if (!$sub) return;
+    $p = $conn->prepare("SELECT id, name, amount, duration_days FROM subscription_plans WHERE id = ?"); $p->bind_param("s", $po['plan_id']); $p->execute(); $plan = $p->get_result()->fetch_assoc(); $p->close();
+    $days = $plan ? (int)$plan['duration_days'] : 30;
+    $from = max(date('Y-m-d'), $sub['end_date']);
+    $end = date('Y-m-d', strtotime("$from +$days days"));
+    $u = $conn->prepare("UPDATE subscribers SET end_date = ?, active = 1, payment_method = 'paymob', payment_ref = ? WHERE id = ?");
+    $u->bind_param("ssi", $end, $ref, $sub['id']); $u->execute(); $u->close();
+    logSubscriptionEvent($conn, $sub['account_email'], 'renewal', $sub['plan_id'], $sub['plan_name'], (float)$sub['amount']);
+    try { griffine_notify($conn, $sub['account_email'], 'تم تجديد اشتراكك في GRIFFINE', 'تم تجديد اشتراكك تلقائيًا ✅',
+        ["تم خصم قيمة الباقة ({$sub['plan_name']}) من كارتك المحفوظ وتجديد اشتراكك حتى $end.", 'يمكنك إيقاف التجديد التلقائي في أي وقت من صفحة الاشتراك والباقات.'],
+        ['label' => 'فتح GRIFFINE', 'url' => MAIL_SITE_URL . '/index.php'], 'subscription_renewed'); } catch (Throwable $e) {}
 }
 ?>

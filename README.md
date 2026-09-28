@@ -16,4 +16,6 @@
 - `security_lib.php` — إعدادات لوحة التحكم (site_config)، رابط الإدارة السري، OTP، SMS.
 - `paymob_lib.php` / `paymob_callback.php` — بوابة الدفع Paymob.
 - `mailer.php` — الإيميلات من info@griffine.store (SMTP).
-- `griffine.js` / `shell.js` / `studio.js` — الواجهة.
+- الواجهة (بالترتيب في index.php): `shell.js` (الهيكل والتنقل) · `studio.js` · `app-core.js` (الأساس) · `app-public.js` · `app-subscribe.js` · `app-admin.js` · `app-plans.js` · `app-screener.js` · `app-chat.js` · `app-nav.js` · `hr.js` · `markets.js` · `app-init.js` (آخر ملف - تشغيل الموقع).
+- `quote_lib.php` / `markets_lib.php` / `markets_api.php` — الأسعار وقائمة المتابعة والتنبيهات ومنحنى المحفظة.
+- Cron (بمفتاح CRON_KEY): `send_reminders.php` · `price_alerts_check.php` (كل 15 دقيقة) · `renew_subscriptions.php` (يوميًا).

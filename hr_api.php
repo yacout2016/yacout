@@ -33,7 +33,7 @@ $action = $_GET['action'] ?? $_POST['action'] ?? '';
 $titleActions = ['titles', 'save_title', 'delete_title'];
 $canHr = in_array('manage_hr', $perms, true);
 $canTitles = $canHr || in_array('manage_staff', $perms, true);
-if (in_array($action, $titleActions, true) ? !$canTitles : !$canHr) { http_response_code(403); hr_fail("مفيش صلاحية كافية (شؤون الموظفين)."); }
+if (in_array($action, $titleActions, true) ? !$canTitles : !$canHr) { http_response_code(403); hr_fail("لا توجد صلاحية كافية (شؤون الموظفين)."); }
 $isPost = $_SERVER['REQUEST_METHOD'] === 'POST';
 if ($isPost) requireCsrf();
 $by = $_SESSION['user_email'];
@@ -87,7 +87,7 @@ try {
         $u = $conn->prepare("SELECT (SELECT COUNT(*) FROM staff_members WHERE job_title = ?) + (SELECT COUNT(*) FROM hr_employees WHERE job_title = ?) AS c");
         $u->bind_param("ss", $key, $key); $u->execute();
         $inUse = (int)$u->get_result()->fetch_assoc()['c']; $u->close();
-        if ($inUse > 0) hr_fail("المسمى ده مستخدم لـ $inUse شخص - غيّر مسماهم الأول.");
+        if ($inUse > 0) hr_fail("هذا المسمى مستخدم لـ $inUse شخص - غيّر مسماهم الأول.");
         $d = $conn->prepare("DELETE FROM job_titles WHERE title_key = ?"); $d->bind_param("s", $key); $d->execute(); $d->close();
         hr_out(["success" => true]);
     }
@@ -103,7 +103,7 @@ try {
         $id = (int)($_GET['id'] ?? 0);
         $st = $conn->prepare("SELECT * FROM hr_employees WHERE id = ?"); $st->bind_param("i", $id); $st->execute();
         $r = $st->get_result()->fetch_assoc(); $st->close();
-        if (!$r) hr_fail("الموظف مش موجود.");
+        if (!$r) hr_fail("الموظف غير موجود.");
         $docs = [];
         $d = $conn->prepare("SELECT id, file_token, file_name, uploaded_by, created_at FROM hr_documents WHERE employee_id = ? ORDER BY id DESC");
         $d->bind_param("i", $id); $d->execute(); $dr = $d->get_result();
@@ -133,7 +133,7 @@ try {
         if ($name === '') hr_fail("اكتب اسم الموظف.");
         if ($title !== '' && !array_key_exists($title, getAllJobTitles())) hr_fail("المسمى الوظيفي غير موجود.");
         if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) hr_fail("الإيميل غير صحيح.");
-        if ($nid !== '' && strlen($nid) !== 14) hr_fail("الرقم القومي لازم يكون 14 رقم.");
+        if ($nid !== '' && strlen($nid) !== 14) hr_fail("يجب أن يتكون الرقم القومي من 14 رقمًا.");
         if ($salary < 0) hr_fail("الراتب غير صالح.");
         foreach ([$start, $end] as $dt) if ($dt !== null && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $dt)) hr_fail("تاريخ غير صالح.");
         if ($id > 0) {
@@ -160,14 +160,14 @@ try {
     if ($action === 'upload_doc' && $isPost) {
         $emp = (int)($_POST['employee_id'] ?? 0);
         $chk = $conn->prepare("SELECT id FROM hr_employees WHERE id = ?"); $chk->bind_param("i", $emp); $chk->execute();
-        if (!$chk->get_result()->fetch_assoc()) hr_fail("الموظف مش موجود."); $chk->close();
+        if (!$chk->get_result()->fetch_assoc()) hr_fail("الموظف غير موجود."); $chk->close();
         $f = $_FILES['file'] ?? null;
-        if (!$f || $f['error'] !== UPLOAD_ERR_OK || !is_uploaded_file($f['tmp_name'])) hr_fail("الملف موصلش - جرّب تاني (أقصى حجم 15 ميجا).");
+        if (!$f || $f['error'] !== UPLOAD_ERR_OK || !is_uploaded_file($f['tmp_name'])) hr_fail("لم يصل الملف - حاول مرة أخرى (أقصى حجم 15 ميجا).");
         if ($f['size'] > 15 * 1024 * 1024) hr_fail("الملف كبير - أقصى حجم 15 ميجا.");
         $origName = trim(mb_substr(preg_replace('/[\\\\\/:*?"<>|\r\n]/', '', (string)$f['name']), 0, 150)) ?: 'مستند';
         $ext = upl_detect_file($f['tmp_name'], $origName);
         if (!$ext || in_array($ext, ['mp4', 'webm', 'mov'], true)) hr_fail("نوع الملف غير مدعوم. المسموح: صور، PDF، Word، Excel، PowerPoint، ZIP.");
-        $dir = upl_dir(); if (!$dir) hr_fail("مفيش مكان لحفظ الملفات على السيرفر.");
+        $dir = upl_dir(); if (!$dir) hr_fail("لا يوجد مكان لحفظ الملفات على السيرفر.");
         $fname = 'hr_' . bin2hex(random_bytes(16)) . '.' . $ext;
         if (!move_uploaded_file($f['tmp_name'], $dir . '/' . $fname)) hr_fail("تعذّر حفظ الملف.");
         $tok = 'file:' . $fname;
@@ -219,7 +219,7 @@ try {
             $id = (int)($r['id'] ?? 0); $work = (float)($r['workDays'] ?? 26); $present = (float)($r['presentDays'] ?? 0);
             $bonus = max(0, round((float)($r['bonus'] ?? 0), 2)); $ded = max(0, round((float)($r['deductions'] ?? 0), 2));
             $note = mb_substr(trim((string)($r['note'] ?? '')), 0, 255);
-            if ($id <= 0 || $work <= 0 || $work > 31 || $present < 0 || $present > $work) hr_fail("راجع أيام الحضور (لازم بين 0 وعدد أيام العمل) للموظف رقم $id.");
+            if ($id <= 0 || $work <= 0 || $work > 31 || $present < 0 || $present > $work) hr_fail("راجع أيام الحضور (يجب أن تكون بين 0 وعدد أيام العمل) للموظف رقم $id.");
             $st->bind_param("sddddssi", $month, $work, $present, $bonus, $ded, $note, $by, $id);
             $st->execute(); $n++;
         }
@@ -229,6 +229,6 @@ try {
     hr_fail("طلب غير معروف.");
 } catch (Throwable $e) {
     error_log('GRIFFINE hr_api: ' . $e->getMessage());
-    hr_fail("حصل خطأ - اتأكد إن ملف ALL_SCHEMA_UPDATES.sql (الإصدار 85) اتشغّل.");
+    hr_fail("حدث خطأ - تأكد أن ملف ALL_SCHEMA_UPDATES.sql (الإصدار 85) اتشغّل.");
 }
 ?>

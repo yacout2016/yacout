@@ -88,7 +88,7 @@ while ($r = $result->fetch_assoc()) {
         $att = chat_attachment_bytes($r['attachment'], $r['attachment_name'], count($attachments) + 1);
         if ($att === 'too_big') { $bigOnes++; $text .= ($text ? ' ' : '') . '📎 [ملف كبير: ' . ($r['attachment_name'] ?: 'مرفق') . ' - موجود في المحادثة على الموقع (أكبر من إنه يتبعت بالإيميل)]'; }
         elseif ($att) { $attachments[] = $att; $text .= ($text ? ' ' : '') . '📎 [مرفق رقم ' . count($attachments) . ': ' . $att['name'] . ']'; }
-        else { $missing++; $text .= ($text ? ' ' : '') . '📎 [مرفق - الملف مش متاح على السيرفر]'; }
+        else { $missing++; $text .= ($text ? ' ' : '') . '📎 [مرفق - الملف غير متاح على السيرفر]'; }
     }
     $lines[] = "[" . $r['created_at'] . "] $who: " . ($text !== '' ? $text : '—');
 }
@@ -106,10 +106,10 @@ $who = $visitorEmail ?: 'زائر بدون إيميل';
 $paragraphs = [
     "محادثة الشات كاملة مع: $who",
     "معرّف المحادثة: $visitorId",
-    "عدد الرسائل: " . count($lines) . " · المرفقات: " . count($attachments) . ($missing ? " (+$missing مش متاح)" : '') . ($bigOnes ? " (+$bigOnes ملف كبير على الموقع)" : ''),
+    "عدد الرسائل: " . count($lines) . " · المرفقات: " . count($attachments) . ($missing ? " (+$missing غير متاح)" : '') . ($bigOnes ? " (+$bigOnes ملف كبير على الموقع)" : ''),
     implode("\n", $lines),
 ];
-if ($attachments) $paragraphs[] = 'الصور والملفات متضافة كمرفقات في الإيميل ده بنفس الترقيم.';
+if ($attachments) $paragraphs[] = 'الصور والملفات مضافة كمرفقات في هذه الرسالة بالترقيم نفسه.';
 
 $res = griffine_notify($conn, MAIL_ADMIN_TO, "نسخة محادثة شات - $who", 'نسخة كاملة من محادثة الشات', $paragraphs, null, 'chat_transcript', [
     'attachments' => $attachments,

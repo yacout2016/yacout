@@ -22,7 +22,18 @@ header("X-Content-Type-Options: nosniff");
 header("X-Frame-Options: SAMEORIGIN");
 header("Referrer-Policy: strict-origin-when-cross-origin");
 header("Permissions-Policy: camera=(), microphone=(), geolocation=()");
-header("Content-Security-Policy: object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'");
+/* الإصدار 88: حماية CSP كاملة - السكربتات من ملفات الموقع نفسه بس (+ مكتبات PDF من cdnjs + شارت TradingView)
+   لا يوجد أي سكربت أو onclick مكتوب جوه الصفحة ← أي كود متحقن مش هيشتغل */
+header("Content-Security-Policy: default-src 'self'; "
+    . "script-src 'self' https://cdnjs.cloudflare.com https://s3.tradingview.com; "
+    . "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+    . "font-src 'self' data: https://fonts.gstatic.com; "
+    . "img-src 'self' data: blob: https:; "
+    . "media-src 'self' blob:; "
+    . "connect-src 'self'; "
+    . "frame-src https://s.tradingview.com https://www.tradingview.com https://*.tradingview.com; "
+    . "worker-src 'self'; manifest-src 'self'; "
+    . "object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'");
 ?>
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -46,17 +57,27 @@ header("Content-Security-Policy: object-src 'none'; base-uri 'self'; frame-ances
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@500;700;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<script>(function(){try{if(localStorage.getItem('griffine_theme')==='dark')document.documentElement.setAttribute('data-theme','dark');}catch(e){}})();</script>
-<link rel="stylesheet" href="griffine.css?v=87">
-<link rel="stylesheet" href="shell.css?v=87">
+<script src="theme-boot.js?v=88"></script>
+<link rel="stylesheet" href="griffine.css?v=88">
+<link rel="stylesheet" href="shell.css?v=88">
 </head>
 <body>
 <div id="app"></div>
 
-<script src="shell.js?v=87"></script>
-<!-- الإصدار 72: استوديو التصميم - بيطبّق الثيم وتعديلات الأدمن على كل الشاشات (شاشة التعديل نفسها studio-editor.js بتتحمّل للأدمن بس) -->
-<script src="studio.js?v=87"></script>
-<script src="griffine.js?v=87"></script>
-<script src="hr.js?v=87"></script>
+<script src="shell.js?v=88"></script>
+<!-- الإصدار 72: استوديو التصميم - يطبّق الثيم وتعديلات الأدمن على كل الشاشات (شاشة التعديل نفسها studio-editor.js تُحمَّل للأدمن فقط) -->
+<script src="studio.js?v=88"></script>
+<!-- الإصدار 88: griffine.js قُسّم إلى ملفات حسب الأقسام (بالترتيب نفسه) - يجب أن يبقى app-init.js آخر ملف -->
+<script src="app-core.js?v=88"></script>
+<script src="app-public.js?v=88"></script>
+<script src="app-subscribe.js?v=88"></script>
+<script src="app-admin.js?v=88"></script>
+<script src="app-plans.js?v=88"></script>
+<script src="app-screener.js?v=88"></script>
+<script src="app-chat.js?v=88"></script>
+<script src="app-nav.js?v=88"></script>
+<script src="hr.js?v=88"></script>
+<script src="markets.js?v=88"></script>
+<script src="app-init.js?v=88"></script>
 </body>
 </html>

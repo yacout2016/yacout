@@ -2,7 +2,7 @@
 /* =====================================================================
    GRIFFINE — ui_custom_save.php (الإصدار 72)
    ---------------------------------------------------------------------
-   حفظ تخصيصات استوديو التصميم - للأدمن بصلاحية "تنسيق الموقع" (edit_site_design) بس.
+   حفظ تخصيصات استوديو التصميم - للأدمن بصلاحية "تنسيق الموقع" (edit_site_design) فقط.
    المدخلات (POST):
      key    = theme | overrides
      value  = JSON
@@ -40,7 +40,7 @@ $MAX_ITEMS = 3000;     // أقصى عدد تعديلات في كل نوع
 $key = trim($_POST['key'] ?? '');
 $raw = $_POST['value'] ?? '';
 if (!in_array($key, ['theme', 'overrides'], true)) { echo json_encode(["success" => false, "message" => "مفتاح غير معروف."]); exit(); }
-if (strlen($raw) > $MAX_BYTES) { echo json_encode(["success" => false, "message" => "التعديلات كتير جدًا - احذف شوية منها."]); exit(); }
+if (strlen($raw) > $MAX_BYTES) { echo json_encode(["success" => false, "message" => "التعديلات كثيرة جدًا - احذف بعضها."]); exit(); }
 $data = json_decode($raw, true);
 if ($raw !== 'null' && !is_array($data)) { echo json_encode(["success" => false, "message" => "بيانات غير صحيحة."]); exit(); }
 
@@ -148,6 +148,6 @@ try {
     echo json_encode(["success" => true, "value" => $clean], JSON_UNESCAPED_UNICODE);
 } catch (Throwable $e) {
     error_log('GRIFFINE ui_custom_save: ' . $e->getMessage());
-    echo json_encode(["success" => false, "message" => "تعذّر الحفظ - اتأكد إنك شغّلت ملف ALL_SCHEMA_UPDATES.sql (جدول ui_customizations)."]);
+    echo json_encode(["success" => false, "message" => "تعذّر الحفظ - تأكد من تشغيل ملف ALL_SCHEMA_UPDATES.sql (جدول ui_customizations)."]);
 }
 ?>

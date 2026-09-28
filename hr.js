@@ -43,15 +43,15 @@ function hrPrint(title, bodyHtml){
     .logo{height:48px}@media print{button{display:none}}</style></head><body>
     <img class="logo" src="${griffineLogoSrc()}" alt="GRIFFINE"><h1>${escapeHtml(title)}</h1>
     <div class="meta">GRIFFINE · شؤون الموظفين · ${new Date().toLocaleString('ar-EG')}</div>${bodyHtml}
-    <button onclick="window.print()" style="margin-top:14px;padding:8px 18px">🖨️ طباعة / حفظ PDF</button>
-    <script>window.onload = () => setTimeout(() => window.print(), 300);<\/script></body></html>`);
-  w.document.close();
+</body></html>`);
+  w.document.close(); gReportReady(w);   // الإصدار 88: شريط طباعة / PDF / مشاركة
 }
 
 /* ---------------------------------------------------------------------
    02. شاشة شؤون الموظفين
    --------------------------------------------------------------------- */
 async function renderHrPage(tab){
+  const __tok = screenToken();   // الإصدار 88
   pushNav(() => renderHrPage(tab));
   const email = await getSession();
   if (!email) return renderLogin();
@@ -59,7 +59,7 @@ async function renderHrPage(tab){
   if (!hasPermission('manage_hr')) return renderAdminHub();
   tab = tab || 'employees';
   window.__lastPageKey = 'hr';
-  app.innerHTML = `<div class="container wide">${logoHeader()}
+  if (screenStale(__tok)) return; app.innerHTML = `<div class="container wide">${logoHeader()}
     <div class="topbar"><div>${pageTitle('hr', '🧑‍💼 شؤون الموظفين (HR)')}</div>
       <button class="secondary small" id="hrBackBtn">🛡️ رجوع للوحة التحكم</button></div>
     <div class="radio-row std-filter-tabs" style="margin-bottom:12px;">
@@ -84,6 +84,7 @@ async function renderHrPage(tab){
 async function hrEmployeesTab(){
   const body = document.getElementById('hrBody');
   const res = await HR.get('action=employees');
+  if (!body || !body.isConnected) return;   // الإصدار 88: المستخدم ساب الشاشة أثناء التحميل
   if (!res.success) { body.innerHTML = `<p class="error">${escapeHtml(res.message || 'تعذّر التحميل')}</p>`; return; }
   const titles = res.titles || {};
   body.innerHTML = `
@@ -110,7 +111,7 @@ async function hrEmployeesTab(){
       <td style="white-space:nowrap;"><button class="small secondary" data-edit="${e.id}" style="width:auto;">✏️</button>
         <button class="small secondary" data-docs="${e.id}" style="width:auto;">📎 المستندات</button>
         <button class="small secondary" data-rep="${e.id}" style="width:auto;">📄 تقرير</button></td></tr>`).join('')
-      : `<tr><td colspan="10" style="text-align:center;color:#888;padding:16px;">${res.employees.length ? 'مفيش نتائج مطابقة' : 'لسه مفيش موظفين - دوس "إضافة موظف".'}</td></tr>`;
+      : `<tr><td colspan="10" style="text-align:center;color:#888;padding:16px;">${res.employees.length ? 'لا توجد نتائج مطابقة' : 'لا يوجد موظفون بعد - اضغط "إضافة موظف".'}</td></tr>`;
     document.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => hrEmployeeForm(res.employees.find(x => x.id === +b.dataset.edit), titles));
     document.querySelectorAll('[data-docs]').forEach(b => b.onclick = () => hrDocsPanel(+b.dataset.docs));
     document.querySelectorAll('[data-rep]').forEach(b => b.onclick = () => hrEmployeeReport(+b.dataset.rep));
@@ -151,7 +152,7 @@ function hrEmployeeForm(emp, titles){
   document.getElementById('hfCancel').onclick = () => { wrap.innerHTML = ''; };
   const del = document.getElementById('hfDelete');
   if (del) del.onclick = async () => {
-    if (!await gConfirm(`حذف "${e.name}" نهائيًا مع كل مستنداته وسجل حضوره؟ (لو ساب الشغل، الأفضل تغيّر حالته لـ "ترك العمل" عشان سجله يفضل)`, { ok: 'حذف نهائي', danger: true })) return;
+    if (!await gConfirm(`حذف "${e.name}" نهائيًا مع كل مستنداته وسجل حضوره؟ (لو ساب الشغل، الأفضل تغيّر حالته لـ "ترك العمل" حتى يبقى سجله محفوظًا)`, { ok: 'حذف نهائي', danger: true })) return;
     const r = await HR.post({ action: 'delete_employee', id: e.id });
     if (r.success) hrEmployeesTab(); else alert(r.message || 'تعذّر الحذف');
   };
@@ -160,7 +161,7 @@ function hrEmployeeForm(emp, titles){
     const v = (id) => document.getElementById(id).value.trim();
     const r = await HR.post({ action: 'save_employee', id: e.id || 0, name: v('hfName'), jobTitle: v('hfTitle'), phone: v('hfPhone'), email: v('hfEmail'),
       nationalId: v('hfNid'), salary: v('hfSalary') || 0, startDate: v('hfStart'), status: v('hfStatus'), endDate: v('hfStatus') === 'left' ? v('hfEnd') : '', notes: v('hfNotes') });
-    if (r.success) { alert('✅ اتحفظ'); hrEmployeesTab(); }
+    if (r.success) { alert('✅ تم الحفظ'); hrEmployeesTab(); }
     else { const m = document.getElementById('hfMsg'); m.textContent = r.message || 'تعذّر الحفظ'; m.style.display = ''; }
   };
 }
@@ -170,10 +171,11 @@ async function hrDocsPanel(empId){
   const wrap = document.getElementById('hrFormWrap');
   wrap.innerHTML = '<div class="section-card">جارٍ التحميل...</div>';
   const res = await HR.get('action=employee&id=' + empId);
+  if (!wrap.isConnected) return;
   if (!res.success) { wrap.innerHTML = `<div class="section-card error">${escapeHtml(res.message || '')}</div>`; return; }
   wrap.innerHTML = `<div class="section-card">
     <div class="section-title">📎 مستندات: ${escapeHtml(res.employee.name)}</div>
-    <div style="font-size:12px;color:#888;margin-bottom:8px;">صورة البطاقة، العقد، الشهادات... (صور، PDF، Word، Excel، ZIP - حتى 15 ميجا للملف). الملفات محفوظة في مكان محمي ومحدش يفتحها غير اللي عنده صلاحية شؤون الموظفين.</div>
+    <div style="font-size:12px;color:#888;margin-bottom:8px;">صورة البطاقة، العقد، الشهادات... (صور، PDF، Word، Excel، ZIP - حتى 15 ميجا للملف). الملفات محفوظة في مكان محمي ولا يفتحها إلا من لديه صلاحية شؤون الموظفين.</div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
       <input type="file" id="hrDocFile" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.pptx,.zip" style="flex:1;min-width:200px;">
       <button id="hrDocUpload" style="width:auto;">⬆️ رفع</button>
@@ -183,7 +185,7 @@ async function hrDocsPanel(empId){
     <ul style="list-style:none;padding:0;margin:10px 0 0;">${res.documents.length ? res.documents.map(d => `<li style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border-soft);">
       <span>📄 ${escapeHtml(d.name)} <small style="color:#888;">— ${escapeHtml(d.at || '')}</small></span>
       <span style="white-space:nowrap;"><a href="${escapeHtml(d.url)}" target="_blank" rel="noopener"><button class="small secondary" style="width:auto;">⬇️ تنزيل / عرض</button></a>
-      <button class="small danger" data-deldoc="${d.id}" style="width:auto;">🗑️</button></span></li>`).join('') : '<li style="color:#888;">مفيش مستندات لسه.</li>'}</ul>
+      <button class="small danger" data-deldoc="${d.id}" style="width:auto;">🗑️</button></span></li>`).join('') : '<li style="color:#888;">لا يوجد مستندات بعد.</li>'}</ul>
   </div>`;
   wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
   document.getElementById('hrDocClose').onclick = () => { wrap.innerHTML = ''; hrEmployeesTab(); };
@@ -219,7 +221,7 @@ async function hrEmployeeReport(empId){
       ${e.notes ? `<b>ملاحظات</b><span>${escapeHtml(e.notes)}</span>` : ''}</div>
     <h3>الحضور والرواتب (آخر 24 شهر)</h3>
     <table><thead><tr><th>الشهر</th><th>أيام العمل</th><th>الحضور</th><th>الراتب الأساسي</th><th>مكافأة</th><th>خصم</th><th>المستحق</th><th>ملاحظة</th></tr></thead><tbody>
-    ${res.attendance.map(a => `<tr><td>${HR.monthLabel(a.month)}</td><td>${a.workDays}</td><td>${a.presentDays}</td><td>${HR.money(a.baseSalary)}</td><td>${HR.money(a.bonus)}</td><td>${HR.money(a.deductions)}</td><td><b>${HR.money(a.net)}</b></td><td>${escapeHtml(a.note || '')}</td></tr>`).join('') || '<tr><td colspan="8">مفيش حضور متسجّل</td></tr>'}
+    ${res.attendance.map(a => `<tr><td>${HR.monthLabel(a.month)}</td><td>${a.workDays}</td><td>${a.presentDays}</td><td>${HR.money(a.baseSalary)}</td><td>${HR.money(a.bonus)}</td><td>${HR.money(a.deductions)}</td><td><b>${HR.money(a.net)}</b></td><td>${escapeHtml(a.note || '')}</td></tr>`).join('') || '<tr><td colspan="8">لا يوجد حضور مسجّل</td></tr>'}
     ${res.attendance.length ? `<tr class="tot"><td colspan="6">الإجمالي المستحق</td><td>${HR.money(totNet)}</td><td></td></tr>` : ''}</tbody></table>
     <h3>المستندات</h3><ul>${res.documents.map(d => `<li>${escapeHtml(d.name)} — ${escapeHtml(d.at || '')}</li>`).join('') || '<li>لا يوجد</li>'}</ul>`);
 }
@@ -230,6 +232,7 @@ async function hrEmployeeReport(empId){
 async function hrAttendanceTab(month){
   const body = document.getElementById('hrBody');
   const res = await HR.get('action=attendance&month=' + encodeURIComponent(month));
+  if (!body || !body.isConnected) return;   // الإصدار 88: المستخدم ساب الشاشة أثناء التحميل
   if (!res.success) { body.innerHTML = `<p class="error">${escapeHtml(res.message || 'تعذّر التحميل')}</p>`; return; }
   const rows = res.rows, titles = res.titles || {};
   body.innerHTML = `
@@ -241,14 +244,14 @@ async function hrAttendanceTab(month){
     <div class="section-card" style="padding:0;overflow:auto;"><table class="std-table" style="width:100%;"><thead><tr>
       <th>الموظف</th><th>المسمى</th><th>الراتب الأساسي</th><th>أيام العمل</th><th>أيام الحضور</th><th>مكافأة</th><th>خصم</th><th>المستحق</th><th>ملاحظة</th></tr></thead>
       <tbody>${rows.map((r, i) => `<tr data-i="${i}">
-        <td><strong>${escapeHtml(r.name)}</strong>${r.saved ? '' : ' <small style="color:#b7791f;">(لسه متسجّلش)</small>'}</td><td>${escapeHtml(HR.titleOf(titles, r.jobTitle))}</td>
+        <td><strong>${escapeHtml(r.name)}</strong>${r.saved ? '' : ' <small style="color:#b7791f;">(لم يُسجَّل بعد)</small>'}</td><td>${escapeHtml(HR.titleOf(titles, r.jobTitle))}</td>
         <td dir="ltr">${HR.money(r.baseSalary)}</td>
         <td><input type="number" class="haW" min="1" max="31" step="0.5" value="${r.workDays}" style="width:70px;margin:0;" dir="ltr"></td>
         <td><input type="number" class="haP" min="0" max="31" step="0.5" value="${r.presentDays}" style="width:70px;margin:0;" dir="ltr"></td>
         <td><input type="number" class="haB" min="0" step="0.01" value="${r.bonus}" style="width:90px;margin:0;" dir="ltr"></td>
         <td><input type="number" class="haD" min="0" step="0.01" value="${r.deductions}" style="width:90px;margin:0;" dir="ltr"></td>
         <td class="haNet" dir="ltr" style="font-weight:800;"></td>
-        <td><input type="text" class="haN" value="${escapeHtml(r.note || '')}" style="min-width:120px;margin:0;"></td></tr>`).join('') || '<tr><td colspan="9" style="text-align:center;color:#888;padding:16px;">مفيش موظفين على رأس العمل.</td></tr>'}
+        <td><input type="text" class="haN" value="${escapeHtml(r.note || '')}" style="min-width:120px;margin:0;"></td></tr>`).join('') || '<tr><td colspan="9" style="text-align:center;color:#888;padding:16px;">لا يوجد موظفون على رأس العمل.</td></tr>'}
       </tbody><tfoot><tr><td colspan="7" style="text-align:left;font-weight:800;">إجمالي المستحق للشهر</td><td id="haTotal" dir="ltr" style="font-weight:800;"></td><td></td></tr></tfoot></table></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
       <button id="haSave" style="width:auto;">💾 حفظ حضور الشهر</button>
@@ -269,10 +272,10 @@ async function hrAttendanceTab(month){
   document.getElementById('haSave').onclick = async () => {
     const data = read();
     const bad = data.find(r => !(r.workDays > 0 && r.workDays <= 31) || r.presentDays < 0 || r.presentDays > r.workDays);
-    if (bad) { alert(`راجع أيام "${bad.name}": الحضور لازم يكون بين 0 وعدد أيام العمل.`); return; }
+    if (bad) { alert(`راجع أيام "${bad.name}": يجب أن يكون الحضور بين 0 وعدد أيام العمل.`); return; }
     const r = await HR.post({ action: 'save_attendance', month, rows: JSON.stringify(data) });
     const m = document.getElementById('haMsg');
-    if (r.success) { m.textContent = `✓ اتحفظ حضور ${r.saved} موظف لشهر ${HR.monthLabel(month)}`; m.style.color = 'var(--green)'; hrAttendanceTab(month); }
+    if (r.success) { m.textContent = `✓ تم حفظ حضور ${r.saved} موظف لشهر ${HR.monthLabel(month)}`; m.style.color = 'var(--green)'; hrAttendanceTab(month); }
     else { m.textContent = r.message || 'تعذّر الحفظ'; m.style.color = '#c0392b'; }
   };
   const payroll = () => read().map(r => ({ ...r, net: HR.net(r.baseSalary, r.workDays, r.presentDays, r.bonus, r.deductions) }));
@@ -327,6 +330,7 @@ async function hrReportsTab(){
    07. المسميات الوظيفية (manage_hr أو manage_staff)
    --------------------------------------------------------------------- */
 async function renderJobTitlesPage(){
+  const __tok = screenToken();   // الإصدار 88
   pushNav(() => renderJobTitlesPage());
   const email = await getSession();
   if (!email) return renderLogin();
@@ -334,13 +338,13 @@ async function renderJobTitlesPage(){
   if (!hasPermission('manage_hr') && !hasPermission('manage_staff')) return renderAdminHub();
   window.__lastPageKey = 'job_titles';
   const res = await HR.get('action=titles');
-  if (!res.success) { app.innerHTML = `<div class="container">${logoHeader()}<p class="error">${escapeHtml(res.message || 'تعذّر التحميل')}</p></div>`; return; }
+  if (!res.success) { if (screenStale(__tok)) return; app.innerHTML = `<div class="container">${logoHeader()}<p class="error">${escapeHtml(res.message || 'تعذّر التحميل')}</p></div>`; return; }
   const pk = res.permissionKeys || {};
   const permBoxes = (sel, idp) => Object.entries(pk).map(([k, l]) => `<label class="ms-item" style="font-size:12px;"><input type="checkbox" class="${idp}" value="${k}" ${sel.includes(k) ? 'checked' : ''}> ${escapeHtml(l)}</label>`).join('');
-  app.innerHTML = `<div class="container wide">${logoHeader()}
+  if (screenStale(__tok)) return; app.innerHTML = `<div class="container wide">${logoHeader()}
     <div class="topbar"><div>${pageTitle('job_titles', '🏷️ المسميات الوظيفية')}</div>
       <button class="secondary small" id="jtBack">🛡️ رجوع للوحة التحكم</button></div>
-    <div class="info">أضف أو عدّل أي مسمى وظيفي. الصلاحيات هنا "افتراضية": بتتحط تلقائي لما تضيف عضو فريق بالمسمى ده، وبعدها تقدر تزوّد أو تنقص لكل شخص من "الفريق والصلاحيات".</div>
+    <div class="info">أضف أو عدّل أي مسمى وظيفي. الصلاحيات هنا "افتراضية": تُضاف تلقائيًا عند إضافة عضو فريق بهذا المسمى، وبعدها يمكنك زيادتها أو إنقاصها لكل شخص من "الفريق والصلاحيات".</div>
     <div class="section-card"><div class="section-title">➕ مسمى جديد</div>
       <input type="text" id="jtNewLabel" placeholder="مثال: محاسب، مدير فرع، مسؤول HR">
       <details style="margin-top:6px;"><summary style="cursor:pointer;font-size:13px;">الصلاحيات الافتراضية (اختياري)</summary><div class="ms-grid" style="margin-top:6px;">${permBoxes([], 'jtNewPerm')}</div></details>
@@ -360,14 +364,14 @@ async function renderJobTitlesPage(){
     if (!label) { alert('اكتب اسم المسمى.'); return; }
     const perms = [...document.querySelectorAll('.jtNewPerm:checked')].map(x => x.value);
     const r = await HR.post({ action: 'save_title', label, perms: JSON.stringify(perms) });
-    if (r.success) { alert('✅ المسمى اتضاف'); window.__navSilent = true; try { renderJobTitlesPage(); } finally { window.__navSilent = false; } } else alert(r.message || 'تعذّر');
+    if (r.success) { alert('✅ تمت إضافة المسمى'); window.__navSilent = true; try { renderJobTitlesPage(); } finally { window.__navSilent = false; } } else alert(r.message || 'تعذّر');
   };
   document.querySelectorAll('[data-key]').forEach(card => {
     const key = card.dataset.key;
     card.querySelector('.jtSave').onclick = async () => {
       const perms = [...card.querySelectorAll('.jtPerm:checked')].map(x => x.value);
       const r = await HR.post({ action: 'save_title', key, label: card.querySelector('.jtLabel').value.trim(), perms: JSON.stringify(perms) });
-      alert(r.success ? '✅ اتحفظ' : (r.message || 'تعذّر'));
+      alert(r.success ? '✅ تم الحفظ' : (r.message || 'تعذّر'));
     };
     card.querySelector('.jtDel').onclick = async () => {
       if (!await gConfirm(`حذف المسمى "${card.querySelector('.jtLabel').value}"؟`, { ok: 'حذف', danger: true })) return;

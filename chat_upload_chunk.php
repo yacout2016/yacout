@@ -36,7 +36,7 @@ $offset    = (int)($_POST['offset'] ?? -1);
 $total     = (int)($_POST['total'] ?? 0);
 $name      = mb_substr(trim(preg_replace('/[\\\\\/:*?"<>|\r\n]/', '', (string)($_POST['name'] ?? ''))), 0, 120);
 if ($visitorId === '' || !preg_match('/^[a-f0-9]{32}$/', $uploadId) || $offset < 0 || $total < 1) up_fail("بيانات الرفع ناقصة.");
-if (empty($_FILES['chunk']) || $_FILES['chunk']['error'] !== UPLOAD_ERR_OK || !is_uploaded_file($_FILES['chunk']['tmp_name'])) up_fail("الجزء ده موصلش كامل - جرّب تاني.");
+if (empty($_FILES['chunk']) || $_FILES['chunk']['error'] !== UPLOAD_ERR_OK || !is_uploaded_file($_FILES['chunk']['tmp_name'])) up_fail("لم يصل هذا الجزء كاملًا - حاول مرة أخرى.");
 $chunkSize = (int)$_FILES['chunk']['size'];
 if ($chunkSize < 1 || $chunkSize > 8 * 1024 * 1024) up_fail("حجم الجزء غير صالح.");
 
@@ -48,8 +48,8 @@ if ($isStaff) {
     $limitMb = CHAT_MAX_UPLOAD_CAP_MB;
 } else {
     if (!preg_match('/^[a-zA-Z0-9_-]{20,64}$/', $visitorId)) up_fail("معرّف المحادثة غير صالح.");
-    if (!chat_visitor_can_access($conn, $visitorId)) up_fail("المحادثة دي مش متاحة.", ["code" => "not_owner"]);
-    if (!chat_upload_allowed($conn, $visitorId)) up_fail("رفع الملفات والصور مقفول دلوقتي.");
+    if (!chat_visitor_can_access($conn, $visitorId)) up_fail("هذه المحادثة غير متاحة.", ["code" => "not_owner"]);
+    if (!chat_upload_allowed($conn, $visitorId)) up_fail("رفع الملفات والصور مغلق الآن.");
     $limitMb = chat_max_upload_mb($conn, $visitorId);
 }
 if ($total > $limitMb * 1024 * 1024) up_fail("حجم الملف أكبر من المسموح - أقصى حجم $limitMb ميجا.", ["maxUploadMb" => $limitMb]);
@@ -58,7 +58,7 @@ if ($total > $limitMb * 1024 * 1024) up_fail("حجم الملف أكبر من ا
 // 3) تجميع الأجزاء في ملف مؤقت
 // ---------------------------------------------------------------------
 $dir = upl_dir();
-if (!$dir) up_fail("مفيش مكان لحفظ الملفات على السيرفر.");
+if (!$dir) up_fail("لا يوجد مكان لحفظ الملفات على السيرفر.");
 $part = $dir . '/tmp_' . $uploadId . '.part';
 
 if ($offset === 0) {
@@ -68,12 +68,12 @@ if ($offset === 0) {
     $_SESSION['chat_up'][$uploadId] = ['v' => $visitorId, 'total' => $total];
 }
 $meta = $_SESSION['chat_up'][$uploadId] ?? null;
-if (!$meta || $meta['v'] !== $visitorId || (int)$meta['total'] !== $total) up_fail("الرفع ده مش معروف - ابدأ من الأول.");
+if (!$meta || $meta['v'] !== $visitorId || (int)$meta['total'] !== $total) up_fail("عملية الرفع هذه غير معروفة - ابدأ من جديد.");
 
 clearstatcache(true, $part);
 $have = is_file($part) ? filesize($part) : 0;
 if ($have !== $offset) up_fail("ترتيب الأجزاء اتلخبط - ابدأ الرفع من الأول.", ["expectedOffset" => $have]);
-if ($have + $chunkSize > $total) { @unlink($part); unset($_SESSION['chat_up'][$uploadId]); up_fail("حجم الملف مش مطابق."); }
+if ($have + $chunkSize > $total) { @unlink($part); unset($_SESSION['chat_up'][$uploadId]); up_fail("حجم الملف غير مطابق."); }
 
 $in = fopen($_FILES['chunk']['tmp_name'], 'rb');
 $out = fopen($part, 'ab');

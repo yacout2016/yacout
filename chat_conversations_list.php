@@ -60,6 +60,6 @@ try {
     echo json_encode(["success" => true, "conversations" => $rows]);
 } catch (Throwable $e) {
     error_log('GRIFFINE chat_conversations_list: ' . $e->getMessage());
-    echo json_encode(["success" => false, "message" => "تعذّر تحميل المحادثات من قاعدة البيانات - شغّل ملف ALL_SCHEMA_UPDATES.sql ولو المشكلة فضلت ابعت الرسالة دي للدعم الفني."]);
+    echo json_encode(["success" => false, "message" => "تعذّر تحميل المحادثات من قاعدة البيانات - شغّل ملف ALL_SCHEMA_UPDATES.sql وإذا استمرت المشكلة فأرسل هذه الرسالة للدعم الفني."]);
 }
 ?>

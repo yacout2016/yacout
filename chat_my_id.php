@@ -5,7 +5,7 @@
    GET ?local=<معرّف الجهاز الحالي>
    - لو الحساب ليه معرّف ← بيرجّعه
    - لو لأ ← بياخد معرّف الجهاز الحالي (عشان محادثته القديمة متضيعش) أو يعمل واحد جديد عشوائي
-   (الزائر اللي مش مسجّل بيفضل بمعرّف جهازه زي ما هو)
+   (الزائر اللي مش مسجّل بيفضل بمعرّف جهازه كما هو)
    ===================================================================== */
 header('Content-Type: application/json');
 require_once __DIR__ . '/session_boot.php';
@@ -23,7 +23,7 @@ try {
     $row = $st->get_result()->fetch_assoc(); $st->close();
     if ($row && !empty($row['chat_visitor_id'])) { echo json_encode(["success" => true, "visitorId" => $row['chat_visitor_id']]); exit(); }
 
-    // المعرّف الحالي للجهاز مينفعش يكون مربوط بحساب تاني
+    // المعرّف الحالي للجهاز غير ممكن يكون مربوط بحساب تاني
     $id = null;
     if ($validLocal) {
         $chk = $conn->prepare("SELECT 1 FROM users WHERE chat_visitor_id = ? LIMIT 1");
@@ -36,7 +36,7 @@ try {
     $up->bind_param("ss", $id, $email); $up->execute(); $up->close();
     echo json_encode(["success" => true, "visitorId" => $id]);
 } catch (Throwable $e) {
-    // ملف SQL لسه متشغّلش (العمود مش موجود) ← الشات يكمّل بمعرّف الجهاز زي الأول
+    // ملف SQL بعد متشغّلش (العمود غير موجود) ← الشات يكمّل بمعرّف الجهاز زي الأول
     echo json_encode(["success" => true, "visitorId" => $validLocal]);
 }
 ?>

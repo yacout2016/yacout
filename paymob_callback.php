@@ -16,6 +16,12 @@ try {
         // إشعار السيرفر (JSON)
         $j = json_decode(file_get_contents('php://input'), true);
         $obj = $j['obj'] ?? null;
+        // الإصدار 88: إشعار حفظ الكارت (TOKEN) - للتجديد التلقائي
+        if (($j['type'] ?? '') === 'TOKEN' && is_array($obj)) {
+            if (!paymob_token_hmac_valid($conn, $obj, $_GET['hmac'] ?? '')) { http_response_code(403); echo 'bad signature'; exit(); }
+            paymob_save_card($conn, $obj);
+            echo 'ok'; exit();
+        }
         $t = is_array($obj) ? paymob_flatten_obj($obj) : null;
         if (!$t || !paymob_hmac_valid($conn, $t, $_GET['hmac'] ?? '')) { http_response_code(403); echo 'bad signature'; exit(); }
         $ok = in_array($t['success'], [true, 'true'], true) && !in_array($t['pending'], [true, 'true'], true);

@@ -6,7 +6,7 @@ include 'db.php';
 
 if (!isset($_SESSION['user_email'])) {
     http_response_code(401);
-    echo json_encode(["success" => false, "message" => "يرجى تسجيل الدخول عشان تقدر تضيف رأيك."]);
+    echo json_encode(["success" => false, "message" => "يرجى تسجيل الدخول لتتمكن من إضافة رأيك."]);
     exit();
 }
 requireCsrf();

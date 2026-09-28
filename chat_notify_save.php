@@ -43,6 +43,6 @@ try {
     chat_notify_save_cfg($conn, $cfg, $_SESSION['user_email']);
     echo json_encode(["success" => true, "settings" => chat_notify_public($cfg)], JSON_UNESCAPED_UNICODE);
 } catch (Throwable $e) {
-    echo json_encode(["success" => false, "message" => "تعذّر الحفظ - اتأكد إن ملف ALL_SCHEMA_UPDATES.sql اتشغّل (جدول ui_customizations)."]);
+    echo json_encode(["success" => false, "message" => "تعذّر الحفظ - تأكد أن ملف ALL_SCHEMA_UPDATES.sql اتشغّل (جدول ui_customizations)."]);
 }
 ?>

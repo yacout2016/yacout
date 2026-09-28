@@ -6,7 +6,7 @@
    حتى لو الأدمن فتحها وقراها - فالنقطة الحمرا ورقم (1) كانوا بيفضلوا ظاهرين.
    دلوقتي: chat_conversation_meta.admin_read_at = آخر وقت الأدمن فتح فيه المحادثة.
    المحادثة غير مقروءة = فيها رسالة من العميل أحدث من admin_read_at (ومش مؤرشفة/محذوفة).
-   لو ملف SQL لسه متشغّلش (العمود مش موجود) الشات بيشتغل بالطريقة القديمة من غير ما يقف.
+   لو ملف SQL بعد متشغّلش (العمود غير موجود) الشات بيشتغل بالطريقة القديمة من غير ما يقف.
    ===================================================================== */
 
 // عمود معيّن موجود في chat_conversation_meta؟ (مرة واحدة لكل عمود في كل طلب)
@@ -26,7 +26,7 @@ function chat_has_read_col($conn){ return chat_meta_has($conn, 'admin_read_at');
    الإصدار 82: رفع الملفات/الصور في الشات
    - مقفول افتراضيًا عند العميل. الأدمن/الموظف بيفتحه لمحادثة معيّنة من شاشة الشات
    - بيتقفل تلقائيًا مع "إنهاء المحادثة" أو الأرشفة أو الحذف
-   - لو ملف SQL لسه متشغّلش (العمود مش موجود) بيفضل الرفع مسموح زي الأول (عشان محدش يتعطل)
+   - لو ملف SQL بعد متشغّلش (العمود غير موجود) بيفضل الرفع مسموح زي الأول (عشان محدش يتعطل)
    --------------------------------------------------------------------- */
 function chat_upload_allowed($conn, $visitorKey){
     if (!chat_meta_has($conn, 'allow_upload')) return true;
@@ -80,7 +80,7 @@ function chat_conversation_owner($conn, $visitorKey){
         $st->bind_param("s", $visitorKey); $st->execute();
         $r = $st->get_result()->fetch_assoc(); $st->close();
         return $r ? $r['username'] : null;
-    } catch (Throwable $e) { return null; } // العمود لسه متعملش
+    } catch (Throwable $e) { return null; } // العمود بعد متعملش
 }
 function chat_visitor_can_access($conn, $visitorKey){
     $owner = chat_conversation_owner($conn, $visitorKey);

@@ -35,7 +35,7 @@ $isSender = strtolower($row['created_by']) === strtolower($currentEmail);
 
 // مسموح بس لمرسل التوصية نفسه، أو السوبر أدمن الأصلي
 if (!$isSuperAdmin && !$isSender) {
-    echo json_encode(["success" => false, "message" => "مسموح بس لمرسل التوصية أو مدير الموقع الأصلي يمسحها."]);
+    echo json_encode(["success" => false, "message" => "مسموح فقط لمرسل التوصية أو مدير الموقع الأصلي بحذفها."]);
     exit();
 }
 

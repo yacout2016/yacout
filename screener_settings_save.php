@@ -21,7 +21,7 @@ if (!in_array($key, $allowedKeys, true)) {
     exit();
 }
 if (!is_numeric($value) || (float)$value < 0 || (float)$value > 100) {
-    echo json_encode(["success" => false, "message" => "القيمة لازم تكون رقم بين 0 و100."]);
+    echo json_encode(["success" => false, "message" => "يجب أن تكون القيمة رقمًا بين 0 و100."]);
     exit();
 }
 

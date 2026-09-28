@@ -21,7 +21,7 @@ if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL) || !in_array($jo
     exit();
 }
 if (strtolower($email) === strtolower(ADMIN_EMAIL)) {
-    echo json_encode(["success" => false, "message" => "الإيميل ده هو السوبر أدمن الأصلي بالفعل، عنده كل الصلاحيات دايمًا."]);
+    echo json_encode(["success" => false, "message" => "هذا البريد هو السوبر أدمن الأصلي بالفعل، ولديه كل الصلاحيات دائمًا."]);
     exit();
 }
 
@@ -33,7 +33,7 @@ $userExists = $userStmt->get_result()->num_rows > 0;
 $userStmt->close();
 
 if (!$userExists) {
-    echo json_encode(["success" => false, "message" => "لازم الشخص ده يعمل حساب عادي على الموقع الأول (يسجّل بإيميله)، وبعدين تقدر تضيفه هنا كعضو فريق."]);
+    echo json_encode(["success" => false, "message" => "يجب أن ينشئ هذا الشخص حسابًا عاديًا على الموقع أولًا (يسجّل ببريده)، ثم يمكنك إضافته هنا كعضو فريق."]);
     exit();
 }
 

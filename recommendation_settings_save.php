@@ -14,7 +14,7 @@ requireCsrf();
 
 $hours = intval($_POST['retentionHours'] ?? 0);
 if ($hours < 1 || $hours > 720) {
-    echo json_encode(["success" => false, "message" => "المدة لازم تكون بين ساعة و720 ساعة (30 يوم)."]);
+    echo json_encode(["success" => false, "message" => "يجب أن تكون المدة بين ساعة و720 ساعة (30 يومًا)."]);
     exit();
 }
 

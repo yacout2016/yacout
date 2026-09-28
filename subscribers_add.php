@@ -63,20 +63,20 @@ $amount = (float)$planRow['amount'];
 
 // التجربة المجانية مرة واحدة بس لكل حساب
 if ($amount <= 0 && hasEverSubscribed($conn, $accountEmail)) {
-    echo json_encode(["success" => false, "message" => "التجربة المجانية متاحة مرة واحدة بس لكل حساب. اختار باقة مدفوعة."]);
+    echo json_encode(["success" => false, "message" => "التجربة المجانية متاحة مرة واحدة فقط لكل حساب. اختر باقة مدفوعة."]);
     exit();
 }
 $endDate = date('Y-m-d', strtotime($startDate . ' +' . (int)$planRow['duration_days'] . ' days'));
 
 // الإصدار 84: التجربة المجانية مرة واحدة بس لكل رقم موبايل كمان (مش لكل حساب بس)
 if ($amount <= 0 && phone_used_trial($conn, $phone)) {
-    echo json_encode(["success" => false, "message" => "رقم الموبايل ده استخدم التجربة المجانية قبل كده. اختار باقة مدفوعة."]);
+    echo json_encode(["success" => false, "message" => "رقم الموبايل هذا استخدم التجربة المجانية من قبل. اختر باقة مدفوعة."]);
     exit();
 }
 
 // الإصدار 84: طرق الدفع المتاحة (الأدمن بيشغّلها ويقفلها من لوحة التحكم)
 if ($amount > 0 && !payment_method_allowed($conn, $paymentMethod)) {
-    echo json_encode(["success" => false, "message" => "طريقة الدفع دي مش متاحة دلوقتي. اختار طريقة تانية."]);
+    echo json_encode(["success" => false, "message" => "طريقة الدفع هذه غير متاحة الآن. اختر طريقة أخرى."]);
     exit();
 }
 
@@ -87,12 +87,12 @@ if (isBlacklisted($conn, 'name', $name) || isBlacklisted($conn, 'phone', $phone)
     exit();
 }
 
-// اشتراكات مدفوعة عن طريق تحويل لازم يكون معاها رقم عملية وصورة إثبات (حسب إعدادات الأدمن) - مفيش تفعيل بدونهم
+// اشتراكات مدفوعة عن طريق تحويل لازم يكون معاها رقم عملية وصورة إثبات (حسب إعدادات الأدمن) - لا يوجد تفعيل بدونهم
 if ($amount > 0 && is_transfer_method($paymentMethod)) {
     $needRef = getAdminSetting($conn, 'require_payment_ref', true);
     $needProof = getAdminSetting($conn, 'require_payment_proof', true);
     if (($needRef && empty($paymentRef)) || ($needProof && empty($paymentProof))) {
-        echo json_encode(["success" => false, "message" => "لازم إدخال رقم عملية التحويل وإرفاق صورة إثبات التحويل."]);
+        echo json_encode(["success" => false, "message" => "يجب إدخال رقم عملية التحويل وإرفاق صورة إثبات التحويل."]);
         exit();
     }
 }
@@ -100,7 +100,7 @@ if ($amount > 0 && is_transfer_method($paymentMethod)) {
 // التفعيل تلقائي بس للتجربة المجانية، أو لو الأدمن أوقف خاصية "مراجعة السداد يدويًا"
 $requireManualActivation = getAdminSetting($conn, 'require_manual_activation', true);
 $active = ($amount == 0 || !$requireManualActivation) ? 1 : 0;
-// الدفع بالبطاقة لسه مفيش بوابة دفع حقيقية بتتحقق منه - فلازم مراجعة يدوية دايمًا
+// الدفع بالبطاقة بعد لا يوجد بوابة دفع حقيقية بتتحقق منه - فلازم مراجعة يدوية دايمًا
 if ($amount > 0 && $paymentMethod === 'card') $active = 0;
 // Paymob: الاشتراك بيتفعّل تلقائي بس بعد ما البوابة تأكد الدفع (paymob_callback.php)
 if ($amount > 0 && $paymentMethod === 'paymob') { $active = 0; $paymentRef = 'بانتظار الدفع (Paymob)'; $paymentProof = null; }

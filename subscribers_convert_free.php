@@ -42,7 +42,7 @@ $accountEmail = $subRow['account_email'] ?? null;
 $startDate = date('Y-m-d');
 $endDate = date('Y-m-d', strtotime($startDate . ' +' . (int)$planRow['duration_days'] . ' days'));
 
-// amount = 0 لأنها هدية من الإدارة (مفيش رسوم)، وis_comp=1 لتوضيح إنها ممنوحة مش مدفوعة
+// amount = 0 لأنها هدية من الإدارة (لا يوجد رسوم)، وis_comp=1 لتوضيح إنها ممنوحة مش مدفوعة
 $stmt = $conn->prepare("UPDATE subscribers SET plan_id=?, plan_name=?, amount=0, start_date=?, end_date=?, is_comp=1, pending_plan_id=NULL, pending_plan_name=NULL, pending_amount=NULL WHERE id=?");
 $stmt->bind_param("ssssi", $planId, $planName, $startDate, $endDate, $id);
 if ($stmt->execute()) {

@@ -20,7 +20,7 @@ if ($newEmail === '' || !filter_var($newEmail, FILTER_VALIDATE_EMAIL)) {
     exit();
 }
 if (strtolower($newEmail) === strtolower($currentEmail)) {
-    echo json_encode(["success" => false, "message" => "ده نفس بريدك الحالي."]);
+    echo json_encode(["success" => false, "message" => "هذا هو بريدك الحالي نفسه."]);
     exit();
 }
 
@@ -29,12 +29,12 @@ $stmt = $conn->prepare("SELECT id FROM users WHERE username = ?");
 $stmt->bind_param("s", $newEmail);
 $stmt->execute();
 if ($stmt->get_result()->fetch_assoc()) {
-    echo json_encode(["success" => false, "message" => "البريد الإلكتروني ده مستخدم بالفعل لحساب تاني."]);
+    echo json_encode(["success" => false, "message" => "هذا البريد الإلكتروني مستخدم بالفعل لحساب آخر."]);
     exit();
 }
 $stmt->close();
 
-// لو عنده طلب معلّق بالفعل، منسمحش بطلب تاني لحد ما يتراجع
+// لو عنده طلب معلّق بالفعل، منسمحش بطلب تاني حتى ما يتراجع
 $stmt = $conn->prepare("SELECT id FROM email_change_requests WHERE current_email = ? AND status = 'pending'");
 $stmt->bind_param("s", $currentEmail);
 $stmt->execute();

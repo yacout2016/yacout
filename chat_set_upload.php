@@ -23,7 +23,7 @@ requireCsrf();
 $visitorId = trim($_POST['visitorId'] ?? '');
 if ($visitorId === '') { echo json_encode(["success" => false, "message" => "بيانات ناقصة."]); exit(); }
 
-// 1) فتح / قفل الرفع (لو اتبعت)
+// 1) فتح / قفل الرفع (لو أُرسلت)
 if (isset($_POST['allow']) && $_POST['allow'] !== '') {
     $allow = $_POST['allow'] !== '0';
     if (!chat_set_upload($conn, $visitorId, $allow)) {
@@ -31,7 +31,7 @@ if (isset($_POST['allow']) && $_POST['allow'] !== '') {
         exit();
     }
 }
-// 2) أقصى حجم للمرفق بالميجا (لو اتبعت)
+// 2) أقصى حجم للمرفق بالميجا (لو أُرسلت)
 if (isset($_POST['maxMb']) && $_POST['maxMb'] !== '') {
     $mb = (int)$_POST['maxMb'];
     if ($mb < 1 || $mb > CHAT_MAX_UPLOAD_CAP_MB) {

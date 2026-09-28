@@ -16,7 +16,7 @@ requireCsrf();
 
 $email = $_SESSION['user_email'];
 if (strtolower($email) === strtolower(ADMIN_EMAIL)) {
-    echo json_encode(["success" => false, "message" => "حساب مدير الموقع الأصلي مينفعش يتحذف من هنا."]);
+    echo json_encode(["success" => false, "message" => "لا يمكن حذف حساب مدير الموقع الأصلي من هنا."]);
     exit();
 }
 if (trim($_POST['confirm'] ?? '') !== 'حذف') {

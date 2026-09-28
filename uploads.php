@@ -5,7 +5,7 @@
      ولو مش متاح بيتعمل مجلد griffine_uploads جوه الموقع ومقفول بـ .htaccess
    - قاعدة البيانات بتخزّن بس اسم الملف (file:...)
    - العرض من خلال file_get.php اللي بيتحقق مين يقدر يشوف إيه
-   - أي بيانات قديمة لسه Base64 بتفضل شغالة زي ما هي
+   - أي بيانات قديمة بعد Base64 بتفضل شغالة كما هي
    ===================================================================== */
 
 const UPL_CATEGORIES = ['proof', 'avatar', 'chat', 'sugg', 'bg', 'hr'];   // hr = مستندات الموظفين (الإصدار 85)
@@ -28,8 +28,8 @@ function upl_dir(){
 }
 
 /* بياخد data URI ويحفظه كملف. بيرجع:
-   - "file:<اسم الملف>" لو اتحفظ
-   - نفس القيمة زي ما هي لو مش data URI (أو SVG صغير من الأفاتارات الجاهزة) أو لو الحفظ كملف مش متاح
+   - "file:<اسم الملف>" لو تم الحفظ
+   - نفس القيمة كما هي لو مش data URI (أو SVG صغير من الأفاتارات الجاهزة) أو لو الحفظ كملف مش متاح
    - false لو النوع مش مسموح */
 function upl_store($value, $category, $allowPdf = false){
     if ($value === null || $value === '') return $value;
@@ -49,7 +49,7 @@ function upl_store($value, $category, $allowPdf = false){
         if (@getimagesizefromstring($bin) === false) return false;
     }
     $dir = upl_dir();
-    if (!$dir) return $value; // مفيش مكان للحفظ - نكمّل بالطريقة القديمة عشان محدش يتعطل
+    if (!$dir) return $value; // لا يوجد مكان للحفظ - نكمّل بالطريقة القديمة عشان محدش يتعطل
     $name = $category . '_' . bin2hex(random_bytes(16)) . '.' . UPL_TYPES[$mime];
     if (@file_put_contents($dir . '/' . $name, $bin) === false) return $value;
     return 'file:' . $name;

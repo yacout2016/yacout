@@ -34,7 +34,7 @@ if ($row) {
         $newEnd = date('Y-m-d', strtotime($today . " +$durationDays days"));
 
         // لو الباقة الجديدة مدفوعة ومراجعة السداد يدويًا مفعّلة، الاشتراك يفضل موقوف
-        // لحد ما الأدمن يراجع ويفعّله بنفسه (نفس منطق أول اشتراك) - مش بيتفعّل تلقائيًا من غير مراجعة
+        // حتى ما الأدمن يراجع ويفعّله بنفسه (نفس منطق أول اشتراك) - مش بيتفعّل تلقائيًا من غير مراجعة
         $requireManualActivation = getAdminSetting($conn, 'require_manual_activation', true);
         $newActive = ((float)$newAmount == 0 || !$requireManualActivation) ? 1 : 0;
         // الإصدار 84: الباقة المؤجلة المدفوعة أونلاين عن طريق Paymob اتأكد دفعها من البوابة نفسها ← تتفعّل تلقائي

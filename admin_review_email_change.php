@@ -44,16 +44,16 @@ if ($decision === 'rejected') {
     exit();
 }
 
-// الموافقة: نغيّر الإيميل في كل الجداول اللي بتمثّل هوية/ربط نشط للحساب — مش سجلات تاريخية (زي طلبات قديمة أو موافقات قانونية سابقة، دي بتفضل زي ما هي كتوثيق لوقتها)
+// الموافقة: نغيّر الإيميل في كل الجداول اللي بتمثّل هوية/ربط نشط للحساب — مش سجلات تاريخية (زي طلبات قديمة أو موافقات قانونية سابقة، دي بتفضل كما هي كتوثيق لوقتها)
 $oldEmail = $req['current_email'];
 $newEmail = $req['requested_email'];
 
-// تأكيد أخير إن الإيميل الجديد لسه متاح (تحسبًا لأي تغيير من وقت تقديم الطلب)
+// تأكيد أخير إن الإيميل الجديد بعد متاح (تحسبًا لأي تغيير من وقت تقديم الطلب)
 $check = $conn->prepare("SELECT id FROM users WHERE username = ?");
 $check->bind_param("s", $newEmail);
 $check->execute();
 if ($check->get_result()->fetch_assoc()) {
-    echo json_encode(["success" => false, "message" => "البريد الإلكتروني الجديد بقى مستخدم لحساب تاني، مينفعش نكمل الموافقة."]);
+    echo json_encode(["success" => false, "message" => "البريد الإلكتروني الجديد أصبح مستخدمًا لحساب آخر، ولا يمكن إكمال الموافقة."]);
     exit();
 }
 $check->close();
@@ -70,7 +70,7 @@ try {
     ];
     foreach ($tables as [$table, $col]) {
         $tblCheck = $conn->query("SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='$table'");
-        if ($tblCheck->num_rows === 0) continue; // الجدول ده ممكن يكون مش موجود في كل نسخة
+        if ($tblCheck->num_rows === 0) continue; // الجدول ده ممكن يكون غير موجود في كل نسخة
         $stmt = $conn->prepare("UPDATE `$table` SET `$col` = ? WHERE `$col` = ?");
         $stmt->bind_param("ss", $newEmail, $oldEmail);
         $stmt->execute();

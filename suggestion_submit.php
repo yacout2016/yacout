@@ -21,14 +21,14 @@ if ($message === '') {
     exit();
 }
 if (mb_strlen($message) > 5000) {
-    echo json_encode(["success" => false, "message" => "النص طويل جدًا — اختصره شوية."]);
+    echo json_encode(["success" => false, "message" => "النص طويل جدًا — اختصره قليلًا."]);
     exit();
 }
 
 $attachmentType = null;
 if ($attachment !== null) {
     if (!preg_match('/^data:(image\/(png|jpeg|jpg|webp|gif)|application\/pdf);base64,/', $attachment, $m)) {
-        echo json_encode(["success" => false, "message" => "الملف المرفق لازم يكون صورة أو PDF بس."]);
+        echo json_encode(["success" => false, "message" => "يجب أن يكون الملف المرفق صورة أو PDF فقط."]);
         exit();
     }
     $attachmentType = $m[1];
@@ -48,7 +48,7 @@ if ($attachment !== null) {
 
 $stmt = $conn->prepare("INSERT INTO suggestions (account_email, message, attachment_data, attachment_name, attachment_type, status) VALUES (?, ?, ?, ?, ?, 'new')");
 if (!$stmt) {
-    echo json_encode(["success" => false, "message" => "جدول المقترحات مش موجود لسه في قاعدة البيانات — شغّل ملف update_schema_25_suggestions.sql الأول."]);
+    echo json_encode(["success" => false, "message" => "جدول المقترحات غير موجود بعد في قاعدة البيانات — شغّل ملف update_schema_25_suggestions.sql الأول."]);
     exit();
 }
 $stmt->bind_param("sssss", $email, $message, $attachment, $attachmentName, $attachmentType);

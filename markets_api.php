@@ -1,0 +1,128 @@
+<?php
+/* =====================================================================
+   GRIFFINE — markets_api.php (الإصدار 88) — للعميل المسجّل دخوله
+   GET  action=watchlist                 ← قائمة المتابعة + آخر سعر لكل سهم
+   POST action=watch_add   symbol, market
+   POST action=watch_remove id
+   GET  action=quote&symbol=&market=     ← سعر سهم واحد (صفحة السهم)
+   POST action=sync_targets targets=JSON ← مستويات التنبيه من الخطط (بتستبدل القديمة) + فحص فوري
+   GET  action=alerts                    ← آخر التنبيهات + عدد غير المقروء
+   POST action=alerts_read
+   POST action=snapshot  items=JSON [{currency, value, cost}] ← لقطة قيمة المحفظة النهارده
+   GET  action=snapshots&days=90         ← منحنى أداء المحفظة
+   ===================================================================== */
+header('Content-Type: application/json; charset=utf-8');
+require_once __DIR__ . '/session_boot.php';
+session_start();
+include 'db.php';
+require_once __DIR__ . '/markets_lib.php';
+
+function mk_out($a){ echo json_encode($a, JSON_UNESCAPED_UNICODE); exit(); }
+if (empty($_SESSION['user_email'])) { http_response_code(401); mk_out(["success" => false, "message" => "سجّل الدخول أولًا."]); }
+$email = $_SESSION['user_email'];
+session_write_close();   // لا يوجد كتابة في الجلسة - منقفلش باقي الطلبات أثناء جلب الأسعار
+$isPost = $_SERVER['REQUEST_METHOD'] === 'POST';
+if ($isPost) requireCsrf();
+$action = $_GET['action'] ?? $_POST['action'] ?? '';
+
+try {
+    if ($action === 'watchlist') {
+        $st = $conn->prepare("SELECT id, symbol, market FROM user_watchlist WHERE account_email = ? ORDER BY id");
+        $st->bind_param("s", $email); $st->execute(); $res = $st->get_result();
+        $items = [];
+        while ($r = $res->fetch_assoc()) {
+            $q = mq_get_quote($r['symbol'], $r['market'], 'day');
+            $items[] = ["id" => (int)$r['id'], "symbol" => $r['symbol'], "market" => $r['market'], "ok" => !empty($q['success']),
+                "name" => $q['name'] ?? null, "last" => $q['last'] ?? null, "prevClose" => $q['prevClose'] ?? null,
+                "high" => $q['high'] ?? null, "low" => $q['low'] ?? null, "currency" => $q['currency'] ?? null, "delayMinutes" => $q['delayMinutes'] ?? 15];
+        }
+        $st->close();
+        mk_out(["success" => true, "items" => $items]);
+    }
+    if ($action === 'watch_add' && $isPost) {
+        $sym = mk_clean_symbol($_POST['symbol'] ?? ''); $mkt = mk_clean_market($_POST['market'] ?? '');
+        if (!$sym) mk_out(["success" => false, "message" => "اكتب رمز السهم بالإنجليزية (مثل COMI)."]);
+        $c = $conn->prepare("SELECT COUNT(*) c FROM user_watchlist WHERE account_email = ?"); $c->bind_param("s", $email); $c->execute();
+        if ((int)$c->get_result()->fetch_assoc()['c'] >= 50) mk_out(["success" => false, "message" => "الحد الأقصى 50 سهمًا في قائمة المتابعة."]); $c->close();
+        $q = mq_get_quote($sym, $mkt, 'day');
+        if (empty($q['success'])) mk_out(["success" => false, "message" => "لم نجد أسعارًا لهذا الرمز في السوق المختار."]);
+        $st = $conn->prepare("INSERT IGNORE INTO user_watchlist (account_email, symbol, market) VALUES (?, ?, ?)");
+        $st->bind_param("sss", $email, $sym, $mkt); $st->execute(); $st->close();
+        mk_out(["success" => true]);
+    }
+    if ($action === 'watch_remove' && $isPost) {
+        $id = (int)($_POST['id'] ?? 0);
+        $st = $conn->prepare("DELETE FROM user_watchlist WHERE id = ? AND account_email = ?"); $st->bind_param("is", $id, $email); $st->execute(); $st->close();
+        mk_out(["success" => true]);
+    }
+    if ($action === 'quote') {
+        $sym = mk_clean_symbol($_GET['symbol'] ?? '');
+        if (!$sym) mk_out(["success" => false, "message" => "رمز غير صالح."]);
+        $q = mq_get_quote($sym, mk_clean_market($_GET['market'] ?? ''), $_GET['period'] ?? 'day');
+        $w = $conn->prepare("SELECT id FROM user_watchlist WHERE account_email = ? AND symbol = ?"); $w->bind_param("ss", $email, $sym); $w->execute();
+        $q['watchId'] = ($x = $w->get_result()->fetch_assoc()) ? (int)$x['id'] : null; $w->close();
+        mk_out($q);
+    }
+    if ($action === 'sync_targets' && $isPost) {
+        $targets = json_decode((string)($_POST['targets'] ?? '[]'), true);
+        if (!is_array($targets)) mk_out(["success" => false]);
+        $keep = [];
+        $up = $conn->prepare("INSERT INTO alert_targets (account_email, symbol, market, plan_kind, side, price, label) VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE triggered_at = IF(ABS(price - VALUES(price)) > 0.00001, NULL, triggered_at), price = VALUES(price), label = VALUES(label)");
+        foreach (array_slice($targets, 0, 400) as $t) {
+            $sym = mk_clean_symbol($t['symbol'] ?? ''); $mkt = mk_clean_market($t['market'] ?? '');
+            $kind = ($t['kind'] ?? '') === 'Grid' ? 'Grid' : 'DCA'; $side = ($t['side'] ?? '') === 'sell' ? 'sell' : 'buy';
+            $price = round((float)($t['price'] ?? 0), 4); $label = mb_substr((string)($t['label'] ?? ''), 0, 150);
+            if (!$sym || $price <= 0) continue;
+            $up->bind_param("sssssds", $email, $sym, $mkt, $kind, $side, $price, $label); $up->execute();
+            $keep[] = "$sym|$mkt|$kind|$side";
+        }
+        $up->close();
+        // حذف مستويات خطط اتقفلت أو اتمسحت
+        $all = $conn->prepare("SELECT id, symbol, market, plan_kind, side FROM alert_targets WHERE account_email = ?"); $all->bind_param("s", $email); $all->execute(); $ar = $all->get_result();
+        while ($r = $ar->fetch_assoc()) if (!in_array("{$r['symbol']}|{$r['market']}|{$r['plan_kind']}|{$r['side']}", $keep, true)) { $d = $conn->prepare("DELETE FROM alert_targets WHERE id = ?"); $d->bind_param("i", $r['id']); $d->execute(); $d->close(); }
+        $all->close();
+        $fired = mk_check_targets($conn, $email, 20);   // فحص فوري لخطط العميل ده
+        mk_out(["success" => true, "targets" => count($keep), "fired" => $fired]);
+    }
+    if ($action === 'alerts') {
+        $st = $conn->prepare("SELECT id, title, body, symbol, market, is_read, created_at FROM user_alerts WHERE account_email = ? ORDER BY id DESC LIMIT 50");
+        $st->bind_param("s", $email); $st->execute(); $res = $st->get_result();
+        $list = []; $unread = 0;
+        while ($r = $res->fetch_assoc()) { $r['id'] = (int)$r['id']; $r['is_read'] = (int)$r['is_read'] === 1; if (!$r['is_read']) $unread++; $list[] = $r; }
+        $st->close();
+        mk_out(["success" => true, "alerts" => $list, "unread" => $unread]);
+    }
+    if ($action === 'alerts_read' && $isPost) {
+        $st = $conn->prepare("UPDATE user_alerts SET is_read = 1 WHERE account_email = ?"); $st->bind_param("s", $email); $st->execute(); $st->close();
+        mk_out(["success" => true]);
+    }
+    if ($action === 'snapshot' && $isPost) {
+        $items = json_decode((string)($_POST['items'] ?? '[]'), true);
+        if (!is_array($items)) mk_out(["success" => false]);
+        $st = $conn->prepare("INSERT INTO portfolio_snapshots (account_email, snap_date, currency, value, cost) VALUES (?, CURDATE(), ?, ?, ?)
+            ON DUPLICATE KEY UPDATE value = VALUES(value), cost = VALUES(cost)");
+        foreach (array_slice($items, 0, 6) as $it) {
+            $ccy = preg_replace('/[^A-Z]/', '', strtoupper((string)($it['currency'] ?? ''))) ?: 'EGP';
+            $v = round((float)($it['value'] ?? 0), 2); $c = round((float)($it['cost'] ?? 0), 2);
+            if ($v < 0 || $v > 1e12) continue;
+            $st->bind_param("ssdd", $email, $ccy, $v, $c); $st->execute();
+        }
+        $st->close();
+        mk_out(["success" => true]);
+    }
+    if ($action === 'snapshots') {
+        $days = max(7, min(730, (int)($_GET['days'] ?? 90)));
+        $st = $conn->prepare("SELECT snap_date, currency, value, cost FROM portfolio_snapshots WHERE account_email = ? AND snap_date >= DATE_SUB(CURDATE(), INTERVAL ? DAY) ORDER BY snap_date");
+        $st->bind_param("si", $email, $days); $st->execute(); $res = $st->get_result();
+        $out = [];
+        while ($r = $res->fetch_assoc()) $out[$r['currency']][] = ["d" => $r['snap_date'], "v" => (float)$r['value'], "c" => (float)$r['cost']];
+        $st->close();
+        mk_out(["success" => true, "series" => $out]);
+    }
+    mk_out(["success" => false, "message" => "طلب غير معروف."]);
+} catch (Throwable $e) {
+    error_log('GRIFFINE markets_api: ' . $e->getMessage());
+    mk_out(["success" => false, "message" => "حدث خطأ - تأكد من تشغيل ملف ALL_SCHEMA_UPDATES.sql (الإصدار 88)."]);
+}
+?>

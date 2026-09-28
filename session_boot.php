@@ -3,7 +3,7 @@
 //
 // السبب: من غير الإعداد ده، الجلسة كانت أحيانًا بتتقطع (خصوصًا بين www.griffine.store
 // وgriffine.store بدون www) فيظهر خطأ "انتهت صلاحية الجلسة" عند تسجيل الدخول لأول مرة،
-// ولازم المستخدم يحاول عدة مرات لحد ما الجلسة "تثبت" بالصدفة على نفس الدومين.
+// ولازم المستخدم يحاول عدة مرات حتى ما الجلسة "تثبت" بالصدفة على نفس الدومين.
 // الإعداد ده بيخلي كوكي الجلسة شغالة على الدومين الرئيسي وكل الفروع الفرعية بتاعته مع بعض،
 // يعني نفس الجلسة بتفضل شغالة سواء العميل داخل بـ www أو من غيرها.
 if (session_status() === PHP_SESSION_NONE) {
@@ -35,7 +35,7 @@ if (session_status() === PHP_SESSION_NONE) {
     $sessName = session_name();
     if ($cookieDomain !== '' && substr_count($rawCookie, $sessName . '=') > 1 && !headers_sent()) {
         // من غير domain = الكوكي القديم بتاع الدومين ده بس (أي domain هنا كان هيمسح الكوكي الجديد كمان).
-        // بيتضاف لحظة إرسال الرد (session_start بيشيل أي Set-Cookie بنفس الاسم لو اتبعت قبله)
+        // بيتضاف لحظة إرسال الرد (session_start بيشيل أي Set-Cookie بنفس الاسم لو أُرسلت قبله)
         $delHeader = 'Set-Cookie: ' . $sessName . '=deleted; expires=Thu, 01 Jan 1970 00:00:01 GMT; Max-Age=0; path=/' . ($secure ? '; secure' : '') . '; HttpOnly; SameSite=Lax';
         header_register_callback(function () use ($delHeader) { header($delHeader, false); });
         // نكمّل بآخر قيمة (الكوكي الأحدث) بدل القديمة

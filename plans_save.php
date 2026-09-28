@@ -29,7 +29,7 @@ if (empty($id) || empty($name) || empty($periodLabel) || $durationDays <= 0) {
 }
 // معرّف الباقة يُستخدم كمفتاح تقني - نقصره على حروف/أرقام/شرطة سفلية بس
 if (!preg_match('/^[a-zA-Z0-9_]+$/', $id)) {
-    echo json_encode(["success" => false, "message" => "معرّف الباقة لازم يكون حروف إنجليزية وأرقام بس (من غير مسافات)."]);
+    echo json_encode(["success" => false, "message" => "يجب أن يتكون معرّف الباقة من حروف إنجليزية وأرقام فقط (بدون مسافات)."]);
     exit();
 }
 
