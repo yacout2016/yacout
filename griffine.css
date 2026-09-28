@@ -453,7 +453,6 @@
   body:has(.wl-screen, .gl-screen) .gtopnav,
   body:has(.wl-screen, .gl-screen) .gtopnav-backdrop,
   body:has(.wl-screen, .gl-screen) #siteAnnouncementBar,
-  body:has(.wl-screen, .gl-screen) #chatBubble,
   body:has(.gl-screen) #siteFooter{ display:none !important; }
   .wl-screen, .gl-screen{ position:relative; width:100%; max-width:440px; min-height:100vh; min-height:100dvh; margin:0 auto; background:#fff; overflow:hidden; color:var(--text); font-family:var(--font); animation:containerFadeIn .28s ease-out; }
   html[data-theme="dark"] .wl-screen, html[data-theme="dark"] .gl-screen{ background:var(--card-bg); }

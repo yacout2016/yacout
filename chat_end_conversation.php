@@ -13,6 +13,7 @@ require_once __DIR__ . '/session_boot.php';
 session_start();
 include 'db.php';
 require_once __DIR__ . '/uploads.php';
+require_once __DIR__ . '/chat_read_state.php';
 
 // ---------------------------------------------------------------------
 // 1) الصلاحيات
@@ -103,6 +104,9 @@ $res = griffine_notify($conn, MAIL_ADMIN_TO, "نسخة محادثة شات - $wh
     'attachments' => $attachments,
     'reply_to' => $visitorEmail,
 ]);
+
+// الإصدار 82: المحادثة خلصت ← رفع الملفات بيتقفل تلقائيًا عند العميل
+try { chat_set_upload($conn, $visitorId, false); } catch (Throwable $e) {}
 
 echo json_encode([
     "success" => $res['ok'],

@@ -1,5 +1,5 @@
 -- ============================================================
--- GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 81)
+-- GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 82)
 -- كل تحديثات قاعدة البيانات في ملف واحد.
 -- آمن تشغّله أي عدد من المرات: بيضيف الناقص بس ومبيمسحش أي بيانات.
 -- الاستخدام: phpMyAdmin ← اختار قاعدة البيانات ← تبويب SQL ← الصق الملف كله ← Go
@@ -15,6 +15,7 @@
 -- الإصدار 79: مفيش تغييرات في قاعدة البيانات (استوديو التصميم: تقسيم النص على أكتر من سطر).
 -- الإصدار 80: مفيش تغييرات في قاعدة البيانات (إشعارات رسائل الشات للأدمن).
 -- الإصدار 81: مفيش تغييرات في قاعدة البيانات (رسالة العميل الجديدة بترجّع المحادثة المؤرشفة/المحذوفة للنشطة).
+-- الإصدار 82: عمود allow_upload في chat_conversation_meta (الأدمن بيفتح رفع الملفات للعميل في الشات) + users.chat_visitor_id (نفس المحادثة من أي جهاز).
 -- ============================================================
 
 -- ============================================================
@@ -643,4 +644,21 @@ DROP PROCEDURE griffine_v72;
 -- الإصدار 73: التأكد إن حساب مدير الموقع متعلّم أدمن (من غيرها السيرفر مبيدّيش صلاحيات المشتركين والموظفين)
 UPDATE users SET is_admin = 1 WHERE LOWER(username) = 'top72026@gmail.com' AND archived = 0;
 
-SELECT 'GRIFFINE database is up to date (v81)' AS result;
+-- الإصدار 82: الشات - رفع الملفات/الصور مقفول افتراضيًا عند العميل، والأدمن/الموظف بيفتحه لكل محادثة لوحدها
+DELIMITER $$
+DROP PROCEDURE IF EXISTS griffine_v82 $$
+CREATE PROCEDURE griffine_v82()
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='chat_conversation_meta' AND COLUMN_NAME='allow_upload') THEN
+    ALTER TABLE chat_conversation_meta ADD COLUMN allow_upload TINYINT(1) NOT NULL DEFAULT 0;
+  END IF;
+  -- معرّف محادثة ثابت لكل حساب (نفس المحادثة من أي جهاز - زي ماسنجر)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='users' AND COLUMN_NAME='chat_visitor_id') THEN
+    ALTER TABLE users ADD COLUMN chat_visitor_id VARCHAR(64) NULL, ADD KEY idx_users_chat_visitor (chat_visitor_id);
+  END IF;
+END $$
+DELIMITER ;
+CALL griffine_v82();
+DROP PROCEDURE griffine_v82;
+
+SELECT 'GRIFFINE database is up to date (v82)' AS result;

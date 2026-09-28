@@ -684,3 +684,25 @@ html:not([data-theme="dark"]) body.g-shell:not(.gs-no-shell) .gs-alloc{ backgrou
 .ta-delay-badge{ display:inline-block; margin-inline-start:6px; padding:1px 8px; border-radius:999px; font-size:11px; font-weight:700;
   background:rgba(245,158,11,.14); color:#B45309; vertical-align:1px; }
 html[data-theme="dark"] .ta-delay-badge{ background:rgba(245,158,11,.18); color:#FBBF24; }
+
+/* =====================================================================
+   الشات (الإصدار 82 - على طريقة ماسنجر)
+   ===================================================================== */
+.chat-kind{ display:inline-block; padding:1px 7px; border-radius:999px; font-size:10.5px; font-weight:700; vertical-align:1px; }
+.chat-kind.sub{ background:rgba(14,159,110,.14); color:#0E9F6E; }
+.chat-kind.mem{ background:rgba(59,130,246,.14); color:#2563EB; }
+.chat-kind.guest{ background:rgba(245,158,11,.16); color:#B45309; }
+html[data-theme="dark"] .chat-kind.sub{ color:#31C48D; } html[data-theme="dark"] .chat-kind.mem{ color:#60A5FA; } html[data-theme="dark"] .chat-kind.guest{ color:#FBBF24; }
+.chat-msg .chat-file{ display:inline-block; margin-top:4px; padding:6px 10px; border-radius:10px; background:rgba(0,0,0,.08); color:inherit !important; text-decoration:none; font-weight:600; }
+.chat-msg.visitor .chat-file{ background:rgba(255,255,255,.2); }
+.chat-receipt{ margin-inline-start:6px; font-weight:700; }
+.chat-receipt.seen{ color:#BFE9FF; }
+.chat-upload-note{ padding:6px 12px; font-size:11.5px; font-weight:600; text-align:center; background:rgba(59,130,246,.12); color:#1D4ED8; }
+html[data-theme="dark"] .chat-upload-note{ color:#93C5FD; }
+.chat-attach-chip{ margin:6px 11px 0; padding:6px 10px; border-radius:10px; font-size:12px; background:rgba(0,0,0,.05); display:flex; justify-content:space-between; align-items:center; gap:8px; }
+html[data-theme="dark"] .chat-attach-chip{ background:rgba(255,255,255,.07); }
+.chat-attach-chip button{ width:auto !important; min-height:0 !important; margin:0 !important; padding:0 6px !important; background:none !important; border:0 !important; color:inherit !important; font-size:13px; }
+body.g-shell:not(.gs-no-shell) .chat-upload-toggle{ font-size:12px; }
+/* فقاعة الشات بتظهر كمان في شاشة الترحيب والدخول (عشان اللي لسه مشتركش يقدر يسأل) */
+body:has(.wl-screen, .gl-screen) #chatBubble{ bottom:max(16px, env(safe-area-inset-bottom)) !important; left:16px !important; width:52px !important; height:52px !important; }
+body:has(.wl-screen, .gl-screen) #chatPanel{ bottom:80px !important; left:12px !important; }

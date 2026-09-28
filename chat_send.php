@@ -4,6 +4,7 @@ require_once __DIR__ . '/session_boot.php';
 session_start();
 include 'db.php';
 require_once __DIR__ . '/uploads.php';
+require_once __DIR__ . '/chat_read_state.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode(["success" => false, "message" => "طريقة طلب غير صالحة."]);
@@ -36,6 +37,12 @@ if (!empty($visitorEmail) && isBlacklisted($conn, 'email', $visitorEmail)) {
 }
 if (empty($message) && empty($attachment)) {
     echo json_encode(["success" => false, "message" => "اكتب رسالة أو أرفق ملف."]);
+    exit();
+}
+
+// الإصدار 82: رفع الملفات مقفول افتراضيًا - لازم الأدمن/الموظف يفتحه للمحادثة دي من شاشة الشات
+if (!empty($attachment) && !chat_upload_allowed($conn, $visitorId)) {
+    echo json_encode(["success" => false, "message" => "رفع الملفات والصور مقفول دلوقتي. اكتب رسالتك وفريق الدعم هيفتحلك الرفع لو محتاج تبعت ملف."]);
     exit();
 }
 

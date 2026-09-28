@@ -32,8 +32,30 @@ try {
             "lastSender" => $r['last_sender'],
             // الإصدار 72: غير مقروءة = رسالة من العميل بعد آخر مرة الأدمن فتح المحادثة
             "unread" => (int)$r['unread'] === 1,
+            "allowUpload" => (int)$r['allow_upload'] === 1,   // الإصدار 82: رفع الملفات مفتوح للعميل؟
         ];
     }
+
+    /* الإصدار 82: نوع كل محادثة ← مشترك (اشتراك نشط) / مسجّل من غير اشتراك / زائر (استفسار قبل الاشتراك) */
+    $emails = array_values(array_unique(array_filter(array_map(function($x){ return $x['email'] ? strtolower($x['email']) : null; }, $rows))));
+    $subs = []; $users = [];
+    if ($emails) {
+        $in = implode(',', array_fill(0, count($emails), '?')); $types = str_repeat('s', count($emails));
+        $st = $conn->prepare("SELECT LOWER(account_email) e FROM subscribers WHERE active = 1 AND archived = 0 AND end_date >= CURDATE() AND LOWER(account_email) IN ($in)");
+        $st->bind_param($types, ...$emails); $st->execute(); $rs = $st->get_result();
+        while ($x = $rs->fetch_assoc()) $subs[$x['e']] = true;
+        $st->close();
+        $st = $conn->prepare("SELECT LOWER(username) e FROM users WHERE archived = 0 AND LOWER(username) IN ($in)");
+        $st->bind_param($types, ...$emails); $st->execute(); $rs = $st->get_result();
+        while ($x = $rs->fetch_assoc()) $users[$x['e']] = true;
+        $st->close();
+    }
+    foreach ($rows as &$row) {
+        $e = $row['email'] ? strtolower($row['email']) : '';
+        $row['kind'] = isset($subs[$e]) ? 'subscriber' : (isset($users[$e]) ? 'member' : 'guest');
+    }
+    unset($row);
+
     echo json_encode(["success" => true, "conversations" => $rows]);
 } catch (Throwable $e) {
     error_log('GRIFFINE chat_conversations_list: ' . $e->getMessage());

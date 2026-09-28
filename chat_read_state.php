@@ -9,15 +9,56 @@
    لو ملف SQL لسه متشغّلش (العمود مش موجود) الشات بيشتغل بالطريقة القديمة من غير ما يقف.
    ===================================================================== */
 
-// العمود موجود؟ (مرة واحدة في كل طلب)
-function chat_has_read_col($conn){
-    static $has = null;
-    if ($has !== null) return $has;
+// عمود معيّن موجود في chat_conversation_meta؟ (مرة واحدة لكل عمود في كل طلب)
+function chat_meta_has($conn, $col){
+    static $cache = [];
+    if (isset($cache[$col])) return $cache[$col];
     try {
-        $r = $conn->query("SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'chat_conversation_meta' AND COLUMN_NAME = 'admin_read_at'");
-        $has = $r && $r->num_rows > 0;
-    } catch (Throwable $e) { $has = false; }
-    return $has;
+        $st = $conn->prepare("SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'chat_conversation_meta' AND COLUMN_NAME = ?");
+        $st->bind_param("s", $col); $st->execute();
+        $cache[$col] = $st->get_result()->num_rows > 0; $st->close();
+    } catch (Throwable $e) { $cache[$col] = false; }
+    return $cache[$col];
+}
+function chat_has_read_col($conn){ return chat_meta_has($conn, 'admin_read_at'); }
+
+/* ---------------------------------------------------------------------
+   الإصدار 82: رفع الملفات/الصور في الشات
+   - مقفول افتراضيًا عند العميل. الأدمن/الموظف بيفتحه لمحادثة معيّنة من شاشة الشات
+   - بيتقفل تلقائيًا مع "إنهاء المحادثة" أو الأرشفة أو الحذف
+   - لو ملف SQL لسه متشغّلش (العمود مش موجود) بيفضل الرفع مسموح زي الأول (عشان محدش يتعطل)
+   --------------------------------------------------------------------- */
+function chat_upload_allowed($conn, $visitorKey){
+    if (!chat_meta_has($conn, 'allow_upload')) return true;
+    $st = $conn->prepare("SELECT allow_upload FROM chat_conversation_meta WHERE visitor_key = ?");
+    $st->bind_param("s", $visitorKey); $st->execute();
+    $r = $st->get_result()->fetch_assoc(); $st->close();
+    return $r && (int)$r['allow_upload'] === 1;
+}
+function chat_set_upload($conn, $visitorKey, $allow){
+    if (!chat_meta_has($conn, 'allow_upload')) return false;
+    $v = $allow ? 1 : 0;
+    $st = $conn->prepare("INSERT INTO chat_conversation_meta (visitor_key, allow_upload) VALUES (?, ?) ON DUPLICATE KEY UPDATE allow_upload = VALUES(allow_upload)");
+    $st->bind_param("si", $visitorKey, $v); $st->execute(); $st->close();
+    return true;
+}
+// حالة المحادثة اللي العميل محتاجها (رفع الملفات مسموح؟ + آخر مرة الأدمن قرا)
+function chat_conversation_state($conn, $visitorKey){
+    $out = ["allowUpload" => !chat_meta_has($conn, 'allow_upload'), "adminReadAt" => null];
+    try {
+        $cols = [];
+        if (chat_meta_has($conn, 'allow_upload')) $cols[] = 'allow_upload';
+        if (chat_has_read_col($conn)) $cols[] = 'admin_read_at';
+        if (!$cols) return $out;
+        $st = $conn->prepare("SELECT " . implode(',', $cols) . " FROM chat_conversation_meta WHERE visitor_key = ?");
+        $st->bind_param("s", $visitorKey); $st->execute();
+        $r = $st->get_result()->fetch_assoc(); $st->close();
+        if ($r) {
+            if (isset($r['allow_upload'])) $out['allowUpload'] = (int)$r['allow_upload'] === 1;
+            if (isset($r['admin_read_at'])) $out['adminReadAt'] = $r['admin_read_at'];
+        }
+    } catch (Throwable $e) {}
+    return $out;
 }
 
 // تعليم محادثة (أو كل المحادثات) كمقروءة
@@ -50,6 +91,7 @@ function chat_conversations_sql($conn, $where){
                lm.message AS last_message, lm.sender AS last_sender,
                $readCol AS read_at,
                COALESCE(cm.archived, 0) AS archived, COALESCE(cm.deleted, 0) AS deleted,
+               " . (chat_meta_has($conn, 'allow_upload') ? "COALESCE(cm.allow_upload, 0)" : "1") . " AS allow_upload,
                $unread AS unread
         FROM (
             SELECT COALESCE(visitor_id, visitor_email) AS conv_key,

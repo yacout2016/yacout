@@ -3,6 +3,7 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/session_boot.php';
 session_start();
 include 'db.php';
+require_once __DIR__ . '/chat_read_state.php';
 
 if (!isset($_SESSION['user_email']) || empty($_SESSION['is_admin'])) {
     http_response_code(403);
@@ -24,5 +25,6 @@ $stmt = $conn->prepare("INSERT INTO chat_conversation_meta (visitor_key, deleted
 $stmt->bind_param("s", $visitorKey);
 $stmt->execute();
 $stmt->close();
+try { chat_set_upload($conn, $visitorKey, false); } catch (Throwable $e) {} // الإصدار 82: قفل رفع الملفات
 echo json_encode(["success" => true]);
 ?>
