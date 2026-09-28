@@ -2,3 +2,7 @@
 # db.php نفسه بقى كود من غير أسرار ومتسجّل عادي
 griffine_config.php
 griffine_uploads/
+
+# الإصدار 89: الاختبارات التلقائية - مكتبات ونتائج محلية
+tests/node_modules/
+tests/out/

@@ -3,6 +3,7 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/session_boot.php';
 session_start();
 include 'db.php';
+require_once __DIR__ . '/trash_lib.php';   // الإصدار 89: سلة المحذوفات
 
 if (!isset($_SESSION['user_email']) || empty($_SESSION['is_admin'])) {
     http_response_code(403);
@@ -21,6 +22,7 @@ if (empty($accountEmail)) {
 
 $conn->begin_transaction();
 try {
+    trash_put($conn, 'customer', 'عميل: ' . $accountEmail, ['users' => trash_rows($conn, 'users', 'username = ?', 's', [$accountEmail]), 'subscribers' => trash_rows($conn, 'subscribers', 'account_email = ?', 's', [$accountEmail])]);
     $s = $conn->prepare("DELETE FROM subscribers WHERE account_email = ?");
     $s->bind_param("s", $accountEmail);
     $s->execute();

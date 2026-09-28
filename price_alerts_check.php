@@ -20,7 +20,8 @@ session_write_close();
 @set_time_limit(120);
 try {
     $fired = mk_check_targets($conn, null, 80);
-    echo json_encode(["success" => true, "fired" => $fired, "at" => date('c')]);
+    $custom = 0; try { $custom = mk_check_custom($conn, null, 80); } catch (Throwable $e) { error_log('GRIFFINE custom alerts: ' . $e->getMessage()); }   // الإصدار 89
+    echo json_encode(["success" => true, "fired" => $fired, "custom" => $custom, "at" => date('c')]);
 } catch (Throwable $e) {
     error_log('GRIFFINE price_alerts_check: ' . $e->getMessage());
     echo json_encode(["success" => false, "message" => "حدث خطأ - تأكد من تشغيل ALL_SCHEMA_UPDATES.sql (الإصدار 88)."]);

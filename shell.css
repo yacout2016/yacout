@@ -779,3 +779,61 @@ html[data-theme="dark"] .chat-sound-opt{ background:rgba(255,255,255,.06); }
 .gs-alert-row:first-of-type{ border-top:0; }
 .gs-curve svg{ overflow:visible; }
 .pos{ color:var(--gs-pos, #0E9F6E); } .neg{ color:var(--gs-neg, #E02424); }
+
+/* =====================================================================
+   الإصدار 89 — نظام التصميم: أدوات (utilities) بدل الـ style المتكرر + مكوّنات موحّدة
+   ===================================================================== */
+.u-wa{ width:auto !important; }
+.u-w100{ width:100% !important; }
+.u-m0{ margin:0 !important; }
+.u-mt0{ margin-top:0 !important; } .u-mt4{ margin-top:4px !important; } .u-mt6{ margin-top:6px !important; } .u-mt8{ margin-top:8px !important; }
+.u-mt10{ margin-top:10px !important; } .u-mt12{ margin-top:12px !important; } .u-mt14{ margin-top:14px !important; } .u-mt20{ margin-top:20px !important; } .u-mt24{ margin-top:24px !important; }
+.u-mb6{ margin-bottom:6px !important; } .u-mb8{ margin-bottom:8px !important; } .u-mb10{ margin-bottom:10px !important; }
+.u-bn{ border:none !important; }
+.u-tc{ text-align:center !important; }
+.u-ox{ overflow-x:auto; }
+.u-fs11{ font-size:11px !important; } .u-fs12{ font-size:12px !important; } .u-fs13{ font-size:13px !important; } .u-fs135{ font-size:13.5px !important; }
+.u-muted{ color:var(--text-muted, #888) !important; }
+.u-note{ color:var(--text-muted, #888) !important; font-size:13px !important; }
+.u-hint{ color:var(--text-muted, #888) !important; font-size:11.5px !important; }
+.u-danger{ color:var(--danger) !important; }
+.u-pos{ color:var(--gs-pos, #0E9F6E) !important; } .u-neg{ color:var(--gs-neg, #E02424) !important; }
+.u-row{ display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.u-check{ display:flex; align-items:center; gap:5px; font-weight:normal; }
+.u-prose{ font-size:13.5px; line-height:1.8; white-space:pre-wrap; }
+
+/* أرقام مالية: خط أرقام ثابت العرض + اتجاه LTR */
+.g-num{ font-variant-numeric:tabular-nums; direction:ltr; unicode-bidi:isolate; }
+.g-kpis{ display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px; margin:12px 0; }
+.g-kpi{ background:var(--card-bg); border:1px solid var(--border); border-radius:var(--radius-sm); padding:12px 14px; display:flex; flex-direction:column; gap:4px; }
+.g-kpi span{ font-size:12.5px; color:var(--text-muted); font-weight:600; }
+.g-kpi b{ font-size:20px; font-weight:800; color:var(--text); }
+.g-kpi.u-pos b{ color:var(--gs-pos, #0E9F6E); } .g-kpi.u-neg b{ color:var(--gs-neg, #E02424); }
+.g-table{ width:100%; border-collapse:collapse; font-size:13px; }
+.g-table th, .g-table td{ border-bottom:1px solid var(--border-soft); padding:8px 10px; text-align:right; white-space:nowrap; }
+.g-table th{ font-size:12px; color:var(--text-muted); font-weight:700; background:var(--bg); position:sticky; top:0; }
+.g-grid-filters{ display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px; }
+.g-grid-filters label{ display:flex; flex-direction:column; gap:4px; font-size:12.5px; color:var(--text-muted); }
+
+/* أيقونات SVG موحّدة بدل الإيموجي في الأزرار والعناوين (بتتحط تلقائي من shell.js) */
+.g-ic{ display:inline-block; width:1.05em; height:1.05em; vertical-align:-.17em; margin-inline-end:.35em; flex:0 0 auto; }
+.g-ic svg{ width:100%; height:100%; display:block; }
+
+/* الموبايل: أرقام مالية أكبر وأوضح */
+@media (max-width:599px){
+  body.g-shell:not(.gs-no-shell) .summary-cards{ grid-template-columns:repeat(2, minmax(0, 1fr)); }
+  body.g-shell:not(.gs-no-shell) .summary-card .val{ font-size:23px; letter-spacing:-.2px; }
+  body.g-shell:not(.gs-no-shell) .summary-card .lbl{ font-size:12.5px; }
+  body.g-shell:not(.gs-no-shell) .gs-hero-value{ font-size:38px; }
+  .g-kpi b{ font-size:22px; }
+  body.g-shell:not(.gs-no-shell) td, body.g-shell:not(.gs-no-shell) .val, .price-amount{ font-variant-numeric:tabular-nums; }
+}
+
+/* الإصدار 89: المساعد الذكي في الشات */
+.chat-faq{ display:flex; gap:6px; overflow-x:auto; padding:6px 10px; border-bottom:1px solid var(--border-soft, #eee); scrollbar-width:none; align-items:center; }
+.chat-faq[hidden]{ display:none; }
+.chat-faq::-webkit-scrollbar{ display:none; }
+.chat-faq-lbl{ font-size:11px; color:var(--text-muted, #888); white-space:nowrap; }
+.chat-faq-chip{ flex:0 0 auto; width:auto !important; margin:0 !important; padding:5px 10px !important; font-size:12px !important; border-radius:999px !important; border:1px solid var(--gold, #C9A227) !important; background:transparent !important; color:var(--text, #222) !important; white-space:nowrap; cursor:pointer; box-shadow:none !important; }
+.chat-msg.admin.bot{ background:#FFF8E1; border:1px solid #F0DC9A; }
+html[data-theme="dark"] .chat-msg.admin.bot{ background:#2E2A1C !important; border-color:#5A4E25; }

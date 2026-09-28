@@ -3,6 +3,7 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/session_boot.php';
 session_start();
 include 'db.php';
+require_once __DIR__ . '/trash_lib.php';   // الإصدار 89: سلة المحذوفات
 
 if (!isset($_SESSION['user_email']) || empty($_SESSION['is_admin'])) {
     http_response_code(403);
@@ -54,6 +55,7 @@ try {
     }
     if ($mode === 'purge') {
         // حذف من الفريق نهائيًا (بصلاحياته) - حسابه العادي كعميل يفضل كما هو
+        trash_put($conn, 'staff', 'موظف من الفريق: ' . $row['email'], ['staff_members' => trash_rows($conn, 'staff_members', 'id = ?', 'i', [$staffId]), 'staff_permissions' => trash_rows($conn, 'staff_permissions', 'staff_id = ?', 'i', [$staffId])]);
         $d = $conn->prepare("DELETE FROM staff_permissions WHERE staff_id = ?"); $d->bind_param("i", $staffId); $d->execute(); $d->close();
         $d = $conn->prepare("DELETE FROM staff_members WHERE id = ?"); $d->bind_param("i", $staffId); $d->execute(); $d->close();
         $u = $conn->prepare("UPDATE users SET is_admin = 0 WHERE username = ?"); $u->bind_param("s", $row['email']); $u->execute(); $u->close();

@@ -12,7 +12,7 @@ function renderDacStockReportSectionHtml(plans, symbols){
   const allEntries = symbols.map(s=>({key:s, sym:s, type:'DCA'}));
   const agg = computeAggregates(plans, {}, allEntries, null, null);
   return `
-    <h2 style="margin-top:24px;">تقرير سهم</h2>
+    <h2 class="u-mt24">تقرير سهم</h2>
     <div class="section-card">
       <div class="std-filter-daterow">
         <div><label>من تاريخ</label><input type="date" id="dacRptFrom"></div>
@@ -22,8 +22,8 @@ function renderDacStockReportSectionHtml(plans, symbols){
       <div class="ms-dropdown" id="dacRptMsDropdown">
         <button type="button" class="ms-toggle" id="dacRptMsToggleBtn">اختر الأسهم ▾</button>
         <div class="ms-panel" id="dacRptMsPanel" style="display:none;">
-          <div class="std-filter-search" style="margin-bottom:8px;"><input type="text" id="dacRptSymSearchInput" placeholder="ابحث باسم السهم..."></div>
-          <div class="std-filter-tabs" style="margin-bottom:8px;">
+          <div class="std-filter-search u-mb8"><input type="text" id="dacRptSymSearchInput" placeholder="ابحث باسم السهم..."></div>
+          <div class="std-filter-tabs u-mb8">
             <button type="button" class="small secondary dacRptStatusFilterBtn std-filter-tab btn-active" data-status="all">الكل</button>
             <button type="button" class="small secondary dacRptStatusFilterBtn std-filter-tab" data-status="مفتوحة">مفتوحة فقط</button>
             <button type="button" class="small secondary dacRptStatusFilterBtn std-filter-tab" data-status="مغلقة">مغلقة فقط</button>
@@ -37,7 +37,7 @@ function renderDacStockReportSectionHtml(plans, symbols){
           <button type="button" class="small" id="dacRptMsDoneBtn" style="width:100%;margin-top:8px;">تم</button>
         </div>
       </div>
-      <button id="dacRptPrintBtn" style="margin-top:14px;">🖨 إصدار تقرير PDF للأسهم المحددة</button>
+      <button id="dacRptPrintBtn" class="u-mt14">🖨 إصدار تقرير PDF للأسهم المحددة</button>
       <button id="dacRptExportXlsBtn" class="secondary">⬇ تصدير التقرير Excel</button>
       <div style="font-size:11.5px;color:#888;margin-top:6px;">تقدر تختار سهم واحد أو أكتر أو كل الأسهم (مفتوحة أو مقفولة) — سيب "من/إلى تاريخ" فاضيين لتقرير عن كل الفترة المتاحة.</div>
     </div>`;
@@ -147,7 +147,7 @@ function wireDacStockReportSection(plans, symbols){
         <div><div class="v">${fmt2(reportAgg.grandTotalInvestedEver)}</div><div class="l">كم استثمرت (${groupLabel})</div></div>
         <div><div class="v">${fmt2(reportAgg.grandTotalProfit)}</div><div class="l">كم ربحت أو خسرت</div></div>
         <div><div class="v">${reportAgg.overallProfitPercent.toFixed(2)}%</div><div class="l">نسبة الربح/الخسارة</div></div>
-        <div><div class="v" style="font-size:12px;">${periodLabel}</div><div class="l">فترة التقرير</div></div>
+        <div><div class="v u-fs12">${periodLabel}</div><div class="l">فترة التقرير</div></div>
       </div>
 
       <img src="${chartImg}" width="720" height="300">
@@ -212,7 +212,7 @@ function wireDacStockReportSection(plans, symbols){
     selectedSyms.forEach(sym=>{
       const p = plans[sym];
       const { rowsHtml, hasAny } = buildStockTransactionRows(p, from, to);
-      body += `<table style="margin-top:20px;"><tr><td colspan="6" style="${titleTd}">تفاصيل عمليات: ${sym} (DCA)</td></tr>
+      body += `<table class="u-mt20"><tr><td colspan="6" style="${titleTd}">تفاصيل عمليات: ${sym} (DCA)</td></tr>
         <tr><td style="${th}">التاريخ</td><td style="${th}">العملية</td><td style="${th}">المستوى</td><td style="${th}">الكمية</td><td style="${th}">السعر</td><td style="${th}">الربح</td></tr>
         ${hasAny ? rowsHtml.replace(/<td>/g, `<td style="${td}">`) : `<tr><td colspan="6" style="${td}">لا يوجد عمليات في هذه الفترة</td></tr>`}
         </table>`;
@@ -239,7 +239,7 @@ async function renderPlansList(){
 
   if (screenStale(__tok)) return; app.innerHTML = `<div class="container wide">${logoHeader()}
     <div class="topbar"><div>مرحبًا <strong>${email}</strong></div></div>
-    <button class="secondary small" id="homeBtn" style="width:auto;">🏠 الشاشة الرئيسية</button>
+    <button class="secondary small u-wa" id="homeBtn">🏠 الشاشة الرئيسية</button>
     <button id="newPlanBtn">+ خطة جديدة لسهم</button>
     <h2>${pageTitle('plans_list','خططك الحالية (سهم لكل خطة)')}</h2>
     ${symbols.length>0 ? `<div class="std-filter-bar">
@@ -260,7 +260,7 @@ async function renderPlansList(){
 
   const listArea = document.getElementById('plansListArea');
   if(symbols.length===0){
-    listArea.innerHTML = `<p style="color:#888;font-size:13px;">لا يوجد خطط بعد. ابدأ بإنشاء خطة جديدة.</p>`;
+    listArea.innerHTML = `<p class="u-note">لا يوجد خطط بعد. ابدأ بإنشاء خطة جديدة.</p>`;
   } else {
     listArea.innerHTML = symbols.map(sym=>{
       const p = plans[sym];
@@ -275,9 +275,9 @@ async function renderPlansList(){
       const isActuallyClosed = !isOpenPosition && p.closedTrades.length > 0;
       const statusKey = isActuallyClosed ? 'مقفولة' : 'مفتوحة';
       return `<div class="plan-list-item" data-sym="${sym}" data-q="${sym.toLowerCase()}" data-status="${statusKey}">
-        <div><strong>${sym}</strong><div style="font-size:11px;color:#888;">${doneCount}/${p.levels.length} مستويات — ${isActuallyClosed?'مقفولة ✅':'مفتوحة'} — ${p.market||''} — ${p.currency||''}</div></div>
+        <div><strong>${sym}</strong><div class="u-fs11 u-muted">${doneCount}/${p.levels.length} مستويات — ${isActuallyClosed?'مقفولة ✅':'مفتوحة'} — ${p.market||''} — ${p.currency||''}</div></div>
         <div style="display:flex;align-items:center;gap:10px;">
-          <button class="small secondary" style="width:auto;margin:0;" data-gcall="__editDacPlanFromList" data-gargs="${gArgs([String(sym)])}" data-gstop="1">⚙️ تعديل الخطة</button>
+          <button class="small secondary u-wa u-m0" data-gcall="__editDacPlanFromList" data-gargs="${gArgs([String(sym)])}" data-gstop="1">⚙️ تعديل الخطة</button>
           <span>&#8250;</span>
         </div>
       </div>`;
@@ -578,14 +578,14 @@ async function renderPortfolio(){
     <h2>إجماليات المحفظة${ccyList.length > 1 ? ` <span style="font-size:13px;color:var(--text-muted);font-weight:600;">(${escapeHtml(selCcy)})</span>` : ''}</h2>
     <div class="summary-cards" id="topSummaryCards"></div>
 
-    <h2 style="margin-top:20px;">كل الأسهم (مفتوحة ومغلقة)</h2>
+    <h2 class="u-mt20">كل الأسهم (مفتوحة ومغلقة)</h2>
     <div class="section-card" id="portfolioTableWrap"></div>
-    ${allEntries.length ? `<div class="topbar" style="margin-top:10px;">
+    ${allEntries.length ? `<div class="topbar u-mt10">
       <button class="small secondary" id="exportPortfolioXlsBtn">⬇ تصدير Excel</button>
       <button class="small secondary" id="exportPortfolioPdfBtn">🖨 تصدير PDF (طباعة)</button>
     </div>` : ''}
 
-    <h2 style="margin-top:24px;">فترة العرض (تؤثر على المؤشرات والشارت وكشف الحساب)</h2>
+    <h2 class="u-mt24">فترة العرض (تؤثر على المؤشرات والشارت وكشف الحساب)</h2>
     <div class="section-card">
       <div class="grid2">
         <div><label>من تاريخ</label><input type="date" id="stmtFrom"></div>
@@ -603,19 +603,19 @@ async function renderPortfolio(){
 
     <div class="section-card" id="periodIndicators"></div>
 
-    <h2 style="margin-top:20px;">منحنى الربح التراكمي (بالمبلغ)</h2>
-    <div class="section-card" style="text-align:center;">
+    <h2 class="u-mt20">منحنى الربح التراكمي (بالمبلغ)</h2>
+    <div class="section-card u-tc">
       <img id="profitChartImg" style="max-width:100%;border-radius:8px;">
     </div>
 
-    <h2 style="margin-top:24px;">تقرير سهم أو أكتر</h2>
+    <h2 class="u-mt24">تقرير سهم أو أكتر</h2>
     <div class="section-card">
       <label>اختر الأسهم للتقرير</label>
       <div class="ms-dropdown" id="msDropdown">
         <button type="button" class="ms-toggle" id="msToggleBtn">اختر الأسهم ▾</button>
         <div class="ms-panel" id="msPanel" style="display:none;">
-          <div class="std-filter-search" style="margin-bottom:8px;"><input type="text" id="reportSymSearchInput" placeholder="ابحث باسم السهم..."></div>
-          <div class="std-filter-tabs" style="margin-bottom:8px;">
+          <div class="std-filter-search u-mb8"><input type="text" id="reportSymSearchInput" placeholder="ابحث باسم السهم..."></div>
+          <div class="std-filter-tabs u-mb8">
             <button type="button" class="small secondary reportStatusFilterBtn std-filter-tab btn-active" data-status="all">الكل</button>
             <button type="button" class="small secondary reportStatusFilterBtn std-filter-tab" data-status="مفتوحة">مفتوحة فقط</button>
             <button type="button" class="small secondary reportStatusFilterBtn std-filter-tab" data-status="مغلقة">مغلقة فقط</button>
@@ -633,7 +633,7 @@ async function renderPortfolio(){
           <button type="button" class="small" id="msDoneBtn" style="width:100%;margin-top:8px;">تم</button>
         </div>
       </div>
-      <button id="printStockReportBtn" style="margin-top:14px;">🖨 إصدار تقرير PDF للأسهم المحددة</button>
+      <button id="printStockReportBtn" class="u-mt14">🖨 إصدار تقرير PDF للأسهم المحددة</button>
       <button id="exportStockReportXlsBtn" class="secondary">⬇ تصدير التقرير Excel</button>
       <div style="font-size:11.5px;color:#888;margin-top:6px;">يمكنك اختيار سهم واحد أو أكثر أو كل الأسهم — سيستخدم التقرير الفترة نفسها (من - إلى) المحددة أعلاه.</div>
     </div>
@@ -665,7 +665,7 @@ async function renderPortfolio(){
 
   document.getElementById('homeBtn').onclick=()=>renderHome();
   document.getElementById('goDiversificationBtn').onclick=()=>renderDiversificationReport();
-  document.querySelectorAll('[data-ccy]').forEach(b => b.onclick = () => {
+  app.querySelectorAll('[data-ccy]').forEach(b => b.onclick = () => {
     try { localStorage.setItem('gs_ccy', b.dataset.ccy); } catch(e){}
     window.__navSilent = true; try { renderPortfolio(); } finally { window.__navSilent = false; }
   });
@@ -714,7 +714,7 @@ async function renderPortfolio(){
           <td class="${a.totalClosedProfit<0?'neg':'pos'}">${fmtMoney(a.totalClosedProfit)}</td>
         </tr>
       </tbody>
-    </table>` : '<p style="color:#888;font-size:13px;">لا يوجد أسهم مضافة بعد.</p>';
+    </table>` : '<p class="u-note">لا يوجد أسهم مضافة بعد.</p>';
   }
 
   function renderIndicators(a, from, to){
@@ -724,7 +724,7 @@ async function renderPortfolio(){
         <div class="summary-card"><div class="val">${fmtMoney(a.grandTotalInvestedEver)}</div><div class="lbl">كم استثمرت</div></div>
         <div class="summary-card"><div class="val ${a.grandTotalProfit>=0?'pos':'neg'}">${fmtMoney(a.grandTotalProfit)}</div><div class="lbl">كم ربحت أو خسرت</div></div>
         <div class="summary-card"><div class="val ${a.overallProfitPercent>=0?'pos':'neg'}">${a.overallProfitPercent.toFixed(2)}%</div><div class="lbl">نسبة الربح/الخسارة على المبلغ المستثمر</div></div>
-        <div class="summary-card"><div class="val" style="font-size:13px;">${periodLabel}</div><div class="lbl">فترة الاستثمار / نسبة الربح خلال الفترة: ${a.overallProfitPercent.toFixed(2)}%</div></div>
+        <div class="summary-card"><div class="val u-fs13">${periodLabel}</div><div class="lbl">فترة الاستثمار / نسبة الربح خلال الفترة: ${a.overallProfitPercent.toFixed(2)}%</div></div>
       </div>`;
   }
 
@@ -800,7 +800,7 @@ async function renderPortfolio(){
       <table style="border-collapse:collapse;font-family:Tahoma,Arial;direction:rtl;" dir="rtl">
         <tr><td colspan="10" style="${titleTd}">GRIFFINE — ملخص المحفظة</td></tr>
         <tr><td colspan="10" style="border:none;padding:6px;">تاريخ الطباعة: ${new Date().toLocaleDateString('ar-EG')}</td></tr>
-        <tr><td colspan="10" style="border:none;"></td></tr>
+        <tr><td colspan="10" class="u-bn"></td></tr>
         <tr>
           <td style="${th}">السهم</td><td style="${th}">النوع</td><td style="${th}">الحالة</td><td style="${th}">المستثمر</td><td style="${th}">القيمة الحالية</td>
           <td style="${th}">نسبة الانخفاض</td><td style="${th}">ربح غير محقق</td><td style="${th}">ربح محقق</td>
@@ -915,12 +915,12 @@ async function renderPortfolio(){
         <div><div class="v">${fmt2(stAgg.grandTotalInvestedEver)}</div><div class="l">إجمالي المستثمر (كل المحفظة)</div></div>
         <div><div class="v">${fmt2(stAgg.grandTotalProfit)}</div><div class="l">إجمالي الربح/الخسارة</div></div>
         <div><div class="v">${stAgg.overallProfitPercent.toFixed(2)}%</div><div class="l">نسبة الربح/الخسارة الإجمالية</div></div>
-        <div><div class="v" style="font-size:12px;">${periodLabel}</div><div class="l">فترة الكشف</div></div>
+        <div><div class="v u-fs12">${periodLabel}</div><div class="l">فترة الكشف</div></div>
       </div>
 
       <img src="${stChartImg}" width="720" height="300">
 
-      <h2 style="margin-top:20px;">إجماليات كل الأسهم</h2>
+      <h2 class="u-mt20">إجماليات كل الأسهم</h2>
       <table><thead><tr>
         <th>السهم</th><th>النوع</th><th>الحالة</th><th>المستثمر</th><th>القيمة الحالية</th><th>الانخفاض</th>
         <th>ربح غير محقق</th><th>ربح محقق</th><th>صفقات مغلقة</th><th>ربح الصفقات المغلقة</th>
@@ -969,7 +969,7 @@ async function renderPortfolio(){
     let body = `<table style="border-collapse:collapse;font-family:Tahoma,Arial;direction:rtl;" dir="rtl">
       <tr><td colspan="10" style="${titleTd}">GRIFFINE — كشف حساب شامل للمحفظة</td></tr>
       <tr><td colspan="10" style="border:none;padding:6px;">الفترة من ${periodLabel} | تاريخ الطباعة: ${new Date().toLocaleDateString('ar-EG')}</td></tr>
-      <tr><td colspan="10" style="border:none;"></td></tr>
+      <tr><td colspan="10" class="u-bn"></td></tr>
       <tr>
         <td style="${th}">السهم</td><td style="${th}">النوع</td><td style="${th}">الحالة</td><td style="${th}">المستثمر</td><td style="${th}">القيمة الحالية</td>
         <td style="${th}">نسبة الانخفاض</td><td style="${th}">ربح غير محقق</td><td style="${th}">ربح محقق</td>
@@ -984,7 +984,7 @@ async function renderPortfolio(){
         <td style="${totalTd}">${stAgg.totalClosedTradesCount}</td><td style="${totalTd}">${stAgg.totalClosedProfit.toFixed(2)}</td>
       </tr>
       <tr><td colspan="10" style="border:none;padding:10px;text-align:center;"><img src="chart.png" width="600" height="237"></td></tr>
-      <tr><td colspan="10" style="border:none;"></td></tr>`;
+      <tr><td colspan="10" class="u-bn"></td></tr>`;
 
     let periodTotalProfit = 0;
     symbols.forEach(sym=>{
@@ -1106,7 +1106,7 @@ async function renderPortfolio(){
         <div><div class="v">${fmt2(reportAgg.grandTotalInvestedEver)}</div><div class="l">كم استثمرت (${groupLabel})</div></div>
         <div><div class="v">${fmt2(reportAgg.grandTotalProfit)}</div><div class="l">كم ربحت أو خسرت</div></div>
         <div><div class="v">${reportAgg.overallProfitPercent.toFixed(2)}%</div><div class="l">نسبة الربح/الخسارة</div></div>
-        <div><div class="v" style="font-size:12px;">${periodLabel}</div><div class="l">فترة التقرير</div></div>
+        <div><div class="v u-fs12">${periodLabel}</div><div class="l">فترة التقرير</div></div>
       </div>
 
       <img src="${chartImg}" width="720" height="300">
@@ -1179,7 +1179,7 @@ async function renderPortfolio(){
       <table style="border-collapse:collapse;font-family:Tahoma,Arial;direction:rtl;" dir="rtl">
         <tr><td colspan="10" style="${titleTd}">GRIFFINE — تقرير مجمّع: ${groupLabel}</td></tr>
         <tr><td colspan="10" style="border:none;padding:6px;">الفترة: ${periodLabel} | تاريخ الطباعة: ${new Date().toLocaleDateString('ar-EG')}</td></tr>
-        <tr><td colspan="10" style="border:none;"></td></tr>
+        <tr><td colspan="10" class="u-bn"></td></tr>
         <tr>
           <td style="${th}">السهم</td><td style="${th}">النوع</td><td style="${th}">الحالة</td><td style="${th}">المستثمر</td><td style="${th}">القيمة الحالية</td>
           <td style="${th}">نسبة الانخفاض</td><td style="${th}">ربح غير محقق</td><td style="${th}">ربح محقق</td>
@@ -1194,7 +1194,7 @@ async function renderPortfolio(){
           <td style="${totalTd}">${reportAgg.totalClosedTradesCount}</td><td style="${totalTd}">${reportAgg.totalClosedProfit.toFixed(2)}</td>
         </tr>
         <tr><td colspan="10" style="border:none;padding:10px;text-align:center;"><img src="chart.png" width="600" height="237"></td></tr>
-        <tr><td colspan="10" style="border:none;"></td></tr>
+        <tr><td colspan="10" class="u-bn"></td></tr>
         ${detailRows}
       </table>
       </body></html>`;
@@ -1268,14 +1268,14 @@ async function renderDiversificationReport(){
     <div class="section-card">
       ${rows.length ? rows.map(r=>{
         const pct = totalExposure>0 ? (r.value/totalExposure*100) : 0;
-        return `<div style="margin-bottom:10px;">
+        return `<div class="u-mb10">
           <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px;"><strong>${escapeHtml(r.symbol)}</strong><span>${pct.toFixed(1)}%</span></div>
           <div style="background:#eee;border-radius:4px;height:10px;overflow:hidden;"><div style="background:${pct>=40?'#c0392b':'var(--green)'};height:100%;width:${Math.min(pct,100)}%;"></div></div>
         </div>`;
-      }).join('') : '<p style="color:#888;font-size:13px;">لا توجد مراكز مفتوحة حاليًا.</p>'}
+      }).join('') : '<p class="u-note">لا توجد مراكز مفتوحة حاليًا.</p>'}
     </div>
 
-    ${marketRows.length > 1 ? `<h2 style="margin-top:20px;">توزيع القيمة حسب السوق</h2>
+    ${marketRows.length > 1 ? `<h2 class="u-mt20">توزيع القيمة حسب السوق</h2>
     <div class="section-card">
       ${marketRows.map(m=>`<div>${escapeHtml(m.market)}: <strong>${m.pct.toFixed(1)}%</strong></div>`).join('')}
     </div>` : ''}
@@ -1301,15 +1301,15 @@ async function renderReferralPage(){
     <div class="info">اقنع صاحبك يجرّب GRIFFINE — لما يشترك باقة مدفوعة، انتوا الاتنين تاخدوا ${info.bonusDays} يوم إضافي مجاني على اشتراككم الحالي تلقائيًا.</div>
 
     <h2>كود الإحالة الخاص بك</h2>
-    <div class="section-card" style="text-align:center;">
+    <div class="section-card u-tc">
       <div style="font-size:26px;font-weight:bold;letter-spacing:4px;color:var(--green-dark);">${escapeHtml(info.code)}</div>
-      <label style="margin-top:12px;">أو شارك الرابط المباشر</label>
+      <label class="u-mt12">أو شارك الرابط المباشر</label>
       <input type="text" id="refLinkInput" readonly value="${link}">
-      <button id="copyRefLinkBtn" style="margin-top:8px;">📋 نسخ الرابط</button>
+      <button id="copyRefLinkBtn" class="u-mt8">📋 نسخ الرابط</button>
       <div id="copyResult"></div>
     </div>
 
-    <h2 style="margin-top:20px;">إحصائياتك</h2>
+    <h2 class="u-mt20">إحصائياتك</h2>
     <div class="summary-cards">
       <div class="summary-card"><div class="val">${info.totalReferred}</div><div class="lbl">إجمالي من سجّلوا بكودك</div></div>
       <div class="summary-card"><div class="val">${info.rewardedCount}</div><div class="lbl">مكافآت اتصرفت فعليًا</div></div>
@@ -1320,10 +1320,10 @@ async function renderReferralPage(){
   document.getElementById('copyRefLinkBtn').onclick=async()=>{
     try {
       await navigator.clipboard.writeText(link);
-      document.getElementById('copyResult').innerHTML = '<div class="info" style="margin-top:8px;">✅ اتنسخ الرابط.</div>';
+      document.getElementById('copyResult').innerHTML = '<div class="info u-mt8">✅ اتنسخ الرابط.</div>';
     } catch(e) {
       document.getElementById('refLinkInput').select();
-      document.getElementById('copyResult').innerHTML = '<div class="info" style="margin-top:8px;">حدد الرابط وانسخه يدويًا.</div>';
+      document.getElementById('copyResult').innerHTML = '<div class="info u-mt8">حدد الرابط وانسخه يدويًا.</div>';
     }
   };
 }
@@ -1346,66 +1346,66 @@ async function renderProfilePage(){
     <div class="topbar"><div>${pageTitle('profile','👤 الملف الشخصي')}</div><button class="secondary small" id="homeBtn">🏠 الشاشة الرئيسية</button></div>
 
     <h2>الصورة الشخصية</h2>
-    <div class="section-card" style="text-align:center;">
+    <div class="section-card u-tc">
       <img id="currentAvatarPreview" src="${escapeHtml(currentAvatar || presets[0])}" alt="الصورة الشخصية" style="width:84px;height:84px;border-radius:50%;object-fit:cover;border:2px solid var(--border);margin-bottom:12px;">
       <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:12px;">
         ${presets.map((p,i)=>`<img src="${p}" class="avatarPresetOption" data-idx="${i}" alt="أفاتار ${i+1}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;cursor:pointer;border:2px solid transparent;">`).join('')}
       </div>
       <input type="file" accept="image/*" id="avatarUploadInput" style="display:none;">
-      <button id="avatarUploadBtn" class="secondary" style="width:auto;">📤 رفع صورة شخصية</button>
+      <button id="avatarUploadBtn" class="secondary u-wa">📤 رفع صورة شخصية</button>
       ${currentAvatar ? `<button id="avatarRemoveBtn" class="danger" style="width:auto;margin-inline-start:8px;">إزالة الصورة</button>` : ''}
       <div id="avatarResult"></div>
     </div>
 
-    <h2 style="margin-top:20px;">بياناتك</h2>
+    <h2 class="u-mt20">بياناتك</h2>
     <div class="section-card">
-      <div style="margin-bottom:6px;"><strong>البريد الإلكتروني:</strong> ${escapeHtml(email)}</div>
+      <div class="u-mb6"><strong>البريد الإلكتروني:</strong> ${escapeHtml(email)}</div>
       <button id="requestEmailChangeToggleBtn" class="secondary small" style="width:auto;margin-bottom:12px;">✏️ طلب تعديل البريد الإلكتروني</button>
       <button id="requestPasswordChangeBtn" class="secondary small" style="width:auto;margin-bottom:12px;margin-inline-start:8px;">🔑 طلب تعديل كلمة المرور</button>
       <div id="passwordChangeResult"></div>
       <div id="emailChangeForm" style="display:none;margin-bottom:12px;padding:10px;border:1px solid var(--border);border-radius:8px;">
         <div style="font-size:12.5px;color:#666;margin-bottom:8px;">تعديل البريد الإلكتروني (بريد الدخول) يحتاج موافقة الأدمن أولًا. اكتب البريد الجديد وابعت الطلب، وهيتم مراجعته.</div>
         <input type="email" id="newEmailInput" placeholder="البريد الإلكتروني الجديد">
-        <button id="submitEmailChangeBtn" class="secondary small" style="width:auto;margin-top:8px;">إرسال الطلب</button>
+        <button id="submitEmailChangeBtn" class="secondary small u-wa u-mt8">إرسال الطلب</button>
         <div id="emailChangeResult"></div>
       </div>
       ${sub ? `
         <label style="font-size:13px;color:#666;">الاسم</label>
-        <input type="text" id="profileNameInput" value="${escapeHtml(sub.name || '')}" style="margin-bottom:10px;">
+        <input type="text" id="profileNameInput" value="${escapeHtml(sub.name || '')}" class="u-mb10">
         <label style="font-size:13px;color:#666;">رقم الهاتف</label>
-        <input type="tel" id="profilePhoneInput" value="${escapeHtml(sub.phone || '')}" style="margin-bottom:10px;">
+        <input type="tel" id="profilePhoneInput" value="${escapeHtml(sub.phone || '')}" class="u-mb10">
         <div style="margin-bottom:10px;font-size:13px;"><strong>إيميل التواصل:</strong> ${escapeHtml(sub.contactEmail || '-')}</div>
         <label style="font-size:13px;color:#666;">الرقم القومي (اختياري)</label>
-        <input type="text" id="profileNationalIdInput" value="${escapeHtml(sub.nationalId || '')}" style="margin-bottom:10px;">
+        <input type="text" id="profileNationalIdInput" value="${escapeHtml(sub.nationalId || '')}" class="u-mb10">
         <label style="font-size:13px;color:#666;">العنوان (اختياري)</label>
-        <input type="text" id="profileAddressInput" value="${escapeHtml(sub.address || '')}" style="margin-bottom:10px;">
-        <button id="saveProfileDataBtn" class="secondary" style="margin-top:6px;">💾 حفظ التعديلات</button>
+        <input type="text" id="profileAddressInput" value="${escapeHtml(sub.address || '')}" class="u-mb10">
+        <button id="saveProfileDataBtn" class="secondary u-mt6">💾 حفظ التعديلات</button>
         <div id="profileSaveResult"></div>
-      ` : '<div style="color:#888;font-size:13px;">بعد معملتش أي اشتراك.</div>'}
+      ` : '<div class="u-note">بعد معملتش أي اشتراك.</div>'}
     </div>
 
     ${sub ? `
-    <h2 style="margin-top:20px;">اشتراكك الحالي</h2>
+    <h2 class="u-mt20">اشتراكك الحالي</h2>
     <div class="section-card">
-      <div style="margin-bottom:6px;"><strong>الباقة:</strong> ${escapeHtml(sub.planName || '-')}</div>
-      <div style="margin-bottom:6px;"><strong>الحالة:</strong> ${sub.active ? '<span class="tag tag-done">نشط</span>' : '<span class="tag tag-wait">بانتظار التفعيل</span>'}</div>
-      <div style="margin-bottom:6px;"><strong>ينتهي في:</strong> ${formatDateAr(sub.endDate)}</div>
+      <div class="u-mb6"><strong>الباقة:</strong> ${escapeHtml(sub.planName || '-')}</div>
+      <div class="u-mb6"><strong>الحالة:</strong> ${sub.active ? '<span class="tag tag-done">نشط</span>' : '<span class="tag tag-wait">بانتظار التفعيل</span>'}</div>
+      <div class="u-mb6"><strong>ينتهي في:</strong> ${formatDateAr(sub.endDate)}</div>
       ${sub.pendingPlanName ? `<div style="margin-top:6px;color:#8a6d1b;">📅 في انتظار التفعيل: ${escapeHtml(sub.pendingPlanName)}</div>` : ''}
     </div>` : ''}
 
-    <h2 style="margin-top:20px;">مظهر الموقع</h2>
+    <h2 class="u-mt20">مظهر الموقع</h2>
     <div class="section-card">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div class="u-row">
         <span>الوضع الحالي: ${theme === 'dark' ? '🌙 ليلي' : '☀️ نهاري'}</span>
-        <button id="toggleThemeFromProfile" class="secondary" style="width:auto;margin:0;">تبديل</button>
+        <button id="toggleThemeFromProfile" class="secondary u-wa u-m0">تبديل</button>
       </div>
     </div>
 
-    <h2 style="margin-top:20px;">الحساب</h2>
+    <h2 class="u-mt20">الحساب</h2>
     <div class="section-card">
-      <button id="goSubHistoryFromProfileBtn" class="secondary" style="margin-top:0;">📄 سجل اشتراكي</button>
-      <button id="goReferralFromProfileBtn" class="secondary" style="margin-top:10px;">🎁 ادعُ صديق</button>
-      <button id="logoutFromProfileBtn" class="danger" style="margin-top:10px;">تسجيل الخروج</button>
+      <button id="goSubHistoryFromProfileBtn" class="secondary u-mt0">📄 سجل اشتراكي</button>
+      <button id="goReferralFromProfileBtn" class="secondary u-mt10">🎁 ادعُ صديق</button>
+      <button id="logoutFromProfileBtn" class="danger u-mt10">تسجيل الخروج</button>
     </div>
   </div>`;
   document.getElementById('homeBtn').onclick=()=>renderHome();
@@ -1426,20 +1426,20 @@ async function renderProfilePage(){
     resEl.innerHTML = '<div style="font-size:12.5px;color:#888;margin-top:6px;">جاري الإرسال...</div>';
     const r = await forgotPassword(email);
     if (r && r.success) {
-      resEl.innerHTML = `<div class="info" style="margin-top:6px;">✅ ${escapeHtml(r.message)}</div>`;
+      resEl.innerHTML = `<div class="info u-mt6">✅ ${escapeHtml(r.message)}</div>`;
     } else {
-      resEl.innerHTML = '<div class="error" style="margin-top:6px;">حصل خطأ في إرسال الطلب.</div>';
+      resEl.innerHTML = '<div class="error u-mt6">حصل خطأ في إرسال الطلب.</div>';
     }
   };
   document.getElementById('submitEmailChangeBtn').onclick = async () => {
     const resEl = document.getElementById('emailChangeResult');
     const newEmail = document.getElementById('newEmailInput').value.trim();
-    if (!newEmail) { resEl.innerHTML = '<div class="error" style="margin-top:8px;">أدخل البريد الإلكتروني الجديد.</div>'; return; }
+    if (!newEmail) { resEl.innerHTML = '<div class="error u-mt8">أدخل البريد الإلكتروني الجديد.</div>'; return; }
     const r = await apiPost('/request_email_change.php', { new_email: newEmail });
     if (r && r.success) {
-      resEl.innerHTML = '<div class="info" style="margin-top:8px;">✅ تم إرسال طلبك، هيتم مراجعته من الأدمن.</div>';
+      resEl.innerHTML = '<div class="info u-mt8">✅ تم إرسال طلبك، هيتم مراجعته من الأدمن.</div>';
     } else {
-      resEl.innerHTML = `<div class="error" style="margin-top:8px;">${(r&&r.message)||'حصل خطأ'}</div>`;
+      resEl.innerHTML = `<div class="error u-mt8">${(r&&r.message)||'حصل خطأ'}</div>`;
     }
   };
   if (sub) {
@@ -1449,12 +1449,12 @@ async function renderProfilePage(){
       const phone = document.getElementById('profilePhoneInput').value.trim();
       const nationalId = document.getElementById('profileNationalIdInput').value.trim();
       const address = document.getElementById('profileAddressInput').value.trim();
-      if (!name || !phone) { resEl.innerHTML = '<div class="error" style="margin-top:8px;">الاسم ورقم الهاتف مطلوبين.</div>'; return; }
+      if (!name || !phone) { resEl.innerHTML = '<div class="error u-mt8">الاسم ورقم الهاتف مطلوبين.</div>'; return; }
       const r = await apiPost('/update_my_profile.php', { name, phone, national_id: nationalId, address });
       if (r && r.success) {
-        resEl.innerHTML = '<div class="info" style="margin-top:8px;">✅ تم حفظ التعديلات.</div>';
+        resEl.innerHTML = '<div class="info u-mt8">✅ تم حفظ التعديلات.</div>';
       } else {
-        resEl.innerHTML = `<div class="error" style="margin-top:8px;">${(r&&r.message)||'حصل خطأ في الحفظ'}</div>`;
+        resEl.innerHTML = `<div class="error u-mt8">${(r&&r.message)||'حصل خطأ في الحفظ'}</div>`;
       }
     };
   }
@@ -1464,10 +1464,10 @@ async function renderProfilePage(){
     const r = await apiPost('/avatar_save.php', { avatar: dataUrl });
     if (r && r.success) {
       document.getElementById('currentAvatarPreview').src = dataUrl || presets[0];
-      resEl.innerHTML = '<div class="info" style="margin-top:8px;">✅ اتحفظت الصورة.</div>';
+      resEl.innerHTML = '<div class="info u-mt8">✅ اتحفظت الصورة.</div>';
       await refreshTopNavAvatar();
     } else {
-      resEl.innerHTML = `<div class="error" style="margin-top:8px;">${(r&&r.message)||'حصل خطأ في حفظ الصورة'}</div>`;
+      resEl.innerHTML = `<div class="error u-mt8">${(r&&r.message)||'حصل خطأ في حفظ الصورة'}</div>`;
     }
   }
 
@@ -1528,10 +1528,10 @@ async function renderGridPlansList(){
       <div class="std-filter-search"><input type="text" id="gridListSearch" placeholder="🔍 ابحث باسم السهم..."></div>
     </div>` : ''}
 
-    <h2 style="margin-top:20px;" id="gridActiveHeading">خططك النشطة</h2>
+    <h2 class="u-mt20" id="gridActiveHeading">خططك النشطة</h2>
     <div id="gridListWrap"></div>
 
-    ${closedSymbols.length ? `<h2 style="margin-top:20px;" id="gridClosedHeading">خطط مقفولة</h2><div id="gridClosedListWrap"></div>` : ''}
+    ${closedSymbols.length ? `<h2 class="u-mt20" id="gridClosedHeading">خطط مقفولة</h2><div id="gridClosedListWrap"></div>` : ''}
     <div class="std-filter-empty" id="gridListEmpty" style="display:none;">لا توجد خطط مطابقة للبحث</div>
   </div>`;
   document.getElementById('homeBtn').onclick=()=>renderHome();
@@ -1539,17 +1539,17 @@ async function renderGridPlansList(){
 
   const listWrap = document.getElementById('gridListWrap');
   if (!activeSymbols.length) {
-    listWrap.innerHTML = '<p style="color:#888;font-size:13px;">لم تنشئ أي خطة شبكة نشطة بعد.</p>';
+    listWrap.innerHTML = '<p class="u-note">لم تنشئ أي خطة شبكة نشطة بعد.</p>';
   } else {
     listWrap.innerHTML = activeSymbols.map(sym => {
       const g = grids[sym];
       const bought = g.levels.filter(l=>l.status==='bought').length;
       const totalCycles = g.levels.reduce((s,l)=>s+(l.cycles||0),0);
       return `<div class="plan-list-item" data-q="${sym.toLowerCase()}" data-gcall="__openGrid" data-gargs="${gArgs([String(sym)])}">
-        <div><strong>${escapeHtml(sym)}</strong> <span style="font-size:11px;color:#888;">(${escapeHtml(g.market||'')})</span></div>
+        <div><strong>${escapeHtml(sym)}</strong> <span class="u-fs11 u-muted">(${escapeHtml(g.market||'')})</span></div>
         <div style="display:flex;align-items:center;gap:10px;">
           <div style="font-size:12px;color:#666;">مستويات مشتراة: ${bought}/${g.levels.length} — دورات مكتملة: ${totalCycles}</div>
-          <button class="small secondary" style="width:auto;margin:0;" data-gcall="__editGridFromList" data-gargs="${gArgs([String(sym)])}" data-gstop="1">⚙️ تعديل الخطة</button>
+          <button class="small secondary u-wa u-m0" data-gcall="__editGridFromList" data-gargs="${gArgs([String(sym)])}" data-gstop="1">⚙️ تعديل الخطة</button>
         </div>
       </div>`;
     }).join('');
@@ -1615,27 +1615,27 @@ async function renderGridPlanForm(){
 
       <label style="margin-top:16px;">طريقة توزيع الكمية على المستويات</label>
       <div class="radio-row" style="display:flex;gap:16px;margin:6px 0 12px;flex-wrap:wrap;">
-        <label style="display:flex;align-items:center;gap:5px;font-weight:normal;"><input type="radio" name="g_qtyMode" value="equal" checked> توزيع متساوٍ (تلقائي)</label>
-        <label style="display:flex;align-items:center;gap:5px;font-weight:normal;"><input type="radio" name="g_qtyMode" value="manual"> تحديد يدوي لكل مستوى</label>
-        <label style="display:flex;align-items:center;gap:5px;font-weight:normal;"><input type="radio" name="g_qtyMode" value="progressive"> زيادة الكمية بنسبة المخاطرة مع كل مستوى</label>
+        <label class="u-check"><input type="radio" name="g_qtyMode" value="equal" checked> توزيع متساوٍ (تلقائي)</label>
+        <label class="u-check"><input type="radio" name="g_qtyMode" value="manual"> تحديد يدوي لكل مستوى</label>
+        <label class="u-check"><input type="radio" name="g_qtyMode" value="progressive"> زيادة الكمية بنسبة المخاطرة مع كل مستوى</label>
       </div>
 
-      <label style="margin-top:10px;">نسبة ربح الخروج الكلي % (اختياري)</label>
+      <label class="u-mt10">نسبة ربح الخروج الكلي % (اختياري)</label>
       <input type="number" step="any" id="g_exitProfitPercent" placeholder="مثال: 10">
       <div style="font-size:11px;color:#888;margin-top:4px;">إذا حددتها، سيوضح لك الموقع السعر الذي يمكنك عنده الخروج من كل المستويات المفتوحة معًا وتحقيق نسبة الربح هذه على متوسط تكلفتك، وسيُبرز المستوى الأقرب لسعر الخروج هذا باللون الأخضر في جدول المستويات.</div>
 
-      <button type="button" id="genLevelsBtn" class="secondary" style="margin-top:14px;">توليد جدول المستويات</button>
+      <button type="button" id="genLevelsBtn" class="secondary u-mt14">توليد جدول المستويات</button>
     </form>
 
     <div id="levelsPreviewWrap" style="display:none;margin-top:16px;">
       <h2>جدول المستويات — عدّل الكمية الإرشادية لو حابب</h2>
-      <div class="section-card" style="overflow-x:auto;">
+      <div class="section-card u-ox">
         <table>
           <thead><tr><th>#</th><th>السعر المخطط</th><th>الكمية الإرشادية</th></tr></thead>
           <tbody id="levelsPreviewBody"></tbody>
         </table>
       </div>
-      <button id="createGridBtn" style="margin-top:14px;">إنشاء الخطة</button>
+      <button id="createGridBtn" class="u-mt14">إنشاء الخطة</button>
     </div>
     <div id="gridFormResult"></div>
   </div>`;
@@ -1670,7 +1670,7 @@ async function renderGridPlanForm(){
     const numLevels = parseInt(document.getElementById('g_levels').value);
     const resultEl = document.getElementById('gridFormResult');
     if (!capital || !risk || high<=low || !numLevels || numLevels<1) {
-      resultEl.innerHTML = '<div class="error" style="margin-top:10px;">تأكد إن رأس المال ونسبة المخاطرة والنطاق وعدد المستويات كلهم مدخلين صح (السقف أكبر من القاع).</div>';
+      resultEl.innerHTML = '<div class="error u-mt10">تأكد إن رأس المال ونسبة المخاطرة والنطاق وعدد المستويات كلهم مدخلين صح (السقف أكبر من القاع).</div>';
       return;
     }
     resultEl.innerHTML = '';
@@ -1705,12 +1705,12 @@ async function renderGridPlanForm(){
     const resultEl = document.getElementById('gridFormResult');
 
     if (!symbol) {
-      resultEl.innerHTML = '<div class="error" style="margin-top:10px;">أدخل كود السهم.</div>';
+      resultEl.innerHTML = '<div class="error u-mt10">أدخل كود السهم.</div>';
       return;
     }
     const existingDacPlans = await getPlans(email);
     if (existingDacPlans[symbol]) {
-      resultEl.innerHTML = '<div class="error" style="margin-top:10px;">هذا السهم لديه خطة تعزيز متوسط (DCA) بالفعل — لا يمكن أن يكون السهم نفسه في خطتين في الوقت نفسه. احذف خطة الـDCA أولًا إذا أردت بدء خطة شبكة بدلًا منها.</div>';
+      resultEl.innerHTML = '<div class="error u-mt10">هذا السهم لديه خطة تعزيز متوسط (DCA) بالفعل — لا يمكن أن يكون السهم نفسه في خطتين في الوقت نفسه. احذف خطة الـDCA أولًا إذا أردت بدء خطة شبكة بدلًا منها.</div>';
       return;
     }
     const tradeSize = capital * risk / 100;
@@ -1780,19 +1780,19 @@ async function renderGridPlanDetail(symbol){
     </div>
 
     <div class="section-card">
-      <button class="small secondary" id="gridEditSettingsBtn" style="width:auto;">⚙️ تعديل إعدادات وخطة السهم</button>
+      <button class="small secondary u-wa" id="gridEditSettingsBtn">⚙️ تعديل إعدادات وخطة السهم</button>
     </div>
 
     <div class="section-card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
       <span>رأس المال الحالي المخصص للسهم:</span>
       <input type="number" step="any" id="gridCapitalInput" value="${g.capital}" style="max-width:160px;">
-      <button class="small" id="gridUpdateCapitalBtn" style="width:auto;">تحديث</button>
+      <button class="small u-wa" id="gridUpdateCapitalBtn">تحديث</button>
     </div>
 
     <div class="section-card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
       <span>نسبة ربح الخروج الكلي % (لخروج كل المستويات المفتوحة مع بعض)</span>
       <input type="number" step="any" id="gridExitProfitInput" value="${g.exitProfitPercent??''}" placeholder="مثال: 10" style="max-width:160px;">
-      <button class="small" id="gridUpdateExitProfitBtn" style="width:auto;">تحديث</button>
+      <button class="small u-wa" id="gridUpdateExitProfitBtn">تحديث</button>
     </div>
     ${gsum.exitTargetPrice!=null ? `<div class="info">🎯 لو السعر وصل <strong>${fmt2(gsum.exitTargetPrice)}</strong>، فإن بيع كل المستويات المفتوحة الآن سيحقق نسبة ربح ${g.exitProfitPercent}% على متوسط تكلفتك — المستوى الأقرب لذلك مُبرز باللون الأخضر في الجدول أدناه.</div>` : ''}
 
@@ -1805,43 +1805,43 @@ async function renderGridPlanDetail(symbol){
       <div class="summary-card"><div class="val ${totalProfit>=0?'pos':'neg'}">${fmtMoney(totalProfit)}</div><div class="lbl">الربح المحقق حتى الآن</div></div>
     </div>
 
-    <h2 style="margin-top:20px;">موقف السهم على آخر سعر</h2>
+    <h2 class="u-mt20">موقف السهم على آخر سعر</h2>
     <div class="section-card">
       <label>آخر سعر (اختياري - إدخال يدوي، وإذا تُرك فارغًا سيُستخدم آخر سعر شراء فعلي تم تنفيذه)</label>
       <input type="number" step="any" id="gridManualLastPriceInput" value="${g.manualLastPrice??''}" placeholder="مثال: 45.20" style="font-weight:bold;color:#111;font-size:16px;">
-      <div class="summary-cards" style="margin-top:12px;">
+      <div class="summary-cards u-mt12">
         <div class="summary-card"><div class="val" id="gridStatusLastPriceUsed">-</div><div class="lbl">السعر المستخدم في الحساب</div></div>
         <div class="summary-card"><div class="val" id="gridStatusTotalValue">-</div><div class="lbl">إجمالي القيمة الحالية للكمية المملوكة</div></div>
         <div class="summary-card"><div class="val" id="gridStatusDropPercent">-</div><div class="lbl">نسبة الانخفاض عن متوسط التكلفة</div></div>
       </div>
-      <div id="rangeAlertWrap" style="margin-top:10px;"><div id="rangeAlert"></div></div>
+      <div id="rangeAlertWrap" class="u-mt10"><div id="rangeAlert"></div></div>
     </div>
 
-    <h2 style="margin-top:20px;">منحنى الربح التراكمي</h2>
+    <h2 class="u-mt20">منحنى الربح التراكمي</h2>
     <div class="section-card" id="curveWrap"></div>
 
-    <h2 style="margin-top:20px;">مستويات الشبكة</h2>
-    <div class="section-card" style="overflow-x:auto;">
+    <h2 class="u-mt20">مستويات الشبكة</h2>
+    <div class="section-card u-ox">
       <table>
         <thead><tr><th>المستوى المخطط</th><th>الكمية الإرشادية</th><th>الحالة</th><th>الشراء الفعلي</th><th>هدف البيع</th><th>عمليات البيع الفعلي</th><th>دورات</th><th>الكمية المتبقية تراكمي</th><th>متوسط التكلفة تراكمي</th><th>هدف البيع تراكمي</th><th>الربح المحقق تراكمي</th></tr></thead>
         <tbody id="gridLevelsBody"></tbody>
       </table>
     </div>
 
-    <h2 style="margin-top:20px;">سجل الصفقات المغلقة — ${symbol}</h2>
+    <h2 class="u-mt20">سجل الصفقات المغلقة — ${symbol}</h2>
     <div id="gridClosedTradesWrap"></div>
 
-    <h2 style="margin-top:20px;">بيع كل الكمية المتبقية في كل المستويات (خروج فوري من كل المراكز المفتوحة)</h2>
+    <h2 class="u-mt20">بيع كل الكمية المتبقية في كل المستويات (خروج فوري من كل المراكز المفتوحة)</h2>
     <div class="section-card">
       <div class="info" id="gridSellAllInfo">لا توجد كمية مشتراة حاليًا لبيعها.</div>
       <label>اكتب هنا السعر الفعلي الذي ستبيع به الآن (سيُطبَّق على كل المستويات المفتوحة دفعة واحدة)</label>
       <input type="number" step="any" id="sellAllPrice" placeholder="مثال: 45.20" style="font-weight:bold;color:#111;font-size:16px;">
       <div style="font-size:11px;color:#888;margin-top:4px;">هذا ليس سعرًا تلقائيًا — يجب أن تكتب سعر البورصة الحالي بنفسك.</div>
-      <button id="sellAllBtn" class="danger" style="margin-top:8px;">بيع كل الكمية المتبقية الآن</button>
+      <button id="sellAllBtn" class="danger u-mt8">بيع كل الكمية المتبقية الآن</button>
       <div id="sellAllResult"></div>
     </div>
 
-    <h2 style="margin-top:20px;">${g.closed ? 'إعادة فتح الخطة' : 'إغلاق الخطة'}</h2>
+    <h2 class="u-mt20">${g.closed ? 'إعادة فتح الخطة' : 'إغلاق الخطة'}</h2>
     <div class="section-card">
       <p style="font-size:12.5px;color:#666;">${g.closed ? 'هذه الخطة مغلقة حاليًا ولا تظهر كنشطة. يمكنك فتحها مرة أخرى متى شئت.' : 'إغلاق الخطة يوقف التنبيهات والتتبع النشط لها دون حذف أي بيانات — يمكنك فتحها مرة أخرى متى شئت.'}</p>
       <button id="toggleCloseBtn" class="${g.closed ? '' : 'danger'}">${g.closed ? 'إعادة فتح الخطة' : 'إغلاق الخطة'}</button>
@@ -2001,7 +2001,7 @@ async function renderGridPlanDetail(symbol){
 
     const alertEl = document.getElementById('rangeAlert');
     if (lastPrice == null) {
-      alertEl.innerHTML = '<p style="color:#888;font-size:13px;">لا يوجد تنفيذ فعلي مسجّل بعد.</p>';
+      alertEl.innerHTML = '<p class="u-note">لا يوجد تنفيذ فعلي مسجّل بعد.</p>';
     } else if (lastPrice < g.rangeLow) {
       alertEl.innerHTML = `<div class="error">⚠️ آخر سعر مسجّل (${lastPrice}) كسر قاع النطاق (${g.rangeLow}) — قد تكون فرضية التذبذب لم تعد صحيحة. القرار قرارك الشخصي (الاحتفاظ حتى الارتداد، أو بيع كل الكمية من القسم أدناه).</div>`;
     } else if (lastPrice > g.rangeHigh) {
@@ -2144,7 +2144,7 @@ async function renderGridPlanDetail(symbol){
             <button class="small" style="margin-top:6px;width:100%;" data-gcall="__gridArchiveCycle" data-gargs="${gArgs([idx])}">✅ ترحيل الدورة وبدء دورة جديدة</button>
           </div>`;
         } else {
-        sellCell += `<div class="trade-group" style="margin-top:4px;">
+        sellCell += `<div class="trade-group u-mt4">
           <div style="font-size:10px;color:#888;margin-bottom:3px;">أقصى كمية متاحة للبيع: ${fmtQty(lv.executedQty)}</div>
           <div class="trade-fields">
             <input type="number" step="any" min="0.0001" max="${lv.executedQty}" placeholder="كمية (أقصى ${fmtQty(lv.executedQty)})" id="gridSellQty_${idx}">
@@ -2280,9 +2280,9 @@ async function renderGridPlanDetail(symbol){
   document.getElementById('sellAllBtn').onclick = async () => {
     const price = parseFloat(document.getElementById('sellAllPrice').value);
     const resultEl = document.getElementById('sellAllResult');
-    if (!price || price<=0) { resultEl.innerHTML = '<div class="error" style="margin-top:8px;">أدخل سعر بيع صحيح.</div>'; return; }
+    if (!price || price<=0) { resultEl.innerHTML = '<div class="error u-mt8">أدخل سعر بيع صحيح.</div>'; return; }
     const boughtLevels = g.levels.filter(l=>l.status==='bought' && l.executedQty>0);
-    if (!boughtLevels.length) { resultEl.innerHTML = '<div class="error" style="margin-top:8px;">لا توجد كمية مشتراة حاليًا لبيعها.</div>'; return; }
+    if (!boughtLevels.length) { resultEl.innerHTML = '<div class="error u-mt8">لا توجد كمية مشتراة حاليًا لبيعها.</div>'; return; }
     if (!await gConfirm(`ستبيع إجمالي ${fmtQty(boughtLevels.reduce((s,l)=>s+l.executedQty,0))} سهم بسعر ${price} على كل المستويات المفتوحة، وهترحّل كصفقة واحدة مغلقة. متأكد؟`)) return;
     const closeDate = new Date().toISOString().slice(0,10);
     const closeDateTime = new Date().toISOString();
@@ -2347,22 +2347,22 @@ async function renderGridEditPlanSettings(symbol, error){
 
       <label style="margin-top:16px;">طريقة توزيع الكمية على المستويات</label>
       <div class="radio-row" style="display:flex;gap:16px;margin:6px 0 12px;flex-wrap:wrap;">
-        <label style="display:flex;align-items:center;gap:5px;font-weight:normal;"><input type="radio" name="ge_qtyMode" value="equal" checked> توزيع متساوٍ (تلقائي)</label>
-        <label style="display:flex;align-items:center;gap:5px;font-weight:normal;"><input type="radio" name="ge_qtyMode" value="manual"> تحديد يدوي لكل مستوى</label>
-        <label style="display:flex;align-items:center;gap:5px;font-weight:normal;"><input type="radio" name="ge_qtyMode" value="progressive"> زيادة الكمية بنسبة المخاطرة مع كل مستوى</label>
+        <label class="u-check"><input type="radio" name="ge_qtyMode" value="equal" checked> توزيع متساوٍ (تلقائي)</label>
+        <label class="u-check"><input type="radio" name="ge_qtyMode" value="manual"> تحديد يدوي لكل مستوى</label>
+        <label class="u-check"><input type="radio" name="ge_qtyMode" value="progressive"> زيادة الكمية بنسبة المخاطرة مع كل مستوى</label>
       </div>
       <button type="button" id="geGenLevelsBtn" class="secondary">توليد جدول المستويات الجديد</button>
     </form>
 
     <div id="geLevelsPreviewWrap" style="display:none;margin-top:16px;">
       <h2>جدول المستويات الجديد — عدّل الكمية الإرشادية لو حابب</h2>
-      <div class="section-card" style="overflow-x:auto;">
+      <div class="section-card u-ox">
         <table>
           <thead><tr><th>#</th><th>السعر المخطط</th><th>الكمية الإرشادية</th></tr></thead>
           <tbody id="geLevelsPreviewBody"></tbody>
         </table>
       </div>
-      <button id="geSaveBtn" style="margin-top:14px;">حفظ التعديلات</button>
+      <button id="geSaveBtn" class="u-mt14">حفظ التعديلات</button>
     </div>
     <div class="muted-link"><a id="cancelBtn">إلغاء والرجوع</a></div></div>`;
 
@@ -2459,14 +2459,14 @@ async function renderPlanTypeChooser(prefill){
       <p style="font-size:13px;color:#555;text-align:right;margin-top:10px;">
         تشتري كميات إضافية كلما انخفض السعر، لتقليل متوسط سعر شرائك الإجمالي. مناسبة لسهم تثق فيه على المدى الطويل وتريد "تشتري في الهبوط" بدل ما تخاف منه.
       </p>
-      <button class="btn-active" style="margin-top:14px;">اختيار تعزيز المتوسط</button>
+      <button class="btn-active u-mt14">اختيار تعزيز المتوسط</button>
     </div>
     <div class="section-card" data-gcall="__chooseGrid" style="cursor:pointer;margin-top:14px;">
       <div style="background:var(--green-dark);color:#fff;padding:8px 12px;border-radius:8px 8px 0 0;margin:-16px -18px 12px;font-weight:700;">🔲 خطة الشبكة (Grid)</div>
       <p style="font-size:13px;color:#555;text-align:right;">
         تحدد نطاقًا سعريًا (سقفًا وقاعًا)، وتشتري وتبيع الكمية نفسها كلما تحرك السعر بين المستويات، وتكرر الدورة. مناسبة لسهم متذبذب ليس في اتجاه واضح، وتربح من التذبذب نفسه.
       </p>
-      <button class="btn-active" style="margin-top:14px;">اختيار الشبكة</button>
+      <button class="btn-active u-mt14">اختيار الشبكة</button>
     </div>
   </div>`;
   document.getElementById('homeBtn').onclick=()=>renderHome();
@@ -2547,7 +2547,7 @@ async function renderNewPlanForm(error, formState){
         <div class="risk-preview" id="manualCoveragePreview"></div>
       </div>
 
-      <label style="margin-top:10px;">نسبة ربح الخروج الكلي % (اختياري)</label>
+      <label class="u-mt10">نسبة ربح الخروج الكلي % (اختياري)</label>
       <input type="number" step="any" id="exitProfitPercent" value="${fs.exitProfitPercent??''}" placeholder="مثال: 10">
       <div style="font-size:11px;color:#888;margin-top:4px;">إذا حددتها، سيوضح لك الموقع السعر الذي يمكنك عنده بيع كل الكمية المملوكة وتحقيق نسبة الربح هذه على متوسط تكلفتك، وسيُبرز المستوى الأقرب لسعر الخروج هذا باللون الأخضر في جدول المستويات.</div>
 
@@ -2655,8 +2655,8 @@ async function renderNewPlanForm(error, formState){
           box.innerHTML = `<div class="suggest-box">
             <strong>⚠️ في مدخلات ممكن تكون غير متوازنة:</strong>
             ${issues.map(i=>`<div class="suggest-item">${escapeHtml(i.message)}<br>الحالي: <strong>${i.current}</strong> — المقترح: <strong>${i.suggested}</strong></div>`).join('')}
-            <button type="button" class="small" id="applySuggestBtn" style="width:auto;">تطبيق كل المقترحات</button>
-            <button type="button" class="small secondary" id="ignoreSuggestBtn" style="width:auto;">المتابعة بالقيم الحالية</button>
+            <button type="button" class="small u-wa" id="applySuggestBtn">تطبيق كل المقترحات</button>
+            <button type="button" class="small secondary u-wa" id="ignoreSuggestBtn">المتابعة بالقيم الحالية</button>
           </div>`;
           document.getElementById('applySuggestBtn').onclick = () => {
             const patch = {};
@@ -2854,8 +2854,8 @@ async function renderEditPlanSettings(symbol, error, formState){
             box.innerHTML = `<div class="suggest-box">
               <strong>⚠️ في مدخلات ممكن تكون غير متوازنة:</strong>
               ${issues.map(i=>`<div class="suggest-item">${escapeHtml(i.message)}<br>الحالي: <strong>${i.current}</strong> — المقترح: <strong>${i.suggested}</strong></div>`).join('')}
-              <button type="button" class="small" id="e_applySuggestBtn" style="width:auto;">تطبيق كل المقترحات</button>
-              <button type="button" class="small secondary" id="e_ignoreSuggestBtn" style="width:auto;">المتابعة بالقيم الحالية</button>
+              <button type="button" class="small u-wa" id="e_applySuggestBtn">تطبيق كل المقترحات</button>
+              <button type="button" class="small secondary u-wa" id="e_ignoreSuggestBtn">المتابعة بالقيم الحالية</button>
             </div>`;
             document.getElementById('e_applySuggestBtn').onclick = () => {
               const patch = {};
@@ -2950,8 +2950,8 @@ async function renderEditPlanSettings(symbol, error, formState){
         box.innerHTML = `<div class="suggest-box">
           <strong>⚠️ في مدخلات ممكن تكون غير متوازنة:</strong>
           ${issues.map(i=>`<div class="suggest-item">${escapeHtml(i.message)}<br>الحالي: <strong>${i.current}</strong> — المقترح: <strong>${i.suggested}</strong></div>`).join('')}
-          <button type="button" class="small" id="e_applySuggestBtn" style="width:auto;">تطبيق كل المقترحات</button>
-          <button type="button" class="small secondary" id="e_ignoreSuggestBtn" style="width:auto;">المتابعة بالقيم الحالية</button>
+          <button type="button" class="small u-wa" id="e_applySuggestBtn">تطبيق كل المقترحات</button>
+          <button type="button" class="small secondary u-wa" id="e_ignoreSuggestBtn">المتابعة بالقيم الحالية</button>
         </div>`;
         document.getElementById('e_applySuggestBtn').onclick = () => {
           issues.forEach(i=>{
@@ -3069,7 +3069,7 @@ async function renderPlanDetail(symbol){
         }
       });
       if (r.cumHeldQty > 0) {
-        sellCell += `<div class="trade-group" style="margin-top:4px;">
+        sellCell += `<div class="trade-group u-mt4">
           <div class="trade-fields">
             <input type="number" step="any" min="0.0001" max="${r.cumHeldQty}" placeholder="كمية (أقصى ${fmtQty(r.cumHeldQty)})" id="sellQty_${idx}">
             <input type="number" step="any" placeholder="سعر" id="sellPrice_${idx}">
@@ -3113,11 +3113,11 @@ async function renderPlanDetail(symbol){
       إجمالي الكمية: ${fmtQty(sim.totalBoughtQty)} | متوسط الدخول: ${fmt2(sim.avgEntryPrice)} | متوسط الخروج: ${fmt2(sim.avgExitPrice)} |
       الربح الإجمالي: <strong>${sim.totalRealizedProfit.toFixed(2)}</strong> (${((sim.totalRealizedProfit/sim.totalBuyAmountSpent)*100).toFixed(2)}%)
       <div style="font-size:11.5px;color:#666;margin-top:6px;">ما زال بإمكانك تعديل أي عملية بيع أعلاه إذا وجدت خطأً في الكمية أو السعر. عندما تتأكد أن كل شيء صحيح، اضغط ترحيل لإغلاق الصفقة وبدء دورة جديدة — لن يقبل الجدول أي شراء جديد حتى تُرحّل.</div>
-      <button class="small" style="margin-top:8px;" id="archiveBtn">✅ ترحيل الصفقة وبدء دورة جديدة</button>
+      <button class="small u-mt8" id="archiveBtn">✅ ترحيل الصفقة وبدء دورة جديدة</button>
     </div>` : ''}
 
     <div class="section-card">
-      <button class="small secondary" id="editSettingsBtn" style="width:auto;">⚙️ تعديل إعدادات وخطة السهم</button>
+      <button class="small secondary u-wa" id="editSettingsBtn">⚙️ تعديل إعدادات وخطة السهم</button>
     </div>
 
     <div class="section-card">
@@ -3146,20 +3146,20 @@ async function renderPlanDetail(symbol){
       <div class="summary-card"><div class="val ${sim.totalRealizedProfit>=0?'pos':'neg'}">${fmtMoney(sim.totalRealizedProfit)}</div><div class="lbl">الربح المحقق حتى الآن</div></div>
     </div>
 
-    <h2 style="margin-top:20px;">موقف السهم على آخر سعر</h2>
+    <h2 class="u-mt20">موقف السهم على آخر سعر</h2>
     <div class="section-card">
       <label>آخر سعر (اختياري - إدخال يدوي، وإذا تُرك فارغًا سيُستخدم سعر آخر مستوى شراء تم تنفيذه)</label>
       <input type="number" step="any" id="manualLastPriceInput" value="${planObj.manualLastPrice??''}" placeholder="مثال: 45.20" style="font-weight:bold;color:#111;font-size:16px;">
-      <div class="summary-cards" style="margin-top:12px;">
+      <div class="summary-cards u-mt12">
         <div class="summary-card"><div class="val" id="statusLastPriceUsed">-</div><div class="lbl">السعر المستخدم في الحساب</div></div>
         <div class="summary-card"><div class="val" id="statusTotalValue">-</div><div class="lbl">إجمالي القيمة الحالية للكمية المملوكة</div></div>
         <div class="summary-card"><div class="val" id="statusDropPercent">-</div><div class="lbl">نسبة الانخفاض عن متوسط التكلفة</div></div>
       </div>
     </div>
 
-    <h2 style="margin-top:20px;">جدول المستويات (تراكمي)</h2>
-    <button class="secondary small" id="toggleDatesBtn" style="width:auto;">📅 إظهار/إخفاء أعمدة التواريخ</button>
-    <div class="section-card" style="overflow-x:auto;">
+    <h2 class="u-mt20">جدول المستويات (تراكمي)</h2>
+    <button class="secondary small u-wa" id="toggleDatesBtn">📅 إظهار/إخفاء أعمدة التواريخ</button>
+    <div class="section-card u-ox">
       <table id="levelsTable" class="dates-hidden">
         <thead><tr>
           <th>المستوى</th><th>عدد الأسهم</th><th>سعر الشراء</th><th>قيمة الشراء</th>
@@ -3176,7 +3176,7 @@ async function renderPlanDetail(symbol){
     <div class="info">طريقة تفعيل المستوى التالي: عند انخفاض السعر ${planObj.dropPercent}%</div>
     ${sim.spacingClamped ? `<div class="error">⚠️ الانخفاض المطلوب كبير جدًا بالنسبة للكمية الحالية في بعض المستويات، فتم تعديله تلقائيًا لمنع وصول السعر لصفر.</div>` : ''}
 
-    <h2 style="margin-top:20px;">سجل الصفقات المغلقة — ${symbol}</h2>
+    <h2 class="u-mt20">سجل الصفقات المغلقة — ${symbol}</h2>
     <div id="dacClosedTradesWrap"></div>
 
     <p class="disclaimer">تنويه: هذه الحسابات مبنية فقط على المدخلات التي حددتها، ولا تُعد توصية استثمارية مضمونة.</p>
@@ -3287,7 +3287,7 @@ async function renderPlanDetail(symbol){
           <tr><td style="${tdLabel}">العملة</td><td colspan="6" style="${td}">${planObj.currency||''}</td></tr>
           <tr><td style="${tdLabel}">تاريخ بداية الاستثمار</td><td colspan="6" style="${td}">${planObj.startDate||''}</td></tr>
           <tr><td style="${tdLabel}">تاريخ الطباعة</td><td colspan="6" style="${td}">${new Date().toLocaleDateString('ar-EG')}</td></tr>
-          <tr><td colspan="7" style="border:none;"></td></tr>
+          <tr><td colspan="7" class="u-bn"></td></tr>
           <tr>
             <td style="${th}">تاريخ ووقت الإغلاق</td><td style="${th}">الكمية</td><td style="${th}">متوسط الدخول</td>
             <td style="${th}">متوسط الخروج</td><td style="${th}">الربح</td><td style="${th}">نسبة الربح %</td><td style="${th}">رأس المال المستخدم</td>

@@ -19,10 +19,12 @@ function adminNavButtonsHtml(){
       { id:'goChatAdminBtn', perm:'view_chat', icon:'💬', label:'الدردشة الفورية', extra:`<span id="chatUnreadBadge" class="nav-badge" style="display:none;">0</span>` },
       { id:'goContentBtn', perm:['manage_testimonials', 'manage_content'], icon:'📰', label:'آراء العملاء والمقالات' },
       { id:'goSuggestionsAdminBtn', perm:'manage_suggestions', icon:'💡', label:'مقترحات العملاء' },
+      { id:'goFaqBtn', perm:['manage_content', 'manage_admin_settings'], icon:'🤖', label:'المساعد الذكي في الشات (أسئلة وأجوبة)' },
     ]},
     { title: 'الإدارة المالية', items: [
       { id:'goPlansMgmtBtn', perm:'manage_plans', icon:'💳', label:'إدارة الخطط والأسعار' },
       { id:'goReportsBtn', perm:'view_reports', icon:'📊', label:'التقارير' },
+      { id:'goTradesBtn', perm:'view_reports', icon:'📈', label:'تقرير الصفقات (شراء / بيع / أرباح العملاء)' },
       { id:'goRecommendationsBtn', perm:'manage_recommendations', icon:'📢', label:'توصيات الشراء' },
     ]},
     { title: 'الإدارة والصلاحيات', items: [
@@ -74,6 +76,8 @@ function wireAdminNavButtons(){
     goStudioBtn: () => GStudio.openEditor(), // الإصدار 72: استوديو التصميم (studio.js)
     goEmailCenterBtn: () => GShell.renderEmailCenter(), // الإصدار 72: مركز الإيميلات (shell.js)
     goReportsBtn: renderAdminReportsPage,
+    goTradesBtn: () => renderTradesReportPage(),
+    goFaqBtn: () => renderFaqAdminPage(),
     goRecommendationsBtn: renderRecommendationsAdminPage,
     goContentBtn: renderContentAdminPage,
     goSuggestionsAdminBtn: renderSuggestionsAdminPage,
@@ -150,16 +154,16 @@ async function renderAdminSubscribers(){
     <div class="info">🛡️ هذه اللوحة متصلة بقاعدة بيانات حقيقية — كل البيانات هنا فعلية.</div>
 
     ${emailChangeRequests.length ? `
-    <h2 style="margin-top:20px;">✏️ طلبات تعديل البريد الإلكتروني (${emailChangeRequests.length})</h2>
+    <h2 class="u-mt20">✏️ طلبات تعديل البريد الإلكتروني (${emailChangeRequests.length})</h2>
     <div class="section-card">
-      <table style="width:100%;">
+      <table class="u-w100">
         <thead><tr><th>البريد الحالي</th><th>البريد المطلوب</th><th>تاريخ الطلب</th><th></th></tr></thead>
         <tbody>
           ${emailChangeRequests.map(r => `<tr>
-            <td>${escapeHtml(r.currentEmail)}</td><td>${escapeHtml(r.requestedEmail)}</td><td style="font-size:12px;">${escapeHtml(r.requestedAt)}</td>
+            <td>${escapeHtml(r.currentEmail)}</td><td>${escapeHtml(r.requestedEmail)}</td><td class="u-fs12">${escapeHtml(r.requestedAt)}</td>
             <td>
-              <button class="secondary small" style="width:auto;" data-gcall="__reviewEmailChange" data-gargs="${gArgs([r.id, 'approved'])}">✅ موافقة</button>
-              <button class="danger small" style="width:auto;" data-gcall="__reviewEmailChange" data-gargs="${gArgs([r.id, 'rejected'])}">❌ رفض</button>
+              <button class="secondary small u-wa" data-gcall="__reviewEmailChange" data-gargs="${gArgs([r.id, 'approved'])}">✅ موافقة</button>
+              <button class="danger small u-wa" data-gcall="__reviewEmailChange" data-gargs="${gArgs([r.id, 'rejected'])}">❌ رفض</button>
             </td>
           </tr>`).join('')}
         </tbody>
@@ -170,7 +174,7 @@ async function renderAdminSubscribers(){
     <h2>إجماليات المشتركين</h2>
     <div class="summary-cards" id="adminSummaryCards"></div>
 
-    <h2 style="margin-top:20px;">فترة العرض</h2>
+    <h2 class="u-mt20">فترة العرض</h2>
     <div class="section-card">
       <div class="grid2">
         <div><label>من تاريخ</label><input type="date" id="admFrom"></div>
@@ -184,7 +188,7 @@ async function renderAdminSubscribers(){
       </div>
     </div>
 
-    <h2 style="margin-top:20px;">إعدادات التذكيرات ومدة السماح (تُطبَّق على كل مشترك جديد، ويمكنك تخصيص كل مشترك على حدة أدناه)</h2>
+    <h2 class="u-mt20">إعدادات التذكيرات ومدة السماح (تُطبَّق على كل مشترك جديد، ويمكنك تخصيص كل مشترك على حدة أدناه)</h2>
     <div class="section-card">
       <div class="grid2">
         <div><label>يبدأ التذكير قبل انتهاء الاشتراك بـ (أيام)</label><input type="number" id="remStartBefore" min="1"></div>
@@ -192,20 +196,20 @@ async function renderAdminSubscribers(){
       </div>
       <label>مدة السماح بعد انتهاء الاشتراك (أيام) — يستمر العميل في استخدام الموقع خلالها حتى يجدد</label>
       <input type="number" id="remGracePeriod" min="0" style="max-width:150px;">
-      <button class="small secondary" id="saveRemDefaultsBtn" style="width:auto;">حفظ الإعدادات الافتراضية</button>
-      <div class="info" style="margin-top:8px;">
+      <button class="small secondary u-wa" id="saveRemDefaultsBtn">حفظ الإعدادات الافتراضية</button>
+      <div class="info u-mt8">
         ✅ إرسال تذكيرات البريد يعمل الآن فعليًا (يشمل مشتركي الباقة المجانية أيضًا). ولكي يصبح تلقائيًا يوميًا دون الضغط على أي زر، يجب ضبط <strong>Cron Job</strong> من هوستنجر (تفاصيل في README_DEPLOY.md).
         سيتم تفعيل الواتساب لاحقًا بعد تجهيز ربط الـ API.
       </div>
-      <button id="simulateRemindersBtn" class="secondary" style="margin-top:10px;">📨 معاينة: مين المستحق له تذكير النهارده</button>
-      <button id="sendRemindersNowBtn" style="margin-top:8px;">📤 إرسال التذكيرات الآن فعليًا (إيميل)</button>
+      <button id="simulateRemindersBtn" class="secondary u-mt10">📨 معاينة: مين المستحق له تذكير النهارده</button>
+      <button id="sendRemindersNowBtn" class="u-mt8">📤 إرسال التذكيرات الآن فعليًا (إيميل)</button>
       <div id="reminderSimResult"></div>
     </div>
 
-    <h2 style="margin-top:20px;">كل المشتركين</h2>
+    <h2 class="u-mt20">كل المشتركين</h2>
     <div class="section-card" id="subscribersTableWrap"></div>
 
-    <h2 style="margin-top:24px;">طباعة / تصدير بيان</h2>
+    <h2 class="u-mt24">طباعة / تصدير بيان</h2>
     <div class="section-card">
       <label>اختر المشتركين للبيان</label>
       <div class="ms-dropdown" id="admMsDropdown">
@@ -217,15 +221,15 @@ async function renderAdminSubscribers(){
           <button type="button" class="small" id="admMsDoneBtn" style="width:100%;margin-top:8px;">تم</button>
         </div>
       </div>
-      <button id="admPrintBtn" style="margin-top:14px;">🖨 طباعة بيان المشتركين (PDF)</button>
+      <button id="admPrintBtn" class="u-mt14">🖨 طباعة بيان المشتركين (PDF)</button>
       <button id="admExportXlsBtn" class="secondary">⬇ تصدير Excel</button>
       <div style="font-size:11.5px;color:#888;margin-top:6px;">يأخذ البيان في الاعتبار فترة العرض المحددة أعلاه + المشتركين المختارين هنا.</div>
     </div>
 
-    <h2 style="margin-top:24px;">إضافة مشترك تجريبي</h2>
+    <h2 class="u-mt24">إضافة مشترك تجريبي</h2>
     <div class="section-card">
       <div class="info">⚠️ الموقع الآن متصل بقاعدة بيانات حقيقية — أي بيانات هنا تُحفظ فعليًا. استخدم هذا الزر للتجربة فقط، واحذف السجل التجريبي بعد ذلك من جدول المشتركين أدناه.</div>
-      <button class="small secondary" id="admAddTestBtn" style="margin-top:8px;">+ إضافة مشترك تجريبي عشوائي</button>
+      <button class="small secondary u-mt8" id="admAddTestBtn">+ إضافة مشترك تجريبي عشوائي</button>
     </div>
 
     <p class="disclaimer">تنويه: هذه الأرقام لأغراض العرض والتجربة، ولا تُعد بيانات مالية رسمية حتى يتم ربط الموقع بنظام دفع وقاعدة بيانات حقيقية.</p>
@@ -270,27 +274,27 @@ async function renderAdminSubscribers(){
           <td>${formatDateAr(r.startDate)}</td><td>${formatDateAr(r.endDate)}</td>
           <td>${r.amount===0?'مجانًا':fmtMoney(r.amount)+' '+r.currency}</td>
           <td>${r.paymentMethod ? escapeHtml(payMethodLabel(r.paymentMethod)) : '-'}
-            ${r.paymentProof?`<br><button class="small secondary" style="width:auto;margin-top:4px;" data-gcall="__viewProof" data-gargs="${gArgs([String(r.id)])}">📎 عرض الإثبات</button>`:''}
+            ${r.paymentProof?`<br><button class="small secondary u-wa u-mt4" data-gcall="__viewProof" data-gargs="${gArgs([String(r.id)])}">📎 عرض الإثبات</button>`:''}
           </td>
           <td>
             <span class="tag ${isActive?'tag-done':'tag-wait'}">${isActive?'مفعّل':'موقوف'}</span><br>
-            <button class="small ${isActive?'danger':'secondary'}" style="width:auto;margin-top:4px;" data-gcall="__toggleSubActive" data-gargs="${gArgs([String(r.id)])}">${isActive?'إيقاف':'تفعيل'}</button>
+            <button class="small ${isActive?'danger':'secondary'} u-wa u-mt4" data-gcall="__toggleSubActive" data-gargs="${gArgs([String(r.id)])}">${isActive?'إيقاف':'تفعيل'}</button>
           </td>
           <td>
             ${remEnabled ? `كل ${r.reminderIntervalDays||2} يوم` : '<span style="color:#c0392b;">موقوف</span>'}<br>
-            <button class="small secondary" style="width:auto;margin-top:4px;" data-gcall="__editReminder" data-gargs="${gArgs([String(r.id)])}">تعديل</button>
+            <button class="small secondary u-wa u-mt4" data-gcall="__editReminder" data-gargs="${gArgs([String(r.id)])}">تعديل</button>
           </td>
           <td>
             <button class="small secondary" style="width:auto;margin-bottom:4px;" data-gcall="__extendDays" data-gargs="${gArgs([String(r.id)])}">+ أيام مجانية</button><br>
             ${r.planId==='trial' ? `<button class="small btn-lightgreen" style="width:auto;margin-bottom:4px;" data-gcall="__convertFree" data-gargs="${gArgs([String(r.id)])}">تحويل لباقة مدفوعة مجانًا</button><br>` : ''}
           </td>
-          <td><button class="small danger" style="width:auto;" data-gcall="__deleteSubRow" data-gargs="${gArgs([String(r.id)])}">🗄️ أرشفة</button></td>
+          <td><button class="small danger u-wa" data-gcall="__deleteSubRow" data-gargs="${gArgs([String(r.id)])}">🗄️ أرشفة</button></td>
         </tr>`}).join('')}
         <tr style="font-weight:bold;background:#f0f4f2;">
           <td colspan="6">الإجمالي</td><td>${fmtMoney(computeTotals(list))}</td><td colspan="5"></td>
         </tr>
       </tbody>
-    </table>` : '<p style="color:#888;font-size:13px;">لا يوجد مشتركين في هذه الفترة.</p>';
+    </table>` : '<p class="u-note">لا يوجد مشتركين في هذه الفترة.</p>';
 
     window.__viewProof = (id) => {
       const rec = list.find(x=>x.id===id) || subscribers.find(x=>x.id===id);
@@ -300,7 +304,7 @@ async function renderAdminSubscribers(){
       overlay.innerHTML = `<div class="proof-modal-box">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
           <strong>إثبات السداد — ${escapeHtml(rec.name)}</strong>
-          <button class="small secondary" style="width:auto;" id="closeProofModalBtn">✕ إغلاق</button>
+          <button class="small secondary u-wa" id="closeProofModalBtn">✕ إغلاق</button>
         </div>
         <img src="${escapeHtml(rec.paymentProof)}" style="max-width:100%;max-height:70vh;border-radius:8px;display:block;margin:0 auto;">
       </div>`;
@@ -423,12 +427,12 @@ async function renderAdminSubscribers(){
   document.getElementById('simulateRemindersBtn').onclick = async () => {
     const due = subscribers.filter(r => r.active!==false && isReminderDueToday(r, reminderDefaults));
     document.getElementById('reminderSimResult').innerHTML = due.length ? `
-      <div class="info" style="margin-top:10px;">
+      <div class="info u-mt10">
         <strong>📨 ${due.length} مشترك المفروض ياخد تذكير النهارده (${new Date().toLocaleDateString('ar-EG')}):</strong>
         <ul style="margin:8px 0 0;padding-right:18px;font-size:12.5px;">
           ${due.map(r=>`<li>${escapeHtml(r.name)} (${escapeHtml(r.contactEmail)} / ${escapeHtml(r.phone)}) — ينتهي الاشتراك ${formatDateAr(r.endDate)}</li>`).join('')}
         </ul>
-      </div>` : `<div class="info" style="margin-top:10px;">لا يوجد أي مشترك مستحق للتذكير اليوم حسب الإعدادات الحالية.</div>`;
+      </div>` : `<div class="info u-mt10">لا يوجد أي مشترك مستحق للتذكير اليوم حسب الإعدادات الحالية.</div>`;
   };
 
   document.getElementById('sendRemindersNowBtn').onclick = async () => {
@@ -438,14 +442,14 @@ async function renderAdminSubscribers(){
     btn.disabled = false; btn.textContent = '📤 إرسال التذكيرات الآن فعليًا (إيميل)';
     if (r && r.success) {
       document.getElementById('reminderSimResult').innerHTML = `
-        <div class="success-banner" style="margin-top:10px;">
+        <div class="success-banner u-mt10">
           ✅ تم إرسال ${r.sentCount} إيميل تذكير فعليًا.
           ${r.log && r.log.length ? `<ul style="margin:8px 0 0;padding-right:18px;font-size:12.5px;">
             ${r.log.map(x=>`<li>${escapeHtml(x.name)} (${escapeHtml(x.email)}) — متبقي ${x.daysLeft} يوم — ${x.sent?'✅ أُرسلت':'❌ فشل الإرسال'}</li>`).join('')}
           </ul>` : '<div style="font-size:12.5px;margin-top:6px;">لا يوجد أي مشترك مستحق للتذكير الآن.</div>'}
         </div>`;
     } else {
-      document.getElementById('reminderSimResult').innerHTML = `<div class="error" style="margin-top:10px;">${(r&&r.message)||'حصل خطأ في الإرسال'}</div>`;
+      document.getElementById('reminderSimResult').innerHTML = `<div class="error u-mt10">${(r&&r.message)||'حصل خطأ في الإرسال'}</div>`;
     }
   };
 
@@ -546,7 +550,7 @@ async function renderAdminSubscribers(){
       <table style="border-collapse:collapse;font-family:Tahoma,Arial;direction:rtl;" dir="rtl">
         <tr><td colspan="7" style="${titleTd}">GRIFFINE — بيان المشتركين</td></tr>
         <tr><td colspan="7" style="border:none;padding:6px;">الفترة: ${periodLabel} | عدد المشتركين: ${list.length}</td></tr>
-        <tr><td colspan="7" style="border:none;"></td></tr>
+        <tr><td colspan="7" class="u-bn"></td></tr>
         <tr>
           <td style="${th}">الاسم</td><td style="${th}">الهاتف</td><td style="${th}">الإيميل</td><td style="${th}">الخطة</td>
           <td style="${th}">بداية الخطة</td><td style="${th}">تاريخ الانتهاء</td><td style="${th}">قيمة السداد</td>
@@ -593,7 +597,7 @@ async function renderArchivedCustomers(){
   function renderArchivedTable(){
     const q = (document.getElementById('archivedSearch')?.value || '').trim().toLowerCase();
     const visible = q ? archived.filter(r => (r.name||'').toLowerCase().includes(q) || (r.accountEmail||'').toLowerCase().includes(q) || (r.phone||'').toLowerCase().includes(q)) : archived;
-    document.getElementById('archivedTableWrap').innerHTML = archived.length===0 ? '<p style="color:#888;font-size:13px;">الأرشيف فارغ حاليًا.</p>'
+    document.getElementById('archivedTableWrap').innerHTML = archived.length===0 ? '<p class="u-note">الأرشيف فارغ حاليًا.</p>'
       : (visible.length ? `<table>
       <thead><tr><th>الاسم</th><th>الإيميل</th><th>الهاتف</th><th>آخر باقة</th><th>بداية</th><th>نهاية</th><th></th></tr></thead>
       <tbody>
@@ -601,8 +605,8 @@ async function renderArchivedCustomers(){
           <td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.accountEmail)}</td><td>${escapeHtml(r.phone)}</td><td>${escapeHtml(r.planName)}</td>
           <td>${formatDateAr(r.startDate)}</td><td>${formatDateAr(r.endDate)}</td>
           <td>
-            <button class="small btn-lightgreen" style="width:auto;" data-gcall="__restoreCustomer" data-gargs="${gArgs([String(r.accountEmail)])}">↩️ استرجاع</button>
-            <button class="small danger" style="width:auto;" data-gcall="__purgeCustomer" data-gargs="${gArgs([String(r.accountEmail)])}">🗑️ حذف نهائي</button>
+            <button class="small btn-lightgreen u-wa" data-gcall="__restoreCustomer" data-gargs="${gArgs([String(r.accountEmail)])}">↩️ استرجاع</button>
+            <button class="small danger u-wa" data-gcall="__purgeCustomer" data-gargs="${gArgs([String(r.accountEmail)])}">🗑️ حذف نهائي</button>
           </td>
         </tr>`).join('')}
       </tbody>
@@ -624,7 +628,7 @@ async function renderArchivedCustomers(){
   };
 
   window.__purgeCustomer = async (accountEmail) => {
-    if(!await gConfirm(`⚠️ حذف "${accountEmail}" نهائيًا بلا رجعة، مع كل سجلاته. متأكد؟`)) return;
+    if(!await gConfirm(`حذف "${accountEmail}" مع كل سجلاته؟ سينتقل إلى سلة المحذوفات ويمكن استرجاعه منها.`)) return;
     const r = await purgeCustomer(accountEmail);
     if(r.success){
       archived = archived.filter(x=>x.accountEmail!==accountEmail);
@@ -659,7 +663,7 @@ async function renderPlansManagementPage(){
     <h2>الخطط الحالية</h2>
     <div class="section-card" id="plansListWrap"></div>
 
-    <h2 style="margin-top:20px;" id="formTitle">إضافة خطة جديدة</h2>
+    <h2 class="u-mt20" id="formTitle">إضافة خطة جديدة</h2>
     <div class="section-card">
       <form id="planForm">
         <label>معرّف الخطة (حروف إنجليزية وأرقام فقط، بدون مسافات - مثل monthly)</label>
@@ -711,13 +715,13 @@ async function renderPlansManagementPage(){
           <td>${escapeHtml(p.periodLabel)} (${p.durationDays} يوم)</td>
           <td><span class="tag ${p.isActive?'tag-done':'tag-wait'}">${p.isActive?'مفعّلة':'موقوفة'}</span></td>
           <td style="white-space:nowrap;">
-            <button class="small secondary" style="width:auto;" data-gcall="__editPlan" data-gargs="${gArgs([String(p.id)])}">تعديل</button>
-            <button class="small ${p.isActive?'danger':'btn-lightgreen'}" style="width:auto;" data-gcall="__togglePlan" data-gargs="${gArgs([String(p.id)])}">${p.isActive?'إيقاف':'تفعيل'}</button>
-            <button class="small danger" style="width:auto;" data-gcall="__deletePlan" data-gargs="${gArgs([String(p.id)])}">حذف</button>
+            <button class="small secondary u-wa" data-gcall="__editPlan" data-gargs="${gArgs([String(p.id)])}">تعديل</button>
+            <button class="small ${p.isActive?'danger':'btn-lightgreen'} u-wa" data-gcall="__togglePlan" data-gargs="${gArgs([String(p.id)])}">${p.isActive?'إيقاف':'تفعيل'}</button>
+            <button class="small danger u-wa" data-gcall="__deletePlan" data-gargs="${gArgs([String(p.id)])}">حذف</button>
           </td>
         </tr>`).join('')}
       </tbody>
-    </table>` : '<p style="color:#888;font-size:13px;">لا توجد خطط مضافة بعد.</p>';
+    </table>` : '<p class="u-note">لا توجد خطط مضافة بعد.</p>';
   }
   await refreshPlansList();
 
@@ -747,7 +751,7 @@ async function renderPlansManagementPage(){
   };
 
   window.__deletePlan = async (id) => {
-    if(!await gConfirm('حذف هذه الخطة نهائيًا؟ لن يتأثر العملاء الحاليون على هذه الخطة، لكن لن يتمكن أحد من الاشتراك فيها مرة أخرى.')) return;
+    if(!await gConfirm('حذف هذه الخطة؟ (تنتقل إلى سلة المحذوفات ويمكن استرجاعها) لن يتأثر العملاء الحاليون على هذه الخطة، لكن لن يتمكن أحد من الاشتراك فيها مرة أخرى.')) return;
     await deletePlan(id);
     if (editingId===id) resetForm();
     refreshPlansList();
@@ -803,12 +807,12 @@ async function renderChatAdminPage(){
       <button class="secondary small" id="backToAdminFromChatBtn">🛡️ رجوع للوحة التحكم</button>
     </div>
     <div class="info">الشات هنا مباشر بينك وبين العميل. تصلك رسالة تنبيه على info@griffine.store عندما يبدأ عميل محادثة جديدة (وليس مع كل رسالة). عند انتهاء المحادثة اضغط "📧 إنهاء وإرسال نسخة" وستصلك كاملة مع الصور والملفات كمرفقات. فتح المحادثة يجعلها مقروءة تلقائيًا. لا يستطيع العميل إرسال صور أو ملفات إلا عندما تضغط "افتح للعميل رفع ملف/صورة"، وبجانبه تكتب أقصى حجم للملف بالميجا (مثلًا 100 أو 500) - ويُغلق تلقائيًا عند إنهاء المحادثة. التنبيهات نقطة حمراء + صوت على أيقونة الشات (دون رسائل منبثقة). تتحدّث المحادثات كل 3 ثوانٍ.</div>
-    <div class="radio-row std-filter-tabs" style="margin-bottom:10px;">
+    <div class="radio-row std-filter-tabs u-mb10">
       <button class="small secondary period-preset std-filter-tab btn-active" id="tabActiveBtn">المحادثات النشطة</button>
       <button class="small secondary period-preset std-filter-tab" id="tabArchivedBtn">🗄️ الأرشيف</button>
       <button class="small secondary period-preset std-filter-tab" id="tabTrashBtn">🗑️ سلة المحذوفات</button>
       <button class="small secondary" id="chatMarkAllReadBtn" style="width:auto;margin-inline-start:auto;">✓ تعليم الكل كمقروء</button>
-      ${hasPermission('manage_admin_settings') ? '<button class="small secondary" id="chatNotifySettingsBtn" style="width:auto;">🔔 إعدادات التنبيهات</button>' : ''}
+      ${hasPermission('manage_admin_settings') ? '<button class="small secondary u-wa" id="chatNotifySettingsBtn">🔔 إعدادات التنبيهات</button>' : ''}
     </div>
     <div class="section-card chat-notify-admin" id="chatNotifyAdminWrap" style="display:none;"></div>
     <div class="std-filter-bar">
@@ -816,7 +820,7 @@ async function renderChatAdminPage(){
     </div>
     <div class="grid2" style="align-items:start;">
       <div class="section-card" id="conversationsListWrap" style="max-height:520px;overflow-y:auto;"></div>
-      <div class="section-card" id="conversationDetailWrap"><p style="color:#888;font-size:13px;">اختر محادثة من القائمة.</p></div>
+      <div class="section-card" id="conversationDetailWrap"><p class="u-note">اختر محادثة من القائمة.</p></div>
     </div>
   </div>`;
   document.getElementById('chatConvSearch').addEventListener('input', () => renderConvList());
@@ -831,7 +835,7 @@ async function renderChatAdminPage(){
   function setTab(view){
     currentView = view;
     openVisitorId = null;
-    document.getElementById('conversationDetailWrap').innerHTML = '<p style="color:#888;font-size:13px;">اختر محادثة من القائمة.</p>';
+    document.getElementById('conversationDetailWrap').innerHTML = '<p class="u-note">اختر محادثة من القائمة.</p>';
     document.querySelectorAll('.period-preset').forEach(b=>b.classList.remove('btn-active'));
     document.getElementById({active:'tabActiveBtn', archived:'tabArchivedBtn', trash:'tabTrashBtn'}[view]).classList.add('btn-active');
     refreshList();
@@ -860,13 +864,13 @@ async function renderChatAdminPage(){
     const q = (document.getElementById('chatConvSearch')?.value || '').trim().toLowerCase();
     const visible = q ? conversations.filter(c => (c.email||'').toLowerCase().includes(q) || (c.lastMessage||'').toLowerCase().includes(q)) : conversations;
     if (!conversations.length) {
-      wrap.innerHTML = `<p style="color:#888;font-size:13px;">${currentView==='trash'?'سلة المحذوفات فارغة.':currentView==='archived'?'الأرشيف فارغ.':'لا يوجد محادثات نشطة.'}</p>`;
+      wrap.innerHTML = `<p class="u-note">${currentView==='trash'?'سلة المحذوفات فارغة.':currentView==='archived'?'الأرشيف فارغ.':'لا يوجد محادثات نشطة.'}</p>`;
     } else if (!visible.length) {
       wrap.innerHTML = '<p class="std-filter-empty">لا توجد محادثات مطابقة للبحث</p>';
     } else {
       wrap.innerHTML = visible.map(c=>`
       <div class="plan-list-item ${c.visitorId===openVisitorId?'selected':''} ${c.unread?'chat-unread':''}" data-vid="${escapeHtml(c.visitorId)}" style="cursor:pointer;">
-        <div><strong>${c.unread ? '<span class="chat-unread-dot" title="غير مقروءة"></span>' : ''}${escapeHtml(c.email || 'زائر بدون إيميل')}</strong> ${chatKindBadge(c)}${c.allowUpload ? ' <span title="رفع الملفات مفتوح للعميل">📎</span>' : ''}<div style="font-size:11px;color:#888;">${escapeHtml((c.lastMessage||'').substring(0,40))}${(c.lastMessage||'').length>40?'...':''}</div></div>
+        <div><strong>${c.unread ? '<span class="chat-unread-dot" title="غير مقروءة"></span>' : ''}${escapeHtml(c.email || 'زائر بدون إيميل')}</strong> ${chatKindBadge(c)}${c.allowUpload ? ' <span title="رفع الملفات مفتوح للعميل">📎</span>' : ''}<div class="u-fs11 u-muted">${escapeHtml((c.lastMessage||'').substring(0,40))}${(c.lastMessage||'').length>40?'...':''}</div></div>
         <div style="font-size:10px;color:#aaa;">${formatChatTime(c.lastAt)}</div>
       </div>`).join('');
     }
@@ -900,17 +904,17 @@ async function renderChatAdminPage(){
     let actionsHtml = '';
     if (currentView === 'active') {
       actionsHtml = `
-        <button class="small secondary" id="chatEndConvBtn" style="width:auto;">📧 إنهاء وإرسال نسخة</button>
-        <button class="small secondary" id="chatArchiveBtn" style="width:auto;">🗄️ أرشفة</button>
-        <button class="small danger" id="chatDeleteBtn" style="width:auto;">🗑️ حذف</button>`;
+        <button class="small secondary u-wa" id="chatEndConvBtn">📧 إنهاء وإرسال نسخة</button>
+        <button class="small secondary u-wa" id="chatArchiveBtn">🗄️ أرشفة</button>
+        <button class="small danger u-wa" id="chatDeleteBtn">🗑️ حذف</button>`;
     } else if (currentView === 'archived') {
       actionsHtml = `
-        <button class="small btn-lightgreen" id="chatUnarchiveBtn" style="width:auto;">↩️ رجوع للنشطة</button>
-        <button class="small danger" id="chatDeleteBtn" style="width:auto;">🗑️ حذف</button>`;
+        <button class="small btn-lightgreen u-wa" id="chatUnarchiveBtn">↩️ رجوع للنشطة</button>
+        <button class="small danger u-wa" id="chatDeleteBtn">🗑️ حذف</button>`;
     } else {
       actionsHtml = `
-        <button class="small btn-lightgreen" id="chatRestoreBtn" style="width:auto;">↩️ استرجاع</button>
-        <button class="small danger" id="chatPurgeBtn" style="width:auto;">🗑️ حذف نهائي</button>`;
+        <button class="small btn-lightgreen u-wa" id="chatRestoreBtn">↩️ استرجاع</button>
+        <button class="small danger u-wa" id="chatPurgeBtn">🗑️ حذف نهائي</button>`;
     }
 
     // الإصدار 83: حالة الرفع + أقصى حجم بالميجا (بيتكتب جنب زرار الفتح)
@@ -921,7 +925,7 @@ async function renderChatAdminPage(){
         <div style="font-size:13px;font-weight:bold;">${escapeHtml((convInfo&&convInfo.email) || 'زائر بدون إيميل')} ${convInfo ? chatKindBadge(convInfo) : ''}</div>
         <div>${actionsHtml}</div>
       </div>
-      ${currentView === 'active' ? `<div style="margin-bottom:8px;">${chatUploadBtnHtml('chatUploadToggle', upState.on, upState.mb)}</div>` : ''}
+      ${currentView === 'active' ? `<div class="u-mb8">${chatUploadBtnHtml('chatUploadToggle', upState.on, upState.mb)}</div>` : ''}
       <div id="chatAdminMsgs" class="chat-body" style="max-height:360px;overflow-y:auto;border-radius:8px;padding:10px;"></div>
       ${currentView === 'active' ? `
       <div class="chat-attach-chip" id="chatAdminAttachChip" style="display:none;"></div>
@@ -929,7 +933,7 @@ async function renderChatAdminPage(){
         <label class="chat-attach-label" for="chatAdminFile" title="إرسال صورة / PDF / فيديو / ملف للعميل">📎</label>
         <input type="file" id="chatAdminFile" accept="${CHAT_FILE_ACCEPT}" style="display:none;">
         <input type="text" id="chatAdminReplyInput" placeholder="اكتب الرد..." style="flex:1;margin:0;">
-        <button id="chatAdminReplyBtn" style="width:auto;margin:0;">إرسال</button>
+        <button id="chatAdminReplyBtn" class="u-wa u-m0">إرسال</button>
       </div>` : ''}`;
     wireChatUploadBtn('chatUploadToggle', visitorId, upState);
     const adminAttach = wireAdminAttach('chatAdminFile', 'chatAdminAttachChip');
@@ -947,14 +951,14 @@ async function renderChatAdminPage(){
     if (archiveBtn) archiveBtn.onclick = async () => {
       await archiveChatConversation(visitorId);
       openVisitorId = null;
-      detail.innerHTML = '<p style="color:#888;font-size:13px;">اختر محادثة من القائمة.</p>';
+      detail.innerHTML = '<p class="u-note">اختر محادثة من القائمة.</p>';
       refreshList();
     };
     const unarchiveBtn = document.getElementById('chatUnarchiveBtn');
     if (unarchiveBtn) unarchiveBtn.onclick = async () => {
       await unarchiveChatConversation(visitorId);
       openVisitorId = null;
-      detail.innerHTML = '<p style="color:#888;font-size:13px;">اختر محادثة من القائمة.</p>';
+      detail.innerHTML = '<p class="u-note">اختر محادثة من القائمة.</p>';
       refreshList();
     };
     const deleteBtn = document.getElementById('chatDeleteBtn');
@@ -962,22 +966,22 @@ async function renderChatAdminPage(){
       if(!await gConfirm('سيتم نقل هذه المحادثة إلى سلة المحذوفات. يمكنك استرجاعها لاحقًا. هل أنت متأكد؟')) return;
       await deleteChatConversation(visitorId);
       openVisitorId = null;
-      detail.innerHTML = '<p style="color:#888;font-size:13px;">اختر محادثة من القائمة.</p>';
+      detail.innerHTML = '<p class="u-note">اختر محادثة من القائمة.</p>';
       refreshList();
     };
     const restoreBtn = document.getElementById('chatRestoreBtn');
     if (restoreBtn) restoreBtn.onclick = async () => {
       await restoreChatConversation(visitorId);
       openVisitorId = null;
-      detail.innerHTML = '<p style="color:#888;font-size:13px;">اختر محادثة من القائمة.</p>';
+      detail.innerHTML = '<p class="u-note">اختر محادثة من القائمة.</p>';
       refreshList();
     };
     const purgeBtn = document.getElementById('chatPurgeBtn');
     if (purgeBtn) purgeBtn.onclick = async () => {
-      if(!await gConfirm('⚠️ حذف نهائي بلا رجعة لكل رسائل هذه المحادثة. هل أنت متأكد؟')) return;
+      if(!await gConfirm('حذف كل رسائل هذه المحادثة؟ ستنتقل إلى سلة المحذوفات ويمكن استرجاعها منها.')) return;
       await purgeChatConversation(visitorId);
       openVisitorId = null;
-      detail.innerHTML = '<p style="color:#888;font-size:13px;">اختر محادثة من القائمة.</p>';
+      detail.innerHTML = '<p class="u-note">اختر محادثة من القائمة.</p>';
       refreshList();
     };
 
@@ -995,7 +999,7 @@ async function renderChatAdminPage(){
       if (lastCount !== -1 && msgs.length > lastCount && currentView === 'active' && !document.hidden && document.hasFocus()) markChatRead(visitorId).then(refreshChatUnreadIndicators);
       lastCount = msgs.length;
       const wasNearBottom = (msgsWrap.scrollHeight - msgsWrap.scrollTop - msgsWrap.clientHeight) < 40;
-      msgsWrap.innerHTML = msgs.length ? msgs.map(m => chatMsgHtml(m)).join('') : '<p style="font-size:12px;color:#888;">لا يوجد رسائل.</p>';
+      msgsWrap.innerHTML = msgs.length ? msgs.map(m => chatMsgHtml(m)).join('') : '<p class="u-fs12 u-muted">لا يوجد رسائل.</p>';
       if (wasNearBottom) msgsWrap.scrollTop = msgsWrap.scrollHeight;
     }
     await refreshMsgs();
@@ -1039,20 +1043,20 @@ async function renderChatNotifyAdmin(wrap){
     <p style="font-size:12px;color:#888;line-height:1.8;margin:4px 0 10px;">أصبح التنبيه مثل ماسنجر: نقطة حمراء على أيقونة الشات + صوت، دون أي رسائل منبثقة (Push) على الشاشة.</p>
     <div class="chat-notify-grid">
       <div>
-        <strong style="font-size:13px;">صورة أيقونة الشات</strong>
+        <strong class="u-fs13">صورة أيقونة الشات</strong>
         <div style="display:flex;align-items:center;gap:10px;margin:8px 0;">
           <img src="${escapeHtml(cfg.icon || griffineLogoSrc())}" alt="أيقونة الشات" class="chat-notify-preview">
           <div style="display:flex;flex-direction:column;gap:6px;">
             <label class="small secondary chat-icon-upload">📷 رفع صورة جديدة<input type="file" id="cnIconFile" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none;"></label>
-            ${cfg.icon ? '<button type="button" class="small secondary" id="cnIconClear" style="width:auto;">↩️ رجوع لشعار GRIFFINE</button>' : ''}
+            ${cfg.icon ? '<button type="button" class="small secondary u-wa" id="cnIconClear">↩️ رجوع لشعار GRIFFINE</button>' : ''}
           </div>
         </div>
       </div>
       <div>
-        <strong style="font-size:13px;">صوت التنبيه الافتراضي</strong>
+        <strong class="u-fs13">صوت التنبيه الافتراضي</strong>
         <div style="display:flex;gap:6px;align-items:center;margin:8px 0;">
-          <select id="cnSound" style="margin:0;">${Object.entries(CHAT_SOUNDS).map(([k, l]) => `<option value="${k}" ${cfg.sound === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
-          <button type="button" class="small secondary" id="cnSoundTest" style="width:auto;margin:0;">▶️</button>
+          <select id="cnSound" class="u-m0">${Object.entries(CHAT_SOUNDS).map(([k, l]) => `<option value="${k}" ${cfg.sound === k ? 'selected' : ''}>${l}</option>`).join('')}</select>
+          <button type="button" class="small secondary u-wa u-m0" id="cnSoundTest">▶️</button>
         </div>
       </div>
     </div>
@@ -1104,47 +1108,47 @@ async function renderSiteConfigAdmin(){
   // ---------- الدخول والأمان
   secWrap.innerHTML = `
     <div style="padding:6px 0 12px;border-bottom:1px solid var(--border-soft);">
-      <strong style="font-size:13.5px;">🛡️ رابط دخول الإدارة السري</strong>
+      <strong class="u-fs135">🛡️ رابط دخول الإدارة السري</strong>
       <div style="font-size:11.5px;color:#888;line-height:1.8;margin:3px 0 8px;">عند التفعيل، لن تتمكن حسابات الأدمن والموظفين من الدخول من صفحة الدخول العادية إطلاقًا - الدخول من هذا الرابط فقط (يفتح بوابة الدخول 30 دقيقة). احفظ الرابط في مكان آمن ولا ترسله لأحد غير فريقك.</div>
       ${c.admin_gate_url ? `<div class="gate-url" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;"><code id="gateUrl" dir="ltr" style="background:rgba(0,0,0,.05);padding:6px 10px;border-radius:8px;word-break:break-all;font-size:12px;">${escapeHtml(c.admin_gate_url)}</code>
-        <button type="button" class="small secondary" id="gateCopy" style="width:auto;">📋 نسخ</button></div>
-        <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;"><button type="button" class="small secondary" id="gateNew" style="width:auto;">🔄 رابط جديد (القديم يبطل)</button><button type="button" class="small danger" id="gateOff" style="width:auto;">إيقاف الرابط السري</button></div>`
-      : `<button type="button" class="small" id="gateNew" style="width:auto;">تفعيل رابط دخول الإدارة السري</button>`}
+        <button type="button" class="small secondary u-wa" id="gateCopy">📋 نسخ</button></div>
+        <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;"><button type="button" class="small secondary u-wa" id="gateNew">🔄 رابط جديد (القديم يبطل)</button><button type="button" class="small danger u-wa" id="gateOff">إيقاف الرابط السري</button></div>`
+      : `<button type="button" class="small u-wa" id="gateNew">تفعيل رابط دخول الإدارة السري</button>`}
     </div>
     ${cfgToggle('cfgAdminOtp', c.admin_otp === '1', 'كود تحقق (OTP) لحسابات الإدارة والموظفين', 'بعد كلمة المرور يُرسل كود من 6 أرقام. ⚠️ تأكد أولًا أن البريد يعمل من مركز الإيميلات قبل تفعيله' + (c.smtp_ready ? '' : ' — <b style="color:#c0392b">كلمة سر SMTP غير مسجّلة في griffine_config.php</b>'))}
     ${cfgToggle('cfgOtpLogin', c.otp_login === '1', 'كود تحقق (OTP) للعملاء عند تسجيل الدخول', 'حسب رغبتك: شغّله لأمان أعلى أو اقفله لدخول أسرع.')}
     <div style="padding:10px 0;border-bottom:1px solid var(--border-soft);">
-      <strong style="font-size:13.5px;">طريقة إرسال الكود</strong>
-      <select id="cfgOtpChannel" style="margin-top:6px;"><option value="email" ${c.otp_channel === 'email' || !c.otp_channel ? 'selected' : ''}>📧 الإيميل (مجاني - يعمل فورًا)</option><option value="whatsapp" ${c.otp_channel === 'whatsapp' ? 'selected' : ''}>🟢 واتساب من رقم الموقع (ولو فشل يُرسل بالإيميل)</option><option value="sms" ${c.otp_channel === 'sms' ? 'selected' : ''}>📱 رسالة SMS عن طريق مزود رسائل (ولو فشلت تُرسل بالإيميل)</option></select>
+      <strong class="u-fs135">طريقة إرسال الكود</strong>
+      <select id="cfgOtpChannel" class="u-mt6"><option value="email" ${c.otp_channel === 'email' || !c.otp_channel ? 'selected' : ''}>📧 الإيميل (مجاني - يعمل فورًا)</option><option value="whatsapp" ${c.otp_channel === 'whatsapp' ? 'selected' : ''}>🟢 واتساب من رقم الموقع (ولو فشل يُرسل بالإيميل)</option><option value="sms" ${c.otp_channel === 'sms' ? 'selected' : ''}>📱 رسالة SMS عن طريق مزود رسائل (ولو فشلت تُرسل بالإيميل)</option></select>
     </div>
     <div style="padding:10px 0;border-bottom:1px solid var(--border-soft);" id="cfgSiteNumberBox">
-      <strong style="font-size:13.5px;">📱 رقم الموقع لإرسال الكود على واتساب</strong>
+      <strong class="u-fs135">📱 رقم الموقع لإرسال الكود على واتساب</strong>
       <div style="font-size:11.5px;color:#888;line-height:1.8;margin:3px 0 8px;">هذا الرقم هو رقم الخدمة نفسه (استقبال تحويلات فودافون كاش). لكي يصل الكود للعميل على واتساب من هذا الرقم، يجب تسجيل الرقم مرة واحدة في <b>WhatsApp Business Platform</b> من Meta (business.facebook.com ← WhatsApp Manager)، وتعمل قالب رسالة من نوع <b>Authentication</b>، وتنسخ هنا Phone Number ID و Access Token واسم القالب. ${c.wa_ready ? '<b style="color:var(--green)">✓ واتساب جاهز</b>' : '<b style="color:#c0392b">غير مضبوط بعد</b>'}</div>
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
         <input type="tel" id="cfgSiteNumber" dir="ltr" value="${escapeHtml(c.service_phone || '')}" style="width:200px;margin:0;">
-        <button type="button" class="small secondary" id="cfgSiteNumberSave" style="width:auto;margin:0;">💾 حفظ الرقم</button>
+        <button type="button" class="small secondary u-wa u-m0" id="cfgSiteNumberSave">💾 حفظ الرقم</button>
         <label class="toggle-switch" title="تشغيل / إيقاف إرسال الكود من رقم الموقع"><input type="checkbox" id="cfgWaOn" ${c.otp_channel === 'whatsapp' ? 'checked' : ''}><span class="toggle-slider"></span></label>
         <span style="font-size:12.5px;">${c.otp_channel === 'whatsapp' ? 'الإرسال من رقم الموقع: يعمل' : 'الإرسال من رقم الموقع: متوقف'}</span>
       </div>
-      <div class="grid2" style="margin-top:8px;">
+      <div class="grid2 u-mt8">
         <div><label>Phone Number ID</label><input type="text" id="cfgWaPhoneId" dir="ltr" inputmode="numeric" value="${escapeHtml(c.wa_phone_id || '')}"></div>
         <div><label>اسم قالب الكود</label><input type="text" id="cfgWaTemplate" dir="ltr" placeholder="otp_code" value="${escapeHtml(c.wa_template || '')}"></div>
       </div>
       <label>Access Token</label><input type="password" id="cfgWaToken" dir="ltr" autocomplete="off"><div>${secretHint(c.wa_token_set)}</div>
       <div style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap;">
         <input type="tel" id="cfgWaTestPhone" placeholder="رقم للتجربة 01xxxxxxxxx" dir="ltr" style="width:190px;margin:0;">
-        <button type="button" class="small secondary" id="cfgWaTest" style="width:auto;margin:0;">🟢 رسالة واتساب تجريبية</button>
+        <button type="button" class="small secondary u-wa u-m0" id="cfgWaTest">🟢 رسالة واتساب تجريبية</button>
       </div>
     </div>
     <div style="padding:10px 0;">
-      <strong style="font-size:13.5px;">مزود رسائل SMS</strong>
+      <strong class="u-fs135">مزود رسائل SMS</strong>
       <div style="font-size:11.5px;color:#888;line-height:1.8;margin:3px 0 6px;">تُرسل الرسائل عن طريق مزود رسائل (مثل SMS Misr / Victory Link / Twilio) باسم مرسل مسجّل لديه - وليس من رقم موبايل شخصي. الصق رابط الـ API الخاص به وضع <code>{phone}</code> مكان الرقم و <code>{message}</code> مكان الرسالة. رقم الخدمة يُكتب داخل نص الرسالة للتواصل.</div>
       <input type="text" id="cfgSmsUrl" dir="ltr" placeholder="https://provider.com/api/send?user=XX&pass=YY&sender=GRIFFINE&to={phone}&msg={message}">
       <div>${secretHint(c.sms_url_set)}</div>
       <div style="display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap;">
-        <select id="cfgSmsMethod" style="width:auto;margin:0;"><option ${c.sms_method !== 'POST' ? 'selected' : ''}>GET</option><option ${c.sms_method === 'POST' ? 'selected' : ''}>POST</option></select>
+        <select id="cfgSmsMethod" class="u-wa u-m0"><option ${c.sms_method !== 'POST' ? 'selected' : ''}>GET</option><option ${c.sms_method === 'POST' ? 'selected' : ''}>POST</option></select>
         <input type="tel" id="cfgSmsTestPhone" placeholder="رقم للتجربة 01xxxxxxxxx" dir="ltr" style="width:190px;margin:0;">
-        <button type="button" class="small secondary" id="cfgSmsTest" style="width:auto;margin:0;">📨 رسالة تجريبية</button>
+        <button type="button" class="small secondary u-wa u-m0" id="cfgSmsTest">📨 رسالة تجريبية</button>
       </div>
     </div>
     <button type="button" id="cfgSecSave" style="width:auto;margin-top:10px;">حفظ إعدادات الدخول والأمان</button>
@@ -1160,7 +1164,7 @@ async function renderSiteConfigAdmin(){
     ${cfgToggle('cfgPayInstapay', c.pay_instapay === '1', 'إنستاباي + صورة التحويل', '')}
     ${cfgToggle('cfgPayPaymob', c.pay_paymob === '1', 'فيزا / ماستركارد / ميزة عن طريق Paymob', 'يتفعّل الاشتراك تلقائيًا فور تأكيد Paymob للدفع. ' + (c.paymob_ready ? '<b style="color:var(--green)">✓ البيانات كاملة</b>' : '<b style="color:#c0392b">البيانات ناقصة - لن يظهر للعملاء</b>'))}
     <div style="padding:10px 0;">
-      <strong style="font-size:13.5px;">بيانات Paymob</strong>
+      <strong class="u-fs135">بيانات Paymob</strong>
       <div style="font-size:11.5px;color:#888;line-height:1.8;margin:3px 0 6px;">من لوحة Paymob: Settings ← Account Info (API Key و HMAC)، Developers ← Payment Integrations (Integration ID للكروت)، Developers ← iframes (Iframe ID). وفي صفحة الـ Integration نفسها اكتب هذا الرابط في الخانتين Transaction processed callback و Transaction response callback:</div>
       <code dir="ltr" style="display:block;background:rgba(0,0,0,.05);padding:6px 10px;border-radius:8px;font-size:12px;margin-bottom:8px;">${escapeHtml(c.paymob_callback_url)}</code>
       <label>API Key</label><input type="password" id="cfgPmKey" dir="ltr" autocomplete="off"><div>${secretHint(c.paymob_api_key_set)}</div>
@@ -1274,27 +1278,27 @@ async function renderAdminSettingsPage(){
     <div class="info">كل الأوامر والقواعد الإلزامية التي يفرضها الموقع على المستخدمين موجودة هنا. الافتراضي أن كل شيء مفعّل (كالوضع الحالي). إذا أردت إيقاف أي قاعدة، اضغط على المفتاح بجانبها.</div>
     <div class="section-card" id="settingsListWrap"></div>
 
-    <h2 style="margin-top:20px;">🔐 الدخول والأمان</h2>
+    <h2 class="u-mt20">🔐 الدخول والأمان</h2>
     <div class="info">رابط سري لدخول الإدارة والموظفين، وكود تحقق (OTP) بالبريد أو برسالة SMS أو واتساب للإدارة و/أو العملاء. تفعيل الحساب الجديد بالبريد موجود أعلاه ("تفعيل البريد الإلكتروني إلزامي").</div>
     <div class="section-card" id="securityCfgWrap">جارٍ التحميل...</div>
 
-    <h2 style="margin-top:20px;">💳 طرق الدفع ورقم الخدمة</h2>
+    <h2 class="u-mt20">💳 طرق الدفع ورقم الخدمة</h2>
     <div class="info">رقم الخدمة هو رقم استقبال تحويلات فودافون كاش، ويظهر في صفحة الدفع وبيانات التواصل ورسائل كود الدخول. شغّل أو أوقف أي طريقة دفع، واكتب بيانات Paymob ليتفعّل الدفع بالكارت تلقائيًا.</div>
     <div class="section-card" id="paymentCfgWrap">جارٍ التحميل...</div>
 
-    <h2 style="margin-top:20px;">إخفاء شاشات عن العميل</h2>
+    <h2 class="u-mt20">إخفاء شاشات عن العميل</h2>
     <div class="info">فعّل أي مفتاح هنا لإخفاء الزر المقابل من الشاشة الرئيسية للعميل، دون حذف أي بيانات أو خطط موجودة بالفعل. الافتراضي أن كل الأزرار ظاهرة.</div>
     <div class="section-card" id="visibilityListWrap"></div>
 
-    <h2 style="margin-top:20px;">إعدادات محرك إشارات كشاف الأسهم</h2>
+    <h2 class="u-mt20">إعدادات محرك إشارات كشاف الأسهم</h2>
     <div class="info">العتبات والأوزان التي تحدد متى تكون الإشارة "شراء" أو "بيع" في أداة التحليل الفني. تقدر تعدّلها حسب استراتيجيتك.</div>
     <div class="section-card" id="screenerSettingsWrap"></div>
 
     ${window.__isSuperAdmin ? `
-    <h2 style="margin-top:20px;">نسخة احتياطية يدوية</h2>
+    <h2 class="u-mt20">نسخة احتياطية يدوية</h2>
     <div class="info">تقوم هوستنجر بنسخ احتياطي تلقائي أساسي للموقع كاملًا. هذا الزر مجرد نسخة تكميلية سريعة من بيانات الجداول الأساسية (بدون صور إثبات الدفع الكبيرة) يمكنك تحميلها فورًا متى شئت.</div>
     <div class="section-card">
-      <a href="/admin_backup_export.php" target="_blank"><button type="button" style="width:auto;">⬇️ تحميل نسخة احتياطية الآن</button></a>
+      <a href="/admin_backup_export.php" target="_blank"><button type="button" class="u-wa">⬇️ تحميل نسخة احتياطية الآن</button></a>
     </div>` : ''}
   </div>`;
 
@@ -1317,16 +1321,16 @@ async function renderAdminSettingsPage(){
   ];
   document.getElementById('screenerSettingsWrap').innerHTML = screenerFields.map(f => `
     <div class="grid2" style="align-items:center;margin-bottom:8px;">
-      <label style="margin:0;">${escapeHtml(f.label)}</label>
+      <label class="u-m0">${escapeHtml(f.label)}</label>
       <input type="number" step="any" class="screenerSettingInput" data-key="${f.key}" value="${screenerSettings[f.key] ?? ''}">
-    </div>`).join('') + `<button id="saveScreenerSettingsBtn" style="margin-top:8px;">حفظ إعدادات المحرك</button><div id="screenerSettingsResult"></div>`;
+    </div>`).join('') + `<button id="saveScreenerSettingsBtn" class="u-mt8">حفظ إعدادات المحرك</button><div id="screenerSettingsResult"></div>`;
 
   document.getElementById('saveScreenerSettingsBtn').onclick = async () => {
     const inputs = document.querySelectorAll('.screenerSettingInput');
     const results = await Promise.all(Array.from(inputs).map(inp => saveScreenerSetting(inp.dataset.key, inp.value)));
     document.getElementById('screenerSettingsResult').innerHTML = results.every(r=>r.success)
-      ? '<div class="info" style="margin-top:8px;">✅ تم الحفظ.</div>'
-      : `<div class="error" style="margin-top:8px;">${results.find(r=>!r.success)?.message || 'حصل خطأ في بعض القيم'}</div>`;
+      ? '<div class="info u-mt8">✅ تم الحفظ.</div>'
+      : `<div class="error u-mt8">${results.find(r=>!r.success)?.message || 'حصل خطأ في بعض القيم'}</div>`;
   };
 
 
@@ -1430,7 +1434,7 @@ async function renderBlacklist(){
       </form>
     </div>
 
-    <h2 style="margin-top:20px;">القائمة الحالية</h2>
+    <h2 class="u-mt20">القائمة الحالية</h2>
     <div class="std-filter-bar">
       <div class="std-filter-search"><input type="text" id="blacklistSearch" placeholder="🔍 ابحث بالقيمة أو السبب..."></div>
     </div>
@@ -1442,14 +1446,14 @@ async function renderBlacklist(){
   function renderBlacklistTable(){
     const q = (document.getElementById('blacklistSearch')?.value || '').trim().toLowerCase();
     const visible = q ? items.filter(it => (it.value||'').toLowerCase().includes(q) || (it.reason||'').toLowerCase().includes(q)) : items;
-    document.getElementById('blacklistTableWrap').innerHTML = items.length===0 ? '<p style="color:#888;font-size:13px;">القائمة السوداء فارغة حاليًا.</p>'
+    document.getElementById('blacklistTableWrap').innerHTML = items.length===0 ? '<p class="u-note">القائمة السوداء فارغة حاليًا.</p>'
       : (visible.length ? `<table>
       <thead><tr><th>النوع</th><th>القيمة</th><th>السبب</th><th>تاريخ الإضافة</th><th></th></tr></thead>
       <tbody>
         ${visible.map(it=>`<tr>
           <td>${typeLabel[it.type]||it.type}</td><td>${escapeHtml(it.value)}</td><td>${it.reason||'-'}</td>
           <td>${formatDateAr(it.createdAt ? it.createdAt.split(' ')[0] : '')}</td>
-          <td><button class="small danger" style="width:auto;" data-gcall="__removeFromBlacklist" data-gargs="${gArgs([String(it.id)])}">حذف</button></td>
+          <td><button class="small danger u-wa" data-gcall="__removeFromBlacklist" data-gargs="${gArgs([String(it.id)])}">حذف</button></td>
         </tr>`).join('')}
       </tbody>
     </table>` : '<p class="std-filter-empty">لا توجد نتائج مطابقة للبحث</p>');
@@ -1520,7 +1524,7 @@ async function renderStaffManagementPage(){
       <form id="staffAddForm">
         <label>البريد (يجب أن يكون مسجّلًا به حساب بالفعل)</label>
         <input type="email" id="staffEmail" required placeholder="example@email.com">
-        <label style="display:flex;justify-content:space-between;align-items:center;">المسمى الوظيفي <button type="button" class="small secondary" id="staffEditTitlesBtn" style="width:auto;margin:0;">🏷️ إضافة / تعديل المسميات</button></label>
+        <label class="u-row">المسمى الوظيفي <button type="button" class="small secondary u-wa u-m0" id="staffEditTitlesBtn">🏷️ إضافة / تعديل المسميات</button></label>
         <select id="staffJobTitle">
           ${Object.keys(jobTitles).map(k=>`<option value="${escapeHtml(k)}">${escapeHtml(jobTitles[k])}</option>`).join('')}
         </select>
@@ -1529,7 +1533,7 @@ async function renderStaffManagementPage(){
       <div id="staffAddResult"></div>
     </div>
 
-    <h2 style="margin-top:20px;">أعضاء الفريق الحاليين</h2>
+    <h2 class="u-mt20">أعضاء الفريق الحاليين</h2>
     <div class="std-filter-bar">
       <div class="std-filter-search"><input type="text" id="staffSearch" placeholder="🔍 ابحث بالإيميل أو المسمى الوظيفي..."></div>
     </div>
@@ -1551,18 +1555,18 @@ async function renderStaffManagementPage(){
   function renderStaffTable(){
     const q = (document.getElementById('staffSearch')?.value || '').trim().toLowerCase();
     const visible = q ? staff.filter(s => (s.email||'').toLowerCase().includes(q) || (jobTitles[s.jobTitle]||s.jobTitle||'').toLowerCase().includes(q)) : staff;
-    document.getElementById('staffTableWrap').innerHTML = staff.length===0 ? '<p style="color:#888;font-size:13px;">لا يوجد لديك أي عضو فريق مضاف بعد.</p>'
+    document.getElementById('staffTableWrap').innerHTML = staff.length===0 ? '<p class="u-note">لا يوجد لديك أي عضو فريق مضاف بعد.</p>'
       : (visible.length ? visible.map(s=>`
       <div class="section-card" style="margin-bottom:14px;">
         <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;align-items:center;">
           <div><strong>${escapeHtml(s.email)}</strong> — ${escapeHtml(jobTitles[s.jobTitle] || s.jobTitle || "")} ${s.active ? '' : '<span class="tag tag-wait">موقوف</span>'}</div>
           <span style="display:flex;gap:6px;flex-wrap:wrap;">${s.active
-            ? `<button class="small danger" style="width:auto;" data-gcall="__removeStaff" data-gargs="${gArgs([String(s.id)])}">إيقاف (إزالة من الفريق)</button>`
-            : `<button class="small btn-lightgreen" style="width:auto;" data-gcall="__staffMode" data-gargs="${gArgs([String(s.id), 'restore'])}">↩️ إرجاع للفريق</button>`}
-          <button class="small danger" style="width:auto;" data-gcall="__staffMode" data-gargs="${gArgs([String(s.id), 'purge'])}">🗑️ حذف من الفريق نهائيًا</button></span>
+            ? `<button class="small danger u-wa" data-gcall="__removeStaff" data-gargs="${gArgs([String(s.id)])}">إيقاف (إزالة من الفريق)</button>`
+            : `<button class="small btn-lightgreen u-wa" data-gcall="__staffMode" data-gargs="${gArgs([String(s.id), 'restore'])}">↩️ إرجاع للفريق</button>`}
+          <button class="small danger u-wa" data-gcall="__staffMode" data-gargs="${gArgs([String(s.id), 'purge'])}">🗑️ حذف من الفريق نهائيًا</button></span>
         </div>
-        <div style="margin-top:10px;">${permCheckboxesHtml(s.id, s.permissions)}</div>
-        <button class="small secondary" style="width:auto;margin-top:8px;" data-gcall="__saveStaffPerms" data-gargs="${gArgs([String(s.id)])}">حفظ الصلاحيات</button>
+        <div class="u-mt10">${permCheckboxesHtml(s.id, s.permissions)}</div>
+        <button class="small secondary u-wa u-mt8" data-gcall="__saveStaffPerms" data-gargs="${gArgs([String(s.id)])}">حفظ الصلاحيات</button>
       </div>
     `).join('') : '<p class="std-filter-empty">لا توجد نتائج مطابقة للبحث</p>');
   }
@@ -1582,7 +1586,7 @@ async function renderStaffManagementPage(){
       if (fresh.success) { staff = fresh.staff; renderStaffTable(); }
       document.getElementById('staffEmail').value = '';
     } else {
-      resultEl.innerHTML = `<div class="error" style="margin-top:8px;">${r.message || 'حصل خطأ'}</div>`;
+      resultEl.innerHTML = `<div class="error u-mt8">${r.message || 'حصل خطأ'}</div>`;
     }
   };
 
@@ -1598,7 +1602,7 @@ async function renderStaffManagementPage(){
     const who = (staff.find(x => String(x.id) === String(staffId)) || {}).email || '';
     const ok = mode === 'restore'
       ? await gConfirm(`إرجاع ${who} للفريق بنفس صلاحياته القديمة؟`, { ok: 'إرجاع للفريق' })
-      : await gConfirm(`حذف ${who} من الفريق نهائيًا بكل صلاحياته؟ سيبقى حسابه العادي كعميل موجودًا، وإذا أردت إعادته لاحقًا فأضفه من جديد.`, { ok: 'حذف نهائي', danger: true });
+      : await gConfirm(`حذف ${who} من الفريق بكل صلاحياته؟ سيبقى حسابه العادي كعميل موجودًا، وينتقل إلى سلة المحذوفات ويمكنك استرجاعه منها.`, { ok: 'حذف', danger: true });
     if (!ok) return;
     const r = await apiPost('/staff_remove.php', { staffId, mode }).catch(() => null);
     if (!r || !r.success) { alert((r && r.message) || 'حصل خطأ'); return; }
@@ -1648,6 +1652,8 @@ const BG_SCREENS = [
   {v:'job_titles', l:'🏷️ المسميات الوظيفية', fn:'renderJobTitlesPage'},
   {v:'site_design', l:'🎨 تنسيق الموقع', fn:'renderSiteDesignPage'},
   {v:'admin_reports', l:'📊 التقارير والإحصائيات', fn:'renderAdminReportsPage'},
+  {v:'trades_report', l:'📈 تقرير الصفقات', fn:'renderTradesReportPage'},
+  {v:'chat_faq', l:'💡 المساعد الذكي في الشات', fn:'renderFaqAdminPage'},
   {v:'recommendations_admin', l:'📢 توصيات الشراء', fn:'renderRecommendationsAdminPage'},
   {v:'recommendations_customer', l:'📢 التوصيات', fn:'renderRecommendationsCustomerPage'},
   {v:'content_admin', l:'📰 آراء العملاء والمقالات', fn:'renderContentAdminPage'},
@@ -1714,7 +1720,7 @@ async function previewArgsFor(key){
 async function launchScreenPreview(key, withPending){
   const screen = BG_SCREENS.find(s => s.v === key);
   const resEl = document.getElementById('bgSaveResult');
-  const fail = (msg) => { if (resEl) resEl.innerHTML = `<div class="error" style="margin-top:8px;">${msg}</div>`; };
+  const fail = (msg) => { if (resEl) resEl.innerHTML = `<div class="error u-mt8">${msg}</div>`; };
   if (!screen || !screen.fn || typeof window[screen.fn] !== 'function') return fail('معاينة مباشرة غير متاحة لهذه الشاشة.');
   const pa = await previewArgsFor(key);
   if (pa.error) return fail(pa.error);
@@ -1773,16 +1779,16 @@ async function renderSiteDesignPage(){
     <h2>الألوان والخط العام</h2>
     <div class="section-card">
       <div class="grid2">
-        <div><label>لون الخلفية</label><input type="color" id="bgColor" value="${content.bg_color || '#ffffff'}"><button type="button" class="small secondary" style="width:auto;margin-top:4px;" id="clearBgColor">استخدام الافتراضي</button></div>
-        <div><label>لون النص</label><input type="color" id="textColor" value="${content.text_color || '#222222'}"><button type="button" class="small secondary" style="width:auto;margin-top:4px;" id="clearTextColor">استخدام الافتراضي</button></div>
+        <div><label>لون الخلفية</label><input type="color" id="bgColor" value="${content.bg_color || '#ffffff'}"><button type="button" class="small secondary u-wa u-mt4" id="clearBgColor">استخدام الافتراضي</button></div>
+        <div><label>لون النص</label><input type="color" id="textColor" value="${content.text_color || '#222222'}"><button type="button" class="small secondary u-wa u-mt4" id="clearTextColor">استخدام الافتراضي</button></div>
       </div>
-      <div class="grid2" style="margin-top:10px;">
-        <div><label>لون الأزرار والروابط الأساسي</label><input type="color" id="accentColor" value="${content.accent_color || '#1b8a5a'}"><button type="button" class="small secondary" style="width:auto;margin-top:4px;" id="clearAccentColor">استخدام الافتراضي</button></div>
+      <div class="grid2 u-mt10">
+        <div><label>لون الأزرار والروابط الأساسي</label><input type="color" id="accentColor" value="${content.accent_color || '#1b8a5a'}"><button type="button" class="small secondary u-wa u-mt4" id="clearAccentColor">استخدام الافتراضي</button></div>
         <div><label>نوع الخط</label><select id="fontFamily">${fontOptions.map(f=>`<option value="${f.v}" ${content.font_family===f.v?'selected':''}>${f.l}</option>`).join('')}</select></div>
       </div>
-      <label style="margin-top:10px;">حجم الخط الأساسي (12-22)</label>
+      <label class="u-mt10">حجم الخط الأساسي (12-22)</label>
       <input type="number" id="fontSize" min="12" max="22" value="${content.font_size_base || 16}" style="max-width:120px;">
-      <div class="grid2" style="margin-top:10px;">
+      <div class="grid2 u-mt10">
         <div><label>سماكة الخط</label><select id="fontWeight">
           <option value="" ${content.font_weight===''||!content.font_weight?'selected':''}>افتراضي</option>
           <option value="400" ${content.font_weight==='400'?'selected':''}>عادي (400)</option>
@@ -1792,15 +1798,15 @@ async function renderSiteDesignPage(){
         </select></div>
         <div></div>
       </div>
-      <div style="margin-top:14px;">
+      <div class="u-mt14">
         <label>ثيمات جاهزة (اضغط لملء الحقول أعلاه، ثم احفظ)</label>
         <div id="themePresetsRow" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;"></div>
       </div>
-      <button id="saveThemeBtn" style="margin-top:12px;">حفظ الألوان والخط</button>
+      <button id="saveThemeBtn" class="u-mt12">حفظ الألوان والخط</button>
       <div id="themeSaveResult"></div>
     </div>
 
-    <h2 style="margin-top:20px;">بانر الصفحة الرئيسية (يظهر أعلى شاشة تسجيل الدخول)</h2>
+    <h2 class="u-mt20">بانر الصفحة الرئيسية (يظهر أعلى شاشة تسجيل الدخول)</h2>
     <div class="section-card">
       <label>نوع البانر</label>
       <select id="heroType">
@@ -1814,14 +1820,14 @@ async function renderSiteDesignPage(){
       <input type="text" id="heroTitle" maxlength="120" value="${content.hero_title || ''}" placeholder="مثال: تابع أسهمك بذكاء مع GRIFFINE">
       <label>العنوان الفرعي</label>
       <input type="text" id="heroSubtitle" maxlength="200" value="${content.hero_subtitle || ''}" placeholder="مثال: خطط تعزيز متوسط، كشاف فرص، وتنبيهات لحظية">
-      <button id="saveHeroBtn" style="margin-top:12px;">حفظ البانر</button>
+      <button id="saveHeroBtn" class="u-mt12">حفظ البانر</button>
       <div id="heroSaveResult"></div>
     </div>
 
-    <h2 style="margin-top:20px;">أزرار إجراء مخصصة (تظهر أسفل البانر)</h2>
+    <h2 class="u-mt20">أزرار إجراء مخصصة (تظهر أسفل البانر)</h2>
     <div class="section-card">
       <div id="customButtonsWrap"></div>
-      <h3 style="margin-top:14px;">إضافة زرار جديد</h3>
+      <h3 class="u-mt14">إضافة زرار جديد</h3>
       <label>نص الزرار</label>
       <input type="text" id="newBtnLabel" maxlength="40" placeholder="مثال: تواصل معنا واتساب">
       <label>نوع الإجراء</label>
@@ -1833,36 +1839,36 @@ async function renderSiteDesignPage(){
       </select>
       <label>القيمة</label>
       <input type="text" id="newBtnValue" placeholder="مثال: 201095125325 أو https://...">
-      <button id="addBtnBtn" style="margin-top:10px;">إضافة الزرار</button>
+      <button id="addBtnBtn" class="u-mt10">إضافة الزرار</button>
       <div id="btnSaveResult"></div>
     </div>
 
-    <h2 style="margin-top:20px;">شريط إعلان أعلى الموقع</h2>
+    <h2 class="u-mt20">شريط إعلان أعلى الموقع</h2>
     <div class="section-card">
       <label style="display:flex;align-items:center;gap:8px;font-weight:normal;">
         <input type="checkbox" id="annEnabled" ${content.announcement_enabled === '1' ? 'checked' : ''}> تفعيل شريط الإعلان
       </label>
-      <label style="margin-top:10px;">نص الإعلان (حد أقصى 300 حرف)</label>
+      <label class="u-mt10">نص الإعلان (حد أقصى 300 حرف)</label>
       <textarea id="annText" rows="2" maxlength="300" placeholder="مثال: عرض خاص على الباقة السنوية لمدة أسبوع!">${content.announcement_text || ''}</textarea>
-      <button id="saveAnnBtn" style="margin-top:10px;">حفظ</button>
+      <button id="saveAnnBtn" class="u-mt10">حفظ</button>
       <div id="annSaveResult"></div>
     </div>
-    <h2 style="margin-top:20px;">🖼️ خلفية شاشة محددة (اختياري)</h2>
+    <h2 class="u-mt20">🖼️ خلفية شاشة محددة (اختياري)</h2>
     <div class="section-card">
       <div class="info">اختَر أي شاشة من الموقع وارفع لها صورة خلفية خاصة، وستظهر ممزوجة خلف محتوى الشاشة (مثل خلفية شاشتي الترحيب والدخول تمامًا). هذا التنسيق مستقل تمامًا عن الألوان والخط أعلاه — رفع صورة لشاشة معيّنة لا يغيّر شكل باقي الشاشات، وتغيير الألوان لا يؤثر على أي صورة مرفوعة. الأنسب للشاشات الرئيسية والتعريفية أكثر من شاشات الجداول الكبيرة (مثل المشتركين أو التقارير) حتى تبقى سهلة القراءة.</div>
-      <label style="margin-top:10px;">اختر الشاشة</label>
+      <label class="u-mt10">اختر الشاشة</label>
       <select id="bgScreenSelect"></select>
-      <div id="bgPreviewWrap" style="margin-top:12px;"></div>
+      <div id="bgPreviewWrap" class="u-mt12"></div>
       <input type="file" accept="image/*" id="bgUploadInput" style="display:none;">
       <div id="bgActionsRow" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">
-        <button id="bgPreviewCurrentBtn" type="button" class="secondary" style="width:auto;">👁️ عاين الشاشة الحالية</button>
-        <button id="bgUploadBtn" class="secondary" style="width:auto;">📤 رفع صورة لهذه الشاشة</button>
+        <button id="bgPreviewCurrentBtn" type="button" class="secondary u-wa">👁️ عاين الشاشة الحالية</button>
+        <button id="bgUploadBtn" class="secondary u-wa">📤 رفع صورة لهذه الشاشة</button>
         <button id="bgRemoveBtn" class="danger" style="width:auto;display:none;">إزالة الخلفية الحالية</button>
       </div>
       <div id="bgConfirmRow" style="display:none;flex-wrap:wrap;gap:8px;margin-top:10px;">
-        <button id="bgPreviewRealBtn" type="button" class="secondary" style="width:auto;">👁️ عاين الشاشة الحقيقية</button>
-        <button id="bgConfirmSaveBtn" type="button" style="width:auto;">💾 حفظ كخلفية للشاشة</button>
-        <button id="bgCancelBtn" type="button" class="btn-gray" style="width:auto;">إلغاء</button>
+        <button id="bgPreviewRealBtn" type="button" class="secondary u-wa">👁️ عاين الشاشة الحقيقية</button>
+        <button id="bgConfirmSaveBtn" type="button" class="u-wa">💾 حفظ كخلفية للشاشة</button>
+        <button id="bgCancelBtn" type="button" class="btn-gray u-wa">إلغاء</button>
       </div>
       <div id="bgSaveResult"></div>
     </div>
@@ -1886,8 +1892,8 @@ async function renderSiteDesignPage(){
       saveSiteContent('font_size_base', size), saveSiteContent('font_weight', weight),
     ]);
     document.getElementById('themeSaveResult').innerHTML = results.every(r=>r.success)
-      ? '<div class="info" style="margin-top:8px;">✅ تم الحفظ. حدّث الصفحة عشان تشوف التغيير.</div>'
-      : '<div class="error" style="margin-top:8px;">حصل خطأ في بعض القيم.</div>';
+      ? '<div class="info u-mt8">✅ تم الحفظ. حدّث الصفحة عشان تشوف التغيير.</div>'
+      : '<div class="error u-mt8">حصل خطأ في بعض القيم.</div>';
   };
 
   // ثيمات جاهزة - بس بتملأ الحقول فوق، مبتحفظش لوحدها (لازم زرار "حفظ الألوان والخط")
@@ -1923,25 +1929,25 @@ async function renderSiteDesignPage(){
       saveSiteContent('hero_subtitle', document.getElementById('heroSubtitle').value.trim()),
     ]);
     document.getElementById('heroSaveResult').innerHTML = results.every(r=>r.success)
-      ? '<div class="info" style="margin-top:8px;">✅ تم الحفظ. هيظهر في صفحة تسجيل الدخول.</div>'
-      : `<div class="error" style="margin-top:8px;">${results.find(r=>!r.success)?.message || 'حصل خطأ'}</div>`;
+      ? '<div class="info u-mt8">✅ تم الحفظ. هيظهر في صفحة تسجيل الدخول.</div>'
+      : `<div class="error u-mt8">${results.find(r=>!r.success)?.message || 'حصل خطأ'}</div>`;
   };
 
   function renderCustomButtonsList(){
     document.getElementById('customButtonsWrap').innerHTML = customButtons.length ? customButtons.map((b,i)=>`
       <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #eee;">
         <div>${escapeHtml(b.label)} <span style="color:#888;font-size:12px;">(${buttonTypeLabel[b.type]||b.type}: ${escapeHtml(b.value)})</span></div>
-        <button class="small danger" style="width:auto;" data-gcall="__removeCustomBtn" data-gargs="${gArgs([i])}">حذف</button>
+        <button class="small danger u-wa" data-gcall="__removeCustomBtn" data-gargs="${gArgs([i])}">حذف</button>
       </div>
-    `).join('') : '<p style="color:#888;font-size:13px;">لا يوجد أزرار مضافة.</p>';
+    `).join('') : '<p class="u-note">لا يوجد أزرار مضافة.</p>';
   }
   renderCustomButtonsList();
 
   async function saveCustomButtons(){
     const r = await saveSiteContent('custom_buttons', JSON.stringify(customButtons));
     document.getElementById('btnSaveResult').innerHTML = r.success
-      ? '<div class="info" style="margin-top:8px;">✅ تم الحفظ.</div>'
-      : `<div class="error" style="margin-top:8px;">${r.message || 'حصل خطأ'}</div>`;
+      ? '<div class="info u-mt8">✅ تم الحفظ.</div>'
+      : `<div class="error u-mt8">${r.message || 'حصل خطأ'}</div>`;
   }
 
   document.getElementById('addBtnBtn').onclick = async () => {
@@ -1970,8 +1976,8 @@ async function renderSiteDesignPage(){
     const r2 = await saveSiteContent('announcement_text', text);
     const resultEl = document.getElementById('annSaveResult');
     resultEl.innerHTML = (r1.success && r2.success)
-      ? '<div class="info" style="margin-top:8px;">✅ تم الحفظ. التغيير هيظهر لكل الزوار فورًا.</div>'
-      : '<div class="error" style="margin-top:8px;">حصل خطأ أثناء الحفظ.</div>';
+      ? '<div class="info u-mt8">✅ تم الحفظ. التغيير هيظهر لكل الزوار فورًا.</div>'
+      : '<div class="error u-mt8">حصل خطأ أثناء الحفظ.</div>';
   };
 
   // خلفية شاشة محددة
@@ -1987,7 +1993,7 @@ async function renderSiteDesignPage(){
     const img = window.__pageBackgrounds && window.__pageBackgrounds[key];
     document.getElementById('bgPreviewWrap').innerHTML = img
       ? `<img src="${img}" style="width:100%;max-width:360px;border-radius:10px;display:block;border:1px solid var(--border);">`
-      : '<div style="color:#888;font-size:13px;">لا يوجد صورة مرفوعة لهذه الشاشة — الشكل الافتراضي شغّال.</div>';
+      : '<div class="u-note">لا يوجد صورة مرفوعة لهذه الشاشة — الشكل الافتراضي شغّال.</div>';
     document.getElementById('bgRemoveBtn').style.display = img ? 'inline-block' : 'none';
     document.getElementById('bgActionsRow').style.display = 'flex';
     document.getElementById('bgConfirmRow').style.display = 'none';
@@ -2006,9 +2012,9 @@ async function renderSiteDesignPage(){
       if (dataUrlOrEmpty) window.__pageBackgrounds[key] = dataUrlOrEmpty; else delete window.__pageBackgrounds[key];
       delete window.__pageBackgroundsPreview[key];
       currentBgPreview();
-      resEl.innerHTML = '<div class="info" style="margin-top:8px;">✅ اتحفظت. هتظهر لكل الزوار فورًا.</div>';
+      resEl.innerHTML = '<div class="info u-mt8">✅ اتحفظت. هتظهر لكل الزوار فورًا.</div>';
     } else {
-      resEl.innerHTML = `<div class="error" style="margin-top:8px;">${(r&&r.message)||'حصل خطأ في الحفظ'}</div>`;
+      resEl.innerHTML = `<div class="error u-mt8">${(r&&r.message)||'حصل خطأ في الحفظ'}</div>`;
     }
   }
 
@@ -2121,7 +2127,7 @@ async function renderAdminReportsPage(){
 
   function barRow(label, value, maxValue, formatter){
     const pct = maxValue > 0 ? Math.max(4, Math.round((value / maxValue) * 100)) : 0;
-    return `<div style="margin-bottom:8px;">
+    return `<div class="u-mb8">
       <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px;"><span>${label}</span><span>${formatter(value)}</span></div>
       <div style="background:#eee;border-radius:4px;height:10px;overflow:hidden;"><div style="background:var(--green);height:100%;width:${pct}%;"></div></div>
     </div>`;
@@ -2143,19 +2149,19 @@ async function renderAdminReportsPage(){
       <div class="summary-card"><div class="val">${res.inactiveCount}</div><div class="lbl">مشتركين موقوفين</div></div>
     </div>
 
-    <h2 style="margin-top:20px;">الإيرادات شهريًا (آخر 12 شهر)</h2>
+    <h2 class="u-mt20">الإيرادات شهريًا (آخر 12 شهر)</h2>
     <div class="section-card">
-      ${res.revenueByMonth.length ? res.revenueByMonth.map(r=>barRow(r.month, r.total, maxRevenue, v=>fmtMoney(v))).join('') : '<p style="color:#888;font-size:13px;">لا يوجد بيانات كافية بعد.</p>'}
+      ${res.revenueByMonth.length ? res.revenueByMonth.map(r=>barRow(r.month, r.total, maxRevenue, v=>fmtMoney(v))).join('') : '<p class="u-note">لا يوجد بيانات كافية بعد.</p>'}
     </div>
 
-    <h2 style="margin-top:20px;">اشتراكات جديدة شهريًا (آخر 12 شهر)</h2>
+    <h2 class="u-mt20">اشتراكات جديدة شهريًا (آخر 12 شهر)</h2>
     <div class="section-card">
-      ${res.signupsByMonth.length ? res.signupsByMonth.map(r=>barRow(r.month, r.count, maxSignups, v=>v)).join('') : '<p style="color:#888;font-size:13px;">لا يوجد بيانات كافية بعد.</p>'}
+      ${res.signupsByMonth.length ? res.signupsByMonth.map(r=>barRow(r.month, r.count, maxSignups, v=>v)).join('') : '<p class="u-note">لا يوجد بيانات كافية بعد.</p>'}
     </div>
 
-    <h2 style="margin-top:20px;">الإيرادات حسب الباقة (كل الأوقات)</h2>
+    <h2 class="u-mt20">الإيرادات حسب الباقة (كل الأوقات)</h2>
     <div class="section-card">
-      ${res.byPlan.length ? res.byPlan.map(r=>barRow(`${escapeHtml(r.planName)} (${r.count})`, r.total, maxPlan, v=>fmtMoney(v))).join('') : '<p style="color:#888;font-size:13px;">لا يوجد بيانات كافية بعد.</p>'}
+      ${res.byPlan.length ? res.byPlan.map(r=>barRow(`${escapeHtml(r.planName)} (${r.count})`, r.total, maxPlan, v=>fmtMoney(v))).join('') : '<p class="u-note">لا يوجد بيانات كافية بعد.</p>'}
     </div>
   </div>`;
   wireAdminNavButtons();
@@ -2200,25 +2206,25 @@ async function renderRecommendationsAdminPage(){
           <option value="72">72 ساعة</option>
           <option value="168">أسبوع (168 ساعة)</option>
         </select>
-        <h3 style="margin-top:12px;">نقاط المقاومة (الخروج/جني الأرباح)</h3>
+        <h3 class="u-mt12">نقاط المقاومة (الخروج/جني الأرباح)</h3>
         ${[1,2,3].map(i=>`<div class="grid2">
           <div><label>المقاومة ${i}</label><input type="number" step="any" id="rec_r${i}"></div>
           <div><label>نسبة الخروج عندها %</label><input type="number" step="any" id="rec_r${i}p" placeholder="مثال: 33"></div>
         </div>`).join('')}
-        <h3 style="margin-top:12px;">نقاط الدعم / التعزيز</h3>
+        <h3 class="u-mt12">نقاط الدعم / التعزيز</h3>
         <div class="grid2">
           <div><label>الدعم 1</label><input type="number" step="any" id="rec_s1"></div>
           <div><label>الدعم 2</label><input type="number" step="any" id="rec_s2"></div>
         </div>
         <label>الدعم 3</label><input type="number" step="any" id="rec_s3">
-        <button type="submit" style="margin-top:12px;">📢 إرسال التوصية</button>
+        <button type="submit" class="u-mt12">📢 إرسال التوصية</button>
       </form>
       <div id="addRecResult"></div>
     </div>
 
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:20px;">
-      <h2 style="margin:0;">سجل التوصيات (<span id="recCount">${recs.length}</span>)</h2>
-      <button class="secondary small" id="clearNowBtn" style="width:auto;">🗑️ إلغاء كل النشطة الآن</button>
+      <h2 class="u-m0">سجل التوصيات (<span id="recCount">${recs.length}</span>)</h2>
+      <button class="secondary small u-wa" id="clearNowBtn">🗑️ إلغاء كل النشطة الآن</button>
     </div>
     <div class="section-card" id="recListWrap"></div>
   </div>`;
@@ -2250,11 +2256,11 @@ async function renderRecommendationsAdminPage(){
           <div><strong>${escapeHtml(r.stockName)} (${escapeHtml(r.symbol)})</strong> — شراء من ${r.buyFrom} إلى ${r.buyTo}
             <span style="font-size:11px;font-weight:bold;color:${st.color};margin-inline-start:8px;">${escapeHtml(st.label)}</span>
           </div>
-          ${canCancel ? `<button class="small danger" style="width:auto;" data-gcall="__deleteRec" data-gargs="${gArgs([String(r.id)])}">🗑️ إلغاء الآن</button>` : ''}
+          ${canCancel ? `<button class="small danger u-wa" data-gcall="__deleteRec" data-gargs="${gArgs([String(r.id)])}">🗑️ إلغاء الآن</button>` : ''}
         </div>
         <div style="font-size:12px;color:#888;margin-top:4px;">أُرسلت: ${formatDateAr(r.createdAt)} بواسطة ${escapeHtml(r.createdBy||'-')} — صلاحية ${r.validityHours} ساعة — <strong>${timeInfo}</strong></div>
       </div>`;
-    }).join('') : '<p style="color:#888;font-size:13px;">لا توجد أي توصيات في السجل بعد.</p>';
+    }).join('') : '<p class="u-note">لا توجد أي توصيات في السجل بعد.</p>';
   }
   renderList();
   window.__recLogTick = setInterval(renderList, 60000); // تحديث العد التنازلي كل دقيقة
@@ -2294,12 +2300,12 @@ async function renderRecommendationsAdminPage(){
     const r = await addRecommendation(data);
     const resultEl = document.getElementById('addRecResult');
     if (r.success) {
-      resultEl.innerHTML = '<div class="info" style="margin-top:8px;">✅ تم إرسال التوصية.</div>';
+      resultEl.innerHTML = '<div class="info u-mt8">✅ تم إرسال التوصية.</div>';
       document.getElementById('addRecForm').reset();
       const fresh = await getRecommendationsLog();
       if (fresh.success) { recs = fresh.recommendations; renderList(); }
     } else {
-      resultEl.innerHTML = `<div class="error" style="margin-top:8px;">${r.message || 'حصل خطأ'}</div>`;
+      resultEl.innerHTML = `<div class="error u-mt8">${r.message || 'حصل خطأ'}</div>`;
     }
   };
 }
@@ -2324,18 +2330,18 @@ async function renderRecommendationsCustomerPage(){
         `<div>المقاومة ${i+1}: <strong>${x.level}</strong>${x.pct!==null?` — بيع ${x.pct}%`:''}</div>`).join('');
       const supportsHtml = r.supports.filter(x=>x!==null).map((x,i)=>`<div>الدعم ${i+1}: <strong>${x}</strong></div>`).join('');
       return `<div class="section-card" style="margin-bottom:12px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div class="u-row">
           <strong style="font-size:15px;color:var(--green-dark);">${escapeHtml(r.stockName)} (${escapeHtml(r.symbol)})</strong>
-          <span style="font-size:11px;color:#888;">${formatDateAr(r.createdAt)}</span>
+          <span class="u-fs11 u-muted">${formatDateAr(r.createdAt)}</span>
         </div>
-        <div style="margin-top:6px;">نقطة الشراء: <strong>${r.buyFrom} - ${r.buyTo}</strong></div>
-        <div class="grid2" style="margin-top:8px;">
+        <div class="u-mt6">نقطة الشراء: <strong>${r.buyFrom} - ${r.buyTo}</strong></div>
+        <div class="grid2 u-mt8">
           <div><div class="section-title">المقاومة / الخروج</div>${resistancesHtml || '<span style="color:#888;font-size:12px;">-</span>'}</div>
           <div><div class="section-title">الدعم / التعزيز</div>${supportsHtml || '<span style="color:#888;font-size:12px;">-</span>'}</div>
         </div>
         <button class="small" style="width:auto;margin-top:10px;" data-gcall="__useForPlan" data-gargs="${gArgs([String(r.symbol), r.buyFrom, 'مصر'])}">حوّل لخطة</button>
       </div>`;
-    }).join('') : '<p style="color:#888;font-size:13px;">لا توجد توصيات حاليًا.</p>';
+    }).join('') : '<p class="u-note">لا توجد توصيات حاليًا.</p>';
   }
 
   if (screenStale(__tok)) return; app.innerHTML = `<div class="container">${logoHeader()}
@@ -2384,7 +2390,7 @@ async function renderContentAdminPage(){
     <div class="section-card" id="testiAdminListWrap"></div>
     </div>
 
-    <h2 style="margin-top:20px;">إضافة/تعديل مقال</h2>
+    <h2 class="u-mt20">إضافة/تعديل مقال</h2>
     <div class="section-card">
       <form id="artForm">
         <input type="hidden" id="art_id" value="">
@@ -2397,13 +2403,13 @@ async function renderContentAdminPage(){
         <label style="display:flex;align-items:center;gap:8px;font-weight:normal;">
           <input type="checkbox" id="art_published" checked> منشور (ظاهر للزوار)
         </label>
-        <button type="submit" style="margin-top:10px;">حفظ المقال</button>
+        <button type="submit" class="u-mt10">حفظ المقال</button>
         <button type="button" class="secondary" id="art_cancelEdit" style="display:none;">إلغاء التعديل</button>
       </form>
       <div id="artSaveResult"></div>
     </div>
 
-    <h2 style="margin-top:20px;">المقالات (${articles.length})</h2>
+    <h2 class="u-mt20">المقالات (${articles.length})</h2>
     <div class="std-filter-bar">
       <div class="std-filter-search"><input type="text" id="artAdminSearch" placeholder="🔍 ابحث بعنوان المقال..."></div>
     </div>
@@ -2417,15 +2423,15 @@ async function renderContentAdminPage(){
   function renderTestiList(){
     const q = (document.getElementById('testiAdminSearch')?.value || '').trim().toLowerCase();
     const visible = q ? testimonials.filter(t => (t.displayName||'').toLowerCase().includes(q) || (t.comment||'').toLowerCase().includes(q)) : testimonials;
-    document.getElementById('testiAdminListWrap').innerHTML = testimonials.length===0 ? '<p style="color:#888;font-size:13px;">لا توجد آراء بعد.</p>'
+    document.getElementById('testiAdminListWrap').innerHTML = testimonials.length===0 ? '<p class="u-note">لا توجد آراء بعد.</p>'
       : (visible.length ? visible.map(t=>`
       <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border-soft);gap:8px;">
         <div>
           <div>${'⭐'.repeat(t.rating)} — <strong>${escapeHtml(t.displayName)}</strong></div>
           <div style="font-size:12.5px;color:#555;">"${escapeHtml(t.comment)}"</div>
-          <div style="font-size:11px;color:#888;">${formatDateAr(t.createdAt)}</div>
+          <div class="u-fs11 u-muted">${formatDateAr(t.createdAt)}</div>
         </div>
-        <button class="small danger" style="width:auto;" data-gcall="__deleteTestiAdmin" data-gargs="${gArgs([String(t.id)])}">حذف</button>
+        <button class="small danger u-wa" data-gcall="__deleteTestiAdmin" data-gargs="${gArgs([String(t.id)])}">حذف</button>
       </div>`).join('') : '<p class="std-filter-empty">لا توجد نتائج مطابقة للبحث</p>');
   }
   renderTestiList();
@@ -2442,13 +2448,13 @@ async function renderContentAdminPage(){
   function renderArticlesList(){
     const q = (document.getElementById('artAdminSearch')?.value || '').trim().toLowerCase();
     const visible = q ? articles.filter(a => (a.title||'').toLowerCase().includes(q)) : articles;
-    document.getElementById('artAdminListWrap').innerHTML = articles.length===0 ? '<p style="color:#888;font-size:13px;">لا توجد مقالات بعد.</p>'
+    document.getElementById('artAdminListWrap').innerHTML = articles.length===0 ? '<p class="u-note">لا توجد مقالات بعد.</p>'
       : (visible.length ? visible.map(a=>`
       <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border-soft);gap:8px;flex-wrap:wrap;">
         <div><strong>${escapeHtml(a.title)}</strong> ${a.published?'':'<span class="tag tag-wait">مسودة</span>'}</div>
         <div>
-          <button class="small secondary" style="width:auto;" data-gcall="__editArticle" data-gargs="${gArgs([String(a.id)])}">تعديل</button>
-          <button class="small danger" style="width:auto;" data-gcall="__deleteArticleAdmin" data-gargs="${gArgs([String(a.id)])}">حذف</button>
+          <button class="small secondary u-wa" data-gcall="__editArticle" data-gargs="${gArgs([String(a.id)])}">تعديل</button>
+          <button class="small danger u-wa" data-gcall="__deleteArticleAdmin" data-gargs="${gArgs([String(a.id)])}">حذف</button>
         </div>
       </div>`).join('') : '<p class="std-filter-empty">لا توجد نتائج مطابقة للبحث</p>');
   }
@@ -2492,14 +2498,14 @@ async function renderContentAdminPage(){
     const r = await saveArticle(data);
     const resultEl = document.getElementById('artSaveResult');
     if (r.success) {
-      resultEl.innerHTML = '<div class="info" style="margin-top:8px;">✅ تم الحفظ.</div>';
+      resultEl.innerHTML = '<div class="info u-mt8">✅ تم الحفظ.</div>';
       document.getElementById('artForm').reset();
       document.getElementById('art_id').value = '';
       document.getElementById('art_cancelEdit').style.display = 'none';
       const fresh = await getArticlesAdmin();
       if (fresh.success) { articles = fresh.articles; renderArticlesList(); }
     } else {
-      resultEl.innerHTML = `<div class="error" style="margin-top:8px;">${r.message || 'حصل خطأ'}</div>`;
+      resultEl.innerHTML = `<div class="error u-mt8">${r.message || 'حصل خطأ'}</div>`;
     }
   };
 }
@@ -2585,22 +2591,22 @@ async function renderSiteTextsAdminPage(){
         <div class="section-card screen-title-row" data-q="${escapeHtml(s.label.toLowerCase())}" style="margin-bottom:10px;display:flex;flex-wrap:wrap;align-items:center;gap:8px;">
           <div style="flex:1;min-width:220px;">
             <div style="font-size:13.5px;font-weight:700;">${escapeHtml(s.label)}</div>
-            <div style="font-size:11.5px;color:#888;">الافتراضي: ${escapeHtml(s.def)}</div>
+            <div class="u-hint">الافتراضي: ${escapeHtml(s.def)}</div>
           </div>
           <input type="text" id="pt_${s.key}" placeholder="${escapeHtml(s.def)}" value="${escapeHtml(contents['title__'+s.key] || '')}" style="flex:2;min-width:200px;">
-          <button class="secondary small" style="width:auto;" data-gcall="__savePageTitle" data-gargs="${gArgs([String(s.key)])}">💾 حفظ</button>
-          <div id="ptResult_${s.key}" style="width:100%;"></div>
+          <button class="secondary small u-wa" data-gcall="__savePageTitle" data-gargs="${gArgs([String(s.key)])}">💾 حفظ</button>
+          <div id="ptResult_${s.key}" class="u-w100"></div>
         </div>
       `).join('')}
     </div>
 
-    <h2 style="margin-top:24px;">📄 نصوص الصفحات</h2>
+    <h2 class="u-mt24">📄 نصوص الصفحات</h2>
     ${pages.map(p => `
       <h3 style="margin-top:18px;">${escapeHtml(p.label)}</h3>
       <div class="section-card">
         <div style="font-size:12.5px;color:#666;margin-bottom:8px;">${p.hint}</div>
         <textarea id="pc_${p.key}" rows="8" placeholder="اتركها فارغة لعرض النص الافتراضي...">${escapeHtml(contents[p.key] || '')}</textarea>
-        <button class="secondary" style="width:auto;margin-top:8px;" data-gcall="__savePageText" data-gargs="${gArgs([String(p.key)])}">💾 حفظ نص هذه الشاشة</button>
+        <button class="secondary u-wa u-mt8" data-gcall="__savePageText" data-gargs="${gArgs([String(p.key)])}">💾 حفظ نص هذه الشاشة</button>
         <div id="pcResult_${p.key}"></div>
       </div>
     `).join('')}
@@ -2627,11 +2633,11 @@ async function renderSiteTextsAdminPage(){
     const value = document.getElementById('pt_' + key).value;
     const r = await savePageContent('title__' + key, value);
     if (r && r.success) {
-      resEl.innerHTML = '<div class="info" style="margin-top:6px;">✅ تم الحفظ، والعنوان اتحدّث فورًا في كل مكان في الموقع (القائمة المنسدلة وعنوان الشاشة نفسها).</div>';
+      resEl.innerHTML = '<div class="info u-mt6">✅ تم الحفظ، والعنوان اتحدّث فورًا في كل مكان في الموقع (القائمة المنسدلة وعنوان الشاشة نفسها).</div>';
       if (window.__pageTitles) { if (value && value.trim() !== '') window.__pageTitles[key] = value; else delete window.__pageTitles[key]; }
       await refreshTopNav(); // عشان القائمة المنسدلة (☰) تتحدث فورًا من غير ما تحتاج تعمل تحديث للصفحة
     } else {
-      resEl.innerHTML = `<div class="error" style="margin-top:6px;">${(r&&r.message)||'حصل خطأ في الحفظ'}</div>`;
+      resEl.innerHTML = `<div class="error u-mt6">${(r&&r.message)||'حصل خطأ في الحفظ'}</div>`;
     }
   };
 
@@ -2640,9 +2646,9 @@ async function renderSiteTextsAdminPage(){
     const content = document.getElementById('pc_' + key).value;
     const r = await savePageContent(key, content);
     if (r && r.success) {
-      resEl.innerHTML = '<div class="info" style="margin-top:8px;">✅ تم الحفظ، والتعديل ظاهر للعملاء فورًا.</div>';
+      resEl.innerHTML = '<div class="info u-mt8">✅ تم الحفظ، والتعديل ظاهر للعملاء فورًا.</div>';
     } else {
-      resEl.innerHTML = `<div class="error" style="margin-top:8px;">${(r&&r.message)||'حصل خطأ في الحفظ'}</div>`;
+      resEl.innerHTML = `<div class="error u-mt8">${(r&&r.message)||'حصل خطأ في الحفظ'}</div>`;
     }
   };
 }
@@ -2664,7 +2670,7 @@ async function renderSuggestionsAdminPage(){
   }
   const suggestions = res.suggestions;
   if (!suggestions.length) {
-    wrap.innerHTML = '<p style="color:#888;font-size:13px;">لا توجد لدينا أي اقتراحات من العملاء بعد.</p>';
+    wrap.innerHTML = '<p class="u-note">لا توجد لدينا أي اقتراحات من العملاء بعد.</p>';
     return;
   }
 
@@ -2682,7 +2688,7 @@ async function renderSuggestionsAdminPage(){
           ? `<img src="${escapeHtml(s.attachment)}" style="max-width:260px;border-radius:8px;margin-top:8px;display:block;">`
           : `<a href="${escapeHtml(s.attachment)}" download="${escapeHtml(s.attachmentName||'مرفق.pdf')}" style="display:inline-block;margin-top:8px;">📎 تحميل المرفق (${escapeHtml(s.attachmentName||'ملف')})</a>`
       ) : ''}
-      <div class="topbar" style="margin-top:10px;">
+      <div class="topbar u-mt10">
         ${s.status!=='reviewed' ? `<button class="small secondary" data-gcall="__suggestionMarkReviewed" data-gargs="${gArgs([s.id])}">✅ وضع علامة "تمت المراجعة"</button>` : ''}
         <button class="small danger" data-gcall="__suggestionDelete" data-gargs="${gArgs([s.id])}">حذف</button>
       </div>

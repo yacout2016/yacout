@@ -4,6 +4,8 @@ require_once __DIR__ . '/session_boot.php';
 session_start();
 include 'db.php';
 require_once __DIR__ . '/plans_store.php';
+require_once __DIR__ . '/trades_lib.php';
+require_once __DIR__ . '/trash_lib.php';
 
 if (!isset($_SESSION['user_email'])) {
     http_response_code(401);
@@ -37,6 +39,7 @@ if (isset($_POST['base']) && $_POST['base'] !== '') {
 
 try {
     $r = plans_save($conn, $email, $key, $map, $base);
+    try { trades_rebuild($conn, $email, $key); } catch (Throwable $e) {}   // جدول الصفقات لتقارير الإدارة (الإصدار 89)
     echo json_encode(["success" => true, "versions" => $r['versions'], "deleted" => $r['deleted'], "mode" => $r['mode']], JSON_UNESCAPED_UNICODE);
 } catch (Throwable $e) {
     http_response_code(500);

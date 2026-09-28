@@ -68,11 +68,11 @@ async function renderHrPage(tab){
       <button class="small secondary std-filter-tab ${tab === 'reports' ? 'btn-active' : ''}" data-tab="reports">📊 التقارير</button>
       <button class="small secondary" id="hrTitlesBtn" style="width:auto;margin-inline-start:auto;">🏷️ المسميات الوظيفية</button>
     </div>
-    <div id="hrBody"><p style="color:#888">جارٍ التحميل...</p></div>
+    <div id="hrBody"><p class="u-muted">جارٍ التحميل...</p></div>
   </div>`;
   document.getElementById('hrBackBtn').onclick = () => goAdminHome();
   document.getElementById('hrTitlesBtn').onclick = () => renderJobTitlesPage();
-  document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { window.__navSilent = true; try { renderHrPage(b.dataset.tab); } finally { window.__navSilent = false; } });
+  app.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { window.__navSilent = true; try { renderHrPage(b.dataset.tab); } finally { window.__navSilent = false; } });
   if (tab === 'attendance') return hrAttendanceTab(HR.thisMonth());
   if (tab === 'reports') return hrReportsTab();
   return hrEmployeesTab();
@@ -88,16 +88,16 @@ async function hrEmployeesTab(){
   if (!res.success) { body.innerHTML = `<p class="error">${escapeHtml(res.message || 'تعذّر التحميل')}</p>`; return; }
   const titles = res.titles || {};
   body.innerHTML = `
-    <div class="grid2" style="margin-bottom:10px;">
-      <div class="section-card" style="margin:0;"><div style="font-size:12px;color:#888;">الموظفين الحاليين</div><div style="font-size:24px;font-weight:800;">${res.activeCount}</div></div>
-      <div class="section-card" style="margin:0;"><div style="font-size:12px;color:#888;">إجمالي الرواتب الشهرية</div><div style="font-size:24px;font-weight:800;" dir="ltr">${HR.money(res.totalSalaries)}</div></div>
+    <div class="grid2 u-mb10">
+      <div class="section-card u-m0"><div class="u-fs12 u-muted">الموظفين الحاليين</div><div style="font-size:24px;font-weight:800;">${res.activeCount}</div></div>
+      <div class="section-card u-m0"><div class="u-fs12 u-muted">إجمالي الرواتب الشهرية</div><div style="font-size:24px;font-weight:800;" dir="ltr">${HR.money(res.totalSalaries)}</div></div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
-      <button id="hrAddBtn" style="width:auto;">➕ إضافة موظف</button>
+      <button id="hrAddBtn" class="u-wa">➕ إضافة موظف</button>
       <input type="text" id="hrSearch" placeholder="🔍 ابحث بالاسم أو الهاتف أو الرقم القومي..." style="flex:1;min-width:200px;margin:0;">
     </div>
     <div id="hrFormWrap"></div>
-    <div class="section-card" style="padding:0;overflow:auto;"><table class="std-table" style="width:100%;"><thead><tr>
+    <div class="section-card" style="padding:0;overflow:auto;"><table class="std-table u-w100"><thead><tr>
       <th>الاسم</th><th>المسمى</th><th>الهاتف</th><th>الإيميل</th><th>الرقم القومي</th><th>الراتب</th><th>بدء العمل</th><th>الحالة</th><th>📎</th><th></th></tr></thead>
       <tbody id="hrRows"></tbody></table></div>`;
   const draw = () => {
@@ -108,13 +108,13 @@ async function hrEmployeesTab(){
       <td dir="ltr">${escapeHtml(e.phone || '')}</td><td dir="ltr">${escapeHtml(e.email || '')}</td><td dir="ltr">${escapeHtml(e.nationalId || '')}</td>
       <td dir="ltr">${HR.money(e.salary)}</td><td>${e.startDate ? formatDateAr(e.startDate) : '—'}</td>
       <td>${e.status === 'left' ? 'ترك العمل' : 'على رأس العمل'}</td><td>${e.docs || 0}</td>
-      <td style="white-space:nowrap;"><button class="small secondary" data-edit="${e.id}" style="width:auto;">✏️</button>
-        <button class="small secondary" data-docs="${e.id}" style="width:auto;">📎 المستندات</button>
-        <button class="small secondary" data-rep="${e.id}" style="width:auto;">📄 تقرير</button></td></tr>`).join('')
+      <td style="white-space:nowrap;"><button class="small secondary u-wa" data-edit="${e.id}">✏️</button>
+        <button class="small secondary u-wa" data-docs="${e.id}">📎 المستندات</button>
+        <button class="small secondary u-wa" data-rep="${e.id}">📄 تقرير</button></td></tr>`).join('')
       : `<tr><td colspan="10" style="text-align:center;color:#888;padding:16px;">${res.employees.length ? 'لا توجد نتائج مطابقة' : 'لا يوجد موظفون بعد - اضغط "إضافة موظف".'}</td></tr>`;
-    document.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => hrEmployeeForm(res.employees.find(x => x.id === +b.dataset.edit), titles));
-    document.querySelectorAll('[data-docs]').forEach(b => b.onclick = () => hrDocsPanel(+b.dataset.docs));
-    document.querySelectorAll('[data-rep]').forEach(b => b.onclick = () => hrEmployeeReport(+b.dataset.rep));
+    app.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => hrEmployeeForm(res.employees.find(x => x.id === +b.dataset.edit), titles));
+    app.querySelectorAll('[data-docs]').forEach(b => b.onclick = () => hrDocsPanel(+b.dataset.docs));
+    app.querySelectorAll('[data-rep]').forEach(b => b.onclick = () => hrEmployeeReport(+b.dataset.rep));
   };
   document.getElementById('hrSearch').oninput = draw;
   document.getElementById('hrAddBtn').onclick = () => hrEmployeeForm(null, titles);
@@ -141,8 +141,8 @@ function hrEmployeeForm(emp, titles){
       </div>
       <label>ملاحظات</label><textarea id="hfNotes" rows="2">${escapeHtml(e.notes || '')}</textarea>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
-        <button type="submit" style="width:auto;">💾 حفظ</button>
-        <button type="button" class="secondary" id="hfCancel" style="width:auto;">إلغاء</button>
+        <button type="submit" class="u-wa">💾 حفظ</button>
+        <button type="button" class="secondary u-wa" id="hfCancel">إلغاء</button>
         ${emp ? '<button type="button" class="danger" id="hfDelete" style="width:auto;margin-inline-start:auto;">🗑️ حذف الموظف نهائيًا</button>' : ''}
       </div>
       <div id="hfMsg" class="error" style="display:none;margin-top:8px;"></div>
@@ -152,7 +152,7 @@ function hrEmployeeForm(emp, titles){
   document.getElementById('hfCancel').onclick = () => { wrap.innerHTML = ''; };
   const del = document.getElementById('hfDelete');
   if (del) del.onclick = async () => {
-    if (!await gConfirm(`حذف "${e.name}" نهائيًا مع كل مستنداته وسجل حضوره؟ (لو ساب الشغل، الأفضل تغيّر حالته لـ "ترك العمل" حتى يبقى سجله محفوظًا)`, { ok: 'حذف نهائي', danger: true })) return;
+    if (!await gConfirm(`حذف "${e.name}" (ينتقل إلى سلة المحذوفات ويمكن استرجاعه) مع كل مستنداته وسجل حضوره؟ (لو ساب الشغل، الأفضل تغيّر حالته لـ "ترك العمل" حتى يبقى سجله محفوظًا)`, { ok: 'حذف نهائي', danger: true })) return;
     const r = await HR.post({ action: 'delete_employee', id: e.id });
     if (r.success) hrEmployeesTab(); else alert(r.message || 'تعذّر الحذف');
   };
@@ -178,14 +178,14 @@ async function hrDocsPanel(empId){
     <div style="font-size:12px;color:#888;margin-bottom:8px;">صورة البطاقة، العقد، الشهادات... (صور، PDF، Word، Excel، ZIP - حتى 15 ميجا للملف). الملفات محفوظة في مكان محمي ولا يفتحها إلا من لديه صلاحية شؤون الموظفين.</div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
       <input type="file" id="hrDocFile" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.pptx,.zip" style="flex:1;min-width:200px;">
-      <button id="hrDocUpload" style="width:auto;">⬆️ رفع</button>
-      <button class="secondary" id="hrDocClose" style="width:auto;">إغلاق</button>
+      <button id="hrDocUpload" class="u-wa">⬆️ رفع</button>
+      <button class="secondary u-wa" id="hrDocClose">إغلاق</button>
     </div>
     <div id="hrDocMsg" style="font-size:12.5px;margin-top:6px;"></div>
     <ul style="list-style:none;padding:0;margin:10px 0 0;">${res.documents.length ? res.documents.map(d => `<li style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border-soft);">
-      <span>📄 ${escapeHtml(d.name)} <small style="color:#888;">— ${escapeHtml(d.at || '')}</small></span>
-      <span style="white-space:nowrap;"><a href="${escapeHtml(d.url)}" target="_blank" rel="noopener"><button class="small secondary" style="width:auto;">⬇️ تنزيل / عرض</button></a>
-      <button class="small danger" data-deldoc="${d.id}" style="width:auto;">🗑️</button></span></li>`).join('') : '<li style="color:#888;">لا يوجد مستندات بعد.</li>'}</ul>
+      <span>📄 ${escapeHtml(d.name)} <small class="u-muted">— ${escapeHtml(d.at || '')}</small></span>
+      <span style="white-space:nowrap;"><a href="${escapeHtml(d.url)}" target="_blank" rel="noopener"><button class="small secondary u-wa">⬇️ تنزيل / عرض</button></a>
+      <button class="small danger u-wa" data-deldoc="${d.id}">🗑️</button></span></li>`).join('') : '<li class="u-muted">لا يوجد مستندات بعد.</li>'}</ul>
   </div>`;
   wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
   document.getElementById('hrDocClose').onclick = () => { wrap.innerHTML = ''; hrEmployeesTab(); };
@@ -198,8 +198,8 @@ async function hrDocsPanel(empId){
     const r = await HR.post({ action: 'upload_doc', employee_id: empId, file: f });
     if (r.success) hrDocsPanel(empId); else msg.textContent = r.message || 'تعذّر الرفع';
   };
-  document.querySelectorAll('[data-deldoc]').forEach(b => b.onclick = async () => {
-    if (!await gConfirm('حذف المستند ده نهائيًا؟', { ok: 'حذف', danger: true })) return;
+  app.querySelectorAll('[data-deldoc]').forEach(b => b.onclick = async () => {
+    if (!await gConfirm('حذف هذا المستند؟ (ينتقل إلى سلة المحذوفات ويمكن استرجاعه)', { ok: 'حذف', danger: true })) return;
     const r = await HR.post({ action: 'delete_doc', id: +b.dataset.deldoc });
     if (r.success) hrDocsPanel(empId); else alert(r.message || 'تعذّر');
   });
@@ -237,11 +237,11 @@ async function hrAttendanceTab(month){
   const rows = res.rows, titles = res.titles || {};
   body.innerHTML = `
     <div class="section-card" style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;">
-      <div><label>الشهر</label><input type="month" id="haMonth" value="${escapeHtml(month)}" style="margin:0;"></div>
-      <div><label>أيام العمل في الشهر (للكل)</label><div style="display:flex;gap:6px;"><input type="number" id="haWorkAll" min="1" max="31" step="0.5" value="${rows[0] ? rows[0].workDays : 26}" style="width:90px;margin:0;" dir="ltr"><button class="small secondary" id="haApplyWork" style="width:auto;margin:0;">تطبيق على الكل</button></div></div>
+      <div><label>الشهر</label><input type="month" id="haMonth" value="${escapeHtml(month)}" class="u-m0"></div>
+      <div><label>أيام العمل في الشهر (للكل)</label><div style="display:flex;gap:6px;"><input type="number" id="haWorkAll" min="1" max="31" step="0.5" value="${rows[0] ? rows[0].workDays : 26}" style="width:90px;margin:0;" dir="ltr"><button class="small secondary u-wa u-m0" id="haApplyWork">تطبيق على الكل</button></div></div>
       <div style="margin-inline-start:auto;font-size:12px;color:#888;line-height:1.8;">المستحق = الراتب × (الحضور ÷ أيام العمل) + المكافأة − الخصم</div>
     </div>
-    <div class="section-card" style="padding:0;overflow:auto;"><table class="std-table" style="width:100%;"><thead><tr>
+    <div class="section-card" style="padding:0;overflow:auto;"><table class="std-table u-w100"><thead><tr>
       <th>الموظف</th><th>المسمى</th><th>الراتب الأساسي</th><th>أيام العمل</th><th>أيام الحضور</th><th>مكافأة</th><th>خصم</th><th>المستحق</th><th>ملاحظة</th></tr></thead>
       <tbody>${rows.map((r, i) => `<tr data-i="${i}">
         <td><strong>${escapeHtml(r.name)}</strong>${r.saved ? '' : ' <small style="color:#b7791f;">(لم يُسجَّل بعد)</small>'}</td><td>${escapeHtml(HR.titleOf(titles, r.jobTitle))}</td>
@@ -254,9 +254,9 @@ async function hrAttendanceTab(month){
         <td><input type="text" class="haN" value="${escapeHtml(r.note || '')}" style="min-width:120px;margin:0;"></td></tr>`).join('') || '<tr><td colspan="9" style="text-align:center;color:#888;padding:16px;">لا يوجد موظفون على رأس العمل.</td></tr>'}
       </tbody><tfoot><tr><td colspan="7" style="text-align:left;font-weight:800;">إجمالي المستحق للشهر</td><td id="haTotal" dir="ltr" style="font-weight:800;"></td><td></td></tr></tfoot></table></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
-      <button id="haSave" style="width:auto;">💾 حفظ حضور الشهر</button>
-      <button class="secondary" id="haPrint" style="width:auto;">🖨️ طباعة كشف الرواتب</button>
-      <button class="secondary" id="haCsv" style="width:auto;">⬇️ Excel</button>
+      <button id="haSave" class="u-wa">💾 حفظ حضور الشهر</button>
+      <button class="secondary u-wa" id="haPrint">🖨️ طباعة كشف الرواتب</button>
+      <button class="secondary u-wa" id="haCsv">⬇️ Excel</button>
     </div><div id="haMsg" style="font-size:12.5px;margin-top:6px;"></div>`;
   const read = () => rows.map((r, i) => { const tr = body.querySelector(`tr[data-i="${i}"]`); const g = (c) => tr.querySelector(c).value;
     return { id: r.id, name: r.name, jobTitle: r.jobTitle, baseSalary: r.baseSalary, workDays: +g('.haW'), presentDays: +g('.haP'), bonus: +g('.haB') || 0, deductions: +g('.haD') || 0, note: g('.haN').trim() }; });
@@ -298,12 +298,12 @@ async function hrReportsTab(){
   body.innerHTML = `<div class="section-card">
     <div class="section-title">📊 تقارير شؤون الموظفين</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 14px;">
-      <button id="hrRepAll" style="width:auto;">🖨️ تقرير كل الموظفين</button>
-      <button class="secondary" id="hrRepAllCsv" style="width:auto;">⬇️ كل الموظفين Excel</button>
+      <button id="hrRepAll" class="u-wa">🖨️ تقرير كل الموظفين</button>
+      <button class="secondary u-wa" id="hrRepAllCsv">⬇️ كل الموظفين Excel</button>
     </div>
     <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;">
-      <div><label>كشف رواتب شهر</label><input type="month" id="hrRepMonth" value="${HR.thisMonth()}" style="margin:0;"></div>
-      <button class="secondary" id="hrRepMonthBtn" style="width:auto;margin:0;">فتح الشهر (طباعة / Excel)</button>
+      <div><label>كشف رواتب شهر</label><input type="month" id="hrRepMonth" value="${HR.thisMonth()}" class="u-m0"></div>
+      <button class="secondary u-wa u-m0" id="hrRepMonthBtn">فتح الشهر (طباعة / Excel)</button>
     </div>
     <p style="font-size:12px;color:#888;margin-top:12px;">تقرير موظف واحد: من تبويب "الموظفين" ← زرار "📄 تقرير" جنب الموظف.</p></div>`;
   const load = async () => { const r = await HR.get('action=employees'); if (!r.success) { alert(r.message || 'تعذّر'); return null; } return r; };
@@ -340,22 +340,22 @@ async function renderJobTitlesPage(){
   const res = await HR.get('action=titles');
   if (!res.success) { if (screenStale(__tok)) return; app.innerHTML = `<div class="container">${logoHeader()}<p class="error">${escapeHtml(res.message || 'تعذّر التحميل')}</p></div>`; return; }
   const pk = res.permissionKeys || {};
-  const permBoxes = (sel, idp) => Object.entries(pk).map(([k, l]) => `<label class="ms-item" style="font-size:12px;"><input type="checkbox" class="${idp}" value="${k}" ${sel.includes(k) ? 'checked' : ''}> ${escapeHtml(l)}</label>`).join('');
+  const permBoxes = (sel, idp) => Object.entries(pk).map(([k, l]) => `<label class="ms-item u-fs12"><input type="checkbox" class="${idp}" value="${k}" ${sel.includes(k) ? 'checked' : ''}> ${escapeHtml(l)}</label>`).join('');
   if (screenStale(__tok)) return; app.innerHTML = `<div class="container wide">${logoHeader()}
     <div class="topbar"><div>${pageTitle('job_titles', '🏷️ المسميات الوظيفية')}</div>
       <button class="secondary small" id="jtBack">🛡️ رجوع للوحة التحكم</button></div>
     <div class="info">أضف أو عدّل أي مسمى وظيفي. الصلاحيات هنا "افتراضية": تُضاف تلقائيًا عند إضافة عضو فريق بهذا المسمى، وبعدها يمكنك زيادتها أو إنقاصها لكل شخص من "الفريق والصلاحيات".</div>
     <div class="section-card"><div class="section-title">➕ مسمى جديد</div>
       <input type="text" id="jtNewLabel" placeholder="مثال: محاسب، مدير فرع، مسؤول HR">
-      <details style="margin-top:6px;"><summary style="cursor:pointer;font-size:13px;">الصلاحيات الافتراضية (اختياري)</summary><div class="ms-grid" style="margin-top:6px;">${permBoxes([], 'jtNewPerm')}</div></details>
-      <button id="jtAdd" style="width:auto;margin-top:8px;">إضافة</button></div>
+      <details class="u-mt6"><summary style="cursor:pointer;font-size:13px;">الصلاحيات الافتراضية (اختياري)</summary><div class="ms-grid u-mt6">${permBoxes([], 'jtNewPerm')}</div></details>
+      <button id="jtAdd" class="u-wa u-mt8">إضافة</button></div>
     ${res.titles.map(t => `<div class="section-card" data-key="${escapeHtml(t.key)}">
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
         <input type="text" class="jtLabel" value="${escapeHtml(t.label)}" style="flex:1;min-width:180px;margin:0;font-weight:700;">
-        <button class="small jtSave" style="width:auto;margin:0;">💾 حفظ</button>
-        <button class="small danger jtDel" style="width:auto;margin:0;">🗑️</button>
+        <button class="small jtSave u-wa u-m0">💾 حفظ</button>
+        <button class="small danger jtDel u-wa u-m0">🗑️</button>
       </div>
-      <details style="margin-top:6px;"><summary style="cursor:pointer;font-size:12.5px;color:#888;">الصلاحيات الافتراضية (${t.perms.length})</summary><div class="ms-grid" style="margin-top:6px;">${permBoxes(t.perms, 'jtPerm')}</div></details>
+      <details class="u-mt6"><summary style="cursor:pointer;font-size:12.5px;color:#888;">الصلاحيات الافتراضية (${t.perms.length})</summary><div class="ms-grid u-mt6">${permBoxes(t.perms, 'jtPerm')}</div></details>
     </div>`).join('')}
   </div>`;
   document.getElementById('jtBack').onclick = () => goAdminHome();
@@ -366,7 +366,7 @@ async function renderJobTitlesPage(){
     const r = await HR.post({ action: 'save_title', label, perms: JSON.stringify(perms) });
     if (r.success) { alert('✅ تمت إضافة المسمى'); window.__navSilent = true; try { renderJobTitlesPage(); } finally { window.__navSilent = false; } } else alert(r.message || 'تعذّر');
   };
-  document.querySelectorAll('[data-key]').forEach(card => {
+  app.querySelectorAll('[data-key]').forEach(card => {
     const key = card.dataset.key;
     card.querySelector('.jtSave').onclick = async () => {
       const perms = [...card.querySelectorAll('.jtPerm:checked')].map(x => x.value);

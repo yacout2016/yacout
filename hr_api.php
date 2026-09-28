@@ -22,6 +22,7 @@ header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/session_boot.php';
 session_start();
 include 'db.php';
+require_once __DIR__ . '/trash_lib.php';   // الإصدار 89: سلة المحذوفات
 require_once __DIR__ . '/uploads.php';
 
 function hr_out($a){ echo json_encode($a, JSON_UNESCAPED_UNICODE); exit(); }
@@ -88,6 +89,7 @@ try {
         $u->bind_param("ss", $key, $key); $u->execute();
         $inUse = (int)$u->get_result()->fetch_assoc()['c']; $u->close();
         if ($inUse > 0) hr_fail("هذا المسمى مستخدم لـ $inUse شخص - غيّر مسماهم الأول.");
+        $__t = trash_rows($conn, 'job_titles', 'title_key = ?', 's', [$key]); trash_put($conn, 'job_title', 'مسمى وظيفي: ' . ($__t[0]['label'] ?? $key), ['job_titles' => $__t]);
         $d = $conn->prepare("DELETE FROM job_titles WHERE title_key = ?"); $d->bind_param("s", $key); $d->execute(); $d->close();
         hr_out(["success" => true]);
     }
@@ -148,8 +150,9 @@ try {
     }
     if ($action === 'delete_employee' && $isPost) {
         $id = (int)($_POST['id'] ?? 0);
-        $d = $conn->prepare("SELECT file_token FROM hr_documents WHERE employee_id = ?"); $d->bind_param("i", $id); $d->execute();
-        $dr = $d->get_result(); while ($x = $dr->fetch_assoc()) upl_delete($x['file_token']); $d->close();
+        // الإصدار 89: سلة المحذوفات - الملفات بتفضل لحد الحذف النهائي من السلة
+        $__e = trash_rows($conn, 'hr_employees', 'id = ?', 'i', [$id]); $__d = trash_rows($conn, 'hr_documents', 'employee_id = ?', 'i', [$id]);
+        trash_put($conn, 'hr_employee', 'موظف (HR): ' . ($__e[0]['full_name'] ?? '#' . $id), ['hr_employees' => $__e, 'hr_documents' => $__d, 'hr_attendance' => trash_rows($conn, 'hr_attendance', 'employee_id = ?', 'i', [$id])], array_column($__d, 'file_token'));
         foreach (["DELETE FROM hr_documents WHERE employee_id = ?", "DELETE FROM hr_attendance WHERE employee_id = ?", "DELETE FROM hr_employees WHERE id = ?"] as $q) {
             $x = $conn->prepare($q); $x->bind_param("i", $id); $x->execute(); $x->close();
         }
@@ -179,7 +182,8 @@ try {
         $id = (int)($_POST['id'] ?? 0);
         $d = $conn->prepare("SELECT file_token FROM hr_documents WHERE id = ?"); $d->bind_param("i", $id); $d->execute();
         $x = $d->get_result()->fetch_assoc(); $d->close();
-        if ($x) { upl_delete($x['file_token']); $q = $conn->prepare("DELETE FROM hr_documents WHERE id = ?"); $q->bind_param("i", $id); $q->execute(); $q->close(); }
+        if ($x) { $__d = trash_rows($conn, 'hr_documents', 'id = ?', 'i', [$id]); trash_put($conn, 'hr_document', 'مستند موظف: ' . ($__d[0]['file_name'] ?? '#' . $id), ['hr_documents' => $__d], [$x['file_token']]);
+            $q = $conn->prepare("DELETE FROM hr_documents WHERE id = ?"); $q->bind_param("i", $id); $q->execute(); $q->close(); }
         hr_out(["success" => true]);
     }
 

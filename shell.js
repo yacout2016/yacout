@@ -50,19 +50,40 @@
      ===================================================================== */
 
   // رقم الإصدار - بيظهر في شاشة "حسابي" (غيّره مع ?v= في index.php و VERSION في sw.js)
-  const APP_VERSION = 88;
+  const APP_VERSION = 89;
 
-  /* الاستعلامات المتكررة (الدردشة/التوصيات) بتقف لما التبويب يكون مخفي أو الموبايل مقفول
-     - بتوفّر ضغط على السيرفر وبطارية الموبايل، وبترجع تشتغل أول ما الصفحة تظهر
+  /* الاستعلامات المتكررة (الدردشة/التوصيات/قائمة المتابعة) - استعلام متكيّف (الإصدار 89)
+     - بتقف لما التبويب يكون مخفي أو الموبايل مقفول
+     - لو المستخدم مش بيتفاعل (مفيش لمس/كتابة/سكرول): المدة بتطول تدريجيًا (×3 بعد دقيقتين، ×8 بعد 5 دقائق، بحد أقصى دقيقتين)
+     - أول ما المستخدم يرجع يتفاعل أو الصفحة تظهر: كل الاستعلامات بتشتغل فورًا وترجع لسرعتها العادية
      - أي مؤقت أطول من دقيقة بيفضل شغال عادي */
   (function(){
     const nativeSetInterval = window.setInterval.bind(window);
+    const nativeClearInterval = window.clearInterval.bind(window);
     window.__nativeSetInterval = nativeSetInterval;   // للحاجات اللي لازم تفضل شغالة في الخلفية (زي إشعارات شات الأدمن)
+    const polls = new Map();
+    let lastActive = Date.now();
+    const factor = () => { const idle = Date.now() - lastActive; return idle > 300000 ? 8 : idle > 120000 ? 3 : 1; };
+    const runAll = () => polls.forEach(p => { if (Date.now() - p.last > p.ms * 0.8) { p.last = Date.now(); try { p.fn.apply(window, p.rest); } catch(e){ console.error(e); } } });
+    const onActive = () => { const wasIdle = factor() > 1; lastActive = Date.now(); if (wasIdle && !document.hidden) runAll(); };
+    ['pointerdown', 'keydown', 'touchstart', 'wheel'].forEach(ev => window.addEventListener(ev, onActive, { passive:true, capture:true }));
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) { lastActive = Date.now(); runAll(); } });
     window.setInterval = function(fn, ms){
       const rest = Array.prototype.slice.call(arguments, 2);
-      if (typeof fn !== 'function' || !(ms < 60000)) return nativeSetInterval.apply(window, arguments);
-      return nativeSetInterval(function(){ if (document.hidden) return; fn.apply(this, rest); }, ms);
+      if (typeof fn !== 'function' || !(ms <= 60000)) return nativeSetInterval.apply(window, arguments);
+      const p = { fn, ms, rest, last: Date.now() };
+      const id = nativeSetInterval(function(){
+        if (document.hidden) return;
+        const every = Math.min(ms * factor(), Math.max(ms, 120000));
+        if (Date.now() - p.last < every - 50) return;
+        p.last = Date.now(); fn.apply(this, rest);
+      }, ms);
+      polls.set(id, p);
+      return id;
     };
+    window.clearInterval = function(id){ polls.delete(id); return nativeClearInterval(id); };
+    window.__pollIdleFactor = factor;   // للاختبارات
+    window.__pollSetIdle = (msAgo) => { lastActive = Date.now() - msAgo; };
   })();
 
   // الكائن العام للهيكل - متاح لملفات app-*.js باسم window.GShell
@@ -141,7 +162,26 @@
     menu:'<path d="M4 7h16M4 12h16M4 17h16"/>',
     target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
     mail:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
-    brush:'<path d="M18.4 2.6a2 2 0 0 1 2.9 2.9L12 14.8 9.2 12z"/><path d="M9.2 12c-2 0-3.6 1.6-3.6 3.6 0 1.6-1.1 2.9-2.6 3.4 1 1.3 2.6 2 4.3 2 3.2 0 5.7-2.6 5.7-5.7z"/>'
+    brush:'<path d="M18.4 2.6a2 2 0 0 1 2.9 2.9L12 14.8 9.2 12z"/><path d="M9.2 12c-2 0-3.6 1.6-3.6 3.6 0 1.6-1.1 2.9-2.6 3.4 1 1.3 2.6 2 4.3 2 3.2 0 5.7-2.6 5.7-5.7z"/>',
+    // الإصدار 89: أيقونات إضافية للأزرار (بدل الإيموجي)
+    trash:'<path d="M4 7h16M10 11v6M14 11v6"/><path d="M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M9 7V4h6v3"/>',
+    printer:'<path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/>',
+    save:'<path d="M5 3h11l5 5v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v6h8V3M7 21v-7h10v7"/>',
+    edit:'<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',
+    search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+    refresh:'<path d="M20 11a8 8 0 0 0-14.8-4M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14.8 4M20 20v-4h-4"/>',
+    upload:'<path d="M12 21V9M7 14l5-5 5 5"/><path d="M5 3h14"/>',
+    share:'<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/>',
+    archive:'<rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8M10 12h4"/>',
+    tag:'<path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
+    undo:'<path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/>',
+    clip:'<path d="m21 11-8.5 8.5a5 5 0 0 1-7-7L14 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L15 7"/>',
+    calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+    users:'<circle cx="9" cy="8" r="3.5"/><path d="M2 20a7 7 0 0 1 14 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 13.5a7 7 0 0 1 4 6.5"/>',
+    key:'<circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.3-9.3M17 6l3 3M14 9l2 2"/>',
+    file:'<path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5"/>',
+    bolt:'<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
+    image:'<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/>',
   };
   const icon = (n) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n] || P.info}</svg>`;
   GS.icon = icon;
@@ -304,6 +344,10 @@
     renderAlertsPage: () => renderHome(),
     renderHrPage: () => renderAdminHub(),
     renderJobTitlesPage: () => renderAdminHub(),
+    // الإصدار 89
+    renderTradesReportPage: () => renderAdminHub(),
+    renderFaqAdminPage: () => renderAdminHub(),
+    renderTrashPage: toAccount,
   };
   ['renderProfilePage','renderSubscriptionPlans','renderMySubscriptionHistory','renderReferralPage','renderAboutPage','renderContactInfo',
    'renderRefundPolicyPage','renderArticlesListPage','renderTestimonialsPage','renderSuggestionsPage','renderDisclaimerPage','renderPrivacyPolicyPage']
@@ -438,6 +482,7 @@
       { tab:'account', label:'حسابي والإعدادات', ic:'settings', go:() => GS.renderAccount() },
       { screen:'renderSubscriptionPlans', label:'الاشتراك والباقات', ic:'card', go:() => renderSubscriptionPlans() },
       !hidden('hide_referral_screen') && { screen:'renderReferralPage', label:'ادعُ صديقك', ic:'gift', go:() => renderReferralPage() },
+      { screen:'renderTrashPage', label:'سلة المحذوفات', ic:'trash', go:() => renderTrashPage() },
     ].filter(Boolean);
     // لوحة التحكم بتفتح شاشة الأزرار (renderAdminHub) - الشاشات الفرعية مبقتش بتكرر الأزرار دي (الإصدار 72)
     // + اختصارات مباشرة لأهم شاشات الإدارة حسب صلاحيات كل موظف (الإصدار 73)
@@ -447,6 +492,7 @@
       if (can('manage_subscribers')) items.push({ screen:'renderAdminSubscribers', label:'المشتركون والاشتراكات', ic:'card', go:() => renderAdminSubscribers() });
       if (can('manage_staff')) items.push({ screen:'renderStaffManagementPage', label:'الموظفين والصلاحيات', ic:'user', go:() => renderStaffManagementPage() });
       if (can('manage_hr')) items.push({ screen:'renderHrPage', label:'شؤون الموظفين (HR)', ic:'user', go:() => renderHrPage() });
+      if (can('view_reports')) items.push({ screen:'renderTradesReportPage', label:'تقرير الصفقات', ic:'trend', go:() => renderTradesReportPage() });
       if (can('view_chat')) items.push({ screen:'renderChatAdminPage', label:'الدردشة الفورية', ic:'chat', go:() => renderChatAdminPage() });
     }
     return items;
@@ -615,11 +661,26 @@
   const EMOJI_LEAD = /^[\s‍️⃣\p{Extended_Pictographic}]+/u;
 
   // شيل الإيموجي من أول عقدة نصية فعلية في العنصر
+  // الإصدار 89: الإيموجي المعروف في أول الأزرار والعناوين بيتحوّل لأيقونة SVG موحّدة (الباقي بيتشال زي الأول)
+  const EMOJI_IC = {
+    '🗑':'trash', '⬇':'download', '📥':'download', '🖨':'printer', '🛡':'admin', '💾':'save', '📈':'trend', '⚙':'settings', '🗄':'archive',
+    '↩':'undo', '🔙':'undo', '📤':'share', '🔄':'refresh', '✅':'check', '✓':'check', '✏':'edit', '✎':'edit', '🏷':'tag', '👁':'eye', '🙈':'eyeoff',
+    '📄':'file', '📋':'file', '🔍':'search', '📊':'report', '➕':'plus', '📞':'phone', '💳':'card', '📨':'mail', '📧':'mail', '📎':'clip',
+    '❌':'x', '✕':'x', '🔔':'bell', '🔐':'lock', '🔑':'key', '🖼':'image', '📢':'megaphone', '⚡':'bolt', '🎯':'target', '🎁':'gift',
+    '📅':'calendar', '🗓':'calendar', '👥':'users', '⬆':'upload', '💬':'chat', '🔒':'lock', '💡':'bulb', '⭐':'star', '👤':'user'
+  };
   function stripLeadingEmoji(el){
     const tn = Array.from(el.childNodes).find(n => n.nodeType === 3 && n.nodeValue.trim());
     if (!tn) return;
     const v = tn.nodeValue, nv = v.replace(EMOJI_LEAD, '');
-    if (nv !== v && nv.trim()) tn.nodeValue = nv;
+    if (nv === v || !nv.trim()) return;
+    tn.nodeValue = nv;
+    const em = v.slice(0, v.length - nv.length).replace(/[\s\uFE0F\u200D]/g, '');
+    const name = EMOJI_IC[em];
+    if (name && P[name] && /^(BUTTON|H2|H3)$/.test(el.tagName) && !el.querySelector(':scope > .g-ic')) {
+      const sp = document.createElement('span'); sp.className = 'g-ic'; sp.innerHTML = icon(name);
+      el.insertBefore(sp, tn);
+    }
   }
 
   // أيقونات بطاقات لوحة التحكم (كانت إيموجي)
@@ -627,7 +688,7 @@
     goChatAdminBtn:'chat', goContentBtn:'star', goSuggestionsAdminBtn:'bulb', goPlansMgmtBtn:'card', goReportsBtn:'report',
     goRecommendationsBtn:'megaphone', goStaffBtn:'user', goSettingsBtn:'settings', goBlacklistBtn:'shield', goSiteDesignBtn:'grid',
     goSiteTextsBtn:'news', goArchiveBtn:'receipt', goSubscribersBtn:'user', goExportScreensBtn:'report', goExportExcelBtn:'download',
-    goStudioBtn:'brush', goEmailCenterBtn:'mail'
+    goStudioBtn:'brush', goEmailCenterBtn:'mail', goTradesBtn:'trend', goHrBtn:'users', goJobTitlesBtn:'tag', goFaqBtn:'bulb'
   };
 
   let processing = false;
@@ -1001,6 +1062,7 @@
         ${R('gsAccSub','card','الباقات وتجديد الاشتراك')}
         ${!hidden('hide_sub_history_screen') ? R('gsAccHist','receipt','سجل اشتراكي') : ''}
         ${!hidden('hide_referral_screen') ? R('gsAccRef','gift','ادعُ صديقك واكسب أيامًا مجانية') : ''}
+        ${R('gsAccTrash','trash','سلة المحذوفات (استرجاع ما حذفته)')}
       </div>
 
       <div class="gs-list-title">الأدوات</div>
@@ -1042,6 +1104,7 @@
     on('gsAccSub', () => renderSubscriptionPlans());
     on('gsAccHist', () => renderMySubscriptionHistory());
     on('gsAccRef', () => renderReferralPage());
+    on('gsAccTrash', () => renderTrashPage());
     on('gsAccRec', () => { GS.markRecsSeen(); renderRecommendationsCustomerPage(); });
     on('gsAccGrid', () => renderGridPlansList());
     on('gsAccDiv', () => renderDiversificationReport());
@@ -1145,7 +1208,7 @@
     return B('archive', '🗄️ أرشفة') + B('trash', '🗑️');
   }
   function mailBulkButtons(view){
-    const B = (act, label, cls) => `<button type="button" class="small ${cls || 'secondary'}" data-mact="${act}" style="width:auto;margin:0;">${label}</button>`;
+    const B = (act, label, cls) => `<button type="button" class="small ${cls || 'secondary'} u-wa u-m0" data-mact="${act}">${label}</button>`;
     if (view === 'trash') return B('restore', '↩️ استرجاع المحدد') + B('purge', '🗑️ حذف المحدد نهائيًا', 'danger') + B('empty_trash', 'تفريغ السلة', 'danger');
     if (view === 'archive') return B('unarchive', '↩️ رجوع المحدد للوارد') + B('trash', '🗑️ نقل المحدد للسلة');
     return B('archive', '🗄️ أرشفة المحدد') + B('trash', '🗑️ نقل المحدد للسلة');
@@ -1198,13 +1261,13 @@
         <div id="gsMailTestMsg" style="margin-top:10px"></div>
       </div>
       <h2>سجل الإيميلات</h2>
-      ${r.canOrganize ? `<div class="radio-row std-filter-tabs" style="margin-bottom:10px;">
+      ${r.canOrganize ? `<div class="radio-row std-filter-tabs u-mb10">
         <button class="small secondary std-filter-tab ${view === 'inbox' ? 'btn-active' : ''}" data-mview="inbox">📥 الوارد (${cnt.inbox || 0})</button>
         <button class="small secondary std-filter-tab ${view === 'archive' ? 'btn-active' : ''}" data-mview="archive">🗄️ الأرشيف (${cnt.archive || 0})</button>
         <button class="small secondary std-filter-tab ${view === 'trash' ? 'btn-active' : ''}" data-mview="trash">🗑️ سلة المحذوفات (${cnt.trash || 0})</button>
       </div>
       <div class="gs-mail-bulk" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">
-        <label style="display:flex;align-items:center;gap:6px;margin:0;font-size:13px;"><input type="checkbox" id="gsMailAll" style="width:auto;margin:0;"> تحديد الكل</label>
+        <label style="display:flex;align-items:center;gap:6px;margin:0;font-size:13px;"><input type="checkbox" id="gsMailAll" class="u-wa u-m0"> تحديد الكل</label>
         ${mailBulkButtons(view)}
       </div>` : `<div class="info">شغّل ملف ALL_SCHEMA_UPDATES.sql (الإصدار 88) لتتمكن من أرشفة الرسائل وحذفها.</div>`}
       <div class="section-card gs-mail-scroll" style="padding:0">${rows ? `<table><thead><tr>${r.canOrganize ? '<th></th>' : ''}<th>الوقت</th><th>إلى</th><th>النوع</th><th>العنوان</th><th>الحالة</th><th>الطريقة</th><th>السبب لو فشل</th>${r.canOrganize ? '<th></th>' : ''}</tr></thead><tbody>${rows}</tbody></table>` : `<p class="disclaimer" style="padding:14px">${view === 'trash' ? 'سلة المحذوفات فارغة.' : view === 'archive' ? 'الأرشيف فارغ.' : 'لا توجد رسائل هنا.'}</p>`}</div>
@@ -1299,6 +1362,9 @@
     ['لوحة التحكم', 'renderAdminHub'],
     ['المشتركون', 'renderAdminSubscribers'],
     ['التقارير', 'renderAdminReportsPage'],
+    ['تقرير الصفقات', 'renderTradesReportPage'],
+    ['المساعد الذكي في الشات', 'renderFaqAdminPage'],
+    ['سلة المحذوفات', 'renderTrashPage'],
     ['الإعدادات الإلزامية', 'renderAdminSettingsPage'],
     ['الفريق والصلاحيات', 'renderStaffManagementPage'],
     ['شؤون الموظفين (HR)', 'renderHrPage'],

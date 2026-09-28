@@ -128,6 +128,11 @@ function plans_save($conn, $email, $key, $map, $base){
             $sym = (string)$sym;
             if ((int)$r['deleted'] === 1 || array_key_exists($sym, $incoming)) continue;
             if (is_object($base) && property_exists($base, $sym)) {
+                // الإصدار 89: سلة المحذوفات - نسخة من الخطة قبل حذفها (العميل يقدر يرجّعها)
+                if (function_exists('trash_put')) {
+                    try { trash_put($conn, 'plan', ($key === 'grid_plans' ? 'خطة شبكة (Grid): ' : 'خطة تعزيز المتوسط (DCA): ') . $sym,
+                        ['user_plans' => [['account_email' => $email, 'plan_type' => $key, 'symbol' => $sym, 'data_value' => $r['data_value'], 'version' => $r['version'], 'deleted' => 0]]], [], $email); } catch (Throwable $e) {}
+                }
                 $del->bind_param("sss", $email, $key, $sym);
                 $del->execute();
             }

@@ -15,6 +15,7 @@ header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/session_boot.php';
 session_start();
 include 'db.php';
+require_once __DIR__ . '/trash_lib.php';   // الإصدار 89: سلة المحذوفات
 require_once __DIR__ . '/markets_lib.php';
 
 function mk_out($a){ echo json_encode($a, JSON_UNESCAPED_UNICODE); exit(); }
@@ -52,6 +53,7 @@ try {
     }
     if ($action === 'watch_remove' && $isPost) {
         $id = (int)($_POST['id'] ?? 0);
+        $__r = trash_rows($conn, 'user_watchlist', 'id = ? AND account_email = ?', 'is', [$id, $email]); if ($__r) trash_put($conn, 'watchlist', 'قائمة المتابعة: ' . $__r[0]['symbol'], ['user_watchlist' => $__r], [], $email);
         $st = $conn->prepare("DELETE FROM user_watchlist WHERE id = ? AND account_email = ?"); $st->bind_param("is", $id, $email); $st->execute(); $st->close();
         mk_out(["success" => true]);
     }
@@ -119,6 +121,51 @@ try {
         while ($r = $res->fetch_assoc()) $out[$r['currency']][] = ["d" => $r['snap_date'], "v" => (float)$r['value'], "c" => (float)$r['cost']];
         $st->close();
         mk_out(["success" => true, "series" => $out]);
+    }
+    // ---- الإصدار 89: تنبيهات السعر المخصّصة ----
+    if ($action === 'custom_list') {
+        try { mk_check_custom($conn, $email, 20); } catch (Throwable $e) {}   // فحص فوري لتنبيهات العميل ده
+        $st = $conn->prepare("SELECT id, symbol, market, currency, cond, target_price, max_repeats, repeat_minutes, sent_count, last_sent_at, last_price, last_checked_at, active, note, created_at
+            FROM custom_alerts WHERE account_email = ? AND deleted_at IS NULL ORDER BY active DESC, id DESC LIMIT 100");
+        $st->bind_param("s", $email); $st->execute(); $res = $st->get_result(); $list = [];
+        while ($r = $res->fetch_assoc()) { foreach (['id','max_repeats','repeat_minutes','sent_count','active'] as $k) $r[$k] = (int)$r[$k];
+            foreach (['target_price','last_price'] as $k) $r[$k] = $r[$k] === null ? null : (float)$r[$k]; $list[] = $r; }
+        $st->close();
+        mk_out(["success" => true, "alerts" => $list, "markets" => MK_CCY, "intervals" => MK_INTERVALS]);
+    }
+    if ($action === 'custom_add' && $isPost) {
+        $sym = mk_clean_symbol($_POST['symbol'] ?? ''); $mkt = mk_clean_market($_POST['market'] ?? '');
+        if (!$sym) mk_out(["success" => false, "message" => "اكتب رمز السهم بالإنجليزية (مثل COMI)."]);
+        $ccy = preg_replace('/[^A-Z]/', '', strtoupper((string)($_POST['currency'] ?? ''))) ?: (MK_CCY[$mkt] ?? 'EGP');
+        $cond = ($_POST['cond'] ?? '') === 'lte' ? 'lte' : 'gte';
+        $price = round((float)($_POST['price'] ?? 0), 4);
+        if ($price <= 0 || $price > 1e9) mk_out(["success" => false, "message" => "اكتب السعر المطلوب."]);
+        $rep = max(1, min(3, (int)($_POST['repeats'] ?? 1)));
+        $mins = (int)($_POST['interval'] ?? 60); if (!in_array($mins, MK_INTERVALS, true)) $mins = 60;
+        $note = mb_substr(trim((string)($_POST['note'] ?? '')), 0, 150);
+        $c = $conn->prepare("SELECT COUNT(*) c FROM custom_alerts WHERE account_email = ? AND deleted_at IS NULL"); $c->bind_param("s", $email); $c->execute();
+        if ((int)$c->get_result()->fetch_assoc()['c'] >= 50) mk_out(["success" => false, "message" => "الحد الأقصى 50 تنبيهًا."]); $c->close();
+        $q = mq_get_quote($sym, $mkt, 'day');
+        if (empty($q['success'])) mk_out(["success" => false, "message" => "لم نجد أسعارًا لهذا الرمز في البورصة المختارة."]);
+        $last = is_numeric($q['last'] ?? null) ? (float)$q['last'] : null;
+        $st = $conn->prepare("INSERT INTO custom_alerts (account_email, symbol, market, currency, cond, target_price, max_repeats, repeat_minutes, note, last_price, last_checked_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+        $st->bind_param("sssssdiisd", $email, $sym, $mkt, $ccy, $cond, $price, $rep, $mins, $note, $last); $st->execute(); $id = $conn->insert_id; $st->close();
+        $fired = mk_check_custom($conn, $email, 5);   // لو الشرط متحقق من دلوقتي ← أول تذكير فورًا
+        mk_out(["success" => true, "id" => $id, "fired" => $fired]);
+    }
+    if ($action === 'custom_delete' && $isPost) {
+        $id = (int)($_POST['id'] ?? 0);
+        $__r = trash_rows($conn, 'custom_alerts', 'id = ? AND account_email = ?', 'is', [$id, $email]);
+        if ($__r) { $a = $__r[0]; trash_put($conn, 'price_alert', 'تنبيه سعر: ' . $a['symbol'] . ' ' . ($a['cond'] === 'lte' ? '≤' : '≥') . ' ' . (float)$a['target_price'] . ' ' . $a['currency'], ['custom_alerts' => $__r], [], $email); }
+        $st = $conn->prepare("DELETE FROM custom_alerts WHERE id = ? AND account_email = ?"); $st->bind_param("is", $id, $email); $st->execute(); $st->close();
+        mk_out(["success" => true]);
+    }
+    if ($action === 'custom_toggle' && $isPost) {
+        $id = (int)($_POST['id'] ?? 0); $on = ($_POST['active'] ?? '') === '1' ? 1 : 0;
+        // إعادة التشغيل بتبدأ العدّ من الأول
+        $st = $conn->prepare("UPDATE custom_alerts SET active = ?, sent_count = IF(? = 1, 0, sent_count), last_sent_at = IF(? = 1, NULL, last_sent_at) WHERE id = ? AND account_email = ?");
+        $st->bind_param("iiiis", $on, $on, $on, $id, $email); $st->execute(); $st->close();
+        mk_out(["success" => true]);
     }
     mk_out(["success" => false, "message" => "طلب غير معروف."]);
 } catch (Throwable $e) {

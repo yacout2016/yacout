@@ -19,7 +19,7 @@ const MK = {
   n: (v, d = 2) => (v == null || isNaN(v)) ? '—' : (+v).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: d }),
   chg: (last, prev) => (last != null && prev) ? ((last - prev) / prev * 100) : null,
 };
-function mkMarketSelect(id, sel){ return `<select id="${id}" style="margin:0;">${MK.markets.map(m => `<option ${m === sel ? 'selected' : ''}>${m}</option>`).join('')}</select>`; }
+function mkMarketSelect(id, sel){ return `<select id="${id}" class="u-m0">${MK.markets.map(m => `<option ${m === sel ? 'selected' : ''}>${m}</option>`).join('')}</select>`; }
 function mkChgHtml(last, prev){
   const c = MK.chg(last, prev); if (c == null) return '';
   return `<span class="${c >= 0 ? 'pos' : 'neg'}" dir="ltr">${c >= 0 ? '▲' : '▼'} ${Math.abs(c).toFixed(2)}%</span>`;
@@ -51,7 +51,7 @@ async function renderStockPage(symbol, market){
       <div class="grid2" style="font-size:13px;line-height:2;">
         <div>الكمية المحتفظ بها: <b>${MK.n(sim && sim.heldQty, 4)}</b></div><div>متوسط التكلفة: <b>${MK.n(sim && sim.avgCostCurrent, 4)}</b></div>
         <div>سعر الشراء التالي: <b>${next ? MK.n(next.price, 4) : '—'}</b></div><div>هدف البيع: <b>${sim && sim.heldQty > 0 ? MK.n(sim.sellTargetCurrent, 4) : '—'}</b></div>
-      </div><button type="button" class="small secondary" id="spOpenPlan" style="width:auto;margin-top:8px;">فتح الخطة</button></div>`;
+      </div><button type="button" class="small secondary u-wa u-mt8" id="spOpenPlan">فتح الخطة</button></div>`;
   }
   if (grid) {
     const bought = (grid.levels || []).filter(l => l.status === 'bought');
@@ -60,23 +60,23 @@ async function renderStockPage(symbol, market){
     planHtml += `<div class="section-card"><div class="section-title">خطة Grid على ${escapeHtml(symbol)}</div>
       <div class="grid2" style="font-size:13px;line-height:2;"><div>مستويات مشتراة: <b>${bought.length}/${(grid.levels || []).length}</b></div>
         <div>الشراء التالي: <b>${MK.n(nextBuy, 4)}</b></div><div>أقرب هدف بيع: <b>${MK.n(nextSell, 4)}</b></div></div>
-      <button type="button" class="small secondary" id="spOpenGrid" style="width:auto;margin-top:8px;">فتح الخطة</button></div>`;
+      <button type="button" class="small secondary u-wa u-mt8" id="spOpenGrid">فتح الخطة</button></div>`;
   }
 
   if (screenStale(__tok)) return; app.innerHTML = `<div class="container wide">
     <div class="gs-page-title">📈 ${escapeHtml(symbol)} ${q.success && q.name ? `<small style="font-size:14px;opacity:.7">— ${escapeHtml(q.name)}</small>` : ''}</div>
     <div class="section-card" style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;">
       ${q.success ? `<div><div style="font-size:30px;font-weight:800;" dir="ltr">${MK.n(q.last, 4)} <small style="font-size:14px;">${escapeHtml(q.currency || '')}</small></div>
-        <div style="font-size:13px;">${mkChgHtml(q.last, q.prevClose)} <span class="ta-delay-badge">⏱️ متأخر ${q.delayMinutes || 15} دقيقة</span></div></div>
+        <div class="u-fs13">${mkChgHtml(q.last, q.prevClose)} <span class="ta-delay-badge">⏱️ متأخر ${q.delayMinutes || 15} دقيقة</span></div></div>
         <div style="font-size:12.5px;line-height:1.9;opacity:.85;">أعلى اليوم: <b dir="ltr">${MK.n(q.high, 4)}</b><br>أقل اليوم: <b dir="ltr">${MK.n(q.low, 4)}</b><br>الإغلاق السابق: <b dir="ltr">${MK.n(q.prevClose, 4)}</b></div>`
         : `<div class="error" style="margin:0">${escapeHtml(q.message || 'لم نجد أسعارًا لهذا السهم')}</div>`}
       <div style="margin-inline-start:auto;display:flex;gap:8px;flex-wrap:wrap;">
-        <button type="button" class="small ${q.watchId ? 'secondary' : ''}" id="spWatch" style="width:auto;">${q.watchId ? '✓ في قائمة المتابعة' : '⭐ أضف للمتابعة'}</button>
-        <button type="button" class="small" id="spNewPlan" style="width:auto;">➕ ابدأ خطة</button>
+        <button type="button" class="small ${q.watchId ? 'secondary' : ''} u-wa" id="spWatch">${q.watchId ? '✓ في قائمة المتابعة' : '⭐ أضف للمتابعة'}</button>
+        <button type="button" class="small u-wa" id="spNewPlan">➕ ابدأ خطة</button>
       </div>
     </div>
     <div class="section-card" style="padding:0;overflow:hidden;"><iframe title="شارت ${escapeHtml(symbol)}" src="${chartUrl}" style="width:100%;height:420px;border:0;display:block;" loading="lazy" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-popups"></iframe></div>
-    <div class="gs-home-cols"><div class="c1">${planHtml || '<div class="section-card" style="color:#888;">لا توجد لديك خطة على هذا السهم بعد.</div>'}</div>
+    <div class="gs-home-cols"><div class="c1">${planHtml || '<div class="section-card u-muted">لا توجد لديك خطة على هذا السهم بعد.</div>'}</div>
     <div class="c2"><div id="spRec"></div></div></div>
     <p class="disclaimer">الأسعار متأخرة 15 دقيقة من مصدر بيانات مجاني، والشارت من TradingView. المعلومات للمتابعة فقط وليست توصية استثمارية.</p>
   </div>`;
@@ -117,10 +117,10 @@ async function renderWatchlistPage(){
     <div class="section-card" style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;">
       <div><label>رمز السهم</label><input type="text" id="wlSym" placeholder="مثال: COMI" dir="ltr" style="margin:0;text-transform:uppercase;width:150px;"></div>
       <div><label>السوق</label>${mkMarketSelect('wlMkt', 'مصر')}</div>
-      <button type="button" id="wlAdd" style="width:auto;margin:0;">➕ إضافة</button>
+      <button type="button" id="wlAdd" class="u-wa u-m0">➕ إضافة</button>
       <span style="font-size:12px;opacity:.7;margin-inline-start:auto;">الأسعار تتحدّث تلقائيًا كل دقيقة (متأخرة 15 دقيقة)</span>
     </div>
-    <div class="section-card" style="padding:0;overflow:auto;"><table class="std-table" style="width:100%;"><thead><tr>
+    <div class="section-card" style="padding:0;overflow:auto;"><table class="std-table u-w100"><thead><tr>
       <th>السهم</th><th>آخر سعر</th><th>التغير</th><th>أعلى</th><th>أقل</th><th></th></tr></thead><tbody id="wlRows"><tr><td colspan="6" style="padding:14px;color:#888;">جارٍ التحميل...</td></tr></tbody></table></div>
     <div id="wlMsg" style="font-size:12.5px;"></div>
   </div>`;
@@ -133,7 +133,7 @@ async function renderWatchlistPage(){
       <td dir="ltr"><b>${x.ok ? MK.n(x.last, 4) : '—'}</b> <small>${escapeHtml(x.currency || '')}</small></td>
       <td>${x.ok ? mkChgHtml(x.last, x.prevClose) : '<small class="neg">لا توجد بيانات</small>'}</td>
       <td dir="ltr">${MK.n(x.high, 4)}</td><td dir="ltr">${MK.n(x.low, 4)}</td>
-      <td><button type="button" class="small danger" data-del="${x.id}" style="width:auto;">✕</button></td></tr>`).join('')
+      <td><button type="button" class="small danger u-wa" data-del="${x.id}">✕</button></td></tr>`).join('')
       : '<tr><td colspan="6" style="padding:14px;color:#888;">قائمتك فارغة - أضف رمز سهم من الأعلى.</td></tr>';
     tb.querySelectorAll('[data-open]').forEach(b => b.onclick = () => renderStockPage(b.dataset.open, b.dataset.mkt));
     tb.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => { await MK.post({ action: 'watch_remove', id: +b.dataset.del }); load(); });
@@ -185,26 +185,92 @@ async function mkAlertsCard(el){
   const r = await MK.get('action=alerts');
   window.__mkUnread = r.success ? r.unread : 0; mkUpdateAlertBadge();
   const list = r.success ? r.alerts.filter(a => !a.is_read).slice(0, 3) : [];
-  el.innerHTML = list.length ? `<div class="section-card gs-alert-card"><div style="display:flex;justify-content:space-between;align-items:center;"><strong>🔔 تنبيهات الأسعار (${r.unread})</strong><button type="button" class="gs-link" id="gsAlertsAll">عرض الكل</button></div>
+  el.innerHTML = list.length ? `<div class="section-card gs-alert-card"><div class="u-row"><strong>🔔 تنبيهات الأسعار (${r.unread})</strong><button type="button" class="gs-link" id="gsAlertsAll">عرض الكل</button></div>
     ${list.map(a => `<div class="gs-alert-row"><b>${escapeHtml(a.title)}</b><div>${escapeHtml(a.body || '')}</div></div>`).join('')}</div>` : '';
   const b = document.getElementById('gsAlertsAll'); if (b) b.onclick = () => renderAlertsPage();
 }
 function mkUpdateAlertBadge(){
   document.querySelectorAll('[data-gs-alerts-badge]').forEach(e => { e.textContent = window.__mkUnread || ''; e.style.display = window.__mkUnread ? '' : 'none'; });
 }
+/* الإصدار 89: تنبيهات سعر مخصّصة - البورصة + العملة + السهم ← آخر سعر (متأخر 15 دقيقة) ← السعر المطلوب
+   الشرط ≥ أو ≤ + عدد مرات التذكير (حد أقصى 3) + الفرق بين كل تذكير (حد أقصى 24 ساعة)
+   الإشعار: إيميل + رسالة في شات الموقع + الجرس */
+const MK_CCY = { 'مصر':'EGP', 'السعودية':'SAR', 'الإمارات':'AED', 'قطر':'QAR', 'الكويت':'KWD' };
+const MK_INTERVALS = [[15,'15 دقيقة'],[30,'30 دقيقة'],[60,'ساعة'],[120,'ساعتان'],[180,'3 ساعات'],[360,'6 ساعات'],[720,'12 ساعة'],[1440,'24 ساعة']];
+function mkIntervalLabel(m){ const x = MK_INTERVALS.find(i => i[0] === +m); return x ? x[1] : m + ' دقيقة'; }
 async function renderAlertsPage(){
   const __tok = screenToken();   // الإصدار 88
   pushNav(() => renderAlertsPage());
   const email = await getSession();
   if (!email) return renderLogin();
   window.__lastPageKey = 'alerts';
-  const r = await MK.get('action=alerts');
-  if (screenStale(__tok)) return; app.innerHTML = `<div class="container wide"><div class="gs-page-title">🔔 تنبيهات الأسعار</div>
-    <div class="info">نبلغك هنا وعلى بريدك عندما يصل سعر السهم إلى سعر الشراء التالي أو هدف البيع في خطتك (الأسعار متأخرة 15 دقيقة).</div>
+  const [r, c] = await Promise.all([MK.get('action=alerts'), MK.get('action=custom_list')]);
+  if (screenStale(__tok)) return;
+  const mine = (c.success && c.alerts) || [];
+  const statusOf = (a) => a.active ? (a.sent_count ? `يعمل — أُرسل ${a.sent_count} من ${a.max_repeats}` : 'يعمل — في الانتظار') : (a.sent_count >= a.max_repeats ? `اكتمل (${a.sent_count} من ${a.max_repeats})` : 'متوقف');
+  app.innerHTML = `<div class="container wide"><div class="gs-page-title">🔔 تنبيهات الأسعار</div>
+    <div class="section-card">
+      <div class="section-title">➕ تنبيه سعر جديد</div>
+      <div class="g-grid-filters">
+        <label>البورصة ${mkMarketSelect('caMkt', 'مصر')}</label>
+        <label>العملة <select id="caCcy" class="u-m0">${[...new Set(Object.values(MK_CCY))].concat(['USD']).map(x => `<option ${x === 'EGP' ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
+        <label>رمز السهم <input id="caSym" dir="ltr" placeholder="COMI" class="u-m0"></label>
+        <label>&nbsp;<button type="button" class="secondary u-m0" id="caQuote">عرض آخر سعر</button></label>
+      </div>
+      <div id="caQuoteBox" class="u-note u-mt8"></div>
+      <div class="g-grid-filters u-mt10">
+        <label>الشرط <select id="caCond" class="u-m0"><option value="gte">السعر أكبر من أو يساوي ≥</option><option value="lte">السعر أقل من أو يساوي ≤</option></select></label>
+        <label>السعر المطلوب <input id="caPrice" type="number" step="0.001" min="0" inputmode="decimal" class="u-m0"></label>
+        <label>عدد مرات التذكير <select id="caRep" class="u-m0"><option>1</option><option>2</option><option>3</option></select></label>
+        <label>الفرق بين كل تذكير <select id="caInt" class="u-m0">${MK_INTERVALS.map(([v, l]) => `<option value="${v}" ${v === 60 ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+      </div>
+      <label class="u-mt8">ملاحظة (اختياري)<input id="caNote" maxlength="150" placeholder="مثلًا: وقت الشراء"></label>
+      <div class="u-hint u-mt6">عند تحقق الشرط يصلك إيميل + رسالة في شات الموقع + تنبيه في الجرس. الأسعار متأخرة 15 دقيقة.</div>
+      <button type="button" class="u-mt10" id="caSave">💾 حفظ التنبيه</button>
+    </div>
+    <div class="section-card">
+      <div class="section-title">تنبيهاتي (${mine.length})</div>
+      ${mine.length ? `<div class="table-scroll"><table class="g-table"><thead><tr><th>السهم</th><th>الشرط</th><th></th><th>الحالة</th><th>آخر سعر</th><th>التذكير</th></tr></thead><tbody>
+        ${mine.map(a => `<tr><td dir="ltr"><b>${escapeHtml(a.symbol)}</b> <small class="u-muted">${escapeHtml(a.market)}</small></td>
+          <td>${a.cond === 'lte' ? '≤' : '≥'} <b class="g-num">${MK.n(a.target_price, 4)}</b> ${escapeHtml(a.currency)}${a.note ? `<div class="u-hint">${escapeHtml(a.note)}</div>` : ''}</td>
+          <td><button type="button" class="small secondary u-wa" data-catog="${a.id}" data-on="${a.active ? 0 : 1}">${a.active ? 'إيقاف' : 'تشغيل من جديد'}</button>
+            <button type="button" class="small danger u-wa" data-cadel="${a.id}">🗑️</button></td>
+          <td class="${a.active ? 'u-pos' : 'u-muted'}">${statusOf(a)}</td>
+          <td class="g-num">${MK.n(a.last_price, 4)}</td>
+          <td>${a.max_repeats} × كل ${mkIntervalLabel(a.repeat_minutes)}</td></tr>`).join('')}
+      </tbody></table></div>` : '<div class="u-muted">لا توجد تنبيهات مخصّصة بعد.</div>'}
+    </div>
+    <div class="section-title u-mt14">سجل الإشعارات</div>
+    <div class="info">تصلك هنا أيضًا تنبيهات مستويات خططك (سعر الشراء التالي وهدف البيع).</div>
     ${r.success && r.alerts.length ? r.alerts.map(a => `<div class="section-card" style="${a.is_read ? 'opacity:.7' : ''}"><div style="display:flex;justify-content:space-between;gap:8px;"><b>${escapeHtml(a.title)}</b><small style="opacity:.7">${escapeHtml(a.created_at)}</small></div>
-      <div style="font-size:13px;line-height:1.9;">${escapeHtml(a.body || '')}</div>${a.symbol ? `<button type="button" class="small secondary" data-sym="${escapeHtml(a.symbol)}" data-mkt="${escapeHtml(a.market || 'مصر')}" style="width:auto;margin-top:6px;">📈 صفحة السهم</button>` : ''}</div>`).join('')
-      : '<div class="section-card" style="color:#888;">لا توجد تنبيهات بعد. أنشئ خطة وسننبهك عند وصول السعر لمستوياتها.</div>'}</div>`;
-  document.querySelectorAll('[data-sym]').forEach(b => b.onclick = () => renderStockPage(b.dataset.sym, b.dataset.mkt));
+      <div style="font-size:13px;line-height:1.9;">${escapeHtml(a.body || '')}</div>${a.symbol ? `<button type="button" class="small secondary u-wa u-mt6" data-sym="${escapeHtml(a.symbol)}" data-mkt="${escapeHtml(a.market || 'مصر')}">📈 صفحة السهم</button>` : ''}</div>`).join('')
+      : '<div class="section-card u-muted">لا توجد إشعارات بعد.</div>'}</div>`;
+  const reload = () => { window.__navSilent = true; try { renderAlertsPage(); } finally { window.__navSilent = false; } };
+  const mkt = document.getElementById('caMkt'), ccy = document.getElementById('caCcy');
+  mkt.onchange = () => { ccy.value = MK_CCY[mkt.value] || 'EGP'; document.getElementById('caQuoteBox').textContent = ''; };
+  document.getElementById('caQuote').onclick = async () => {
+    const box = document.getElementById('caQuoteBox'), sym = document.getElementById('caSym').value.trim().toUpperCase();
+    if (!sym) { box.textContent = 'اكتب رمز السهم أولًا.'; return; }
+    box.textContent = '⏳ جارٍ جلب السعر...';
+    const q = await MK.get('action=quote&symbol=' + encodeURIComponent(sym) + '&market=' + encodeURIComponent(mkt.value));
+    if (!q.success) { box.innerHTML = `<span class="u-danger">${escapeHtml(q.message || 'لم نجد أسعارًا لهذا الرمز')}</span>`; return; }
+    if (q.currency) { if (![...ccy.options].some(o => o.value === q.currency)) ccy.add(new Option(q.currency, q.currency)); ccy.value = q.currency; }
+    box.innerHTML = `<b>${escapeHtml(q.name || sym)}</b> — آخر سعر: <b class="g-num u-fs135">${MK.n(q.last, 4)}</b> ${escapeHtml(q.currency || ccy.value)} ${mkChgHtml(q.last, q.prevClose)} <span class="u-hint">(متأخر ${q.delayMinutes || 15} دقيقة)</span>`;
+    const pr = document.getElementById('caPrice'); if (!pr.value && q.last) pr.value = q.last;
+  };
+  document.getElementById('caSave').onclick = async () => {
+    const d = { action:'custom_add', market: mkt.value, currency: ccy.value, symbol: document.getElementById('caSym').value.trim().toUpperCase(), cond: document.getElementById('caCond').value,
+      price: document.getElementById('caPrice').value, repeats: document.getElementById('caRep').value, interval: document.getElementById('caInt').value, note: document.getElementById('caNote').value };
+    const res = await MK.post(d);
+    if (!res.success) { GShell.toast(res.message || 'تعذّر الحفظ', 'err'); return; }
+    GShell.toast(res.fired ? 'تم الحفظ — الشرط متحقق الآن وأُرسل أول تذكير' : 'تم حفظ التنبيه', 'ok'); reload();
+  };
+  app.querySelectorAll('[data-catog]').forEach(b => b.onclick = async () => { const x = await MK.post({ action:'custom_toggle', id: b.dataset.catog, active: b.dataset.on }); if (x.success) reload(); });
+  app.querySelectorAll('[data-cadel]').forEach(b => b.onclick = async () => {
+    if (!await gConfirm('حذف هذا التنبيه؟ (ينتقل إلى سلة المحذوفات ويمكنك استرجاعه)')) return;
+    const x = await MK.post({ action:'custom_delete', id: b.dataset.cadel }); if (x.success) { GShell.toast('نُقل إلى سلة المحذوفات', 'ok'); reload(); }
+  });
+  app.querySelectorAll('[data-sym]').forEach(b => b.onclick = () => renderStockPage(b.dataset.sym, b.dataset.mkt));
   if (r.success && r.unread) { await MK.post({ action: 'alerts_read' }); window.__mkUnread = 0; mkUpdateAlertBadge(); }
 }
 
@@ -229,7 +295,7 @@ async function mkPortfolioCurve(el, ccys, sel){
   const color = up ? 'var(--gs-pos, #0E9F6E)' : 'var(--gs-neg, #E02424)';
   el.innerHTML = `<div class="section-card gs-curve"><div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px;">
       <div class="section-title" style="margin:0">📈 أداء المحفظة (${escapeHtml(ccy)})</div>
-      <div style="font-size:13px;"><b dir="ltr">${MK.n(last)}</b> <span style="color:${color}" dir="ltr">${up ? '▲' : '▼'} ${MK.n(Math.abs(diff))} (${Math.abs(pct).toFixed(2)}%)</span> <small style="opacity:.7">منذ ${escapeHtml(pts[0].d)}</small></div></div>
+      <div class="u-fs13"><b dir="ltr">${MK.n(last)}</b> <span style="color:${color}" dir="ltr">${up ? '▲' : '▼'} ${MK.n(Math.abs(diff))} (${Math.abs(pct).toFixed(2)}%)</span> <small style="opacity:.7">منذ ${escapeHtml(pts[0].d)}</small></div></div>
     <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:170px;display:block;margin-top:8px;" role="img" aria-label="منحنى قيمة المحفظة">
       <path d="${line} L${x(pts.length - 1).toFixed(1)},${H} L${x(0).toFixed(1)},${H} Z" fill="${color}" opacity=".12"></path>
       <path d="${line}" fill="none" stroke="${color}" stroke-width="2.5" vector-effect="non-scaling-stroke" stroke-linejoin="round"></path>

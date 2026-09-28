@@ -215,41 +215,41 @@ async function renderScreener(){
       <label>رمز السهم على TradingView</label>
       <div style="display:flex;gap:8px;">
         <input type="text" id="tv_symbol" placeholder="مثال: EGX:COMI" style="flex:1;">
-        <button type="button" id="tv_loadBtn" style="width:auto;">تحميل الشارت</button>
+        <button type="button" id="tv_loadBtn" class="u-wa">تحميل الشارت</button>
       </div>
-      <div id="tvWidgetContainer" style="margin-top:10px;"></div>
+      <div id="tvWidgetContainer" class="u-mt10"></div>
     </div>
 
-    <h2 style="margin-top:20px;">أداة التحليل الفني</h2>
+    <h2 class="u-mt20">أداة التحليل الفني</h2>
     <div class="section-card">
-      <div class="info" style="margin-bottom:10px;">هنا تُحسب مستويات الدعم والمقاومة بطريقتي فيبوناتشي ونقاط بيفوت معًا في الوقت نفسه، من أعلى وأقل سعر خلال الفترة (+ آخر سعر إغلاق).</div>
+      <div class="info u-mb10">هنا تُحسب مستويات الدعم والمقاومة بطريقتي فيبوناتشي ونقاط بيفوت معًا في الوقت نفسه، من أعلى وأقل سعر خلال الفترة (+ آخر سعر إغلاق).</div>
 
       <div class="grid2">
-        <div><label>اسم السهم / الرمز <span style="color:var(--danger);">*</span></label>
+        <div><label>اسم السهم / الرمز <span class="u-danger">*</span></label>
           <input type="text" id="ta_symbol" placeholder="مثال: COMI" dir="ltr" autocomplete="off"></div>
         <div><label>السوق</label>
           <select id="ta_market">${Object.keys(MARKET_TO_CURRENCY_MAP).map(m=>`<option value="${m}">${m}</option>`).join('')}</select></div>
       </div>
 
-      <label style="margin-top:10px;">الفترة الزمنية</label>
+      <label class="u-mt10">الفترة الزمنية</label>
       <select id="ta_hlPeriod">${Object.keys(TA_HL_PERIOD_LABELS).map(k=>`<option value="${k}" ${k==='month'?'selected':''}>${TA_HL_PERIOD_LABELS[k]}</option>`).join('')}</select>
 
       <!-- الإصدار 76: جلب أعلى/أقل/آخر سعر تلقائيًا (الخانات أدناه تبقى قابلة للتعديل اليدوي) -->
-      <button type="button" class="secondary" id="ta_fetchBtn" style="margin-top:10px;">⚡ جلب الأسعار تلقائيًا</button>
-      <button type="button" class="secondary" id="ta_stockPageBtn" style="margin-top:10px;">📈 صفحة السهم (شارت + خطتك + متابعة)</button>
+      <button type="button" class="secondary u-mt10" id="ta_fetchBtn">⚡ جلب الأسعار تلقائيًا</button>
+      <button type="button" class="secondary u-mt10" id="ta_stockPageBtn">📈 صفحة السهم (شارت + خطتك + متابعة)</button>
       <div id="ta_fetchStatus" style="margin-top:8px;font-size:12.5px;"></div>
 
-      <div class="grid2" style="margin-top:8px;">
-        <div><label>أعلى قمة سعرية خلال الفترة <span style="color:var(--danger);">*</span></label><input type="number" step="any" id="ta_high" placeholder="مثال: 52.30"></div>
-        <div><label>أقل قاع سعري خلال الفترة <span style="color:var(--danger);">*</span></label><input type="number" step="any" id="ta_low" placeholder="مثال: 44.10"></div>
+      <div class="grid2 u-mt8">
+        <div><label>أعلى قمة سعرية خلال الفترة <span class="u-danger">*</span></label><input type="number" step="any" id="ta_high" placeholder="مثال: 52.30"></div>
+        <div><label>أقل قاع سعري خلال الفترة <span class="u-danger">*</span></label><input type="number" step="any" id="ta_low" placeholder="مثال: 44.10"></div>
       </div>
-      <div style="margin-top:8px;">
-        <label>آخر سعر إغلاق <span style="color:var(--danger);">*</span> <span class="ta-delay-badge" title="الأسعار التلقائية من مصدر بيانات مجاني متأخر">⏱ متأخر 15 دقيقة</span></label>
+      <div class="u-mt8">
+        <label>آخر سعر إغلاق <span class="u-danger">*</span> <span class="ta-delay-badge" title="الأسعار التلقائية من مصدر بيانات مجاني متأخر">⏱ متأخر 15 دقيقة</span></label>
         <input type="number" step="any" id="ta_pivotClose" placeholder="مثال: 48.00">
-        <div id="ta_closeNote" class="disclaimer" style="margin-top:4px;"></div>
+        <div id="ta_closeNote" class="disclaimer u-mt4"></div>
       </div>
 
-      <button id="ta_calcBtn" style="margin-top:12px;">🔍 احسب</button>
+      <button id="ta_calcBtn" class="u-mt12">🔍 احسب</button>
     </div>
 
     <div id="ta_resultsArea"></div>
@@ -266,7 +266,7 @@ async function renderScreener(){
      القيم بتتكتب في الخانات، وتقدر تعدّلها يدوي بعدها عادي. */
   const taEl = (id) => document.getElementById(id);
   let taFetchSeq = 0, taSource = 'manual', taLastKey = '';
-  const taStatus = (html, cls) => { const el = taEl('ta_fetchStatus'); if (el) el.innerHTML = html ? `<div class="${cls || 'info'}" style="margin:0;">${html}</div>` : ''; };
+  const taStatus = (html, cls) => { const el = taEl('ta_fetchStatus'); if (el) el.innerHTML = html ? `<div class="${cls || 'info'} u-m0">${html}</div>` : ''; };
   // force = من الزرار (بيجيب دايمًا). التلقائي بيتجاهل نفس السهم/السوق/الفترة عشان ميكتبش فوق تعديلك اليدوي
   // الإصدار 88: صفحة السهم الموحّدة
   setTimeout(() => { const b = document.getElementById('ta_stockPageBtn'); if (b) b.onclick = () => { const sym = (taEl('ta_symbol') && taEl('ta_symbol').value || '').trim().toUpperCase(); if (!sym) { alert('اكتب رمز السهم الأول.'); return; } renderStockPage(sym, taEl('ta_market').value); }; }, 0);
@@ -314,18 +314,18 @@ async function renderScreener(){
     const resultsArea = document.getElementById('ta_resultsArea');
     const symbol = document.getElementById('ta_symbol').value.trim();
     if (!symbol) {
-      resultsArea.innerHTML = '<div class="error" style="margin-top:12px;">اسم السهم / الرمز حقل إلزامي.</div>';
+      resultsArea.innerHTML = '<div class="error u-mt12">اسم السهم / الرمز حقل إلزامي.</div>';
       return;
     }
     const high = parseFloat(document.getElementById('ta_high').value);
     const low = parseFloat(document.getElementById('ta_low').value);
     const close = parseFloat(document.getElementById('ta_pivotClose').value);
     if (isNaN(high) || isNaN(low) || high <= low) {
-      resultsArea.innerHTML = '<div class="error" style="margin-top:12px;">أدخل أعلى قمة وأقل قاع صحيحين (القمة أكبر من القاع).</div>';
+      resultsArea.innerHTML = '<div class="error u-mt12">أدخل أعلى قمة وأقل قاع صحيحين (القمة أكبر من القاع).</div>';
       return;
     }
     if (isNaN(close)) {
-      resultsArea.innerHTML = '<div class="error" style="margin-top:12px;">آخر سعر إغلاق حقل إلزامي (ضروري لحساب نقاط بيفوت).</div>';
+      resultsArea.innerHTML = '<div class="error u-mt12">آخر سعر إغلاق حقل إلزامي (ضروري لحساب نقاط بيفوت).</div>';
       return;
     }
     const periodLabel = TA_HL_PERIOD_LABELS[document.getElementById('ta_hlPeriod').value];
@@ -337,13 +337,13 @@ async function renderScreener(){
         <div style="font-size:12px;color:#888;margin-bottom:10px;">الفترة الزمنية: ${periodLabel} — أعلى: ${high.toFixed(2)} — أقل: ${low.toFixed(2)} — آخر إغلاق: ${close.toFixed(2)}</div>
 
         <div class="section-title">فيبوناتشي</div>
-        <div class="grid2" style="margin-top:4px;">
+        <div class="grid2 u-mt4">
           <div>
-            <div style="font-size:11.5px;color:#888;">3 مستويات دعم</div>
+            <div class="u-hint">3 مستويات دعم</div>
             ${fib.supports.map((v,i)=>`<div>الدعم ${i+1}: <strong>${v.toFixed(2)}</strong></div>`).join('')}
           </div>
           <div>
-            <div style="font-size:11.5px;color:#888;">3 مستويات مقاومة</div>
+            <div class="u-hint">3 مستويات مقاومة</div>
             ${fib.resistances.map((v,i)=>`<div>المقاومة ${i+1}: <strong>${v.toFixed(2)}</strong></div>`).join('')}
           </div>
         </div>
@@ -352,11 +352,11 @@ async function renderScreener(){
         <div style="font-size:12px;color:#666;margin:4px 0 6px;">نقطة المحور (Pivot): <strong>${pv.pivot.toFixed(2)}</strong></div>
         <div class="grid2">
           <div>
-            <div style="font-size:11.5px;color:#888;">3 مستويات دعم</div>
+            <div class="u-hint">3 مستويات دعم</div>
             ${pv.supports.map((v,i)=>`<div>الدعم ${i+1}: <strong>${v.toFixed(2)}</strong></div>`).join('')}
           </div>
           <div>
-            <div style="font-size:11.5px;color:#888;">3 مستويات مقاومة</div>
+            <div class="u-hint">3 مستويات مقاومة</div>
             ${pv.resistances.map((v,i)=>`<div>المقاومة ${i+1}: <strong>${v.toFixed(2)}</strong></div>`).join('')}
           </div>
         </div>

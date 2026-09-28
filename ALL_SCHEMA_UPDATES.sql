@@ -1,5 +1,5 @@
 -- ============================================================
--- GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 88)
+-- GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 89)
 -- كل تحديثات قاعدة البيانات في ملف واحد.
 -- آمن تشغّله أي عدد من المرات: بيضيف الناقص بس ومبيمسحش أي بيانات.
 -- الاستخدام: phpMyAdmin ← اختار قاعدة البيانات ← تبويب SQL ← الصق الملف كله ← Go
@@ -26,6 +26,10 @@
 -- الإصدار 87: مفيش تغييرات في قاعدة البيانات (صور الشعار في جذر الموقع من غير فولدرات + إصلاح الدخول من المتصفح العادي - كوكي الجلسة القديم).
 -- الإصدار 88: email_log (أرشيف + سلة محذوفات) + user_watchlist (قائمة المتابعة) + user_alerts (تنبيهات الأسعار)
 --              + portfolio_snapshots (منحنى أداء المحفظة) + payment_cards / subscribers.auto_renew (التجديد التلقائي مع Paymob).
+-- الإصدار 89: plan_trades (جدول الصفقات المنظم لتقارير الإدارة - بيتبني تلقائي مع حفظ الخطط)
+--              + chat_faq (أسئلة وأجوبة المساعد الذكي في الشات - الأدمن بيديرها).
+--              + custom_alerts (تنبيهات سعر مخصّصة: البورصة/العملة/السهم + أكبر أو أقل من + عدد مرات التذكير والفرق بينها)
+--              + trash_bin (سلة المحذوفات - أي حاجة بتتمسح من الموقع بتتنسخ فيها ويمكن استرجاعها).
 -- ============================================================
 
 -- الإصدار 85: ترميز الاتصال UTF-8 عشان النصوص العربي اللي بتتضاف من الملف (زي المسميات الوظيفية) تتحفظ صح
@@ -868,4 +872,87 @@ DELIMITER ;
 CALL griffine_v88b();
 DROP PROCEDURE griffine_v88b;
 
-SELECT 'GRIFFINE database is up to date (v88)' AS result;
+-- الإصدار 89: جدول الصفقات (كل شراء / بيع / صفقة مقفولة من خطط العملاء) لتقارير الإدارة
+CREATE TABLE IF NOT EXISTS plan_trades (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  account_email VARCHAR(190) NOT NULL,
+  plan_kind VARCHAR(5) NOT NULL DEFAULT 'DCA',
+  symbol VARCHAR(64) NOT NULL,
+  market VARCHAR(20) NULL,
+  trade_type VARCHAR(6) NOT NULL,
+  qty DECIMAL(18,4) NOT NULL DEFAULT 0,
+  price DECIMAL(16,4) NOT NULL DEFAULT 0,
+  exit_price DECIMAL(16,4) NULL,
+  profit DECIMAL(16,2) NULL,
+  capital DECIMAL(16,2) NULL,
+  trade_date DATE NULL,
+  level INT NULL,
+  KEY idx_trades_owner (account_email, plan_kind),
+  KEY idx_trades_symbol (symbol),
+  KEY idx_trades_date (trade_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- الإصدار 89: أسئلة وأجوبة المساعد الذكي في الشات
+CREATE TABLE IF NOT EXISTS chat_faq (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  question VARCHAR(300) NOT NULL,
+  keywords VARCHAR(500) NULL,
+  answer TEXT NOT NULL,
+  active TINYINT(1) NOT NULL DEFAULT 1,
+  sort_order INT NOT NULL DEFAULT 0,
+  hits INT NOT NULL DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- الإصدار 89: تنبيهات سعر مخصّصة
+CREATE TABLE IF NOT EXISTS custom_alerts (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  account_email VARCHAR(190) NOT NULL,
+  symbol VARCHAR(20) NOT NULL,
+  market VARCHAR(20) NOT NULL DEFAULT 'مصر',
+  currency VARCHAR(5) NOT NULL DEFAULT 'EGP',
+  cond VARCHAR(3) NOT NULL DEFAULT 'gte',
+  target_price DECIMAL(14,4) NOT NULL,
+  max_repeats TINYINT NOT NULL DEFAULT 1,
+  repeat_minutes INT NOT NULL DEFAULT 60,
+  sent_count TINYINT NOT NULL DEFAULT 0,
+  last_sent_at DATETIME NULL,
+  last_price DECIMAL(14,4) NULL,
+  last_checked_at DATETIME NULL,
+  active TINYINT(1) NOT NULL DEFAULT 1,
+  note VARCHAR(150) NULL,
+  deleted_at DATETIME NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_custom_owner (account_email),
+  KEY idx_custom_open (active, symbol)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- الإصدار 89: سلة المحذوفات
+CREATE TABLE IF NOT EXISTS trash_bin (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  deleted_by VARCHAR(190) NOT NULL,
+  owner_email VARCHAR(190) NULL,
+  scope VARCHAR(10) NOT NULL DEFAULT 'user',
+  item_type VARCHAR(30) NOT NULL,
+  item_label VARCHAR(255) NOT NULL,
+  payload LONGTEXT NOT NULL,
+  deleted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  restored_at DATETIME NULL,
+  restored_by VARCHAR(190) NULL,
+  KEY idx_trash_by (deleted_by, restored_at),
+  KEY idx_trash_owner (owner_email, restored_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- أسئلة مبدئية (بتتضاف مرة واحدة بس لو الجدول فاضي - الأدمن يعدّلها أو يمسحها من لوحة التحكم)
+INSERT INTO chat_faq (question, keywords, answer, sort_order)
+SELECT * FROM (
+  SELECT 'ما هي الباقات والأسعار؟' AS q, 'سعر, اسعار, باقه, باقات, تكلفه, كام' AS k, 'تجد كل الباقات وأسعارها ومميزات كل باقة في صفحة «الاشتراك والباقات» من القائمة الجانبية. يمكنك البدء بالتجربة المجانية إن كانت متاحة لحسابك.' AS a, 1 AS o
+  UNION ALL SELECT 'كيف أشترك؟', 'اشترك, اشتراك, تفعيل, ادفع, الدفع', 'افتح «الاشتراك والباقات»، اختر الباقة، ثم اختر طريقة الدفع: بطاقة بنكية (Paymob) أو فودافون كاش أو إنستاباي مع إرسال صورة التحويل. يتم التفعيل تلقائيًا للدفع بالبطاقة، وبعد المراجعة للتحويلات.', 2
+  UNION ALL SELECT 'ما هي خطة تعزيز المتوسط (DCA)؟', 'dca, تعزيز, المتوسط, متوسط', 'خطة تعزيز المتوسط تقسّم رأس مالك على مستويات شراء متتالية كلما نزل السعر، فيقل متوسط تكلفة السهم، ثم تبيع عند هدف الربح. أنشئها من «خطط تعزيز المتوسط (DCA)» واتبع الخطوات.', 3
+  UNION ALL SELECT 'ما هي خطة الشبكة (Grid)؟', 'grid, شبكه, جريد', 'خطة الشبكة تضع مستويات شراء وبيع على مسافات ثابتة داخل نطاق سعري، فتشتري عند كل مستوى أقل وتبيع عند المستوى الأعلى، وتتكرر الدورات لتحقيق أرباح صغيرة متكررة.', 4
+  UNION ALL SELECT 'نسيت كلمة المرور', 'نسيت, كلمه المرور, كلمه السر, باسورد, password', 'من شاشة تسجيل الدخول اضغط «نسيت كلمة المرور» واكتب بريدك الإلكتروني، وسيصلك رابط لتعيين كلمة مرور جديدة.', 5
+  UNION ALL SELECT 'هل الأسعار لحظية؟', 'لحظي, لحظيه, متاخره, تاخير, الاسعار', 'أسعار الأسهم في الموقع متأخرة حوالي 15 دقيقة عن السوق، وتُستخدم للمتابعة والتنبيهات فقط وليست توصية بالشراء أو البيع.', 6
+) t WHERE NOT EXISTS (SELECT 1 FROM chat_faq);
+
+SELECT 'GRIFFINE database is up to date (v89)' AS result;

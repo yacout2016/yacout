@@ -5,6 +5,7 @@ session_start();
 include 'db.php';
 require_once __DIR__ . '/uploads.php';
 require_once __DIR__ . '/chat_read_state.php';
+require_once __DIR__ . '/chat_faq_lib.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode(["success" => false, "message" => "طريقة طلب غير صالحة."]);
@@ -105,7 +106,10 @@ if ($stmt->execute()) {
         }
     } catch (Throwable $e) { /* الإيميل مش أساسي */ }
 
-    echo json_encode(["success" => true, "id" => $newId]);
+    // الإصدار 89: المساعد الذكي - رد تلقائي على الأسئلة الشائعة (بعد رسالة العميل مباشرة)
+    $bot = ($message !== '' && empty($attachment)) ? faq_auto_reply($conn, $visitorId, $message) : false;
+
+    echo json_encode(["success" => true, "id" => $newId, "bot" => $bot]);
 } else {
     echo json_encode(["success" => false, "message" => "حدث خطأ: " . $conn->error]);
 }

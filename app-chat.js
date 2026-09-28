@@ -116,7 +116,7 @@ async function initChatWidget(sessionEmail){
       <div class="chat-email-gate">
         <p style="font-size:13px;line-height:1.8;">${isGuest ? 'لديك سؤال عن GRIFFINE أو الاشتراك، أو لا تعرف كيف تشترك؟ راسلنا وسيرد عليك فريقنا.' : 'تقدر تبدأ تكلمنا على طول.'}<br><small style="opacity:.75">اكتب بريدك إذا أردت أن نرد عليك عليه أيضًا (اختياري).</small></p>
         <input type="email" id="chatEmailInput" placeholder="بريدك الإلكتروني (اختياري)" style="width:100%;padding:9px;border:1px solid #ddd;border-radius:8px;margin:8px 0;" dir="ltr">
-        <button id="chatStartBtn" style="width:100%;">بدء المحادثة</button>
+        <button id="chatStartBtn" class="u-w100">بدء المحادثة</button>
       </div>`;
     document.getElementById('chatCloseBtn').onclick = closeChat;
     document.getElementById('chatPrefsBtn').onclick = () => renderChatPrefsPanel(panel, renderEmailGate, closeChat);
@@ -162,6 +162,7 @@ async function initChatWidget(sessionEmail){
       <div style="padding:6px 12px;font-size:11px;background:${isOnline?'#eafaf1':'#fdf6e3'};color:${isOnline?'var(--green)':'#8a6d1b'};text-align:center;">
         ${isOnline ? '🟢 فريق الدعم متصل الآن — سيردون عليك في الحال' : '📩 سنرد عليك في أقرب وقت ممكن'}
       </div>
+      <div class="chat-faq" id="chatFaq" hidden></div>
       <div class="chat-upload-note" id="chatUploadNote" style="display:none;">📎 فريق الدعم فتحلك إمكانية إرسال صورة أو ملف PDF</div>
       <div class="chat-body" id="chatBody"><div style="text-align:center;font-size:12px;color:#888;">جاري تحميل المحادثة...</div></div>
       <div class="chat-attach-chip" id="chatAttachChip" style="display:none;"></div>
@@ -252,6 +253,14 @@ async function initChatWidget(sessionEmail){
     }
     document.getElementById('chatSendBtn').onclick = doSend;
     document.getElementById('chatTextInput').addEventListener('keydown', (e)=>{ if(e.key==='Enter') doSend(); });
+    // الإصدار 89: أسئلة شائعة (المساعد الذكي بيرد عليها فورًا)
+    apiGet('/chat_faq_api.php?action=public').then(f => {
+      const box = document.getElementById('chatFaq');
+      if (!box || !f || !f.enabled || !(f.items || []).length) return;
+      box.innerHTML = `<span class="chat-faq-lbl">أسئلة شائعة:</span>` + f.items.map(it => `<button type="button" class="chat-faq-chip" data-q="${escapeHtml(it.question)}">${escapeHtml(it.question)}</button>`).join('');
+      box.hidden = false;
+      box.querySelectorAll('.chat-faq-chip').forEach(b => b.onclick = () => { const inp = document.getElementById('chatTextInput'); if (!inp) return; inp.value = b.dataset.q; doSend(); });
+    }).catch(() => {});
   }
 
   function closeChat(){
@@ -349,7 +358,7 @@ function initAdminBubble(bubble, panel){
       console.error('renderConvList: فشل جلب المحادثات', res);
       // السبب الحقيقي من السيرفر (صلاحية / قاعدة بيانات) بدل رسالة عامة
       body.innerHTML = `<p style="color:#c0392b;font-size:12px;padding:14px;text-align:center;">${escapeHtml((res && res.message) || 'حدث خطأ في تحميل المحادثات، حاول مرة أخرى.')}</p>
-        <div style="text-align:center;"><button type="button" class="small secondary" id="chatRetryBtn" style="width:auto;">إعادة المحاولة</button></div>`;
+        <div class="u-tc"><button type="button" class="small secondary u-wa" id="chatRetryBtn">إعادة المحاولة</button></div>`;
       const rb = document.getElementById('chatRetryBtn'); if (rb) rb.onclick = renderConvList;
       return;
     }
@@ -357,7 +366,7 @@ function initAdminBubble(bubble, panel){
     markAllSeenFromConvs(convs);
     body.innerHTML = convs.length ? convs.map(c=>`
       <div class="chat-conv-item" data-vid="${c.visitorId}">
-        <div style="flex:1;"><strong style="font-size:12.5px;">${c.unread ? '<span class="chat-unread-dot"></span>' : ''}${escapeHtml(c.email || 'زائر بدون إيميل')}</strong> ${chatKindBadge(c)}<div style="font-size:11px;color:#888;">${escapeHtml((c.lastMessage||'').substring(0,35))}</div></div>
+        <div style="flex:1;"><strong style="font-size:12.5px;">${c.unread ? '<span class="chat-unread-dot"></span>' : ''}${escapeHtml(c.email || 'زائر بدون إيميل')}</strong> ${chatKindBadge(c)}<div class="u-fs11 u-muted">${escapeHtml((c.lastMessage||'').substring(0,35))}</div></div>
         <div style="font-size:10px;color:#aaa;white-space:nowrap;">${formatChatTime(c.lastAt)}</div>
       </div>`).join('') : '<p style="color:#888;font-size:12px;padding:14px;text-align:center;">لا توجد محادثات بعد.</p>';
     document.querySelectorAll('.chat-conv-item').forEach(el=>{

@@ -3,7 +3,7 @@
    (اتفصل من griffine.js - كل الملفات بتتحمّل بالترتيب في index.php وبتشارك نفس المتغيرات العامة)
    ===================================================================== */
 /* GRIFFINE — كود الواجهة الأساسي (اتفصل من index.php في الإصدار 68) */
-const GRIFFINE_LOGO_B64 = location.origin + '/griffine-logo-light.webp?v=88';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
+const GRIFFINE_LOGO_B64 = location.origin + '/griffine-logo-light.webp?v=89';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
 /* ================== حسابات مساعدة ================== */
 function daysBetween(isoStart, isoEnd){
   if(!isoStart) return null;
@@ -342,6 +342,8 @@ function screenStale(t){ return !!(window.GShell && typeof GShell.seq === 'numbe
    التقارير بتفتح في نافذة جديدة - وبدل سكربت الطباعة اللي جوه النافذة (ممنوع مع CSP الكاملة)
    بنضيف شريط أزرار من الصفحة الأصلية: 🖨️ طباعة · ⬇️ تحميل PDF · 📤 مشاركة (واتساب / إيميل / أي تطبيق على الموبايل)
    ===================================================================== */
+// الإصدار 89: نفس أدوات shell.css (u-*) - نوافذ التقارير مبتحمّلش ملفات CSS الموقع
+const G_UTIL_CSS = ".u-wa{ width:auto !important; } .u-w100{ width:100% !important; } .u-m0{ margin:0 !important; } .u-mt0{ margin-top:0 !important; } .u-mt4{ margin-top:4px !important; } .u-mt6{ margin-top:6px !important; } .u-mt8{ margin-top:8px !important; } .u-mt10{ margin-top:10px !important; } .u-mt12{ margin-top:12px !important; } .u-mt14{ margin-top:14px !important; } .u-mt20{ margin-top:20px !important; } .u-mt24{ margin-top:24px !important; } .u-mb6{ margin-bottom:6px !important; } .u-mb8{ margin-bottom:8px !important; } .u-mb10{ margin-bottom:10px !important; } .u-bn{ border:none !important; } .u-tc{ text-align:center !important; } .u-ox{ overflow-x:auto; } .u-fs11{ font-size:11px !important; } .u-fs12{ font-size:12px !important; } .u-fs13{ font-size:13px !important; } .u-fs135{ font-size:13.5px !important; } .u-muted{ color:#888 !important; } .u-note{ color:#888 !important; font-size:13px !important; } .u-hint{ color:#888 !important; font-size:11.5px !important; } .u-danger{ color:#C0392B !important; } .u-pos{ color:#0E9F6E !important; } .u-neg{ color:#E02424 !important; } .u-row{ display:flex; justify-content:space-between; align-items:center; gap:8px; } .u-check{ display:flex; align-items:center; gap:5px; font-weight:normal; } .u-prose{ font-size:13.5px; line-height:1.8; white-space:pre-wrap; } .g-num{font-variant-numeric:tabular-nums;direction:ltr;unicode-bidi:isolate}";
 function gReportReady(w){
   try {
     const d = w.document;
@@ -349,7 +351,7 @@ function gReportReady(w){
     bar.id = 'gReportBar';
     bar.setAttribute('style', 'position:sticky;top:0;z-index:9;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-start;padding:10px;margin:-10px -10px 14px;background:#fff;border-bottom:1px solid #e5e7eb;font-family:Tahoma,Arial,sans-serif;direction:rtl');
     const mk = (label, fn) => { const b = d.createElement('button'); b.type = 'button'; b.textContent = label; b.setAttribute('style', 'padding:8px 16px;border-radius:10px;border:1px solid #d1d5db;background:#111827;color:#fff;font-weight:700;cursor:pointer;font-size:14px'); b.addEventListener('click', fn); bar.appendChild(b); return b; };
-    const st = d.createElement('style'); st.textContent = '@media print{#gReportBar{display:none !important}}'; d.head.appendChild(st);
+    const st = d.createElement('style'); st.textContent = '@media print{#gReportBar{display:none !important}} ' + G_UTIL_CSS; d.head.appendChild(st);   // الإصدار 89: أدوات التنسيق (u-*) جوه نافذة التقرير
     mk('🖨️ طباعة', () => w.print());
     const pdfBtn = mk('⬇️ تحميل PDF', () => gReportPdf(w, false, pdfBtn));
     const shBtn = mk('📤 مشاركة', () => gReportPdf(w, true, shBtn));
@@ -775,7 +777,8 @@ function chatAttachmentHtml(m){
   return `<a href="${url}" target="_blank" rel="noopener"><img src="${url}" alt="${name}"></a>`;
 }
 function chatMsgHtml(m, extra){
-  return `<div class="chat-msg ${escapeHtml(m.sender)}">${m.message ? escapeHtml(m.message).replace(/\n/g, '<br>') : ''}${chatAttachmentHtml(m)}<span class="chat-msg-time">${formatChatTime(m.createdAt)}${extra || ''}</span></div>`;
+  const bot = m.sender === 'admin' && typeof m.message === 'string' && (m.message.indexOf('🤖 مساعد GRIFFINE:') === 0 || m.message.indexOf('🔔 تنبيه سعر') === 0);   // الإصدار 89: رد المساعد الذكي
+  return `<div class="chat-msg ${escapeHtml(m.sender)}${bot ? ' bot' : ''}">${m.message ? escapeHtml(m.message).replace(/\n/g, '<br>') : ''}${chatAttachmentHtml(m)}<span class="chat-msg-time">${formatChatTime(m.createdAt)}${extra || ''}</span></div>`;
 }
 /* =====================================================================
    الإصدار 82 + 83: التحكم في رفع الملفات للعميل (نفس الشكل في صفحة الدردشة والرد السريع)
@@ -788,7 +791,7 @@ const CHAT_FILE_ACCEPT = 'image/*,application/pdf,video/mp4,video/webm,video/qui
 function chatUploadBtnHtml(id, on, mb){
   mb = +mb || CHAT_DEFAULT_UPLOAD_MB;
   return `<span class="chat-upload-ctl" id="${id}">
-    <button type="button" class="small ${on ? 'btn-active' : 'secondary'} chat-upload-toggle" id="${id}Btn" style="width:auto;" title="العميل مايقدرش يبعت ملفات إلا لو فتحتها له">${on ? '📎 رفع الملفات مفتوح للعميل (اقفل)' : '📎 افتح للعميل رفع ملف/صورة'}</button>
+    <button type="button" class="small ${on ? 'btn-active' : 'secondary'} chat-upload-toggle u-wa" id="${id}Btn" title="العميل مايقدرش يبعت ملفات إلا لو فتحتها له">${on ? '📎 رفع الملفات مفتوح للعميل (اقفل)' : '📎 افتح للعميل رفع ملف/صورة'}</button>
     <label class="chat-maxmb" title="أقصى حجم للملف اللي العميل يقدر يرفعه في المحادثة دي">أقصى حجم <input type="number" id="${id}Mb" min="1" max="${CHAT_MAX_UPLOAD_CAP_MB}" step="1" value="${mb}" inputmode="numeric"> ميجا <span class="chat-maxmb-ok" id="${id}Ok"></span></label>
   </span>`;
 }
@@ -943,12 +946,12 @@ function renderChatPrefsPanel(panel, onBack, onClose){
   const curIcon = (cfg.userIcon && p.icon) ? p.icon : '';
   const iconOpt = (key, src, label) => `<button type="button" class="chat-icon-opt ${curIcon === key ? 'on' : ''}" data-icon="${key}" title="${label}"><img src="${src}" alt="${label}"><span>${label}</span></button>`;
   panel.innerHTML = `
-    <div class="chat-header"><span>⚙️ تنبيهات الشات</span><span><button id="chatPrefsBack" style="font-size:13px;">◀ رجوع</button><button id="chatCloseBtn2">✕</button></span></div>
+    <div class="chat-header"><span>⚙️ تنبيهات الشات</span><span><button id="chatPrefsBack" class="u-fs13">◀ رجوع</button><button id="chatCloseBtn2">✕</button></span></div>
     <div class="chat-body chat-prefs">
       <p class="chat-prefs-note">يظهر التنبيه كنقطة حمراء على أيقونة الشات فقط (مثل ماسنجر) - دون رسائل منبثقة على الشاشة.</p>
       ${cfg.userSound ? `<div class="chat-prefs-sec"><strong>🔊 صوت التنبيه</strong>
         <div class="chat-sound-list">${Object.entries(CHAT_SOUNDS).map(([k, l]) => `<label class="chat-sound-opt"><input type="radio" name="chatSound" value="${k}" ${curSound === k ? 'checked' : ''}> ${l}</label>`).join('')}</div>
-        <button type="button" class="small secondary" id="chatSoundTest" style="width:auto;">▶️ جرّب الصوت</button></div>` : `<p class="chat-prefs-note">صوت التنبيه: ${CHAT_SOUNDS[cfg.sound] || ''} (محدد من الإدارة)</p>`}
+        <button type="button" class="small secondary u-wa" id="chatSoundTest">▶️ جرّب الصوت</button></div>` : `<p class="chat-prefs-note">صوت التنبيه: ${CHAT_SOUNDS[cfg.sound] || ''} (محدد من الإدارة)</p>`}
       ${cfg.userIcon ? `<div class="chat-prefs-sec"><strong>🖼️ صورة أيقونة الشات</strong>
         <div class="chat-icon-list">
           ${iconOpt('', cfg.icon || griffineLogoSrc(), 'الافتراضية')}
@@ -1077,7 +1080,7 @@ async function renderVerifyEmailPrompt(email){
     const btn = document.getElementById('resendVerifyBtn');
     btn.disabled = true; btn.textContent = 'جاري الإرسال...';
     const r = await resendVerificationEmail();
-    document.getElementById('verifyResendResult').innerHTML = `<div class="info" style="margin-top:10px;">${escapeHtml(r.message)}</div>`;
+    document.getElementById('verifyResendResult').innerHTML = `<div class="info u-mt10">${escapeHtml(r.message)}</div>`;
     btn.disabled = false; btn.textContent = '📤 إعادة إرسال رابط التفعيل';
   };
 }
@@ -1161,9 +1164,9 @@ async function renderAccessExpired(sub){
 }
 
 const app = document.getElementById('app');
-const TOP7_LOGO_B64 = location.origin + '/top7-logo-light.webp?v=88';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
-const GRIFFINE_LOGO_DARK_B64 = location.origin + '/griffine-logo-dark.webp?v=88';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
-const TOP7_LOGO_DARK_B64 = location.origin + '/top7-logo-dark.webp?v=88';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
+const TOP7_LOGO_B64 = location.origin + '/top7-logo-light.webp?v=89';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
+const GRIFFINE_LOGO_DARK_B64 = location.origin + '/griffine-logo-dark.webp?v=89';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
+const TOP7_LOGO_DARK_B64 = location.origin + '/top7-logo-dark.webp?v=89';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
 /* الوضع الحالي (فاتح/ليلي) - الإصدار 71: بيتقري من الصفحة نفسها (data-theme) مش من التخزين بس،
    عشان الشعار يطلع صح حتى لو المتصفح مانع التخزين (وضع التصفح الخفي)
    (السكربت الصغير في index.php بيحط data-theme من التخزين قبل تحميل أي ملف، فالاتنين دايمًا متطابقين) */

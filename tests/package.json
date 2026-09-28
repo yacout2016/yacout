@@ -1,0 +1,12 @@
+{
+  "name": "griffine-tests",
+  "private": true,
+  "description": "GRIFFINE - اختبارات تلقائية (Playwright) - مش جزء من ملفات الموقع على الاستضافة",
+  "scripts": {
+    "mocks": "node mocks/paymob-mock.js & node mocks/market-mock.js &",
+    "test": "node run-all.js"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.47.0"
+  }
+}

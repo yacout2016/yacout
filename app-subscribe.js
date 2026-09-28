@@ -48,7 +48,7 @@ async function renderSubscriptionPlans(){
         <strong style="color:var(--green-dark);">باقتك الحالية: ${escapeHtml(mySub.planName)}</strong>
         (${mySub.amount===0?'مجانًا':fmtMoney(mySub.amount)+' '+mySub.currency})<br>
         <span style="font-size:12.5px;color:#666;">من ${formatDateAr(mySub.startDate)} إلى ${formatDateAr(mySub.endDate)}</span>
-        ${mySub.pendingPlanName ? `<div class="info" style="margin-top:8px;">📅 في انتظار التفعيل: <strong>${escapeHtml(mySub.pendingPlanName)}</strong> — ستتفعّل تلقائيًا يوم ${formatDateAr(mySub.endDate)}</div>` : ''}
+        ${mySub.pendingPlanName ? `<div class="info u-mt8">📅 في انتظار التفعيل: <strong>${escapeHtml(mySub.pendingPlanName)}</strong> — ستتفعّل تلقائيًا يوم ${formatDateAr(mySub.endDate)}</div>` : ''}
       </div>`;
   }
 
@@ -63,7 +63,7 @@ async function renderSubscriptionPlans(){
       card.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
         <div><strong>🔁 التجديد التلقائي</strong><div style="font-size:12.5px;opacity:.8;line-height:1.8;">${rs.card ? `يتم خصم قيمة الباقة من كارتك المحفوظ (${escapeHtml(rs.card.brand || '')} ${escapeHtml(rs.card.masked || '')}) قبل انتهاء الاشتراك بيوم، وتصلك رسالة بالنتيجة.` : 'ادفع مرة بالكارت عن طريق Paymob مع اختيار "حفظ الكارت" لتفعيل التجديد التلقائي.'}</div></div>
         ${rs.card ? `<label class="toggle-switch"><input type="checkbox" id="autoRenewChk" ${rs.autoRenew ? 'checked' : ''}><span class="toggle-slider"></span></label>` : ''}
-      </div>${rs.card ? `<button type="button" class="small secondary" id="removeCardBtn" style="width:auto;margin-top:8px;">مسح الكارت المحفوظ</button>` : ''}`;
+      </div>${rs.card ? `<button type="button" class="small secondary u-wa u-mt8" id="removeCardBtn">مسح الكارت المحفوظ</button>` : ''}`;
       const chk = card.querySelector('#autoRenewChk');
       if (chk) chk.onchange = async () => { const r = await apiPost('/renewal_api.php', { action: 'toggle', on: chk.checked ? 1 : 0 }).catch(() => null);
         if (!r || !r.success) { chk.checked = !chk.checked; alert((r && r.message) || 'تعذّر'); } else { rs.autoRenew = r.autoRenew; alert(r.autoRenew ? '✅ تم تفعيل التجديد التلقائي' : 'تم إيقاف التجديد التلقائي'); } };
@@ -93,10 +93,10 @@ async function renderSubscriptionPlans(){
         ${p.badge ? `<div class="price-badge">${escapeHtml(p.badge)}</div>` : ''}
         <div class="price-plan-name">${escapeHtml(p.name)}</div>
         <div class="price-amount">${p.amount===0?'مجانًا':p.amount.toLocaleString('en-US')}<span> ${p.amount>0?currency:''}</span></div>
-        <div style="font-size:12px;color:#888;">${escapeHtml(p.periodLabel)}</div>
+        <div class="u-fs12 u-muted">${escapeHtml(p.periodLabel)}</div>
         ${p.saveNote?`<div class="price-save">${p.saveNote.replace('عن السعر', 'جنيه عن السعر')}</div>`:'<div style="height:18px;"></div>'}
         <ul class="price-features">${(p.features||[]).map(f=>`<li>${f}</li>`).join('')}</ul>
-        <button class="small choosePlanBtn" data-plan="${p.id}" style="width:100%;">
+        <button class="small choosePlanBtn u-w100" data-plan="${p.id}">
           ${mySub ? (mySub.planId===p.id ? 'باقتك الحالية' : 'طلب التحويل لهذه الباقة') : (p.amount===0?'ابدأ التجربة المجانية':'اشترك الآن')}
         </button>
       </div>`).join('');
@@ -187,7 +187,7 @@ async function renderPlanChangeCheckout(newPlan, currentSub){
     document.getElementById('planChangePaymentArea').innerHTML = `
       ${modeNote}
       ${paymentMethodsHtml('pc', payCfg, needRef, needProof)}
-      <button id="confirmPlanChangeBtn" style="margin-top:14px;">تأكيد ${chosenMode==='immediate'?'الانتقال الآن':'السداد'}</button>`;
+      <button id="confirmPlanChangeBtn" class="u-mt14">تأكيد ${chosenMode==='immediate'?'الانتقال الآن':'السداد'}</button>`;
 
     const pay = wirePaymentMethods('pc', payCfg);
     document.getElementById('confirmPlanChangeBtn').onclick = () => {
@@ -211,12 +211,12 @@ async function renderPlanChangeCheckout(newPlan, currentSub){
     if (r.success){
       window.__lastPageKey='plan_change_checkout'; if (screenStale(__tok)) return; app.innerHTML = `<div class="container">${logoHeader()}
         <div class="success-banner">✅ ${escapeHtml(r.message)}
-          <button class="small" style="margin-top:10px;" id="continueAfterChangeBtn">المتابعة إلى الموقع</button>
+          <button class="small u-mt10" id="continueAfterChangeBtn">المتابعة إلى الموقع</button>
         </div>
       </div>`;
       document.getElementById('continueAfterChangeBtn').onclick=()=>postLoginRedirect(email);
     } else {
-      document.getElementById('planChangePaymentArea').insertAdjacentHTML('beforeend', `<div class="error" style="margin-top:10px;">${r.message||'حدث خطأ، حاول مرة أخرى'}</div>`);
+      document.getElementById('planChangePaymentArea').insertAdjacentHTML('beforeend', `<div class="error u-mt10">${r.message||'حدث خطأ، حاول مرة أخرى'}</div>`);
       btn.disabled = false; btn.textContent = 'إعادة المحاولة';
     }
   }
@@ -253,7 +253,7 @@ function paymentMethodsHtml(p, cfg, needRef, needProof){
       <input type="text" id="${p}Ref" placeholder="مثال: رقم العملية أو الرقم الذي حوّلت منه" dir="ltr">
       <label>إرفاق صورة إثبات التحويل ${needProof ? '<span style="color:#c0392b;">(إلزامي)</span>' : '(اختياري)'}</label>
       <input type="file" id="${p}Proof" accept="image/*,application/pdf">
-      <div id="${p}ProofPreview" style="margin-top:8px;"></div>
+      <div id="${p}ProofPreview" class="u-mt8"></div>
     </div>
     <div id="${p}PaymobNote" class="info" style="display:none;">🔒 هتتحوّل لصفحة الدفع الآمنة بتاعة Paymob تكتب فيها بيانات الكارت (بياناتك مبتعدّيش على موقعنا خالص)، وأول ما الدفع يتم اشتراكك بيتفعّل تلقائي.</div>`;
 }
@@ -304,7 +304,7 @@ async function renderCheckoutForm(planInfo){
 
       ${planInfo.amount>0 ? `
       ${paymentMethodsHtml('co', payCfg, needRef, needProof)}
-      <div class="info" style="margin-top:10px;">⏳ التحويل (فودافون كاش / إنستاباي) يتفعّل فور مراجعة السداد من فريقنا، والدفع بالبطاقة يتفعّل فورًا.</div>
+      <div class="info u-mt10">⏳ التحويل (فودافون كاش / إنستاباي) يتفعّل فور مراجعة السداد من فريقنا، والدفع بالبطاقة يتفعّل فورًا.</div>
       ` : ''}
 
       <button type="submit">تأكيد الاشتراك</button>
@@ -361,7 +361,7 @@ async function renderCheckoutForm(planInfo){
         ${planInfo.amount===0
           ? `يبدأ: ${formatDateAr(startDate)} — ينتهي: ${formatDateAr(endDate)}`
           : `<span style="font-size:12.5px;color:#666;">سيتم تفعيل اشتراكك فور مراجعة السداد من فريقنا (عادة خلال ساعات قليلة).</span>`}
-        <button class="small" style="margin-top:10px;" id="continueToHomeBtn2">المتابعة إلى الموقع</button>
+        <button class="small u-mt10" id="continueToHomeBtn2">المتابعة إلى الموقع</button>
       </div>
     </div>`;
     document.getElementById('continueToHomeBtn2').onclick=()=>postLoginRedirect(email);

@@ -54,7 +54,7 @@ async function renderPublicHome(){
       <div class="wl-cap">لمستقبل مالي أفضل</div>
       <div class="wl-login">عندك حساب بالفعل؟ <a id="splashLoginLink">سجل دخول</a></div>
     </div>
-  </div>${extra ? `<div class="container" style="margin-top:0;">${extra}</div>` : ''}`;
+  </div>${extra ? `<div class="container u-mt0">${extra}</div>` : ''}`;
 
   document.getElementById('splashStartBtn').onclick = () => renderRegister();
   document.getElementById('splashLoginLink').onclick = () => renderLogin();
@@ -143,7 +143,7 @@ async function renderTestimonialsPage(){
 
     ${email ? `
     <div class="section-card">
-      <h3 style="margin-top:0;">شاركنا رأيك</h3>
+      <h3 class="u-mt0">شاركنا رأيك</h3>
       <label>اسمك (سيظهر مع رأيك)</label>
       <input type="text" id="testiName" maxlength="100" placeholder="مثال: أحمد م.">
       <label>التقييم</label>
@@ -156,23 +156,23 @@ async function renderTestimonialsPage(){
       </select>
       <label>تعليقك (حد أقصى 500 حرف)</label>
       <textarea id="testiComment" rows="3" maxlength="500"></textarea>
-      <button id="testiSubmitBtn" style="margin-top:10px;">إرسال</button>
+      <button id="testiSubmitBtn" class="u-mt10">إرسال</button>
       <div id="testiResult"></div>
     </div>` : `<div class="info">سجّل حسابًا مجانيًا لتتمكن من إضافة رأيك.</div>`}
 
-    <h2 style="margin-top:20px;">آراء موجودة</h2>
+    <h2 class="u-mt20">آراء موجودة</h2>
     <div id="testiListWrap"></div>
   </div>`;
   document.getElementById('testiBackBtn').onclick=()=>{ email ? renderHome() : renderPublicHome(); };
 
   function renderList(list){
     document.getElementById('testiListWrap').innerHTML = list.length ? list.map(t=>`
-      <div class="section-card" style="margin-bottom:10px;">
+      <div class="section-card u-mb10">
         <div>${'⭐'.repeat(t.rating)}</div>
         <div style="font-size:13.5px;color:#444;margin:6px 0;">"${escapeHtml(t.comment)}"</div>
-        <div style="font-size:11.5px;color:#888;">— ${escapeHtml(t.displayName)} · ${formatDateAr(t.createdAt)}</div>
+        <div class="u-hint">— ${escapeHtml(t.displayName)} · ${formatDateAr(t.createdAt)}</div>
         ${window.__isAdmin && hasPermission('manage_testimonials') ? `<button class="small danger" style="width:auto;margin-top:6px;" data-gcall="__deleteTesti" data-gargs="${gArgs([String(t.id)])}">حذف</button>` : ''}
-      </div>`).join('') : '<p style="color:#888;font-size:13px;">لا توجد لدينا آراء منشورة بعد.</p>';
+      </div>`).join('') : '<p class="u-note">لا توجد لدينا آراء منشورة بعد.</p>';
   }
   renderList(items);
 
@@ -191,12 +191,12 @@ async function renderTestimonialsPage(){
       const r = await addTestimonial(name, rating, comment);
       const resultEl = document.getElementById('testiResult');
       if (r.success) {
-        resultEl.innerHTML = '<div class="info" style="margin-top:8px;">✅ شكرًا لمشاركة رأيك.</div>';
+        resultEl.innerHTML = '<div class="info u-mt8">✅ شكرًا لمشاركة رأيك.</div>';
         document.getElementById('testiName').value = ''; document.getElementById('testiComment').value = '';
         const fresh = await getTestimonials();
         renderList(fresh.success ? fresh.testimonials : []);
       } else {
-        resultEl.innerHTML = `<div class="error" style="margin-top:8px;">${r.message || 'حصل خطأ'}</div>`;
+        resultEl.innerHTML = `<div class="error u-mt8">${r.message || 'حصل خطأ'}</div>`;
       }
     };
   }
@@ -217,7 +217,7 @@ async function renderArticlesListPage(){
         <strong style="color:var(--green-dark);">${escapeHtml(a.title)}</strong>
         <div style="font-size:12.5px;color:#666;margin-top:4px;">${escapeHtml(a.summary || '')}</div>
         <div style="font-size:11px;color:#888;margin-top:4px;">${formatDateAr(a.createdAt)}</div>
-      </div>`).join('') : '<p style="color:#888;font-size:13px;">لا توجد لدينا مقالات منشورة بعد.</p>'}
+      </div>`).join('') : '<p class="u-note">لا توجد لدينا مقالات منشورة بعد.</p>'}
   </div>`;
   document.getElementById('artBackBtn').onclick=()=>{ email ? renderHome() : renderPublicHome(); };
   window.__openArticle = (slug) => renderArticleDetailPage(slug);
@@ -526,7 +526,7 @@ async function renderPrivacyPolicyPage(options){
   if (screenStale(__tok)) return; app.innerHTML = `<div class="container">${logoHeader()}
     <h2>${pageTitle('privacy_page','سياسة الخصوصية')}</h2>
     <div class="section-card">
-      ${custom ? `<div style="font-size:13.5px;line-height:1.8;white-space:pre-wrap;">${escapeHtml(custom)}</div>` : defaultHtml}
+      ${custom ? `<div class="u-prose">${escapeHtml(custom)}</div>` : defaultHtml}
     </div>
     <button class="btn-gray" id="privacyBackBtn">رجوع</button>
   </div>`;
@@ -545,10 +545,10 @@ async function renderVerifyEmailResult(token){
   const email = await getSession();
   document.getElementById('verifyResultArea').innerHTML = r.success
     ? `<div class="success-banner">✅ ${escapeHtml(r.message)}
-        <button class="small" style="margin-top:10px;" id="continueAfterVerifyBtn">${email ? 'المتابعة إلى الموقع' : 'تسجيل الدخول'}</button>
+        <button class="small u-mt10" id="continueAfterVerifyBtn">${email ? 'المتابعة إلى الموقع' : 'تسجيل الدخول'}</button>
       </div>`
     : `<div class="error">${escapeHtml(r.message)}</div>
-       <button class="secondary" id="backToLoginAfterVerifyFail" style="margin-top:12px;">رجوع لتسجيل الدخول</button>`;
+       <button class="secondary u-mt12" id="backToLoginAfterVerifyFail">رجوع لتسجيل الدخول</button>`;
   const contBtn = document.getElementById('continueAfterVerifyBtn');
   if (contBtn) contBtn.onclick = () => { email ? postLoginRedirect(email) : renderLogin(); };
   const backBtn = document.getElementById('backToLoginAfterVerifyFail');
@@ -577,10 +577,10 @@ async function renderHome(){
       </div>
       <h2>${pageTitle('home','ابدأ من هنا')}</h2>
       <div class="action-grid cols-3">
-        <button id="goNewPlanBtn" class="btn-lightgreen" style="margin-top:0;">+ خطة جديدة لسهم</button>
-        <button id="goPlansListBtn" class="btn-lightgreen" style="margin-top:0;">📈 الأسهم والخطط</button>
-        ${hidden('hide_portfolio_screen') ? '' : `<button id="goPortfolioBtn" class="btn-lightblue" style="margin-top:0;">📊 ملخص المحفظة</button>`}
-        ${hidden('hide_screener_screen') ? '' : `<button id="goScreenerBtn" class="secondary" style="margin-top:0;">🔍 كشاف الأسهم</button>`}
+        <button id="goNewPlanBtn" class="btn-lightgreen u-mt0">+ خطة جديدة لسهم</button>
+        <button id="goPlansListBtn" class="btn-lightgreen u-mt0">📈 الأسهم والخطط</button>
+        ${hidden('hide_portfolio_screen') ? '' : `<button id="goPortfolioBtn" class="btn-lightblue u-mt0">📊 ملخص المحفظة</button>`}
+        ${hidden('hide_screener_screen') ? '' : `<button id="goScreenerBtn" class="secondary u-mt0">🔍 كشاف الأسهم</button>`}
       </div>
     </div>
   </div>`;
@@ -616,7 +616,7 @@ async function renderMySubscriptionHistory(){
             <td>${ev.amount ? fmtMoney(ev.amount) : 'مجانًا'}</td>
           </tr>`).join('')}
         </tbody>
-      </table>` : '<p style="color:#888;font-size:13px;">لا توجد لديك أي اشتراكات مسجّلة بعد.</p>'}
+      </table>` : '<p class="u-note">لا توجد لديك أي اشتراكات مسجّلة بعد.</p>'}
     </div>
   </div>`;
   document.getElementById('homeBtn').onclick=()=>renderHome();
@@ -633,7 +633,7 @@ async function renderDisclaimerPage(options){
   if (screenStale(__tok)) return; app.innerHTML = `<div class="container">${logoHeader()}
     <h2>${pageTitle('disclaimer_page','⚠️ إخلاء المسؤولية (Disclaimer)')}</h2>
     <div class="section-card" id="disclaimerTextWrap" style="line-height:1.9;font-size:14.5px;"></div>
-    <button class="secondary small" id="disclaimerBackBtn" style="margin-top:14px;">رجوع</button>
+    <button class="secondary small u-mt14" id="disclaimerBackBtn">رجوع</button>
   </div>`;
   document.getElementById('disclaimerTextWrap').textContent = text;
   document.getElementById('disclaimerBackBtn').onclick = () => {
@@ -662,8 +662,8 @@ async function renderDisclaimerGate(email, text){
     <label style="display:flex;align-items:flex-start;gap:8px;font-weight:normal;margin-top:14px;">
       <input type="checkbox" id="gateAccept" style="margin-top:3px;"> أوافق على إخلاء المسؤولية وأتحمل كامل المسؤولية عن قراراتي الاستثمارية
     </label>
-    <button id="gateContinueBtn" style="margin-top:14px;" disabled>أوافق وأكمل</button>
-    <button class="secondary small" id="gateLogoutBtn" style="margin-top:8px;">تسجيل خروج</button>
+    <button id="gateContinueBtn" class="u-mt14" disabled>أوافق وأكمل</button>
+    <button class="secondary small u-mt8" id="gateLogoutBtn">تسجيل خروج</button>
     <div id="gateResult"></div>
   </div>`;
   document.getElementById('gateTextWrap').textContent = text;
@@ -671,7 +671,7 @@ async function renderDisclaimerGate(email, text){
   document.getElementById('gateLogoutBtn').onclick = async()=>{ await setSession(''); window.__screens = []; window.__screenIndex = -1; await refreshTopNav(); renderLogin(); };
   document.getElementById('gateContinueBtn').onclick = async () => {
     const r = await acceptDisclaimer();
-    if (r.success) { postLoginRedirect(email); } else { document.getElementById('gateResult').innerHTML = `<div class="error" style="margin-top:8px;">${r.message||'حصل خطأ'}</div>`; }
+    if (r.success) { postLoginRedirect(email); } else { document.getElementById('gateResult').innerHTML = `<div class="error u-mt8">${r.message||'حصل خطأ'}</div>`; }
   };
 }
 
@@ -689,7 +689,7 @@ async function renderAboutPage(){
     <div class="logo-header"><img src="${griffineLogoSrc()}" alt="GRIFFINE" class="brand-logo-img"><h1>GRIFFINE</h1></div>
     <h2>${pageTitle('about_page','عن GRIFFINE')}</h2>
     <div class="section-card">
-      ${custom ? `<div style="font-size:13.5px;line-height:1.8;white-space:pre-wrap;">${escapeHtml(custom)}</div>` : defaultHtml}
+      ${custom ? `<div class="u-prose">${escapeHtml(custom)}</div>` : defaultHtml}
     </div>
     <button class="btn-gray" id="backHomeFromAboutBtn">🏠 رجوع للشاشة الرئيسية</button>
   </div>`;
@@ -710,7 +710,7 @@ async function renderRefundPolicyPage(){
     <div class="logo-header"><img src="${griffineLogoSrc()}" alt="GRIFFINE" class="brand-logo-img"><h1>GRIFFINE</h1></div>
     <h2>${pageTitle('refund_policy_page','سياسة استرداد الاشتراك')}</h2>
     <div class="section-card">
-      ${custom ? `<div style="font-size:13.5px;line-height:1.8;white-space:pre-wrap;">${escapeHtml(custom)}</div>` : defaultHtml}
+      ${custom ? `<div class="u-prose">${escapeHtml(custom)}</div>` : defaultHtml}
     </div>
     <button class="btn-gray" id="backHomeFromRefundBtn">🏠 رجوع للشاشة الرئيسية</button>
   </div>`;
@@ -735,7 +735,7 @@ async function renderSuggestionsPage(){
       <label>إرفاق صورة أو PDF (اختياري)</label>
       <input type="file" accept="image/*,application/pdf" id="suggestionFile">
       <div id="suggestionFilePreview"></div>
-      <button type="submit" style="margin-top:14px;">إرسال الاقتراح</button>
+      <button type="submit" class="u-mt14">إرسال الاقتراح</button>
     </form>
     <div id="suggestionResult"></div>
   </div>`;
@@ -752,7 +752,7 @@ async function renderSuggestionsPage(){
       const reader = new FileReader();
       reader.onload = (ev) => {
         attachmentDataUrl = ev.target.result;
-        previewEl.innerHTML = `<div class="info" style="margin-top:6px;">📎 ${escapeHtml(file.name)}</div>`;
+        previewEl.innerHTML = `<div class="info u-mt6">📎 ${escapeHtml(file.name)}</div>`;
       };
       reader.readAsDataURL(file);
     } else if (file.type.startsWith('image/')) {
@@ -773,7 +773,7 @@ async function renderSuggestionsPage(){
       };
       reader.readAsDataURL(file);
     } else {
-      previewEl.innerHTML = '<div class="error" style="margin-top:6px;">يجب أن يكون الملف صورة أو PDF فقط.</div>';
+      previewEl.innerHTML = '<div class="error u-mt6">يجب أن يكون الملف صورة أو PDF فقط.</div>';
       attachmentDataUrl = null; attachmentName = null;
     }
   });
@@ -782,15 +782,15 @@ async function renderSuggestionsPage(){
     e.preventDefault();
     const message = document.getElementById('suggestionMessage').value.trim();
     const resultEl = document.getElementById('suggestionResult');
-    if (!message) { resultEl.innerHTML = '<div class="error" style="margin-top:10px;">اكتب اقتراحك الأول.</div>'; return; }
+    if (!message) { resultEl.innerHTML = '<div class="error u-mt10">اكتب اقتراحك الأول.</div>'; return; }
     const r = await apiPost('/suggestion_submit.php', { message, attachment: attachmentDataUrl, attachmentName });
     if (r && r.success) {
-      resultEl.innerHTML = '<div class="info" style="margin-top:10px;">✅ شكرًا لك! وصلنا اقتراحك وهنراجعه.</div>';
+      resultEl.innerHTML = '<div class="info u-mt10">✅ شكرًا لك! وصلنا اقتراحك وهنراجعه.</div>';
       document.getElementById('suggestionForm').reset();
       document.getElementById('suggestionFilePreview').innerHTML = '';
       attachmentDataUrl = null; attachmentName = null;
     } else {
-      resultEl.innerHTML = `<div class="error" style="margin-top:10px;">${(r&&r.message)||'حصل خطأ في إرسال الاقتراح'}</div>`;
+      resultEl.innerHTML = `<div class="error u-mt10">${(r&&r.message)||'حصل خطأ في إرسال الاقتراح'}</div>`;
     }
   };
 }
@@ -827,7 +827,7 @@ async function renderContactInfo(){
     </div>
     <h2>بيانات التواصل</h2>
     <div class="section-card">
-      ${custom ? `<div style="font-size:13.5px;line-height:1.8;white-space:pre-wrap;">${escapeHtml(custom)}</div>` : defaultHtml}
+      ${custom ? `<div class="u-prose">${escapeHtml(custom)}</div>` : defaultHtml}
     </div>
     <button class="btn-gray" id="backHomeFromContactBtn">🏠 رجوع للشاشة الرئيسية</button>
   </div>`;
