@@ -152,7 +152,7 @@ try {
         $id = (int)($_POST['id'] ?? 0);
         // الإصدار 89: سلة المحذوفات - الملفات بتفضل لحد الحذف النهائي من السلة
         $__e = trash_rows($conn, 'hr_employees', 'id = ?', 'i', [$id]); $__d = trash_rows($conn, 'hr_documents', 'employee_id = ?', 'i', [$id]);
-        trash_put($conn, 'hr_employee', 'موظف (HR): ' . ($__e[0]['full_name'] ?? '#' . $id), ['hr_employees' => $__e, 'hr_documents' => $__d, 'hr_attendance' => trash_rows($conn, 'hr_attendance', 'employee_id = ?', 'i', [$id])], array_column($__d, 'file_token'));
+        trash_put($conn, 'hr_employee', 'موظف شؤون الموظفين: ' . ($__e[0]['full_name'] ?? '#' . $id), ['hr_employees' => $__e, 'hr_documents' => $__d, 'hr_attendance' => trash_rows($conn, 'hr_attendance', 'employee_id = ?', 'i', [$id])], array_column($__d, 'file_token'));
         foreach (["DELETE FROM hr_documents WHERE employee_id = ?", "DELETE FROM hr_attendance WHERE employee_id = ?", "DELETE FROM hr_employees WHERE id = ?"] as $q) {
             $x = $conn->prepare($q); $x->bind_param("i", $id); $x->execute(); $x->close();
         }

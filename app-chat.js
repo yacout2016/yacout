@@ -157,7 +157,7 @@ async function initChatWidget(sessionEmail){
     panel.innerHTML = `
       <div class="chat-header">
         <span>${headerTitle}</span>
-        <span><button id="chatPrefsBtn" title="تنبيهات الشات (الصوت / الصورة)">⚙️</button><button id="chatCloseBtn">✕</button></span>
+        <span><button id="chatFaqBtn" title="الأسئلة الشائعة - رد فوري من المساعد" hidden>❓</button><button id="chatPrefsBtn" title="تنبيهات الشات (الصوت / الصورة)">⚙️</button><button id="chatCloseBtn">✕</button></span>
       </div>
       <div style="padding:6px 12px;font-size:11px;background:${isOnline?'#eafaf1':'#fdf6e3'};color:${isOnline?'var(--green)':'#8a6d1b'};text-align:center;">
         ${isOnline ? '🟢 فريق الدعم متصل الآن — سيردون عليك في الحال' : '📩 سنرد عليك في أقرب وقت ممكن'}
@@ -257,8 +257,15 @@ async function initChatWidget(sessionEmail){
     apiGet('/chat_faq_api.php?action=public').then(f => {
       const box = document.getElementById('chatFaq');
       if (!box || !f || !f.enabled || !(f.items || []).length) return;
-      box.innerHTML = `<span class="chat-faq-lbl">أسئلة شائعة:</span>` + f.items.map(it => `<button type="button" class="chat-faq-chip" data-q="${escapeHtml(it.question)}">${escapeHtml(it.question)}</button>`).join('');
-      box.hidden = false;
+      // الإصدار 90: قائمة واضحة (كل الأسئلة ظاهرة) + زرار ❓ في رأس الشات لإظهارها وإخفائها
+      box.innerHTML = `<div class="chat-faq-head"><span class="chat-faq-lbl">🤖 اختر سؤالًا ويرد عليك المساعد فورًا:</span><button type="button" class="chat-faq-x" aria-label="إخفاء">✕</button></div>`
+        + `<div class="chat-faq-list">${f.items.map(it => `<button type="button" class="chat-faq-chip" data-q="${escapeHtml(it.question)}">${escapeHtml(it.question)}</button>`).join('')}</div>`;
+      const qb = document.getElementById('chatFaqBtn');
+      const setOpen = (on) => { box.hidden = !on; try { localStorage.setItem('griffine_chat_faq', on ? '1' : '0'); } catch(e){} };
+      let open = true; try { open = localStorage.getItem('griffine_chat_faq') !== '0'; } catch(e){}
+      setOpen(open);
+      if (qb) { qb.hidden = false; qb.onclick = () => setOpen(box.hidden); }
+      box.querySelector('.chat-faq-x').onclick = () => setOpen(false);
       box.querySelectorAll('.chat-faq-chip').forEach(b => b.onclick = () => { const inp = document.getElementById('chatTextInput'); if (!inp) return; inp.value = b.dataset.q; doSend(); });
     }).catch(() => {});
   }

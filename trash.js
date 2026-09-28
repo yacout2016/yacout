@@ -6,7 +6,7 @@
 const TRASH_TYPES = {
   plan:'خطة', watchlist:'قائمة المتابعة', price_alert:'تنبيه سعر', staff:'موظف', hr_employee:'موظف (HR)', hr_document:'مستند',
   job_title:'مسمى وظيفي', faq:'المساعد الذكي', article:'مقال', testimonial:'رأي عميل', blacklist:'القائمة السوداء',
-  subscription_plan:'باقة', suggestion:'مقترح', chat:'محادثة شات', customer:'عميل'
+  subscription_plan:'باقة', suggestion:'مقترح', chat:'محادثة شات', customer:'عميل', notification:'إشعار'
 };
 async function renderTrashPage(all){
   const __tok = screenToken();

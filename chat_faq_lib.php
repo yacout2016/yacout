@@ -10,7 +10,7 @@
    ===================================================================== */
 require_once __DIR__ . '/security_lib.php';
 
-const FAQ_BOT_PREFIX = '🤖 مساعد GRIFFINE:';
+const FAQ_BOT_PREFIX = "🤖 مساعد \u{2066}GRIFFINE\u{2069}:";   // الإصدار 91: الكلمة الإنجليزي معزولة عشان النص ميتقلبش
 
 function faq_table_ready($conn){
     static $r = null; if ($r !== null) return $r;
@@ -67,7 +67,7 @@ function faq_auto_reply($conn, $visitorId, $text){
         $recentBot = [];
         while ($r = $res->fetch_assoc()) {
             if (mb_strpos((string)$r['message'], '🔔 تنبيه سعر') === 0) continue;   // تنبيه سعر تلقائي - مش موظف
-            if (mb_strpos((string)$r['message'], FAQ_BOT_PREFIX) !== 0) { $st->close(); return false; }
+            if (mb_strpos((string)$r['message'], '🤖 مساعد') !== 0) { $st->close(); return false; }
             $recentBot[] = (string)$r['message'];
         }
         $st->close();
@@ -81,6 +81,7 @@ function faq_auto_reply($conn, $visitorId, $text){
             foreach ($recentBot as $m) if ($m === $reply) return false;   // نفس الإجابة من شوية - منكررهاش
             $u = $conn->prepare("UPDATE chat_faq SET hits = hits + 1 WHERE id = ?"); $u->bind_param("i", $f['id']); $u->execute(); $u->close();
         }
+        $reply = gm_bidi($reply);   // الإصدار 91: منع انعكاس النص المختلط
         $i = $conn->prepare("INSERT INTO chat_messages (visitor_id, sender, message) VALUES (?, 'admin', ?)");
         $i->bind_param("ss", $visitorId, $reply); $i->execute(); $i->close();
         return true;

@@ -9,6 +9,14 @@
    ===================================================================== */
 require_once __DIR__ . '/quote_lib.php';
 
+/* الإصدار 91: نصوص الإشعارات من غير انعكاس - أي رمز سهم / رقم / كلمة إنجليزي جوه جملة عربي
+   بيتعزل بعلامات اليونيكود (LRI … PDI) فمبيلفّش ولا يقلب ترتيب الجملة (في الموقع والإيميل والشات)،
+   وأسماء الخطط والعملات بالعربي بدل DCA / Grid / EGP */
+function mk_ltr($s){ return "\u{2066}" . $s . "\u{2069}"; }
+function mk_num($v){ $v = (float)$v; return mk_ltr(rtrim(rtrim(number_format($v, 4, '.', ','), '0'), '.')); }
+function mk_kind_ar($k){ return $k === 'Grid' ? 'خطة خطوط الشبكة' : 'خطة تعزيز المتوسط'; }
+function mk_ccy_ar($c){ $m = ['EGP' => 'جنيه', 'SAR' => 'ريال سعودي', 'AED' => 'درهم إماراتي', 'QAR' => 'ريال قطري', 'KWD' => 'دينار كويتي', 'USD' => 'دولار']; return $m[strtoupper((string)$c)] ?? (string)$c; }
+
 const MK_MARKETS = ['مصر', 'السعودية', 'الإمارات', 'قطر', 'الكويت'];
 function mk_clean_symbol($s){ $s = strtoupper(trim((string)$s)); return preg_match('/^[A-Z0-9.\-]{1,20}$/', $s) ? $s : null; }
 function mk_clean_market($m){ $m = trim((string)$m); return in_array($m, MK_MARKETS, true) ? $m : 'مصر'; }
@@ -36,12 +44,17 @@ function mk_check_targets($conn, $email = null, $maxSymbols = 60){
             $u = $conn->prepare("UPDATE alert_targets SET triggered_at = NOW() WHERE id = ? AND triggered_at IS NULL");
             $u->bind_param("i", $t['id']); $u->execute(); $ok = $u->affected_rows === 1; $u->close();
             if (!$ok) continue;
-            $sideTxt = $t['side'] === 'buy' ? 'وصل لسعر الشراء التالي' : 'وصل لهدف البيع';
-            $title = "🔔 {$sym}: {$sideTxt}";
-            $body = "السعر الآن {$last} " . ($q['currency'] ?? '') . " — المستوى في خطتك ({$t['plan_kind']}) {$price}." . ($t['label'] ? ' ' . $t['label'] : '') . ' (الأسعار متأخرة 15 دقيقة)';
+            $ccy = mk_ccy_ar($q['currency'] ?? 'EGP'); $kindAr = mk_kind_ar($t['plan_kind']);
+            $isBuy = $t['side'] === 'buy';
+            $title = "🔔 سهم " . mk_ltr($sym) . ($isBuy ? ": وصل إلى سعر الشراء التالي" : ": وصل إلى هدف البيع");
+            $body = "السعر الحالي: " . mk_num($last) . " {$ccy}.\n"
+                  . ($isBuy ? "سعر الشراء" : "هدف البيع") . " في {$kindAr}: " . mk_num($price) . " {$ccy}"
+                  . ($t['label'] ? " ({$t['label']})" : '') . ".\n"
+                  . "(الأسعار متأخرة 15 دقيقة)";
+            $title = gm_bidi($title); $body = gm_bidi($body);
             $i = $conn->prepare("INSERT INTO user_alerts (account_email, title, body, symbol, market) VALUES (?, ?, ?, ?, ?)");
             $i->bind_param("sssss", $t['account_email'], $title, $body, $sym, $mkt); $i->execute(); $i->close();
-            try { griffine_notify($conn, $t['account_email'], $title, $title, [$body, 'افتح GRIFFINE لمراجعة خطتك وتسجيل التنفيذ لو نفّذت.'], ['label' => 'فتح GRIFFINE', 'url' => MAIL_SITE_URL . '/index.php'], 'price_alert'); } catch (Throwable $e) {}
+            try { griffine_notify($conn, $t['account_email'], $title, $title, array_merge(explode("\n", $body), ['افتح ' . mk_ltr('GRIFFINE') . ' لمراجعة خطتك، وسجّل التنفيذ إذا نفّذت.']), ['label' => 'فتح GRIFFINE', 'url' => MAIL_SITE_URL . '/index.php'], 'price_alert'); } catch (Throwable $e) {}
             $fired++;
         }
     }
@@ -54,7 +67,7 @@ function mk_check_targets($conn, $email = null, $maxSymbols = 60){
    الإشعار: إيميل + تنبيه في الجرس + رسالة في شات الموقع الخاص بالعميل
    ===================================================================== */
 const MK_CCY = ['مصر' => 'EGP', 'السعودية' => 'SAR', 'الإمارات' => 'AED', 'قطر' => 'QAR', 'الكويت' => 'KWD'];
-const MK_CHAT_PREFIX = '🔔 تنبيه سعر GRIFFINE:';
+const MK_CHAT_PREFIX = "🔔 تنبيه سعر من \u{2066}GRIFFINE\u{2069}:";
 const MK_INTERVALS = [15, 30, 60, 120, 180, 360, 720, 1440];
 
 // معرّف محادثة الشات الخاصة بالحساب (بيتعمل لو مش موجود - نفس طريقة chat_my_id.php)
@@ -97,16 +110,20 @@ function mk_check_custom($conn, $email = null, $maxSymbols = 60){
                 WHERE id = ? AND sent_count = ?");
             $prev = $no - 1; $up->bind_param("iiii", $no, $no, $a['id'], $prev); $up->execute(); $ok = $up->affected_rows === 1; $up->close();
             if (!$ok) continue;
-            $ccy = $a['currency'] ?: ($q['currency'] ?? '');
+            $ccy = mk_ccy_ar($a['currency'] ?: ($q['currency'] ?? 'EGP'));
             $condTxt = $a['cond'] === 'lte' ? 'أقل من أو يساوي' : 'أكبر من أو يساوي';
-            $title = "🔔 {$sym}: السعر وصل للرقم المطلوب";
-            $body = "سعر {$sym} الآن {$last} {$ccy} — وهو {$condTxt} السعر الذي حددته ({$target} {$ccy}). تذكير {$no} من {$max}." . ($a['note'] ? ' ملاحظتك: ' . $a['note'] : '') . ' (الأسعار متأخرة 15 دقيقة)';
+            $title = "🔔 سهم " . mk_ltr($sym) . ": وصل إلى السعر الذي حددته";
+            $body = "السعر الحالي: " . mk_num($last) . " {$ccy}.\n"
+                  . "السعر الذي حددته: " . mk_num($target) . " {$ccy} (الشرط: {$condTxt}).\n"
+                  . "التذكير رقم " . mk_ltr($no) . " من " . mk_ltr($max) . "."
+                  . ($a['note'] ? "\nملاحظتك: " . $a['note'] : '') . "\n(الأسعار متأخرة 15 دقيقة)";
+            $title = gm_bidi($title); $body = gm_bidi($body);
             try { $i = $conn->prepare("INSERT INTO user_alerts (account_email, title, body, symbol, market) VALUES (?, ?, ?, ?, ?)");
                 $i->bind_param("sssss", $a['account_email'], $title, $body, $sym, $mkt); $i->execute(); $i->close(); } catch (Throwable $e) {}
             try { $vid = mk_user_chat_id($conn, $a['account_email']);
-                if ($vid) { $msg = MK_CHAT_PREFIX . "\n" . $body; $c = $conn->prepare("INSERT INTO chat_messages (visitor_id, visitor_email, sender, message) VALUES (?, ?, 'admin', ?)");
+                if ($vid) { $msg = gm_bidi(MK_CHAT_PREFIX . "\n" . $body); $c = $conn->prepare("INSERT INTO chat_messages (visitor_id, visitor_email, sender, message) VALUES (?, ?, 'admin', ?)");
                     $c->bind_param("sss", $vid, $a['account_email'], $msg); $c->execute(); $c->close(); } } catch (Throwable $e) {}
-            try { griffine_notify($conn, $a['account_email'], $title, $title, [$body, 'يمكنك إدارة تنبيهاتك من شاشة «تنبيهات الأسعار».'], ['label' => 'فتح GRIFFINE', 'url' => MAIL_SITE_URL . '/index.php'], 'price_alert'); } catch (Throwable $e) {}
+            try { griffine_notify($conn, $a['account_email'], $title, $title, array_merge(explode("\n", $body), ['يمكنك إدارة تنبيهاتك من شاشة «تنبيهات الأسعار».']), ['label' => 'فتح GRIFFINE', 'url' => MAIL_SITE_URL . '/index.php'], 'price_alert'); } catch (Throwable $e) {}
             $fired++;
         }
     }

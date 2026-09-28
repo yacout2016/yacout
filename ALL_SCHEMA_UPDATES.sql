@@ -1,5 +1,5 @@
 -- ============================================================
--- GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 90)
+-- GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 91)
 -- كل تحديثات قاعدة البيانات في ملف واحد.
 -- آمن تشغّله أي عدد من المرات: بيضيف الناقص بس ومبيمسحش أي بيانات.
 -- الاستخدام: phpMyAdmin ← اختار قاعدة البيانات ← تبويب SQL ← الصق الملف كله ← Go
@@ -31,6 +31,7 @@
 --              + custom_alerts (تنبيهات سعر مخصّصة: البورصة/العملة/السهم + أكبر أو أقل من + عدد مرات التذكير والفرق بينها)
 --              + trash_bin (سلة المحذوفات - أي حاجة بتتمسح من الموقع بتتنسخ فيها ويمكن استرجاعها).
 -- الإصدار 90: مفيش تغييرات في قاعدة البيانات (منحنى إجمالي المحفظة في الرئيسية بيظهر للأدمن وبيترسم فورًا من تاريخ الخطط).
+-- الإصدار 91: عمود dismissed في user_alerts (تنبيهات الرئيسية بتفضل ظاهرة لحد ما تقفلها) + جداول المحفظة 10 صفوف + أسئلة المساعد كقائمة واضحة.
 -- ============================================================
 
 -- الإصدار 85: ترميز الاتصال UTF-8 عشان النصوص العربي اللي بتتضاف من الملف (زي المسميات الوظيفية) تتحفظ صح
@@ -956,4 +957,21 @@ SELECT * FROM (
   UNION ALL SELECT 'هل الأسعار لحظية؟', 'لحظي, لحظيه, متاخره, تاخير, الاسعار', 'أسعار الأسهم في الموقع متأخرة حوالي 15 دقيقة عن السوق، وتُستخدم للمتابعة والتنبيهات فقط وليست توصية بالشراء أو البيع.', 6
 ) t WHERE NOT EXISTS (SELECT 1 FROM chat_faq);
 
-SELECT 'GRIFFINE database is up to date (v90)' AS result;
+-- الإصدار 91: تنبيهات الرئيسية بتفضل ظاهرة لحد ما العميل يقفلها (dismissed)
+DELIMITER $$
+DROP PROCEDURE IF EXISTS griffine_v91 $$
+CREATE PROCEDURE griffine_v91()
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='user_alerts' AND COLUMN_NAME='dismissed') THEN
+    ALTER TABLE user_alerts ADD COLUMN dismissed TINYINT(1) NOT NULL DEFAULT 0;
+  END IF;
+END $$
+DELIMITER ;
+CALL griffine_v91();
+DROP PROCEDURE griffine_v91;
+
+-- الإصدار 91: الإشعارات القديمة كان فيها (DCA) / (Grid) بالإنجليزي وسط الجملة العربي فالنص بيتقلب ← أسماء عربية
+UPDATE user_alerts SET body = REPLACE(REPLACE(body, 'في خطتك (DCA)', 'في خطة تعزيز المتوسط'), 'في خطتك (Grid)', 'في خطة خطوط الشبكة')
+ WHERE body LIKE '%(DCA)%' OR body LIKE '%(Grid)%';
+
+SELECT 'GRIFFINE database is up to date (v91)' AS result;

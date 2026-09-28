@@ -88,12 +88,27 @@ try {
         mk_out(["success" => true, "targets" => count($keep), "fired" => $fired]);
     }
     if ($action === 'alerts') {
-        $st = $conn->prepare("SELECT id, title, body, symbol, market, is_read, created_at FROM user_alerts WHERE account_email = ? ORDER BY id DESC LIMIT 50");
+        // الإصدار 91: dismissed = اتقفل من كارت الرئيسية (بيفضل موجود في شاشة التنبيهات لحد ما يتحذف)
+        $hasDis = false; try { $c = $conn->query("SHOW COLUMNS FROM user_alerts LIKE 'dismissed'"); $hasDis = $c && $c->num_rows > 0; } catch (Throwable $e) {}
+        $st = $conn->prepare("SELECT id, title, body, symbol, market, is_read, " . ($hasDis ? "dismissed" : "0 AS dismissed") . ", created_at FROM user_alerts WHERE account_email = ? ORDER BY id DESC LIMIT 200");
         $st->bind_param("s", $email); $st->execute(); $res = $st->get_result();
         $list = []; $unread = 0;
-        while ($r = $res->fetch_assoc()) { $r['id'] = (int)$r['id']; $r['is_read'] = (int)$r['is_read'] === 1; if (!$r['is_read']) $unread++; $list[] = $r; }
+        while ($r = $res->fetch_assoc()) { $r['id'] = (int)$r['id']; $r['is_read'] = (int)$r['is_read'] === 1; $r['dismissed'] = (int)$r['dismissed'] === 1; if (!$r['is_read']) $unread++; $list[] = $r; }
         $st->close();
         mk_out(["success" => true, "alerts" => $list, "unread" => $unread]);
+    }
+    if ($action === 'alert_dismiss' && $isPost) {   // الإصدار 91: إغلاق من كارت الرئيسية (id أو all=1)
+        if (($_POST['all'] ?? '') === '1') { $st = $conn->prepare("UPDATE user_alerts SET dismissed = 1, is_read = 1 WHERE account_email = ?"); $st->bind_param("s", $email); }
+        else { $id = (int)($_POST['id'] ?? 0); $st = $conn->prepare("UPDATE user_alerts SET dismissed = 1, is_read = 1 WHERE id = ? AND account_email = ?"); $st->bind_param("is", $id, $email); }
+        $st->execute(); $st->close();
+        mk_out(["success" => true]);
+    }
+    if ($action === 'alert_delete' && $isPost) {    // الإصدار 91: حذف من شاشة التنبيهات ← سلة المحذوفات
+        $id = (int)($_POST['id'] ?? 0);
+        $__r = trash_rows($conn, 'user_alerts', 'id = ? AND account_email = ?', 'is', [$id, $email]);
+        if ($__r) trash_put($conn, 'notification', 'إشعار: ' . mb_substr((string)$__r[0]['title'], 0, 120), ['user_alerts' => $__r], [], $email);
+        $st = $conn->prepare("DELETE FROM user_alerts WHERE id = ? AND account_email = ?"); $st->bind_param("is", $id, $email); $st->execute(); $st->close();
+        mk_out(["success" => true]);
     }
     if ($action === 'alerts_read' && $isPost) {
         $st = $conn->prepare("UPDATE user_alerts SET is_read = 1 WHERE account_email = ?"); $st->bind_param("s", $email); $st->execute(); $st->close();
@@ -112,6 +127,19 @@ try {
         }
         $st->close();
         mk_out(["success" => true]);
+    }
+    if ($action === 'history' && $isPost) {   // الإصدار 91: أسعار إغلاق يومية لكل أسهم خطط العميل
+        $items = json_decode((string)($_POST['items'] ?? '[]'), true);
+        $range = (string)($_POST['range'] ?? '1y');
+        if (!is_array($items)) mk_out(["success" => false]);
+        @set_time_limit(90);
+        $out = [];
+        foreach (array_slice($items, 0, 40) as $it) {
+            $sym = strtoupper(trim((string)($it['symbol'] ?? ''))); $mkt = mk_clean_market($it['market'] ?? '');
+            if ($sym === '' || isset($out["$sym|$mkt"])) continue;
+            $out["$sym|$mkt"] = mq_history($sym, $mkt, $range);
+        }
+        mk_out(["success" => true, "history" => $out]);
     }
     if ($action === 'snapshots') {
         $days = max(7, min(730, (int)($_GET['days'] ?? 90)));
@@ -156,7 +184,7 @@ try {
     if ($action === 'custom_delete' && $isPost) {
         $id = (int)($_POST['id'] ?? 0);
         $__r = trash_rows($conn, 'custom_alerts', 'id = ? AND account_email = ?', 'is', [$id, $email]);
-        if ($__r) { $a = $__r[0]; trash_put($conn, 'price_alert', 'تنبيه سعر: ' . $a['symbol'] . ' ' . ($a['cond'] === 'lte' ? '≤' : '≥') . ' ' . (float)$a['target_price'] . ' ' . $a['currency'], ['custom_alerts' => $__r], [], $email); }
+        if ($__r) { $a = $__r[0]; trash_put($conn, 'price_alert', 'تنبيه سعر: سهم ' . $a['symbol'] . ' عند ' . ($a['cond'] === 'lte' ? 'أقل من أو يساوي ' : 'أكبر من أو يساوي ') . (float)$a['target_price'] . ' ' . mk_ccy_ar($a['currency']), ['custom_alerts' => $__r], [], $email); }
         $st = $conn->prepare("DELETE FROM custom_alerts WHERE id = ? AND account_email = ?"); $st->bind_param("is", $id, $email); $st->execute(); $st->close();
         mk_out(["success" => true]);
     }

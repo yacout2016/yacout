@@ -14,7 +14,7 @@
 // الجداول المسموح نسخها/استرجاعها (حماية: مفيش استرجاع لأي جدول تاني)
 const TRASH_TABLES = ['user_plans', 'user_watchlist', 'custom_alerts', 'staff_members', 'staff_permissions', 'hr_employees', 'hr_documents',
     'hr_attendance', 'job_titles', 'chat_faq', 'articles', 'testimonials', 'blacklist', 'subscription_plans', 'suggestions',
-    'chat_messages', 'chat_conversation_meta', 'subscribers', 'users', 'recommendations'];
+    'chat_messages', 'chat_conversation_meta', 'subscribers', 'users', 'recommendations', 'user_alerts'];
 const TRASH_KEEP_DAYS = 90;
 
 function trash_ready($conn){
@@ -41,7 +41,7 @@ function trash_put($conn, $type, $label, $snap, $files = [], $owner = null){
     $by = $_SESSION['user_email'] ?? ($owner ?? 'system');
     $scope = !empty($_SESSION['is_admin']) && $owner === null ? 'admin' : 'user';
     $payload = json_encode(['tables' => $snap, 'files' => array_values($files)], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
-    $label = mb_substr((string)$label, 0, 250);
+    $label = function_exists('gm_bidi') ? gm_bidi(mb_substr((string)$label, 0, 240)) : mb_substr((string)$label, 0, 250);
     $st = $conn->prepare("INSERT INTO trash_bin (deleted_by, owner_email, scope, item_type, item_label, payload) VALUES (?, ?, ?, ?, ?, ?)");
     $st->bind_param("ssssss", $by, $owner, $scope, $type, $label, $payload); $st->execute(); $id = $conn->insert_id; $st->close();
     return $id;

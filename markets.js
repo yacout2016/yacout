@@ -180,14 +180,35 @@ async function mkSyncTargets(plans, grids){
   window.__mkTargetsSig = sig;
   await MK.post({ action: 'sync_targets', targets: sig });
 }
+// الإصدار 91: قائمة بتعرض أول n عناصر والباقي بالتمرير لفوق وتحت (الارتفاع محسوب من العنصر رقم n الفعلي)
+function mkLimitList(box, n){
+  if (!box) return;
+  const fit = () => {
+    const kids = box.children; if (kids.length <= n) { box.style.maxHeight = ''; return; }
+    const top = box.getBoundingClientRect().top - box.scrollTop, last = kids[n - 1].getBoundingClientRect();
+    const mb = parseFloat(getComputedStyle(kids[n - 1]).marginBottom) || 0;
+    const h = Math.ceil(last.bottom + mb - top); if (h > 0) box.style.maxHeight = h + 'px';
+  };
+  fit(); setTimeout(fit, 350); try { document.fonts && document.fonts.ready.then(fit); } catch(e){}
+}
+// الإصدار 91: التنبيهات بتفضل في الرئيسية لحد ما تقفلها (✕) - وبعدها بتفضل في شاشة التنبيهات
 async function mkAlertsCard(el){
   if (!el) return;
   const r = await MK.get('action=alerts');
+  if (!el.isConnected) return;
   window.__mkUnread = r.success ? r.unread : 0; mkUpdateAlertBadge();
-  const list = r.success ? r.alerts.filter(a => !a.is_read).slice(0, 3) : [];
-  el.innerHTML = list.length ? `<div class="section-card gs-alert-card"><div class="u-row"><strong>🔔 تنبيهات الأسعار (${r.unread})</strong><button type="button" class="gs-link" id="gsAlertsAll">عرض الكل</button></div>
-    ${list.map(a => `<div class="gs-alert-row"><b>${escapeHtml(a.title)}</b><div>${escapeHtml(a.body || '')}</div></div>`).join('')}</div>` : '';
+  const list = r.success ? r.alerts.filter(a => !a.dismissed) : [];
+  el.innerHTML = list.length ? `<div class="section-card gs-alert-card"><div class="u-row"><strong>🔔 تنبيهات الأسعار (${list.length})</strong>
+      <span><button type="button" class="gs-link" id="gsAlertsCloseAll">إغلاق الكل</button> · <button type="button" class="gs-link" id="gsAlertsAll">عرض الكل</button></span></div>
+    <div class="gs-alert-list">${list.map(a => `<div class="gs-alert-row${a.is_read ? '' : ' unread'}" data-aid="${a.id}">
+      <button type="button" class="gs-alert-x" data-dis="${a.id}" aria-label="إغلاق" title="إغلاق (يبقى في شاشة التنبيهات)">✕</button>
+      <b>${escapeHtml(a.title)}</b><div>${escapeHtml(a.body || '')}</div>
+      <small class="u-muted">${escapeHtml(a.created_at || '')}</small>${a.symbol ? ` · <button type="button" class="gs-link" data-sym="${escapeHtml(a.symbol)}" data-mkt="${escapeHtml(a.market || 'مصر')}">صفحة السهم</button>` : ''}</div>`).join('')}</div></div>` : '';
+  mkLimitList(el.querySelector('.gs-alert-list'), 5);
   const b = document.getElementById('gsAlertsAll'); if (b) b.onclick = () => renderAlertsPage();
+  const ca = document.getElementById('gsAlertsCloseAll'); if (ca) ca.onclick = async () => { await MK.post({ action:'alert_dismiss', all:'1' }); mkAlertsCard(el); };
+  el.querySelectorAll('[data-dis]').forEach(x => x.onclick = async (ev) => { ev.stopPropagation(); await MK.post({ action:'alert_dismiss', id: x.dataset.dis }); mkAlertsCard(el); });
+  el.querySelectorAll('[data-sym]').forEach(x => x.onclick = () => renderStockPage(x.dataset.sym, x.dataset.mkt));
 }
 function mkUpdateAlertBadge(){
   document.querySelectorAll('[data-gs-alerts-badge]').forEach(e => { e.textContent = window.__mkUnread || ''; e.style.display = window.__mkUnread ? '' : 'none'; });
@@ -195,6 +216,7 @@ function mkUpdateAlertBadge(){
 /* الإصدار 89: تنبيهات سعر مخصّصة - البورصة + العملة + السهم ← آخر سعر (متأخر 15 دقيقة) ← السعر المطلوب
    الشرط ≥ أو ≤ + عدد مرات التذكير (حد أقصى 3) + الفرق بين كل تذكير (حد أقصى 24 ساعة)
    الإشعار: إيميل + رسالة في شات الموقع + الجرس */
+const MK_CCY_AR = { EGP:'جنيه', SAR:'ريال سعودي', AED:'درهم إماراتي', QAR:'ريال قطري', KWD:'دينار كويتي', USD:'دولار' };
 const MK_CCY = { 'مصر':'EGP', 'السعودية':'SAR', 'الإمارات':'AED', 'قطر':'QAR', 'الكويت':'KWD' };
 const MK_INTERVALS = [[15,'15 دقيقة'],[30,'30 دقيقة'],[60,'ساعة'],[120,'ساعتان'],[180,'3 ساعات'],[360,'6 ساعات'],[720,'12 ساعة'],[1440,'24 ساعة']];
 function mkIntervalLabel(m){ const x = MK_INTERVALS.find(i => i[0] === +m); return x ? x[1] : m + ' دقيقة'; }
@@ -232,7 +254,7 @@ async function renderAlertsPage(){
       <div class="section-title">تنبيهاتي (${mine.length})</div>
       ${mine.length ? `<div class="table-scroll"><table class="g-table"><thead><tr><th>السهم</th><th>الشرط</th><th></th><th>الحالة</th><th>آخر سعر</th><th>التذكير</th></tr></thead><tbody>
         ${mine.map(a => `<tr><td dir="ltr"><b>${escapeHtml(a.symbol)}</b> <small class="u-muted">${escapeHtml(a.market)}</small></td>
-          <td>${a.cond === 'lte' ? '≤' : '≥'} <b class="g-num">${MK.n(a.target_price, 4)}</b> ${escapeHtml(a.currency)}${a.note ? `<div class="u-hint">${escapeHtml(a.note)}</div>` : ''}</td>
+          <td>${a.cond === 'lte' ? 'أقل من أو يساوي' : 'أكبر من أو يساوي'} <b class="g-num">${MK.n(a.target_price, 4)}</b> ${escapeHtml(MK_CCY_AR[a.currency] || a.currency)}${a.note ? `<div class="u-hint">${escapeHtml(a.note)}</div>` : ''}</td>
           <td><button type="button" class="small secondary u-wa" data-catog="${a.id}" data-on="${a.active ? 0 : 1}">${a.active ? 'إيقاف' : 'تشغيل من جديد'}</button>
             <button type="button" class="small danger u-wa" data-cadel="${a.id}">🗑️</button></td>
           <td class="${a.active ? 'u-pos' : 'u-muted'}">${statusOf(a)}</td>
@@ -240,11 +262,12 @@ async function renderAlertsPage(){
           <td>${a.max_repeats} × كل ${mkIntervalLabel(a.repeat_minutes)}</td></tr>`).join('')}
       </tbody></table></div>` : '<div class="u-muted">لا توجد تنبيهات مخصّصة بعد.</div>'}
     </div>
-    <div class="section-title u-mt14">سجل الإشعارات</div>
-    <div class="info">تصلك هنا أيضًا تنبيهات مستويات خططك (سعر الشراء التالي وهدف البيع).</div>
-    ${r.success && r.alerts.length ? r.alerts.map(a => `<div class="section-card" style="${a.is_read ? 'opacity:.7' : ''}"><div style="display:flex;justify-content:space-between;gap:8px;"><b>${escapeHtml(a.title)}</b><small style="opacity:.7">${escapeHtml(a.created_at)}</small></div>
-      <div style="font-size:13px;line-height:1.9;">${escapeHtml(a.body || '')}</div>${a.symbol ? `<button type="button" class="small secondary u-wa u-mt6" data-sym="${escapeHtml(a.symbol)}" data-mkt="${escapeHtml(a.market || 'مصر')}">📈 صفحة السهم</button>` : ''}</div>`).join('')
-      : '<div class="section-card u-muted">لا توجد إشعارات بعد.</div>'}</div>`;
+    <div class="section-title u-mt14">سجل الإشعارات (${r.success ? r.alerts.length : 0})</div>
+    <div class="info">تصلك هنا أيضًا تنبيهات مستويات خططك (سعر الشراء التالي وهدف البيع). الحذف ينقل الإشعار إلى سلة المحذوفات.</div>
+    ${r.success && r.alerts.length ? `<div class="gs-notif-list">${r.alerts.map(a => `<div class="section-card gs-notif${a.is_read ? ' read' : ''}"><div class="u-row"><b>${escapeHtml(a.title)}</b>
+        <span><small class="u-muted">${escapeHtml(a.created_at)}</small> <button type="button" class="small danger u-wa" data-ndel="${a.id}" title="حذف (ينتقل إلى سلة المحذوفات)">🗑️</button></span></div>
+      <div class="u-fs13" style="line-height:1.9;">${escapeHtml(a.body || '')}</div>${a.symbol ? `<button type="button" class="small secondary u-wa u-mt6" data-sym="${escapeHtml(a.symbol)}" data-mkt="${escapeHtml(a.market || 'مصر')}">📈 صفحة السهم</button>` : ''}</div>`).join('')}</div>`
+      : '<div class="section-card u-muted">لا توجد إشعارات.</div>'}</div>`;
   const reload = () => { window.__navSilent = true; try { renderAlertsPage(); } finally { window.__navSilent = false; } };
   const mkt = document.getElementById('caMkt'), ccy = document.getElementById('caCcy');
   mkt.onchange = () => { ccy.value = MK_CCY[mkt.value] || 'EGP'; document.getElementById('caQuoteBox').textContent = ''; };
@@ -270,6 +293,10 @@ async function renderAlertsPage(){
     if (!await gConfirm('حذف هذا التنبيه؟ (ينتقل إلى سلة المحذوفات ويمكنك استرجاعه)')) return;
     const x = await MK.post({ action:'custom_delete', id: b.dataset.cadel }); if (x.success) { GShell.toast('نُقل إلى سلة المحذوفات', 'ok'); reload(); }
   });
+  mkLimitList(app.querySelector('.gs-notif-list'), 5);
+  app.querySelectorAll('[data-ndel]').forEach(b => b.onclick = async () => {
+    const x = await MK.post({ action:'alert_delete', id: b.dataset.ndel }); if (x.success) { GShell.toast('نُقل الإشعار إلى سلة المحذوفات', 'ok'); reload(); }
+  });
   app.querySelectorAll('[data-sym]').forEach(b => b.onclick = () => renderStockPage(b.dataset.sym, b.dataset.mkt));
   if (r.success && r.unread) { await MK.post({ action: 'alerts_read' }); window.__mkUnread = 0; mkUpdateAlertBadge(); }
 }
@@ -282,62 +309,134 @@ async function renderAlertsPage(){
    العملة بتتبعت بالكود (EGP / SAR ...) - قبل كده كانت بالاسم العربي وكل العملات كانت بتتسجّل EGP */
 const MK_CCY_CODE = { 'جنيه مصري':'EGP', 'ريال سعودي':'SAR', 'درهم إماراتي':'AED', 'ريال قطري':'QAR', 'دينار كويتي':'KWD', 'دولار أمريكي':'USD' };
 const mkCode = (c) => MK_CCY_CODE[c] || (/^[A-Z]{3}$/.test(c || '') ? c : '');
-function mkHistoryFromPlans(plans, grids, code){
-  const ev = [];
+/* الإصدار 91: منحنى أداء المحفظة الصحيح
+   القيمة في كل يوم = Σ (الكمية اللي كانت معاك يومها × سعر إغلاق السهم الحقيقي في نفس اليوم)
+   - أسعار الإغلاق اليومية من السيرفر (markets_api history) - ولو السهم ملوش أسعار تاريخية ← آخر سعر اتنفّذ عليه
+   - آخر نقطة = قيمة المحفظة الحالية (نفس بطاقة القيمة بالظبط)
+   - خط منقّط = المبلغ المستثمر في المراكز المفتوحة (عشان تشوف الربح/الخسارة في أي وقت) */
+function mkPlanPositions(plans, grids, code){
   const d10 = (x) => x ? String(x).slice(0, 10) : '';
-  const ccyOfDca = (p) => mkCode(p.currency || (typeof MARKET_TO_CURRENCY_MAP !== 'undefined' ? MARKET_TO_CURRENCY_MAP[p.market] : '') || 'جنيه مصري');
-  const ccyOfGrid = (g) => mkCode((typeof MARKET_TO_CURRENCY_MAP !== 'undefined' ? MARKET_TO_CURRENCY_MAP[g.market] : '') || 'جنيه مصري');
+  const ccyMap = (typeof MARKET_TO_CURRENCY_MAP !== 'undefined') ? MARKET_TO_CURRENCY_MAP : {};
+  const out = [];
+  const add = (key, sym, market, evs) => { evs = evs.filter(e => e.d && e.q && e.p > 0).sort((a, b) => a.d < b.d ? -1 : a.d > b.d ? 1 : (b.q - a.q)); if (evs.length) out.push({ key, sym, market: market || 'مصر', evs }); };
   Object.entries(plans || {}).forEach(([sym, p]) => {
-    if (!p || ccyOfDca(p) !== code) return;
+    if (!p || mkCode(p.currency || ccyMap[p.market] || 'جنيه مصري') !== code) return;
+    const evs = [];
     (p.levels || []).forEach(lv => {
-      if (lv.executed && +lv.actualQty && +lv.actualPrice && d10(lv.execDate)) ev.push({ d: d10(lv.execDate), k: 'D:' + sym, q: +lv.actualQty, p: +lv.actualPrice });
-      (lv.sells || []).forEach(sl => { if (+sl.qty && d10(sl.date)) ev.push({ d: d10(sl.date), k: 'D:' + sym, q: -sl.qty, p: +sl.price }); });
+      if (lv.executed && +lv.actualQty && +lv.actualPrice) evs.push({ d: d10(lv.execDate), q: +lv.actualQty, p: +lv.actualPrice });
+      (lv.sells || []).forEach(sl => evs.push({ d: d10(sl.date), q: -(+sl.qty), p: +sl.price }));
     });
+    add('D:' + sym, sym, p.market, evs);
   });
   Object.entries(grids || {}).forEach(([sym, g]) => {
-    if (!g || ccyOfGrid(g) !== code) return;
+    if (!g || mkCode(ccyMap[g.market] || 'جنيه مصري') !== code) return;
+    const evs = [];
     (g.levels || []).forEach(lv => {
-      if (lv.status === 'bought' && +lv.executedQty && +lv.executedPrice && d10(lv.executedDate)) ev.push({ d: d10(lv.executedDate), k: 'G:' + sym, q: +lv.executedQty, p: +lv.executedPrice });
-      (lv.sells || []).forEach(sl => { if (+sl.qty && d10(sl.date)) ev.push({ d: d10(sl.date), k: 'G:' + sym, q: -sl.qty, p: +sl.price }); });
+      if (lv.status === 'bought' && +lv.executedQty && +lv.executedPrice) evs.push({ d: d10(lv.executedDate), q: +lv.executedQty, p: +lv.executedPrice });
+      (lv.sells || []).forEach(sl => evs.push({ d: d10(sl.date), q: -(+sl.qty), p: +sl.price }));
     });
-  });
-  ev.sort((a, b) => a.d < b.d ? -1 : a.d > b.d ? 1 : 0);
-  const qty = {}, last = {}, out = [];
-  ev.forEach(e => {
-    qty[e.k] = Math.max(0, (qty[e.k] || 0) + e.q); last[e.k] = e.p;
-    const v = Object.keys(qty).reduce((s, k) => s + qty[k] * (last[k] || 0), 0);
-    if (out.length && out[out.length - 1].d === e.d) out[out.length - 1].v = v; else out.push({ d: e.d, v });
+    add('G:' + sym, sym, g.market, evs);
   });
   return out;
 }
-async function mkPortfolioCurve(el, ccys, sel, plans, grids){
+function mkDays(from, to){
+  const out = []; const d = new Date(from + 'T00:00:00Z'), end = new Date(to + 'T00:00:00Z');
+  while (d <= end && out.length < 2000) { out.push(d.toISOString().slice(0, 10)); d.setUTCDate(d.getUTCDate() + 1); }
+  return out;
+}
+function mkBuildSeries(positions, hist, today, nowValue, nowCost){
+  if (!positions.length) return [];
+  const first = positions.reduce((m, p) => p.evs[0].d < m ? p.evs[0].d : m, today);
+  const days = mkDays(first, today);
+  const st = positions.map(p => {
+    const h = hist[p.sym.toUpperCase() + '|' + p.market]; const closes = {};
+    ((h && h.rows) || []).forEach(([d, c]) => { closes[d] = +c; });
+    return { p, i: 0, qty: 0, cost: 0, lastPx: 0, closes, hasHist: !!(h && h.rows && h.rows.length) };
+  });
+  const pts = days.map(d => {
+    let v = 0, c = 0;
+    st.forEach(s => {
+      while (s.i < s.p.evs.length && s.p.evs[s.i].d <= d) {
+        const e = s.p.evs[s.i++];
+        if (e.q > 0) { s.qty += e.q; s.cost += e.q * e.p; }
+        else { const sell = Math.min(s.qty, -e.q); const avg = s.qty > 0 ? s.cost / s.qty : 0; s.qty -= sell; s.cost -= sell * avg; if (s.qty < 1e-9) { s.qty = 0; s.cost = 0; } }
+        if (!s.hasHist || s.lastPx === 0) s.lastPx = e.p;
+      }
+      if (s.closes[d] != null) s.lastPx = s.closes[d];   // سعر الإغلاق الحقيقي لليوم (وأيام الإجازة بتاخد آخر إغلاق)
+      v += s.qty * s.lastPx; c += s.cost;
+    });
+    return { d, v, c };
+  });
+  // آخر نقطة = قيمة المحفظة الحالية (نفس البطاقة)
+  if (pts.length && nowValue != null) { pts[pts.length - 1].v = nowValue; if (nowCost != null) pts[pts.length - 1].c = nowCost; }
+  return pts;
+}
+async function mkPortfolioCurve(el, ccys, sel, plans, grids, rangeKey){
   if (!el) return;
-  // لقطة النهارده لكل عملة (بالكود)
   const items = (ccys || []).filter(x => mkCode(x.c)).map(x => ({ currency: mkCode(x.c), value: +(x.a.totalCurrentValue || 0).toFixed(2), cost: +(x.a.totalInvested || 0).toFixed(2) }));
-  if (items.length) await MK.post({ action: 'snapshot', items: JSON.stringify(items) });
-  const r = await MK.get('action=snapshots&days=365');
-  if (!el.isConnected) return;
-  const series = (r.success && r.series) || {};
-  const ccy = mkCode(sel) || Object.keys(series)[0] || 'EGP';
-  const snaps = (series[ccy] || []).map(p => ({ d: p.d, v: p.v }));
-  // تاريخ من الخطط قبل أول لقطة + اللقطات الحقيقية
-  const firstSnap = snaps.length ? snaps[0].d : '9999-12-31';
-  const hist = mkHistoryFromPlans(plans, grids, ccy).filter(p => p.d < firstSnap);
-  const pts = hist.concat(snaps);
-  if (pts.length < 2) { el.innerHTML = `<div class="section-card gs-curve"><div class="section-title">📈 أداء المحفظة</div><div class="u-fs13 u-muted">سيظهر المنحنى بعد تسجيل أول عمليات شراء في خططك (بتاريخ التنفيذ)، ويتحدث تلقائيًا كل يوم تفتح فيه الموقع.</div></div>`; return; }
-  const W = 600, H = 170, P = 8;
-  const vals = pts.map(p => p.v), min = Math.min(...vals), max = Math.max(...vals), span = (max - min) || 1;
-  const x = (i) => P + i * (W - 2 * P) / (pts.length - 1), y = (v) => H - P - (v - min) / span * (H - 2 * P);
-  const line = pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join(' ');
-  const first = pts[0].v, lastV = pts[pts.length - 1].v, diff = lastV - first, pct = first ? diff / first * 100 : 0, up = diff >= 0;
+  if (items.length && !el.__snapDone) { el.__snapDone = true; MK.post({ action: 'snapshot', items: JSON.stringify(items) }); }   // لقطة يومية (سجل)
+  const code = mkCode(sel) || (items[0] && items[0].currency) || 'EGP';
+  const now = items.find(x => x.currency === code);
+  const positions = mkPlanPositions(plans, grids, code);
+  const today = new Date().toISOString().slice(0, 10);
+  if (!positions.length) { el.innerHTML = `<div class="section-card gs-curve"><div class="section-title">📈 أداء إجمالي المحفظة</div><div class="u-fs13 u-muted">سيظهر المنحنى بعد تسجيل أول عملية شراء في خططك (بتاريخ التنفيذ).</div></div>`; return; }
+  // أسعار الإغلاق التاريخية (مرة واحدة لكل فتح للرئيسية)
+  const firstD = positions.reduce((m, p) => p.evs[0].d < m ? p.evs[0].d : m, today);
+  const spanDays = (Date.parse(today) - Date.parse(firstD)) / 86400000;
+  const range = spanDays <= 85 ? '3mo' : spanDays <= 175 ? '6mo' : spanDays <= 360 ? '1y' : spanDays <= 720 ? '2y' : '5y';
+  const cacheKey = code + '|' + range + '|' + positions.map(p => p.sym).join(',');
+  if (!el.__hist || el.__histKey !== cacheKey) {
+    el.innerHTML = `<div class="section-card gs-curve"><div class="section-title">📈 أداء إجمالي المحفظة (${escapeHtml(MK_CCY_AR[code] || code)})</div><div class="gs-skel" style="height:170px"></div></div>`;
+    const uniq = {}; positions.forEach(p => { uniq[p.sym.toUpperCase() + '|' + p.market] = { symbol: p.sym, market: p.market }; });
+    const r = await MK.post({ action: 'history', range, items: JSON.stringify(Object.values(uniq)) });
+    if (!el.isConnected) return;
+    el.__hist = (r && r.success && r.history) || {}; el.__histKey = cacheKey;
+  }
+  const all = mkBuildSeries(positions, el.__hist, today, null, null);   // كله بأسعار السوق (من غير قفزة في الآخر)
+  const RANGES = [['3m', '3 شهور', 92], ['6m', '6 شهور', 183], ['1y', 'سنة', 366], ['all', 'الكل', 99999]];
+  rangeKey = rangeKey || el.__range || 'all'; el.__range = rangeKey;
+  const lim = (RANGES.find(x => x[0] === rangeKey) || RANGES[3])[2];
+  const cut = new Date(Date.now() - lim * 86400000).toISOString().slice(0, 10);
+  let pts = all.filter(p => p.d >= cut); if (pts.length < 2) pts = all.slice(-2);
+  const missing = positions.filter(p => { const h = el.__hist[p.sym.toUpperCase() + '|' + p.market]; return !(h && h.rows && h.rows.length); }).map(p => p.sym);
+  const W = 600, H = 180, P = 8;
+  const vals = pts.flatMap(p => [p.v, p.c]), min = Math.min(...vals), max = Math.max(...vals), span = (max - min) || 1;
+  const x = (i) => P + i * (W - 2 * P) / Math.max(1, pts.length - 1), y = (v) => H - P - (v - min) / span * (H - 2 * P);
+  const path = (k) => pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p[k]).toFixed(1)}`).join(' ');
+  const last = pts[pts.length - 1], firstP = pts[0];
+  const pl = last.v - last.c, plPct = last.c ? pl / last.c * 100 : 0, up = pl >= 0;
+  const chg = last.v - firstP.v;
   const color = up ? 'var(--gs-pos, #0E9F6E)' : 'var(--gs-neg, #E02424)';
-  el.innerHTML = `<div class="section-card gs-curve"><div class="u-row" style="align-items:baseline;flex-wrap:wrap;gap:6px;">
-      <div class="section-title u-m0">📈 أداء إجمالي المحفظة (${escapeHtml(ccy)})</div>
-      <div class="u-fs13"><b class="g-num">${MK.n(lastV)}</b> <span style="color:${color}" class="g-num">${up ? '▲' : '▼'} ${MK.n(Math.abs(diff))} (${Math.abs(pct).toFixed(2)}%)</span> <small class="u-muted">منذ ${escapeHtml(pts[0].d)}</small></div></div>
-    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:170px;display:block;margin-top:8px;" role="img" aria-label="منحنى قيمة المحفظة">
-      <path d="${line} L${x(pts.length - 1).toFixed(1)},${H} L${x(0).toFixed(1)},${H} Z" fill="${color}" opacity=".12"></path>
-      <path d="${line}" fill="none" stroke="${color}" stroke-width="2.5" vector-effect="non-scaling-stroke" stroke-linejoin="round"></path>
-    </svg>${hist.length ? `<div class="u-hint u-mt4">النقاط قبل ${escapeHtml(snaps.length ? firstSnap : 'اليوم')} محسوبة من عمليات الشراء والبيع في خططك (بسعر التنفيذ)، وبعدها قيمة المحفظة الفعلية يوميًا.</div>` : ''}</div>`;
+  el.innerHTML = `<div class="section-card gs-curve">
+    <div class="u-row" style="align-items:flex-start;flex-wrap:wrap;gap:6px;">
+      <div><div class="section-title u-m0">📈 أداء إجمالي المحفظة (${escapeHtml(MK_CCY_AR[code] || code)})</div>
+        <div class="u-fs13 u-mt4"><b class="g-num">${MK.n(last.v)}</b> <span class="u-muted">القيمة الحالية</span> · <span style="color:${color}" class="g-num">${up ? '▲' : '▼'} ${MK.n(Math.abs(pl))} (${Math.abs(plPct).toFixed(2)}%)</span> <span class="u-muted">مقابل المستثمر ${MK.n(last.c)}</span></div></div>
+      <div class="gs-curve-rng">${RANGES.map(([k, l]) => `<button type="button" class="${k === rangeKey ? 'on' : ''}" data-rng="${k}">${l}</button>`).join('')}</div>
+    </div>
+    <div class="gs-curve-box">
+      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" class="gs-curve-svg" role="img" aria-label="منحنى قيمة المحفظة">
+        <path d="${path('v')} L${x(pts.length - 1).toFixed(1)},${H} L${x(0).toFixed(1)},${H} Z" fill="${color}" opacity=".12"></path>
+        <path d="${path('c')}" fill="none" stroke="var(--text-muted, #888)" stroke-width="1.6" stroke-dasharray="5 4" vector-effect="non-scaling-stroke"></path>
+        <path d="${path('v')}" fill="none" stroke="${color}" stroke-width="2.5" vector-effect="non-scaling-stroke" stroke-linejoin="round"></path>
+        <line class="gs-curve-cursor" x1="0" x2="0" y1="0" y2="${H}" stroke="var(--text-muted, #999)" stroke-width="1" vector-effect="non-scaling-stroke" style="display:none"></line>
+      </svg>
+      <div class="gs-curve-tip" hidden></div>
+    </div>
+    <div class="gs-curve-legend"><span><i style="background:${color}"></i>القيمة السوقية</span><span><i class="dash"></i>المبلغ المستثمر</span><span class="u-muted">من ${escapeHtml(firstP.d)} · التغير في الفترة <b class="g-num" style="color:${chg >= 0 ? 'var(--gs-pos,#0E9F6E)' : 'var(--gs-neg,#E02424)'}">${chg >= 0 ? '+' : '−'}${MK.n(Math.abs(chg))}</b></span></div>
+    <div class="u-hint u-mt4">القيمة في كل يوم = الكمية التي كانت لديك × سعر إغلاق السهم في ذلك اليوم (الأسعار متأخرة).${missing.length ? ` لا توجد أسعار تاريخية لـ ${missing.map(x => `<bdi>${escapeHtml(x)}</bdi>`).join('، ')} — حُسبت بآخر سعر تنفيذ.` : ''}${now && Math.abs(now.value - last.v) > Math.max(1, last.v * 0.01) ? ` بطاقة القيمة بالأعلى (${MK.n(now.value)}) محسوبة بآخر سعر أدخلته في خططك، والمنحنى بسعر السوق.` : ''}</div>
+  </div>`;
+  el.querySelectorAll('[data-rng]').forEach(b => b.onclick = () => mkPortfolioCurve(el, ccys, sel, plans, grids, b.dataset.rng));
+  const svg = el.querySelector('.gs-curve-svg'), tip = el.querySelector('.gs-curve-tip'), cur = el.querySelector('.gs-curve-cursor');
+  const move = (ev) => {
+    const r = svg.getBoundingClientRect(); const cx = (ev.touches ? ev.touches[0].clientX : ev.clientX) - r.left;
+    const i = Math.max(0, Math.min(pts.length - 1, Math.round((cx / r.width * W - P) / ((W - 2 * P) / Math.max(1, pts.length - 1)))));
+    const p = pts[i]; const px = x(i) / W * r.width;
+    cur.setAttribute('x1', x(i)); cur.setAttribute('x2', x(i)); cur.style.display = '';
+    tip.hidden = false; tip.innerHTML = `<b>${escapeHtml(p.d)}</b><br>القيمة: <b class="g-num">${MK.n(p.v)}</b><br>المستثمر: <span class="g-num">${MK.n(p.c)}</span>`;
+    tip.style.left = Math.max(0, Math.min(r.width - tip.offsetWidth, px - tip.offsetWidth / 2)) + 'px';
+  };
+  svg.addEventListener('mousemove', move); svg.addEventListener('touchmove', move, { passive: true }); svg.addEventListener('touchstart', move, { passive: true });
+  svg.addEventListener('mouseleave', () => { tip.hidden = true; cur.style.display = 'none'; });
 }
 // بتتنادى من الرئيسية (shell.js) بعد الرسم
 async function mkAfterHome(plans, grids, ccys, sel){

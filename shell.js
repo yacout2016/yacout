@@ -50,7 +50,7 @@
      ===================================================================== */
 
   // رقم الإصدار - بيظهر في شاشة "حسابي" (غيّره مع ?v= في index.php و VERSION في sw.js)
-  const APP_VERSION = 90;
+  const APP_VERSION = 91;
 
   /* الاستعلامات المتكررة (الدردشة/التوصيات/قائمة المتابعة) - استعلام متكيّف (الإصدار 89)
      - بتقف لما التبويب يكون مخفي أو الموبايل مقفول
@@ -753,6 +753,8 @@
 
       // 10) الجداول: كل جدول جوه غلاف بيتحرك يمين وشمال، والبيانات في سطر واحد (shell.css)
       wrapTables(app);
+      // 10أ) الإصدار 90: شاشة المحفظة والتقارير ← كل جدول بيعرض 10 صفوف والباقي بالتمرير لفوق وتحت
+      if (ROWS10_SCREENS[GS.currentScreen]) { limitTableRows(app, 10); setTimeout(relimit, 400); }
     } finally {
       // 11) الثيم وتعديلات استوديو التصميم (حتى لشاشات الترحيب والدخول)
       applyStudio();
@@ -777,6 +779,32 @@
       const rest = Array.from(first.children).filter(el => el !== t && !el.classList.contains('gs-hide') && !el.classList.contains('gs-dup-back') && getComputedStyle(el).display !== 'none');
       if (!rest.length) first.classList.add('gs-dup-title');
     }
+  }
+
+  // الإصدار 90: أقصى 10 صفوف ظاهرة في جداول شاشة المحفظة والتقارير (الباقي تمرير رأسي + رأس الجدول ثابت)
+  const ROWS10_SCREENS = { renderPortfolio:1, renderDiversificationReport:1 };
+  // إعادة الحساب بعد تحميل الخطوط وتغيير حجم الشاشة (ارتفاع الصفوف بيتغير)
+  const relimit = () => { const a = document.getElementById('app'); if (a && ROWS10_SCREENS[GS.currentScreen]) limitTableRows(a, 10); };
+  window.addEventListener('resize', () => { clearTimeout(relimit.t); relimit.t = setTimeout(relimit, 150); });
+  try { document.fonts && document.fonts.ready.then(relimit); } catch(e){}
+  function limitTableRows(root, n){
+    root.querySelectorAll('.gs-tscroll').forEach(w => {
+      const t = w.querySelector('table'); if (!t) return;
+      const rows = t.tBodies[0] ? Array.from(t.tBodies[0].rows) : [];
+      const want = rows.length > n;
+      let h = 0;
+      if (want) {
+        // من أول الجدول لحد آخر الصف العاشر (بالمكان الفعلي - بيشمل الرأس والحدود)
+        const wb = w.getBoundingClientRect(), r = rows[n - 1].getBoundingClientRect();
+        h = Math.ceil(r.bottom - wb.top - w.clientTop + w.scrollTop);   // من أول الغلاف (فيه مسافة قبل الجدول) لحد آخر الصف العاشر
+      }
+      if (want && h > 0) {
+        const extra = Math.max(0, w.offsetHeight - w.clientHeight - w.clientTop);   // شريط التمرير الأفقي + الحد السفلي
+        const v = (h + extra + 1) + 'px';
+        if (w.style.maxHeight !== v) w.style.maxHeight = v;
+        w.classList.add('gs-rows-limit');
+      } else if (w.classList.contains('gs-rows-limit')) { w.classList.remove('gs-rows-limit'); w.style.maxHeight = ''; }
+    });
   }
 
   // غلاف تمرير أفقي لكل جدول (لو الأب نفسه مش بيتحرك لوحده)

@@ -244,7 +244,20 @@ function griffine_mail($conn, $to, $subject, $opts = []){
 }
 
 // إيميل بالقالب الموحّد
+/* الإصدار 91: منع انعكاس النص المختلط (عربي + إنجليزي/أرقام) في الإيميلات والإشعارات والرسائل
+   أي مقطع لاتيني أو رقمي جوه نص فيه عربي (رمز سهم، إيميل، رقم، اسم GRIFFINE...) بيتعزل بعلامات يونيكود
+   (LRI … PDI) فبيفضل في مكانه من غير ما يقلب ترتيب الجملة. الدالة آمنة لو اتنادت أكتر من مرة. */
+function gm_bidi($s){
+    $s = (string)$s;
+    if ($s === '' || !preg_match('/\p{Arabic}/u', $s)) return $s;
+    $s = str_replace(["\u{2066}", "\u{2069}"], '', $s);
+    // مقطع = يبدأ بحرف/رقم وينتهي بحرف/رقم (علامات الترقيم في الطرفين تفضل مع الجملة العربي)
+    $tok = '[A-Za-z0-9@#$](?:[A-Za-z0-9@#$%&+=\/\\\\_.,:\'-]*[A-Za-z0-9%])?';
+    return preg_replace('/' . $tok . '(?:[ ]+' . $tok . ')*/u', "\u{2066}$0\u{2069}", $s);
+}
 function griffine_notify($conn, $to, $subject, $title, $paragraphs, $button = null, $type = 'notify', $extra = []){
+    $subject = gm_bidi($subject); $title = gm_bidi($title);
+    $paragraphs = array_map(fn($x) => is_string($x) ? gm_bidi($x) : $x, (array)$paragraphs);
     $t = gm_template($title, $paragraphs, $button);
     return griffine_mail($conn, $to, $subject, array_merge(['text' => $t['text'], 'html' => $t['html'], 'type' => $type], $extra));
 }

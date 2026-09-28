@@ -187,4 +187,32 @@ function mq_get_quote($rawSymbol, $market = 'مصر', $period = 'day'){
     @file_put_contents($cacheFile, json_encode($outArr, JSON_UNESCAPED_UNICODE));
     return $outArr;
 }
+
+/* الإصدار 91: أسعار الإغلاق اليومية التاريخية (لمنحنى أداء المحفظة الحقيقي)
+   اسم الخطة ممكن يكون مش رمز البورصة بالظبط (RAYA-2 / ABUK3) ← بنجرّب الاسم وبعدين من غير الرقم في الآخر
+   بيرجّع ['ticker' => ..., 'rows' => [['2026-07-01', 12.3], ...]] أو null - كاش 6 ساعات */
+function mq_history($rawSymbol, $market = 'مصر', $range = '1y'){
+    $rawSymbol = strtoupper(trim((string)$rawSymbol));
+    if (!preg_match('/^[A-Z0-9.\-_ ]{1,24}$/', $rawSymbol)) return null;
+    if (!in_array($range, ['3mo', '6mo', '1y', '2y', '5y'], true)) $range = '1y';
+    $m = MQ_MARKETS[$market] ?? MQ_MARKETS['مصر'];
+    $cacheDir = sys_get_temp_dir() . '/griffine_quotes'; if (!is_dir($cacheDir)) @mkdir($cacheDir, 0700, true);
+    $cacheFile = $cacheDir . '/' . md5("hist91|$rawSymbol|$market|$range") . '.json';
+    if (is_file($cacheFile) && (time() - filemtime($cacheFile)) < 6 * 3600 && ($c = @file_get_contents($cacheFile)) !== false) { $cj = json_decode($c, true); return $cj ?: null; }
+    $cands = [$rawSymbol];
+    $base = preg_replace('/[\s\-_]*\d+$/', '', $rawSymbol); if ($base !== '' && $base !== $rawSymbol) $cands[] = $base;
+    $out = null;
+    foreach ($cands as $cand) {
+        foreach ($m[2] as $suffix) {
+            $y = yahoo_rows($cand . $suffix, $range);
+            if ($y && count($y['rows']) >= 2) {
+                $rows = [];
+                foreach ($y['rows'] as $r) $rows[] = [gmdate('Y-m-d', $r['t']), round($r['c'], 4)];
+                $out = ['ticker' => $cand . $suffix, 'rows' => $rows]; break 2;
+            }
+        }
+    }
+    @file_put_contents($cacheFile, json_encode($out));
+    return $out;
+}
 ?>
