@@ -1,0 +1,647 @@
+/* =====================================================================
+   GRIFFINE Studio Editor — شاشة التعديل الحية (الإصدار 72) — للأدمن بس
+   ---------------------------------------------------------------------
+   بتتحمّل بس لما الأدمن يدوس "استوديو التصميم" في لوحة التحكم (studio.js → openEditor).
+   طريقة الشغل:
+     1) شريط أدوات تحت: اختيار الشاشة / تحديد عنصر / الثيمات / كل التعديلات / حفظ / خروج
+     2) الشاشة المختارة بتظهر حية وتفاعلية زي ما العميل شايفها بالظبط
+     3) "تحديد عنصر" ← دوس على أي حاجة في الشاشة (أو القائمة الجانبية) ← لوح التعديل بيفتح:
+          النص / الخط / الحجم / السماكة / اللون / الخلفية / المحاذاة / الحواف / إخفاء
+     4) كل تعديل بيظهر فورًا (معاينة) - ومبيتحفظش لكل الزوار غير لما تدوس "حفظ"
+
+   ---------------------------------------------------------------------
+   فهرس الأقسام:
+     00. الحالة العامة + أدوات مساعدة
+     01. التعرف على العنصر (وصفه بالعربي + محدد CSS ثابت له)
+     02. تعديل المسودة (نصوص / تنسيق) + المعاينة
+     03. بناء الواجهة (شريط الأدوات / اللوح / إطارات التحديد)
+     04. وضع التحديد (الضغط على أي عنصر)
+     05. لوح العنصر المحدد
+     06. لوح الثيمات
+     07. لوح كل التعديلات
+     08. الحفظ والخروج
+     09. الفتح
+   ===================================================================== */
+(function(){
+  'use strict';
+
+  const ST = window.GStudio, GS = window.GShell;
+  const E = window.GStudioEditor = {};
+
+
+  /* =====================================================================
+     00. الحالة العامة + أدوات مساعدة
+     ===================================================================== */
+  const state = {
+    isOpen: false,
+    picking: false,       // وضع التحديد شغال؟
+    el: null,             // العنصر المحدد
+    panel: 'welcome',     // welcome | element | themes | list
+    draft: null,          // مسودة تعديلات الشاشات
+    themeDraft: null,     // مسودة الثيم
+    savedO: null,         // آخر نسخة محفوظة (للرجوع لو خرجنا من غير حفظ)
+    savedT: null,
+    dirtyO: false,
+    dirtyT: false,
+    catalog: [],          // قائمة الشاشات
+    place: null,          // مكان التعديل: اسم الشاشة أو *
+    textMode: 'el'        // el = العنصر ده بس | word = نفس الكلمة في كل مكان
+  };
+
+  const esc = GS.esc;
+  const icon = GS.icon;
+  const $ = (sel, root) => (root || document).querySelector(sel);
+  const clone = (o) => JSON.parse(JSON.stringify(o == null ? null : o));
+  const screenNow = () => document.body.getAttribute('data-gs-screen') || '';
+  const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+
+  // لون محسوب من المتصفح (rgb/rgba) → #RRGGBB (عشان خانة اختيار اللون)
+  function toHex(c){
+    const m = String(c || '').match(/rgba?\(([^)]+)\)/);
+    if (!m) return /^#[0-9a-f]{6}$/i.test(c) ? c : '#000000';
+    const [r, g, b] = m[1].split(',').map(x => parseFloat(x));
+    return '#' + [r, g, b].map(v => Math.round(v).toString(16).padStart(2, '0')).join('').toUpperCase();
+  }
+
+  // اسم الشاشة بالعربي
+  function screenLabel(name){
+    if (!name || name === '*') return 'كل الشاشات';
+    const it = state.catalog.find(x => x.fnName.replace(/^GS:/, '') === name);
+    return it ? it.label : name;
+  }
+
+
+  /* =====================================================================
+     01. التعرف على العنصر
+     ===================================================================== */
+  const CHROME_SEL = '.gs-sidebar, .gs-appbar, .gs-tabbar';
+  const isChrome = (el) => !!(el && el.closest(CHROME_SEL));
+
+  // وصف العنصر بالعربي
+  function describe(el){
+    const tag = el.tagName.toLowerCase();
+    const kind = {
+      h1:'عنوان رئيسي', h2:'عنوان', h3:'عنوان فرعي', h4:'عنوان فرعي', button:'زرار', a:'رابط', th:'اسم عمود',
+      td:'خانة في جدول', select:'قائمة منسدلة', option:'اختيار في قائمة', input:'حقل إدخال', textarea:'مربع كتابة',
+      label:'عنوان حقل', img:'صورة', p:'فقرة', small:'نص صغير', b:'نص عريض', strong:'نص عريض', li:'عنصر في قائمة',
+      span:'نص', div:'مربع', svg:'أيقونة', table:'جدول', tr:'صف في جدول', nav:'شريط تنقل', aside:'القائمة الجانبية', header:'الشريط العلوي'
+    }[tag] || 'عنصر';
+    const tn = ST.firstTextNode(el);
+    const txt = (tn ? tn.nodeValue : (el.getAttribute('placeholder') || el.textContent || '')).trim().replace(/\s+/g, ' ');
+    return { kind, txt: txt.slice(0, 40) + (txt.length > 40 ? '…' : '') };
+  }
+
+  // محدد CSS ثابت للعنصر: من أقرب عنصر ليه id (أو الشريط الجانبي/العلوي/التبويبات) ونازل بترتيب العناصر
+  function cssPath(el){
+    const parts = [];
+    let cur = el;
+    while (cur && cur !== document.body && cur !== document.documentElement) {
+      if (cur.id && /^[A-Za-z][A-Za-z0-9_-]*$/.test(cur.id) && document.querySelectorAll('#' + cur.id).length === 1) { parts.unshift('#' + cur.id); break; }
+      const anchor = ['gs-sidebar', 'gs-appbar', 'gs-tabbar'].find(c => cur.classList && cur.classList.contains(c));
+      if (anchor) { parts.unshift('.' + anchor); break; }
+      const parent = cur.parentElement;
+      if (!parent) break;
+      const idx = Array.prototype.indexOf.call(parent.children, cur) + 1;
+      parts.unshift(`${cur.tagName.toLowerCase()}:nth-child(${idx})`);
+      cur = parent;
+      if (cur === document.body) parts.unshift('body');
+    }
+    const sel = parts.join(' > ');
+    try { if (ST.safeSelector(sel) && document.querySelector(sel) === el) return sel; } catch(e){}
+    return null;
+  }
+
+
+  /* =====================================================================
+     02. تعديل المسودة + المعاينة
+     ===================================================================== */
+  function preview(){
+    ST.overrides = state.draft;
+    ST.apply();
+    ST.applyTheme(state.themeDraft);
+    updateCounters();
+  }
+  const markO = () => { state.dirtyO = true; preview(); };
+  const markT = () => { state.dirtyT = true; preview(); };
+
+  // قاموس الكلمات: from → to في مكان معيّن
+  function setWord(place, from, to){
+    from = String(from || '').trim(); if (!from) return;
+    const list = state.draft.texts;
+    const i = list.findIndex(r => r.screen === place && r.from === from);
+    if (to == null || to.trim() === from) { if (i >= 0) list.splice(i, 1); }
+    else if (i >= 0) list[i].to = to;
+    else list.push({ screen: place, from, to });
+  }
+
+  // نص عنصر واحد بعينه
+  function setElText(place, sel, text, original){
+    const list = state.draft.elTexts;
+    const i = list.findIndex(r => r.screen === place && r.sel === sel);
+    if (text == null || text.trim() === String(original || '').trim()) { if (i >= 0) list.splice(i, 1); }
+    else if (i >= 0) list[i].text = text;
+    else list.push({ screen: place, sel, text });
+  }
+
+  // تنسيق عنصر: خاصية واحدة (قيمة فاضية = شيل الخاصية)
+  function setStyle(place, sel, prop, value, label){
+    const list = state.draft.styles;
+    let r = list.find(x => x.screen === place && x.sel === sel);
+    if (!r) { r = { screen: place, sel, css: {}, label: label || '' }; list.push(r); }
+    if (value === '' || value == null) delete r.css[prop];
+    else if (ST.safeValue(prop, value)) r.css[prop] = String(value);
+    if (!Object.keys(r.css).length) list.splice(list.indexOf(r), 1);
+  }
+
+  // كل تعديلات عنصر (في المكانين: الشاشة دي + كل الشاشات)
+  function rulesFor(sel){
+    const places = [screenNow(), '*'];
+    return {
+      styles: state.draft.styles.filter(r => r.sel === sel && places.includes(r.screen)),
+      elTexts: state.draft.elTexts.filter(r => r.sel === sel && places.includes(r.screen))
+    };
+  }
+  function styleOf(sel, place, prop){
+    const r = state.draft.styles.find(x => x.sel === sel && x.screen === place);
+    return r && r.css[prop] != null ? r.css[prop] : '';
+  }
+
+
+  /* =====================================================================
+     03. بناء الواجهة
+     ===================================================================== */
+  let ui = null;
+  function buildUi(){
+    if (!document.getElementById('gsStudioCss')) {
+      const l = document.createElement('link');
+      l.id = 'gsStudioCss'; l.rel = 'stylesheet'; l.href = 'studio.css?v=72';
+      document.head.appendChild(l);
+    }
+    const root = document.createElement('div');
+    root.id = 'gsStudio'; root.setAttribute('data-gs-studio', '1'); root.setAttribute('data-html2canvas-ignore', 'true');
+    root.innerHTML = `
+      <div class="gst-hover" id="gstHover"></div>
+      <div class="gst-selbox" id="gstSel"></div>
+      <aside class="gst-panel" id="gstPanel" aria-label="لوح التعديل">
+        <div class="gst-panel-head"><b id="gstPanelTitle">استوديو التصميم</b>
+          <button type="button" class="gst-ic" id="gstCollapse" aria-label="تصغير">${icon('chev')}</button></div>
+        <div class="gst-panel-body" id="gstBody"></div>
+      </aside>
+      <div class="gst-bar" role="toolbar" aria-label="أدوات استوديو التصميم">
+        <span class="gst-brand">${icon('brush')}<span>استوديو التصميم</span></span>
+        <select id="gstScreen" aria-label="اختيار الشاشة"><option>جاري تحميل الشاشات...</option></select>
+        <button type="button" id="gstPick" class="gst-btn">${icon('target')}<span>تحديد عنصر</span></button>
+        <button type="button" id="gstThemes" class="gst-btn">${icon('grid')}<span>الثيمات</span></button>
+        <button type="button" id="gstList" class="gst-btn">${icon('report')}<span>التعديلات <i id="gstCount">0</i></span></button>
+        <button type="button" id="gstMode" class="gst-btn" title="معاينة الوضع الليلي/النهاري">${icon('moon')}</button>
+        <span class="gst-spacer"></span>
+        <button type="button" id="gstSave" class="gst-btn gst-primary">${icon('check')}<span>حفظ</span></button>
+        <button type="button" id="gstExit" class="gst-btn">${icon('x')}<span>خروج</span></button>
+      </div>`;
+    document.body.appendChild(root);
+    document.body.classList.add('gs-studio-on');
+    ui = root;
+
+    $('#gstPick').onclick = () => setPicking(!state.picking);
+    $('#gstThemes').onclick = () => showPanel('themes');
+    $('#gstList').onclick = () => showPanel('list');
+    $('#gstMode').onclick = () => GS.toggleTheme();
+    $('#gstSave').onclick = save;
+    $('#gstExit').onclick = exit;
+    $('#gstCollapse').onclick = () => $('#gstPanel').classList.toggle('collapsed');
+    $('#gstScreen').onchange = openScreenFromPicker;
+    fillScreenPicker();
+  }
+
+  // قائمة الشاشات (مجمّعة بالأقسام)
+  async function fillScreenPicker(){
+    try { state.catalog = await GS.getScreenCatalog(); } catch(e){ state.catalog = []; }
+    const sel = $('#gstScreen'); if (!sel) return;
+    const groups = {};
+    state.catalog.forEach((it, i) => { (groups[it.section] = groups[it.section] || []).push(`<option value="${i}">${esc(it.label)}</option>`); });
+    sel.innerHTML = `<option value="">— اختار الشاشة اللي عايز تعدّلها —</option>` +
+      Object.keys(groups).map(g => `<optgroup label="${esc(g)}">${groups[g].join('')}</optgroup>`).join('');
+    syncScreenPicker();
+  }
+  function syncScreenPicker(){
+    const sel = $('#gstScreen'); if (!sel) return;
+    const i = state.catalog.findIndex(x => x.fnName.replace(/^GS:/, '') === screenNow());
+    sel.value = i >= 0 ? String(i) : '';
+  }
+  async function openScreenFromPicker(){
+    const it = state.catalog[+$('#gstScreen').value];
+    if (!it) return;
+    select(null);
+    try { await (it.arg !== undefined ? it.fn(it.arg) : it.fn()); } catch(e){}
+  }
+
+  function updateCounters(){
+    const d = state.draft || {};
+    const n = (d.texts || []).length + (d.elTexts || []).length + (d.styles || []).length;
+    const c = $('#gstCount'); if (c) c.textContent = n;
+    const s = $('#gstSave'); if (s) s.classList.toggle('pulse', state.dirtyO || state.dirtyT);
+  }
+
+  // إطار حوالين العنصر (بيتحدّث مع السكرول)
+  function placeBox(box, el){
+    if (!box) return;
+    if (!el || !el.isConnected) { box.style.display = 'none'; return; }
+    const r = el.getBoundingClientRect();
+    box.style.display = 'block';
+    box.style.top = r.top + 'px'; box.style.left = r.left + 'px';
+    box.style.width = r.width + 'px'; box.style.height = r.height + 'px';
+  }
+  let rafId = 0;
+  function loop(){
+    if (!state.isOpen) return;
+    if (state.el && !state.el.isConnected) select(null);        // الشاشة اتغيّرت
+    placeBox($('#gstSel'), state.el);
+    rafId = requestAnimationFrame(loop);
+  }
+
+
+  /* =====================================================================
+     04. وضع التحديد
+     ---------------------------------------------------------------------
+     وهو شغال: أي ضغطة على الشاشة بتحدد العنصر بدل ما تنفّذه (زرار / رابط / قائمة).
+     وهو واقف: الشاشة بتشتغل عادي (تقدر تفتح قوائم وتتنقل وتشوف الشكل الحقيقي).
+     ===================================================================== */
+  function setPicking(on){
+    state.picking = on;
+    document.body.classList.toggle('gs-studio-picking', on);
+    const b = $('#gstPick'); if (b) b.classList.toggle('on', on);
+    if (!on) placeBox($('#gstHover'), null);
+    if (on && state.panel === 'welcome') renderWelcome();
+  }
+
+  const inStudio = (t) => t && t.closest && t.closest('[data-gs-studio]');
+  function targetOf(e){
+    let t = e.target;
+    if (t && t.nodeType === 3) t = t.parentElement;
+    if (t && t.closest && t.closest('svg')) t = t.closest('svg').parentElement;   // الأيقونة ← العنصر اللي فيها
+    return t;
+  }
+  function blockEvent(e){
+    if (!state.picking || inStudio(e.target)) return;
+    e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+    if (e.type === 'click') { const t = targetOf(e); if (t && t !== document.body && t !== document.documentElement) select(t); }
+  }
+  function onHover(e){
+    if (!state.picking || inStudio(e.target)) { placeBox($('#gstHover'), null); return; }
+    placeBox($('#gstHover'), targetOf(e));
+  }
+  function onKey(e){
+    if (e.key !== 'Escape' || !state.isOpen) return;
+    if (state.el) select(null); else if (state.picking) setPicking(false);
+  }
+  const BLOCKED = ['pointerdown', 'mousedown', 'mouseup', 'click', 'dblclick', 'submit', 'contextmenu'];
+  function listen(on){
+    const f = on ? 'addEventListener' : 'removeEventListener';
+    BLOCKED.forEach(t => window[f](t, blockEvent, true));
+    window[f]('mousemove', onHover, true);
+    window[f]('keydown', onKey, true);
+  }
+
+
+  /* =====================================================================
+     05. لوح العنصر المحدد
+     ===================================================================== */
+  function select(el){
+    state.el = el;
+    if (!el) { placeBox($('#gstSel'), null); if (state.panel === 'element') renderWelcome(); return; }
+    const chrome = isChrome(el);
+    state.place = chrome ? '*' : screenNow();
+    state.textMode = chrome ? 'word' : 'el';
+    showPanel('element');
+  }
+
+  function showPanel(name){
+    state.panel = name;
+    $('#gstPanel').classList.remove('collapsed');
+    ['gstThemes', 'gstList'].forEach(id => { const b = $('#' + id); if (b) b.classList.toggle('on', (id === 'gstThemes' && name === 'themes') || (id === 'gstList' && name === 'list')); });
+    if (name === 'element' && state.el) renderElement();
+    else if (name === 'themes') renderThemes();
+    else if (name === 'list') renderList();
+    else renderWelcome();
+  }
+  function setBody(title, html){ $('#gstPanelTitle').textContent = title; $('#gstBody').innerHTML = html; }
+
+  function renderWelcome(){
+    state.panel = 'welcome';
+    setBody('استوديو التصميم', `
+      <div class="gst-steps">
+        <p><b>1.</b> اختار الشاشة من القائمة تحت (أو اتنقّل في الموقع عادي).</p>
+        <p><b>2.</b> دوس <b>تحديد عنصر</b> ← وبعدين دوس على أي كلمة أو زرار أو عنوان أو اسم عمود أو عنصر في القائمة الجانبية.</p>
+        <p><b>3.</b> عدّل النص أو الخط أو اللون أو الخلفية - التعديل بيظهر قدامك فورًا.</p>
+        <p><b>4.</b> من <b>الثيمات</b> اختار هوية جاهزة (ذهبي / أصفر / أخضر / أزرق ...) وعدّل ألوانها وخطها.</p>
+        <p><b>5.</b> دوس <b>حفظ</b> عشان التعديلات تظهر لكل الزوار.</p>
+      </div>
+      <div class="gst-note">وقّف "تحديد عنصر" لو عايز تتعامل مع الشاشة عادي (تفتح قائمة منسدلة أو تبويب) وبعدين شغّله تاني.<br>زرار Esc بيلغي التحديد.</div>
+      <div class="gst-note">شاشة الأدمن دي بتظهر لمدير الموقع بس - المستخدم العادي عنده الوضع الليلي/النهاري بس.</div>`);
+  }
+
+  function renderElement(){
+    const el = state.el;
+    const sel = cssPath(el);
+    const d = describe(el);
+    if (!sel) {
+      setBody('العنصر المحدد', `<div class="gst-note">العنصر ده مينفعش يتحدد بشكل ثابت (بيتغيّر مع البيانات). جرّب تدوس على العنصر اللي حواليه.</div>
+        <button type="button" class="gst-btn" id="gstParent">${icon('back')}<span>تحديد العنصر الأكبر</span></button>`);
+      $('#gstParent').onclick = () => { if (el.parentElement && el.parentElement !== document.body) select(el.parentElement); };
+      return;
+    }
+    const label = `${d.kind}${d.txt ? ': ' + d.txt : ''}`;
+    // مكان التعديل ثابت للوح ده (لو اتحدد عنصر تاني، أي قيمة متأخرة من اللوح القديم بتتسجل في مكانها الصح)
+    const place = state.place;
+    const cs = getComputedStyle(el);
+    const tn = ST.firstTextNode(el);
+    const isSelect = el.tagName === 'SELECT';
+    const hasPh = el.hasAttribute('placeholder');
+    const sv = (p) => styleOf(sel, place, p);
+    const fontOpts = `<option value="">— زي الموقع —</option>` + ST.FONTS.map(f => `<option value="${esc(f.name)}" ${sv('font-family') === f.name ? 'selected' : ''}>${esc(f.label)}</option>`).join('');
+
+    // ---- النص ----
+    let textHtml = '';
+    if (tn) {
+      textHtml = `<div class="gst-sec"><div class="gst-sec-t">النص</div>
+        <textarea id="gstText" rows="2">${esc(tn.nodeValue.trim())}</textarea>
+        <div class="gst-radio">
+          <label><input type="radio" name="gstTM" value="el" ${state.textMode === 'el' ? 'checked' : ''}> العنصر ده بس</label>
+          <label><input type="radio" name="gstTM" value="word" ${state.textMode === 'word' ? 'checked' : ''}> نفس الكلمة في كل مكان</label>
+        </div>
+        <div class="gst-hint">الأصلي: «${esc(ST.originalText(tn).trim().slice(0, 80))}»</div></div>`;
+    }
+    if (hasPh) {
+      textHtml += `<div class="gst-sec"><div class="gst-sec-t">النص الإرشادي جوه الحقل</div>
+        <input type="text" id="gstPh" value="${esc(el.getAttribute('placeholder') || '')}"></div>`;
+    }
+    if (isSelect) {
+      textHtml += `<div class="gst-sec"><div class="gst-sec-t">اختيارات القائمة المنسدلة</div>
+        ${Array.from(el.options).map((o, i) => { const t = o.firstChild; return t ? `<input type="text" class="gst-opt" data-i="${i}" value="${esc(o.text)}">` : ''; }).join('')}</div>`;
+    }
+
+    setBody('العنصر المحدد', `
+      <div class="gst-el"><span class="gst-kind">${esc(d.kind)}</span><span class="gst-eltxt">${esc(d.txt || '')}</span></div>
+      <div class="gst-row2">
+        <button type="button" class="gst-btn" id="gstParent">${icon('back')}<span>العنصر الأكبر</span></button>
+        <button type="button" class="gst-btn" id="gstDesel">${icon('x')}<span>إلغاء التحديد</span></button>
+      </div>
+      <div class="gst-sec"><div class="gst-sec-t">مكان التعديل</div>
+        <div class="gst-radio">
+          <label><input type="radio" name="gstPlace" value="screen" ${place !== '*' ? 'checked' : ''}> الشاشة دي بس (${esc(screenLabel(screenNow()))})</label>
+          <label><input type="radio" name="gstPlace" value="*" ${place === '*' ? 'checked' : ''}> كل الشاشات</label>
+        </div></div>
+      ${textHtml}
+      <div class="gst-sec"><div class="gst-sec-t">الخط</div>
+        <label class="gst-f">نوع الخط<select data-p="font-family">${fontOpts}</select></label>
+        <div class="gst-grid2">
+          <label class="gst-f">الحجم (px)<input type="number" min="8" max="72" data-p="font-size" data-unit="px" value="${esc(parseFloat(sv('font-size')) || '')}" placeholder="${Math.round(parseFloat(cs.fontSize))}"></label>
+          <label class="gst-f">السماكة<select data-p="font-weight">
+            ${[['', '— زي ما هو —'], ['400', 'عادي'], ['500', 'متوسط'], ['600', 'نص عريض'], ['700', 'عريض'], ['800', 'عريض جدًا']].map(([v, t]) => `<option value="${v}" ${sv('font-weight') === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+        </div>
+        <div class="gst-grid2">
+          <label class="gst-f">لون النص<span class="gst-color"><input type="color" data-p="color" value="${esc(sv('color') || toHex(cs.color))}"><button type="button" class="gst-clear" data-clear="color">افتراضي</button></span></label>
+          <label class="gst-f">المحاذاة<select data-p="text-align">
+            ${[['', '— زي ما هي —'], ['right', 'يمين'], ['center', 'وسط'], ['left', 'شمال']].map(([v, t]) => `<option value="${v}" ${sv('text-align') === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+        </div>
+        <div class="gst-checks">
+          <label><input type="checkbox" data-toggle="font-style" data-on="italic" ${sv('font-style') === 'italic' ? 'checked' : ''}> مائل</label>
+          <label><input type="checkbox" data-toggle="text-decoration" data-on="underline" ${sv('text-decoration') === 'underline' ? 'checked' : ''}> تحته خط</label>
+        </div></div>
+      <div class="gst-sec"><div class="gst-sec-t">الشكل</div>
+        <div class="gst-grid2">
+          <label class="gst-f">الخلفية<span class="gst-color"><input type="color" data-p="background-color" value="${esc(sv('background-color') || toHex(cs.backgroundColor))}"><button type="button" class="gst-clear" data-clear="background-color">افتراضي</button></span></label>
+          <label class="gst-f">لون الإطار<span class="gst-color"><input type="color" data-p="border-color" value="${esc(sv('border-color') || toHex(cs.borderTopColor))}"><button type="button" class="gst-clear" data-clear="border-color">افتراضي</button></span></label>
+        </div>
+        <div class="gst-grid2">
+          <label class="gst-f">الاستدارة (px)<input type="number" min="0" max="60" data-p="border-radius" data-unit="px" value="${esc(parseFloat(sv('border-radius')) || '')}" placeholder="${Math.round(parseFloat(cs.borderTopLeftRadius)) || 0}"></label>
+          <label class="gst-f">المسافة الداخلية (px)<input type="number" min="0" max="80" data-p="padding" data-unit="px" value="${esc(parseFloat(sv('padding')) || '')}" placeholder="${Math.round(parseFloat(cs.paddingTop)) || 0}"></label>
+        </div>
+        <div class="gst-checks"><label><input type="checkbox" data-toggle="display" data-on="none" ${sv('display') === 'none' ? 'checked' : ''}> إخفاء العنصر ده</label></div></div>
+      <button type="button" class="gst-btn gst-danger" id="gstReset">${icon('refund')}<span>إرجاع العنصر لأصله</span></button>
+      <div class="gst-hint">التعديل بيظهر فورًا كمعاينة - دوس «حفظ» تحت عشان يتطبق لكل الزوار.</div>`);
+
+    const body = $('#gstBody');
+    $('#gstParent').onclick = () => { const p = el.parentElement; if (p && p !== document.body && !inStudio(p)) select(p); };
+    $('#gstDesel').onclick = () => select(null);
+
+    // مكان التعديل
+    body.querySelectorAll('input[name="gstPlace"]').forEach(r => r.onchange = () => { state.place = r.value === '*' ? '*' : screenNow(); renderElement(); });
+
+    // النص
+    const txt = $('#gstText');
+    if (txt) {
+      const origText = ST.originalText(tn).trim();
+      // المكان والنوع بيتاخدوا لحظة الكتابة (مش لحظة التنفيذ) - عشان لو اتحدد عنصر تاني بسرعة
+      const applyText = (place, mode, value) => {
+        const v = value.replace(/\s+/g, ' ');
+        // نشيل أي تعديل قديم للعنصر ده في المكان ده وبعدين نحط الجديد حسب النوع
+        setElText(place, sel, null, origText);
+        setWord(place, origText, null);
+        if (mode === 'el') setElText(place, sel, v, origText);
+        else setWord(place, origText, v);
+        markO();
+      };
+      const applyTextLater = debounce(applyText, 250);
+      txt.oninput = () => applyTextLater(place, state.textMode, txt.value);
+      body.querySelectorAll('input[name="gstTM"]').forEach(r => r.onchange = () => { state.textMode = r.value; applyText(place, state.textMode, txt.value); });
+    }
+    const ph = $('#gstPh');
+    if (ph) {
+      const origPh = ST.originalAttr(el, 'placeholder') || '';
+      const later = debounce((place, v) => { setWord(place, origPh, v); markO(); }, 250);
+      ph.oninput = () => later(place, ph.value);
+    }
+    body.querySelectorAll('.gst-opt').forEach(inp => {
+      const opt = el.options[+inp.dataset.i];
+      const orig = ST.originalText(opt.firstChild).trim();
+      const later = debounce((place, v) => { setWord(place, orig, v); markO(); }, 250);
+      inp.oninput = () => later(place, inp.value);
+    });
+
+    // التنسيق
+    const lbl = label.slice(0, 80);
+    body.querySelectorAll('[data-p]').forEach(inp => {
+      const handler = (place, raw) => {
+        let v = String(raw).trim();
+        if (v && inp.dataset.unit) v = v + inp.dataset.unit;
+        setStyle(place, sel, inp.dataset.p, v, lbl);
+        markO();
+      };
+      const later = debounce(handler, inp.type === 'color' ? 60 : 200);
+      inp.oninput = () => later(place, inp.value);
+      inp.onchange = () => handler(place, inp.value);
+    });
+    body.querySelectorAll('[data-clear]').forEach(b => b.onclick = () => { setStyle(place, sel, b.dataset.clear, '', lbl); markO(); renderElement(); });
+    body.querySelectorAll('[data-toggle]').forEach(c => c.onchange = () => { setStyle(place, sel, c.dataset.toggle, c.checked ? c.dataset.on : '', lbl); markO(); });
+
+    // إرجاع للأصل
+    $('#gstReset').onclick = () => {
+      const r = rulesFor(sel);
+      r.styles.forEach(x => state.draft.styles.splice(state.draft.styles.indexOf(x), 1));
+      r.elTexts.forEach(x => state.draft.elTexts.splice(state.draft.elTexts.indexOf(x), 1));
+      if (tn) { const o = ST.originalText(tn).trim(); [screenNow(), '*'].forEach(p => setWord(p, o, null)); }
+      markO(); renderElement();
+    };
+  }
+
+
+  /* =====================================================================
+     06. لوح الثيمات
+     ===================================================================== */
+  function renderThemes(){
+    const t = state.themeDraft;
+    const cards = ST.PRESETS.map(p => {
+      const pal = ST.buildPalette(ST.themeFromPreset(p.id)).light;
+      const on = t && t.preset === p.id;
+      return `<button type="button" class="gst-theme ${on ? 'on' : ''}" data-preset="${p.id}">
+        <span class="gst-sw"><i style="background:${pal['--gs-brand']}"></i><i style="background:${pal['--gs-ink']}"></i><i style="background:${pal['--gs-bg']}"></i><i style="background:${ST.buildPalette(ST.themeFromPreset(p.id)).dark['--gs-surface']}"></i></span>
+        <b>${esc(p.name)}</b><small>${esc(p.note)}</small></button>`;
+    }).join('');
+
+    const color = (key, lbl, auto) => {
+      const val = t && t[key] ? t[key] : '';
+      const shown = val || ST.buildPalette(t || ST.THEME_DEFAULTS).light[{ primary:'--gs-brand', ink:'--gs-ink', bg:'--gs-bg', surface:'--gs-surface', text:'--gs-text' }[key]];
+      return `<label class="gst-f">${lbl}<span class="gst-color"><input type="color" data-t="${key}" value="${esc(shown)}">
+        ${auto ? `<label class="gst-auto"><input type="checkbox" data-auto="${key}" ${val ? '' : 'checked'}> تلقائي</label>` : ''}</span></label>`;
+    };
+
+    setBody('الثيمات والهوية البصرية', `
+      <div class="gst-sec"><div class="gst-sec-t">ثيمات جاهزة</div>
+        <div class="gst-themes">${cards}
+          <button type="button" class="gst-theme ${!t ? 'on' : ''}" data-preset=""><span class="gst-sw"><i style="background:#C9A227"></i><i style="background:#0F172A"></i><i style="background:#F3F4F6"></i><i style="background:#111923"></i></span><b>الشكل الأصلي</b><small>من غير أي ثيم (زي ما الموقع اتصمم)</small></button>
+        </div></div>
+      ${t ? `
+      <div class="gst-sec"><div class="gst-sec-t">تخصيص الثيم</div>
+        ${color('primary', 'اللون الرئيسي', false)}
+        <div class="gst-grid2">${color('ink', 'لون الأزرار', true)}${color('text', 'لون النص', true)}</div>
+        <div class="gst-grid2">${color('bg', 'خلفية الصفحة', true)}${color('surface', 'لون البطاقات', true)}</div>
+        <div class="gst-hint">"تلقائي" = اللون بيتولّد من اللون الرئيسي. الوضع الليلي بيتولّد تلقائيًا دايمًا عشان الكلام يفضل مقروء.</div>
+      </div>
+      <div class="gst-sec"><div class="gst-sec-t">الخط والأحجام</div>
+        <label class="gst-f">نوع الخط<select data-t="font"><option value="">— الافتراضي —</option>${ST.FONTS.map(f => `<option value="${esc(f.name)}" ${t.font === f.name ? 'selected' : ''}>${esc(f.label)}</option>`).join('')}</select></label>
+        <label class="gst-f">حجم الخط في الشاشات: <b id="gstScaleV">${t.scale}%</b><input type="range" min="80" max="130" step="5" data-t="scale" value="${t.scale}"></label>
+        <label class="gst-f">استدارة الحواف: <b id="gstRadV">${t.radius}px</b><input type="range" min="0" max="32" step="2" data-t="radius" value="${t.radius}"></label>
+        <label class="gst-f">شكل الأزرار<select data-t="buttons">
+          ${[['filled', 'ممتلئ (لون الأزرار)'], ['soft', 'فاتح (درجة من اللون الرئيسي)'], ['outline', 'إطار فقط']].map(([v, l]) => `<option value="${v}" ${t.buttons === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+        <div class="gst-checks"><label><input type="checkbox" data-t="tableNowrap" ${t.tableNowrap !== false ? 'checked' : ''}> بيانات الجداول في سطر واحد</label></div>
+      </div>
+      <button type="button" class="gst-btn" id="gstPreviewMode">${icon('moon')}<span>معاينة الوضع الليلي / النهاري</span></button>` : `
+      <div class="gst-note">اختار ثيم من فوق عشان تبدأ تخصّص ألوانه وخطه.</div>`}`);
+
+    const body = $('#gstBody');
+    body.querySelectorAll('[data-preset]').forEach(b => b.onclick = () => {
+      state.themeDraft = b.dataset.preset ? ST.themeFromPreset(b.dataset.preset) : null;
+      markT(); renderThemes();
+    });
+    if (!t) return;
+    const setT = (k, v) => { state.themeDraft[k] = v; markT(); };
+    body.querySelectorAll('[data-t]').forEach(inp => {
+      const k = inp.dataset.t;
+      const handler = () => {
+        if (inp.type === 'checkbox') return setT(k, inp.checked);
+        if (inp.type === 'range') { setT(k, +inp.value); const lb = $(k === 'scale' ? '#gstScaleV' : '#gstRadV'); if (lb) lb.textContent = inp.value + (k === 'scale' ? '%' : 'px'); return; }
+        if (inp.type === 'color') { const a = body.querySelector(`[data-auto="${k}"]`); if (a) a.checked = false; }
+        setT(k, inp.value);
+      };
+      inp.oninput = inp.type === 'color' ? debounce(handler, 60) : handler;
+      inp.onchange = handler;
+    });
+    body.querySelectorAll('[data-auto]').forEach(c => c.onchange = () => {
+      const k = c.dataset.auto;
+      setT(k, c.checked ? '' : body.querySelector(`[data-t="${k}"]`).value);
+    });
+    $('#gstPreviewMode').onclick = () => GS.toggleTheme();
+  }
+
+
+  /* =====================================================================
+     07. لوح كل التعديلات
+     ===================================================================== */
+  function renderList(){
+    const d = state.draft;
+    const row = (kind, i, main, sub) => `<div class="gst-rule"><span><b>${main}</b><small>${sub}</small></span>
+      <button type="button" class="gst-ic" data-del="${kind}:${i}" aria-label="حذف">${icon('x')}</button></div>`;
+    const propNames = { 'color':'لون', 'background-color':'خلفية', 'font-size':'حجم', 'font-weight':'سماكة', 'font-family':'خط', 'font-style':'مائل',
+      'text-align':'محاذاة', 'text-decoration':'خط تحت', 'padding':'مسافة', 'border-radius':'استدارة', 'border-color':'إطار', 'display':'مخفي', 'opacity':'شفافية', 'letter-spacing':'تباعد', 'line-height':'ارتفاع السطر' };
+
+    setBody('كل التعديلات', `
+      <div class="gst-sec"><div class="gst-sec-t">تغيير كلمات (${d.texts.length})</div>
+        ${d.texts.map((r, i) => row('texts', i, `${esc(r.from)} ← ${esc(r.to)}`, esc(screenLabel(r.screen)))).join('') || '<div class="gst-hint">مفيش</div>'}</div>
+      <div class="gst-sec"><div class="gst-sec-t">نصوص عناصر بعينها (${d.elTexts.length})</div>
+        ${d.elTexts.map((r, i) => row('elTexts', i, esc(r.text), esc(screenLabel(r.screen)))).join('') || '<div class="gst-hint">مفيش</div>'}</div>
+      <div class="gst-sec"><div class="gst-sec-t">تنسيقات (${d.styles.length})</div>
+        ${d.styles.map((r, i) => row('styles', i, esc(r.label || r.sel.split(' > ').slice(-1)[0]), `${esc(screenLabel(r.screen))} · ${Object.keys(r.css).map(p => propNames[p] || p).join('، ')}`)).join('') || '<div class="gst-hint">مفيش</div>'}</div>
+      <button type="button" class="gst-btn gst-danger" id="gstClearAll">${icon('x')}<span>مسح كل تعديلات الشاشات</span></button>
+      <div class="gst-hint">الحذف هنا معاينة بس لحد ما تدوس «حفظ».</div>`);
+
+    const body = $('#gstBody');
+    body.querySelectorAll('[data-del]').forEach(b => b.onclick = () => {
+      const [kind, i] = b.dataset.del.split(':');
+      state.draft[kind].splice(+i, 1);
+      markO(); renderList();
+    });
+    $('#gstClearAll').onclick = () => {
+      if (!confirm('مسح كل تعديلات النصوص والتنسيق في كل الشاشات؟ (الثيم مش هيتأثر)')) return;
+      state.draft = { v:1, texts:[], elTexts:[], styles:[] };
+      markO(); renderList();
+    };
+  }
+
+
+  /* =====================================================================
+     08. الحفظ والخروج
+     ===================================================================== */
+  async function save(){
+    if (!state.dirtyO && !state.dirtyT) { GS.toast('مفيش تعديلات جديدة للحفظ.', 'info'); return; }
+    const btn = $('#gstSave'); btn.disabled = true;
+    try {
+      if (state.dirtyO) { await ST.save('overrides', state.draft); state.draft = clone(ST.overrides); state.savedO = clone(ST.overrides); state.dirtyO = false; }
+      if (state.dirtyT) { const v = await ST.save('theme', state.themeDraft); state.themeDraft = clone(v); state.savedT = clone(v); state.dirtyT = false; }
+      preview();
+      GS.toast('تم حفظ التعديلات - هتظهر لكل الزوار.', 'ok');
+    } catch(e){
+      GS.toast('تعذّر الحفظ: ' + e.message, 'err');
+    } finally { btn.disabled = false; updateCounters(); }
+  }
+
+  function exit(){
+    if ((state.dirtyO || state.dirtyT) && !confirm('فيه تعديلات متحفظتش. تخرج وتلغيها؟')) return;
+    // رجوع لآخر نسخة محفوظة
+    ST.overrides = clone(state.savedO) || { v:1, texts:[], elTexts:[], styles:[] };
+    ST.theme = clone(state.savedT);
+    ST.applyTheme(ST.theme); ST.apply();
+    setPicking(false);
+    listen(false);
+    cancelAnimationFrame(rafId);
+    if (screenObserver) { screenObserver.disconnect(); screenObserver = null; }
+    if (ui) ui.remove(); ui = null;
+    document.body.classList.remove('gs-studio-on', 'gs-studio-picking');
+    state.isOpen = false; state.el = null;
+  }
+
+
+  /* =====================================================================
+     09. الفتح
+     ===================================================================== */
+  let screenObserver = null;
+  E.open = function(){
+    if (state.isOpen) return;
+    if (!ST.canEdit()) { GS.toast('استوديو التصميم متاح لمدير الموقع بس.', 'err'); return; }
+    state.isOpen = true;
+    state.savedO = clone(ST.overrides);
+    state.savedT = clone(ST.theme);
+    state.draft = clone(ST.overrides) || { v:1, texts:[], elTexts:[], styles:[] };
+    ['texts', 'elTexts', 'styles'].forEach(k => { if (!Array.isArray(state.draft[k])) state.draft[k] = []; });
+    state.themeDraft = clone(ST.theme);
+    state.dirtyO = state.dirtyT = false;
+    buildUi();
+    listen(true);
+    renderWelcome();
+    updateCounters();
+    loop();
+    // الشاشة بتتغيّر ← نحدّث اختيار الشاشة في الشريط
+    const app = document.getElementById('app');
+    if (app) { screenObserver = new MutationObserver(debounce(() => { if (state.isOpen) syncScreenPicker(); }, 150)); screenObserver.observe(app, { childList: true }); }
+  };
+})();

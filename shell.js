@@ -1,5 +1,5 @@
 /* =====================================================================
-   GRIFFINE App Shell — واجهة التطبيق (الإصدار 71)
+   GRIFFINE App Shell — واجهة التطبيق (الإصدار 72)
    ---------------------------------------------------------------------
    الملف ده هو "الهيكل" اللي بيلف كل شاشات الموقع القديمة (griffine.js):
      - شريط علوي + شريط تبويبات سفلي (موبايل) / شريط جانبي (كمبيوتر)
@@ -8,6 +8,7 @@
      - إشعارات Toast بدل نوافذ alert
      - تثبيت الموقع كتطبيق (PWA)
      - طباعة صور كل الشاشات في ملف PDF واحد (من لوحة التحكم)
+     - ربط استوديو التصميم (studio.js): بعد رسم أي شاشة بيتطبق الثيم وتعديلات النصوص والتنسيق
 
    قاعدة أمان: كل نص جاي من المستخدم بيعدّي على esc() قبل ما يتعرض.
 
@@ -36,6 +37,7 @@
 
    طريقة الإضافة (قابلية التطوير):
      - شاشة جديدة للعميل: أضفها في TAB_OF (قسم 06) وفي SCREENS_TO_PRINT (قسم 16)
+       (SCREENS_TO_PRINT هي نفسها قائمة الشاشات في استوديو التصميم)
      - عنصر جديد في الشريط الجانبي: sideItems() (قسم 06)
      - أيقونة جديدة: جدول P (قسم 02)
    ===================================================================== */
@@ -47,7 +49,7 @@
      ===================================================================== */
 
   // رقم الإصدار - بيظهر في شاشة "حسابي" (غيّره مع ?v= في index.php و VERSION في sw.js)
-  const APP_VERSION = 71;
+  const APP_VERSION = 72;
 
   /* الاستعلامات المتكررة (الدردشة/التوصيات) بتقف لما التبويب يكون مخفي أو الموبايل مقفول
      - بتوفّر ضغط على السيرفر وبطارية الموبايل، وبترجع تشتغل أول ما الصفحة تظهر
@@ -135,7 +137,8 @@
     chat:'<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>',
     login:'<path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3"/><path d="M14 17l5-5-5-5M19 12H8"/>',
     menu:'<path d="M4 7h16M4 12h16M4 17h16"/>',
-    target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>'
+    target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
+    brush:'<path d="M18.4 2.6a2 2 0 0 1 2.9 2.9L12 14.8 9.2 12z"/><path d="M9.2 12c-2 0-3.6 1.6-3.6 3.6 0 1.6-1.1 2.9-2.6 3.4 1 1.3 2.6 2 4.3 2 3.2 0 5.7-2.6 5.7-5.7z"/>'
   };
   const icon = (n) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n] || P.info}</svg>`;
   GS.icon = icon;
@@ -281,7 +284,7 @@
           GS.sub = /Grid/.test(name) ? 'grid' : (tab === 'plans' ? 'dca' : null);
           if (tab) GS.setTab(tab);
           GS.isRoot = !!ROOTS[name];
-          GS.currentScreen = name;
+          GS.markScreen(name);
           GS.titleHint = (name === 'renderPlanDetail' || name === 'renderGridPlanDetail') && arguments[0]
             ? `${arguments[0]} · ${name === 'renderGridPlanDetail' ? 'خطة شبكة Grid' : 'خطة DCA'}`
             : '';
@@ -329,6 +332,16 @@
     if (brand) brand.style.display = show ? 'none' : '';
   };
 
+  /* اسم الشاشة الحالية على body (data-gs-screen) - استوديو التصميم بيستخدمه
+     عشان تعديلات كل شاشة تتطبق عليها هي بس */
+  GS.markScreen = function(name){
+    GS.currentScreen = name;
+    document.body.setAttribute('data-gs-screen', name);
+  };
+
+  // تطبيق تعديلات استوديو التصميم (لو الملف متحمّل)
+  const applyStudio = () => { if (window.GStudio) window.GStudio.apply(); };
+
   // تبويبات الموبايل السفلية (حسب الشاشات المسموحة)
   function tabsForUser(){
     const tabs = [ { tab:'home', label:'الرئيسية', ic:'home', go:() => renderHome() } ];
@@ -354,7 +367,8 @@
       { screen:'renderSubscriptionPlans', label:'الاشتراك والباقات', ic:'card', go:() => renderSubscriptionPlans() },
       !hidden('hide_referral_screen') && { screen:'renderReferralPage', label:'ادعُ صديقك', ic:'gift', go:() => renderReferralPage() },
     ].filter(Boolean);
-    if (window.__isAdmin) items.push({ sec:'الإدارة' }, { tab:'admin', label:'لوحة التحكم', ic:'admin', go:() => renderAdminSubscribers() });
+    // لوحة التحكم بتفتح شاشة الأزرار (renderAdminHub) - الشاشات الفرعية مبقتش بتكرر الأزرار دي (الإصدار 72)
+    if (window.__isAdmin) items.push({ sec:'الإدارة' }, { tab:'admin', label:'لوحة التحكم', ic:'admin', go:() => renderAdminHub() });
     return items;
   }
 
@@ -437,6 +451,7 @@
     } else sb.innerHTML = '';
 
     GS.setTab(GS.tab);
+    applyStudio();   // نصوص القائمة الجانبية والتبويبات المعدّلة من استوديو التصميم
   };
 
 
@@ -531,7 +546,8 @@
   const ADMIN_IC = {
     goChatAdminBtn:'chat', goContentBtn:'star', goSuggestionsAdminBtn:'bulb', goPlansMgmtBtn:'card', goReportsBtn:'report',
     goRecommendationsBtn:'megaphone', goStaffBtn:'user', goSettingsBtn:'settings', goBlacklistBtn:'shield', goSiteDesignBtn:'grid',
-    goSiteTextsBtn:'news', goArchiveBtn:'receipt', goSubscribersBtn:'user', goExportScreensBtn:'report', goExportExcelBtn:'download'
+    goSiteTextsBtn:'news', goArchiveBtn:'receipt', goSubscribersBtn:'user', goExportScreensBtn:'report', goExportExcelBtn:'download',
+    goStudioBtn:'brush'
   };
 
   let processing = false;
@@ -590,10 +606,28 @@
 
       // 9) زرار الرجوع
       GS.setBackVisible(!GS.isRoot);
+
+      // 10) الجداول: كل جدول جوه غلاف بيتحرك يمين وشمال، والبيانات في سطر واحد (shell.css)
+      wrapTables(app);
     } finally {
+      // 11) الثيم وتعديلات استوديو التصميم (حتى لشاشات الترحيب والدخول)
+      applyStudio();
       // نسيب المراقب يتجاهل التعديلات اللي عملناها إحنا
       setTimeout(() => { processing = false; }, 0);
     }
+  }
+
+  // غلاف تمرير أفقي لكل جدول (لو الأب نفسه مش بيتحرك لوحده)
+  function wrapTables(root){
+    root.querySelectorAll('table').forEach(t => {
+      if (t.closest('.gs-tscroll')) return;
+      const p = t.parentElement; if (!p) return;
+      const ox = getComputedStyle(p).overflowX;
+      if ((ox === 'auto' || ox === 'scroll') && p.children.length === 1) { p.classList.add('gs-tscroll'); return; }
+      const w = document.createElement('div');
+      w.className = 'gs-tscroll';
+      p.insertBefore(w, t); w.appendChild(t);
+    });
   }
 
   let raf = 0;
@@ -817,7 +851,7 @@
   GS.renderAccount = async function(){
     pushNav(() => GS.renderAccount());
     try { window.scrollTo(0, 0); } catch(e){}
-    GS.seq++; GS.setTab('account'); GS.isRoot = true; GS.currentScreen = 'renderAccount';
+    GS.seq++; GS.setTab('account'); GS.isRoot = true; GS.markScreen('renderAccount');
     const my = GS.seq;
     const email = await getSession();
     if (!email) return renderLogin();
@@ -904,7 +938,7 @@
     on('gsAccGrid', () => renderGridPlansList());
     on('gsAccDiv', () => renderDiversificationReport());
     on('gsAccScr', () => renderScreener());
-    on('gsAccAdmin', () => renderAdminSubscribers());
+    on('gsAccAdmin', () => renderAdminHub());
     on('gsAccAbout', () => renderAboutPage());
     on('gsAccContact', () => renderContactInfo());
     on('gsAccArt', () => renderArticlesListPage());
@@ -926,7 +960,7 @@
   GS.renderDeleteAccount = async function(){
     pushNav(() => GS.renderDeleteAccount());
     try { window.scrollTo(0, 0); } catch(e){}
-    GS.seq++; GS.setTab('account'); GS.isRoot = false; GS.currentScreen = 'renderDeleteAccount';
+    GS.seq++; GS.setTab('account'); GS.isRoot = false; GS.markScreen('renderDeleteAccount');
     const email = await getSession();
     if (!email) { window.__afterLoginTarget = 'deleteAccount'; return renderLogin(); }
 
@@ -1114,6 +1148,9 @@
     });
     return list;
   }
+
+  // قائمة كل الشاشات بالترتيب (بيستخدمها استوديو التصميم في اختيار الشاشة)
+  GS.getScreenCatalog = async function(){ return buildPrintList(await loadPrintArgs()); };
 
   // ---- 16د) أدوات الرسم على canvas (العناوين والصفحات النصية) ----
 

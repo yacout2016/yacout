@@ -1,10 +1,11 @@
 -- ============================================================
--- GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 71)
+-- GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 72)
 -- كل تحديثات قاعدة البيانات في ملف واحد.
 -- آمن تشغّله أي عدد من المرات: بيضيف الناقص بس ومبيمسحش أي بيانات.
 -- الاستخدام: phpMyAdmin ← اختار قاعدة البيانات ← تبويب SQL ← الصق الملف كله ← Go
 -- الإصدار 69: جدول login_attempts (حماية من تخمين كلمات المرور).
 -- الإصدار 71: مفيش تغييرات في قاعدة البيانات (إصلاحات واجهة فقط: الشريط الجانبي + شعار الدردشة + طباعة كل الشاشات PDF).
+-- الإصدار 72: جدول ui_customizations (استوديو التصميم: الثيمات + تعديل نصوص وتنسيق أي شاشة).
 -- ============================================================
 
 -- ============================================================
@@ -592,4 +593,14 @@ DROP PROCEDURE griffine_v69;
 
 -- الإصدار 71: لا توجد جداول أو أعمدة جديدة - الملف متوافق زي ما هو.
 
-SELECT 'GRIFFINE database is up to date (v71)' AS result;
+-- الإصدار 72: استوديو التصميم - صف لكل نوع تخصيص:
+--   theme     → الثيم (اللون الرئيسي، الخط، الحجم، الحواف، شكل الأزرار، الجداول في سطر واحد)
+--   overrides → تعديلات الشاشات (قاموس النصوص + نص عنصر بعينه + تنسيق أي عنصر)
+CREATE TABLE IF NOT EXISTS ui_customizations (
+  ui_key VARCHAR(50) NOT NULL PRIMARY KEY,
+  data_value LONGTEXT NOT NULL,
+  updated_by VARCHAR(190) NULL,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+SELECT 'GRIFFINE database is up to date (v72)' AS result;

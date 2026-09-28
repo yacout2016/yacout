@@ -1925,6 +1925,7 @@ function adminNavButtonsHtml(){
       { id:'goBlacklistBtn', perm:'manage_blacklist', icon:'🚫', label:'القائمة السوداء' },
     ]},
     { title: 'المحتوى والتنسيق', items: [
+      { id:'goStudioBtn', perm:'edit_site_design', icon:'🖌️', label:'استوديو التصميم (الثيمات وتعديل أي شاشة)' },
       { id:'goSiteDesignBtn', perm:'edit_site_design', icon:'🎨', label:'تنسيق الموقع' },
       { id:'goSiteTextsBtn', perm:'manage_site_content', icon:'📝', label:'نصوص شاشات الموقع' },
       { id:'goArchiveBtn', perm:'manage_subscribers', icon:'🗄️', label:'الأرشيف' },
@@ -1961,6 +1962,7 @@ function wireAdminNavButtons(){
     goArchiveBtn: renderArchivedCustomers,
     goStaffBtn: renderStaffManagementPage,
     goSiteDesignBtn: renderSiteDesignPage,
+    goStudioBtn: () => GStudio.openEditor(), // الإصدار 72: استوديو التصميم (studio.js)
     goReportsBtn: renderAdminReportsPage,
     goRecommendationsBtn: renderRecommendationsAdminPage,
     goContentBtn: renderContentAdminPage,

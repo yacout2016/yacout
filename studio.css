@@ -1,0 +1,133 @@
+/* =====================================================================
+   GRIFFINE Studio Editor — تنسيق شاشة التعديل (الإصدار 72) — للأدمن بس
+   ---------------------------------------------------------------------
+   الألوان هنا ثابتة (داكن محايد) ومش بتتأثر بالثيم اللي بيتعدّل،
+   عشان أدوات التعديل تفضل واضحة مهما كان شكل الموقع.
+   فهرس:
+     01. المتغيرات
+     02. شريط الأدوات السفلي
+     03. لوح التعديل الجانبي
+     04. عناصر اللوح (أقسام / حقول / ألوان / ثيمات / قائمة التعديلات)
+     05. إطارات التحديد + وضع التحديد
+     06. الموبايل
+   ===================================================================== */
+
+/* ---------- 01. المتغيرات ---------- */
+#gsStudio{
+  --st-bg:#0E141C; --st-bg2:#151D28; --st-bg3:#1D2735; --st-border:#2A3646;
+  --st-text:#EEF2F7; --st-muted:#95A3B5; --st-accent:#D4AF37; --st-accent-t:rgba(212,175,55,.16);
+  --st-danger:#F87171; --st-sel:#3B82F6;
+  --st-bar-h:60px;
+  font-family:'IBM Plex Sans Arabic', Tahoma, sans-serif; direction:rtl;
+}
+#gsStudio *{ box-sizing:border-box; }
+#gsStudio svg{ width:18px; height:18px; flex-shrink:0; }
+body.gs-studio-on{ padding-bottom:calc(var(--gs-tabbar-h, 64px) + 72px) !important; }
+@media (min-width:1024px){ body.gs-studio-on{ padding-bottom:84px !important; } }
+
+/* ---------- 02. شريط الأدوات السفلي ---------- */
+#gsStudio .gst-bar{
+  position:fixed; z-index:2147483000; left:0; right:0; bottom:0; height:var(--st-bar-h);
+  display:flex; align-items:center; gap:6px; padding:0 12px; overflow-x:auto;
+  background:var(--st-bg); border-top:1px solid var(--st-border); box-shadow:0 -8px 24px rgba(0,0,0,.35); color:var(--st-text);
+}
+#gsStudio .gst-brand{ display:flex; align-items:center; gap:6px; font-weight:800; color:var(--st-accent); white-space:nowrap; margin-left:6px; font-size:14px; }
+#gsStudio .gst-spacer{ flex:1; }
+#gsStudio select, #gsStudio input[type="text"], #gsStudio input[type="number"], #gsStudio textarea{
+  /* !important لأن تنسيقات الحقول العامة في shell.css / griffine.css عليها !important */
+  font:inherit; font-size:13.5px; color:var(--st-text) !important; background:var(--st-bg3) !important; border:1px solid var(--st-border) !important;
+  border-radius:10px; padding:8px 10px; min-height:38px; width:100%; margin:0; box-shadow:none !important; outline:none;
+}
+#gsStudio select:focus, #gsStudio input:focus, #gsStudio textarea:focus{ border-color:var(--st-accent) !important; }
+#gsStudio .gst-bar select{ width:auto; max-width:260px; min-width:170px; }
+#gsStudio .gst-btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:6px; white-space:nowrap;
+  min-height:38px; width:auto; margin:0; padding:0 12px; border-radius:10px; cursor:pointer;
+  font:inherit; font-size:13.5px; font-weight:700; color:var(--st-text); background:var(--st-bg3); border:1px solid var(--st-border);
+  box-shadow:none; filter:none; transform:none;
+}
+#gsStudio .gst-btn:hover{ background:#263244; }
+#gsStudio .gst-btn.on{ background:var(--st-accent-t); border-color:var(--st-accent); color:var(--st-accent); }
+#gsStudio .gst-btn i{ font-style:normal; background:var(--st-accent); color:#111; border-radius:9px; padding:0 6px; font-size:11.5px; margin-right:2px; }
+#gsStudio .gst-primary{ background:var(--st-accent); color:#111; border-color:var(--st-accent); }
+#gsStudio .gst-primary:hover{ background:#E6C45A; }
+#gsStudio .gst-primary.pulse{ box-shadow:0 0 0 3px rgba(212,175,55,.35); }
+#gsStudio .gst-danger{ color:var(--st-danger); width:100%; margin-top:6px; }
+#gsStudio .gst-ic{ width:32px; height:32px; min-height:0; margin:0; padding:0; border-radius:8px; border:0; background:transparent; color:var(--st-muted); display:inline-flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:none; }
+#gsStudio .gst-ic:hover{ background:var(--st-bg3); color:var(--st-text); }
+
+/* ---------- 03. لوح التعديل الجانبي ---------- */
+#gsStudio .gst-panel{
+  position:fixed; z-index:2147483000; left:14px; top:14px; bottom:calc(var(--st-bar-h) + 14px); width:360px;
+  display:flex; flex-direction:column; background:var(--st-bg); color:var(--st-text);
+  border:1px solid var(--st-border); border-radius:16px; box-shadow:0 18px 50px rgba(0,0,0,.45); overflow:hidden;
+}
+#gsStudio .gst-panel-head{ display:flex; align-items:center; justify-content:space-between; padding:10px 12px 10px 8px; border-bottom:1px solid var(--st-border); font-size:15px; }
+#gsStudio .gst-panel.collapsed{ bottom:auto; }
+#gsStudio .gst-panel.collapsed .gst-panel-body{ display:none; }
+#gsStudio .gst-panel.collapsed #gstCollapse svg{ transform:rotate(180deg); }
+#gsStudio #gstCollapse svg{ transform:rotate(-90deg); transition:transform .15s; }
+#gsStudio .gst-panel-body{ flex:1; overflow-y:auto; padding:12px; }
+
+/* ---------- 04. عناصر اللوح ---------- */
+#gsStudio .gst-sec{ background:var(--st-bg2); border:1px solid var(--st-border); border-radius:12px; padding:10px; margin-bottom:10px; }
+#gsStudio .gst-sec-t{ font-size:12.5px; font-weight:800; color:var(--st-accent); margin-bottom:8px; }
+#gsStudio .gst-f{ display:block; font-size:12.5px; color:var(--st-muted); font-weight:600; margin:0 0 8px; }
+#gsStudio .gst-f > select, #gsStudio .gst-f > input{ margin-top:4px; }
+#gsStudio .gst-f input[type="range"]{ width:100%; accent-color:var(--st-accent); }
+#gsStudio .gst-f b{ color:var(--st-text); }
+#gsStudio .gst-grid2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+#gsStudio .gst-row2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px; }
+#gsStudio .gst-color{ display:flex; align-items:center; gap:6px; margin-top:4px; }
+#gsStudio input[type="color"]{ width:44px; height:36px; padding:2px; border:1px solid var(--st-border); border-radius:8px; background:var(--st-bg3); cursor:pointer; flex-shrink:0; }
+#gsStudio .gst-clear{ min-height:0; width:auto; margin:0; padding:5px 8px; font:inherit; font-size:11.5px; border-radius:7px; border:1px solid var(--st-border); background:transparent; color:var(--st-muted); cursor:pointer; box-shadow:none; }
+#gsStudio .gst-auto{ display:flex; align-items:center; gap:4px; font-size:11.5px; color:var(--st-muted); margin:0; }
+#gsStudio .gst-radio, #gsStudio .gst-checks{ display:flex; flex-direction:column; gap:6px; margin-top:6px; }
+#gsStudio .gst-radio label, #gsStudio .gst-checks label{ display:flex; align-items:center; gap:8px; font-size:13px; color:var(--st-text); margin:0; font-weight:500; cursor:pointer; }
+#gsStudio input[type="radio"], #gsStudio input[type="checkbox"]{ width:16px; height:16px; accent-color:var(--st-accent); margin:0; }
+#gsStudio .gst-hint{ font-size:11.5px; color:var(--st-muted); margin-top:6px; line-height:1.6; }
+#gsStudio .gst-note{ font-size:12.5px; color:var(--st-muted); background:var(--st-bg2); border:1px dashed var(--st-border); border-radius:10px; padding:10px; margin-bottom:10px; line-height:1.7; }
+#gsStudio .gst-steps p{ font-size:13.5px; line-height:1.8; margin:0 0 8px; color:var(--st-text); }
+#gsStudio .gst-steps b{ color:var(--st-accent); }
+#gsStudio .gst-el{ display:flex; align-items:center; gap:8px; margin-bottom:10px; min-width:0; }
+#gsStudio .gst-kind{ background:var(--st-accent-t); color:var(--st-accent); font-size:12px; font-weight:800; padding:3px 9px; border-radius:999px; white-space:nowrap; }
+#gsStudio .gst-eltxt{ font-size:13px; color:var(--st-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#gsStudio .gst-opt{ margin-bottom:6px !important; }
+
+/* الثيمات الجاهزة */
+#gsStudio .gst-themes{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+#gsStudio .gst-theme{
+  display:flex; flex-direction:column; align-items:flex-start; gap:4px; text-align:right; width:auto; min-height:0; margin:0;
+  padding:9px; border-radius:12px; border:1.5px solid var(--st-border); background:var(--st-bg3); color:var(--st-text); cursor:pointer; font:inherit; box-shadow:none;
+}
+#gsStudio .gst-theme:hover{ border-color:#3B4A5E; }
+#gsStudio .gst-theme.on{ border-color:var(--st-accent); background:var(--st-accent-t); }
+#gsStudio .gst-theme b{ font-size:13px; }
+#gsStudio .gst-theme small{ font-size:11px; color:var(--st-muted); line-height:1.5; }
+#gsStudio .gst-sw{ display:flex; width:100%; height:18px; border-radius:6px; overflow:hidden; border:1px solid rgba(255,255,255,.08); }
+#gsStudio .gst-sw i{ flex:1; }
+
+/* قائمة التعديلات */
+#gsStudio .gst-rule{ display:flex; align-items:center; justify-content:space-between; gap:8px; padding:7px 0; border-top:1px solid var(--st-border); }
+#gsStudio .gst-rule:first-of-type{ border-top:0; }
+#gsStudio .gst-rule span{ min-width:0; }
+#gsStudio .gst-rule b{ display:block; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#gsStudio .gst-rule small{ display:block; font-size:11.5px; color:var(--st-muted); }
+
+/* ---------- 05. إطارات التحديد + وضع التحديد ---------- */
+#gsStudio .gst-hover, #gsStudio .gst-selbox{ position:fixed; z-index:2147482990; pointer-events:none; display:none; border-radius:4px; }
+#gsStudio .gst-hover{ outline:2px dashed var(--st-accent); background:rgba(212,175,55,.08); }
+#gsStudio .gst-selbox{ outline:2px solid var(--st-sel); box-shadow:0 0 0 4px rgba(59,130,246,.25); }
+body.gs-studio-picking #app, body.gs-studio-picking .gs-sidebar, body.gs-studio-picking .gs-appbar, body.gs-studio-picking .gs-tabbar{ cursor:crosshair !important; }
+body.gs-studio-picking #app *, body.gs-studio-picking .gs-sidebar *, body.gs-studio-picking .gs-appbar *{ cursor:crosshair !important; }
+/* فقاعة الدردشة بتختفي أثناء التعديل عشان متغطيش على الشاشة */
+body.gs-studio-on #chatBubble, body.gs-studio-on #chatPanel{ display:none !important; }
+
+/* ---------- 06. الموبايل: اللوح بيبقى تحت فوق شريط الأدوات ---------- */
+@media (max-width:1023px){
+  #gsStudio .gst-panel{ left:8px; right:8px; top:auto; width:auto; height:52vh; bottom:calc(var(--st-bar-h) + 8px); }
+  #gsStudio .gst-panel.collapsed{ height:auto; }
+  #gsStudio .gst-brand span, #gsStudio .gst-btn span{ display:none; }
+  #gsStudio .gst-primary span, #gsStudio .gst-panel .gst-btn span{ display:inline; }
+  #gsStudio .gst-bar select{ min-width:130px; }
+}

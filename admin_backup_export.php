@@ -15,6 +15,7 @@ $tables = [
     'reminder_defaults', 'blacklist', 'admin_settings', 'staff_members',
     'staff_permissions', 'site_content', 'screener_settings', 'recommendations',
     'recommendation_settings', 'disclaimer_acceptances', 'chat_conversation_meta',
+    'ui_customizations', // الإصدار 72: الثيم وتعديلات استوديو التصميم
 ];
 
 header('Content-Type: application/sql; charset=utf-8');
