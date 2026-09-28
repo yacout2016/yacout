@@ -24,7 +24,7 @@ $stmt->bind_param("i", $id);
 $stmt->execute();
 $stmt->close();
 
-$check = $conn->prepare("SELECT account_email, name, phone, active FROM subscribers WHERE id = ? LIMIT 1");
+$check = $conn->prepare("SELECT account_email, name, phone, active, plan_name, end_date FROM subscribers WHERE id = ? LIMIT 1");
 $check->bind_param("i", $id);
 $check->execute();
 $row = $check->get_result()->fetch_assoc();
@@ -32,6 +32,8 @@ $check->close();
 if ($row && (int)$row['active'] === 1) {
     maybeRewardReferral($conn, $row['account_email']);
 }
+// الإصدار 72: إيميل للعميل بالتفعيل أو الإيقاف
+if ($row) mail_subscription_toggled($conn, $row['account_email'], $row['name'], $row['plan_name'], (int)$row['active'] === 1, $row['end_date']);
 
 echo json_encode(["success" => true]);
 ?>

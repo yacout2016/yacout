@@ -99,11 +99,14 @@ $stmt->bind_param(
 );
 
 if ($stmt->execute()) {
+    $newId = $conn->insert_id;
     logSubscriptionEvent($conn, $accountEmail, 'new_subscription', $planId, $planName, $amount);
     if ((int)$active === 1) {
         maybeRewardReferral($conn, $accountEmail);
     }
-    echo json_encode(["success" => true, "id" => $conn->insert_id, "active" => (bool)$active]);
+    // الإصدار 72: إيميل للعميل (تم التفعيل / استلمنا طلبك) + تنبيه للإدارة لو محتاج مراجعة سداد
+    mail_subscription_created($conn, $accountEmail, $name, $planName, $amount, (int)$active === 1, $endDate);
+    echo json_encode(["success" => true, "id" => $newId, "active" => (bool)$active]);
 } else {
     echo json_encode(["success" => false, "message" => "حدث خطأ أثناء حفظ بيانات الاشتراك."]);
 }

@@ -591,6 +591,11 @@ async function sendChatAdminReply(visitorId, message){ return apiPost('/chat_adm
 async function sendChatAdminHeartbeat(){ try{ return await apiGet('/chat_admin_heartbeat.php'); }catch(e){ return {success:false}; } }
 async function getChatAdminStatus(){ try{ return await apiGet('/chat_admin_status.php'); }catch(e){ return {online:false}; } }
 async function endChatConversation(visitorId){ return apiPost('/chat_end_conversation.php', { visitorId }); }
+// الإصدار 72: حالة "اتقرت" للشات بتتسجّل على السيرفر (مش على الجهاز بس) - فالعلامة الحمرا بتختفي من كل مكان
+async function markChatRead(visitorId){ try{ return await apiPost('/chat_mark_read.php', { visitorId }); }catch(e){ return {success:false}; } }
+async function markAllChatRead(){ try{ return await apiPost('/chat_mark_read.php', { all: 1 }); }catch(e){ return {success:false}; } }
+// بعد أي تعليم كمقروء: نحدّث رقم لوحة التحكم + نقطة أيقونة الشات فورًا
+function refreshChatUnreadIndicators(){ try{ updateChatUnreadBadge(); }catch(e){} try{ if (window.__adminBubbleCheck) window.__adminBubbleCheck(); }catch(e){} }
 async function getMySubscription(){ try{ return await apiGet('/my_subscription.php'); }catch(e){ return {success:false}; } }
 async function requestPlanChange(planId, planName, amount, durationDays, immediate, paymentMethod, paymentRef, paymentProof){
   return apiPost('/subscribers_request_change.php', { planId, planName, amount, durationDays, immediate: immediate?1:0, paymentMethod, paymentRef, paymentProof });
@@ -1922,6 +1927,7 @@ function adminNavButtonsHtml(){
     { title: 'الإدارة والصلاحيات', items: [
       { id:'goStaffBtn', perm:'manage_staff', icon:'👥', label:'الفريق والصلاحيات' },
       { id:'goSettingsBtn', perm:'manage_admin_settings', icon:'⚙️', label:'الصلاحيات والإعدادات الإلزامية' },
+      { id:'goEmailCenterBtn', perm:'manage_admin_settings', icon:'📧', label:'مركز الإيميلات (اختبار وسجل الإرسال)' },
       { id:'goBlacklistBtn', perm:'manage_blacklist', icon:'🚫', label:'القائمة السوداء' },
     ]},
     { title: 'المحتوى والتنسيق', items: [
@@ -1963,6 +1969,7 @@ function wireAdminNavButtons(){
     goStaffBtn: renderStaffManagementPage,
     goSiteDesignBtn: renderSiteDesignPage,
     goStudioBtn: () => GStudio.openEditor(), // الإصدار 72: استوديو التصميم (studio.js)
+    goEmailCenterBtn: () => GShell.renderEmailCenter(), // الإصدار 72: مركز الإيميلات (shell.js)
     goReportsBtn: renderAdminReportsPage,
     goRecommendationsBtn: renderRecommendationsAdminPage,
     goContentBtn: renderContentAdminPage,
@@ -2684,11 +2691,12 @@ async function renderChatAdminPage(){
       <div>${pageTitle('chat_admin','💬 الدردشة الفورية')} <span style="color:var(--green);font-size:11px;">🟢 إنت متصل الآن</span></div>
       <button class="secondary small" id="backToAdminFromChatBtn">🛡️ رجوع للوحة التحكم</button>
     </div>
-    <div class="info">الشات هنا مباشر بينك وبين العميل — مفيش أي إيميل بيتبعت لكل رسالة. لما تخلّص محادثة مع عميل، دوس "📧 إنهاء وإرسال نسخة بالإيميل" عشان تاخد نسخة كاملة منها على info@griffine.store تراجعها بعدين. القائمة والمحادثة المفتوحة بيتحدثوا تلقائيًا كل 5 ثواني.</div>
+    <div class="info">الشات هنا مباشر بينك وبين العميل. بيوصلك إيميل تنبيه على info@griffine.store أول ما عميل يبدأ محادثة جديدة (مش مع كل رسالة). لما تخلّص المحادثة دوس "📧 إنهاء وإرسال نسخة" وهتوصلك كاملة ومعاها الصور والملفات كمرفقات. فتح المحادثة بيعلّمها مقروءة تلقائيًا. القائمة والمحادثة المفتوحة بيتحدثوا كل 5 ثواني.</div>
     <div class="radio-row std-filter-tabs" style="margin-bottom:10px;">
       <button class="small secondary period-preset std-filter-tab btn-active" id="tabActiveBtn">المحادثات النشطة</button>
       <button class="small secondary period-preset std-filter-tab" id="tabArchivedBtn">🗄️ الأرشيف</button>
       <button class="small secondary period-preset std-filter-tab" id="tabTrashBtn">🗑️ سلة المحذوفات</button>
+      <button class="small secondary" id="chatMarkAllReadBtn" style="width:auto;margin-inline-start:auto;">✓ تعليم الكل كمقروء</button>
     </div>
     <div class="std-filter-bar">
       <div class="std-filter-search"><input type="text" id="chatConvSearch" placeholder="🔍 ابحث بالإيميل أو آخر رسالة..."></div>
@@ -2718,6 +2726,11 @@ async function renderChatAdminPage(){
   document.getElementById('tabActiveBtn').onclick = () => setTab('active');
   document.getElementById('tabArchivedBtn').onclick = () => setTab('archived');
   document.getElementById('tabTrashBtn').onclick = () => setTab('trash');
+  document.getElementById('chatMarkAllReadBtn').onclick = async () => {
+    await markAllChatRead();
+    await refreshList();
+    refreshChatUnreadIndicators();
+  };
 
   // "أنا متصل الآن" - بيتحدث كل 30 ثانية طول ما الصفحة دي مفتوحة عشان العملاء يشوفوا إنك موجود
   await sendChatAdminHeartbeat();
@@ -2734,8 +2747,8 @@ async function renderChatAdminPage(){
       wrap.innerHTML = '<p class="std-filter-empty">مفيش محادثات مطابقة للبحث</p>';
     } else {
       wrap.innerHTML = visible.map(c=>`
-      <div class="plan-list-item ${c.visitorId===openVisitorId?'selected':''}" data-vid="${c.visitorId}" style="cursor:pointer;">
-        <div><strong>${c.email || 'زائر بدون إيميل'}</strong><div style="font-size:11px;color:#888;">${(c.lastMessage||'').substring(0,40)}${(c.lastMessage||'').length>40?'...':''}</div></div>
+      <div class="plan-list-item ${c.visitorId===openVisitorId?'selected':''} ${c.unread?'chat-unread':''}" data-vid="${escapeHtml(c.visitorId)}" style="cursor:pointer;">
+        <div><strong>${c.unread ? '<span class="chat-unread-dot" title="غير مقروءة"></span>' : ''}${escapeHtml(c.email || 'زائر بدون إيميل')}</strong><div style="font-size:11px;color:#888;">${escapeHtml((c.lastMessage||'').substring(0,40))}${(c.lastMessage||'').length>40?'...':''}</div></div>
         <div style="font-size:10px;color:#aaa;">${formatChatTime(c.lastAt)}</div>
       </div>`).join('');
     }
@@ -2756,6 +2769,13 @@ async function renderChatAdminPage(){
   async function renderConversationDetail(visitorId, convInfo){
     openVisitorId = visitorId;
     if (window.__chatAdminMsgPoll) clearInterval(window.__chatAdminMsgPoll);
+    // فتح المحادثة = اتقرت (على السيرفر) ← العلامة الحمرا والرقم بيختفوا فورًا
+    if (currentView === 'active') {
+      markChatRead(visitorId).then(() => {
+        const c = conversations.find(x => x.visitorId === visitorId); if (c) c.unread = false;
+        renderConvList(); refreshChatUnreadIndicators();
+      });
+    }
     const detail = document.getElementById('conversationDetailWrap');
 
     let actionsHtml = '';
@@ -2790,7 +2810,7 @@ async function renderChatAdminPage(){
     if (endBtn) endBtn.onclick = async () => {
       if(!confirm('هيتبعت نسخة كاملة من المحادثة دي على info@griffine.store. متأكد؟')) return;
       const r = await endChatConversation(visitorId);
-      alert(r.success ? 'تم إرسال نسخة المحادثة بالإيميل.' : (r.message||'حصل خطأ'));
+      alert(r.message || (r.success ? 'تم إرسال نسخة المحادثة بالإيميل.' : 'حصل خطأ'));
     };
     const archiveBtn = document.getElementById('chatArchiveBtn');
     if (archiveBtn) archiveBtn.onclick = async () => {
@@ -2837,6 +2857,8 @@ async function renderChatAdminPage(){
       const res2 = await getChatHistory(visitorId);
       const msgs = (res2 && res2.success) ? res2.messages : [];
       if (msgs.length === lastCount) return;
+      // رسايل جديدة وصلت والمحادثة مفتوحة قدام الأدمن ← تتعلم مقروءة تلقائيًا
+      if (lastCount !== -1 && msgs.length > lastCount && currentView === 'active') markChatRead(visitorId).then(refreshChatUnreadIndicators);
       lastCount = msgs.length;
       const wasNearBottom = (msgsWrap.scrollHeight - msgsWrap.scrollTop - msgsWrap.clientHeight) < 40;
       msgsWrap.innerHTML = msgs.length ? msgs.map(m => `
@@ -8329,8 +8351,9 @@ function initAdminBubble(bubble, panel){
       if (!res || !res.success) { console.error('chat backgroundCheck: فشل جلب المحادثات', res); return; }
       let anyUnread = false;
       for (const c of res.conversations) {
-        if (c.lastSender !== 'visitor') continue;
-        if (c.lastAt <= lastSeenAt) continue;
+        // الإصدار 72: السيرفر هو اللي بيحدد المقروء (c.unread) - الطريقة القديمة (وقت آخر فتح على الجهاز) احتياطي بس
+        if (typeof c.unread === 'boolean') { if (!c.unread) continue; }
+        else { if (c.lastSender !== 'visitor') continue; if (c.lastAt <= lastSeenAt) continue; }
         anyUnread = true;
         const isCurrentlyOpen = panel.classList.contains('open') && panel.dataset.openConv === c.visitorId;
         if (!isCurrentlyOpen && notifiedAt[c.visitorId] !== c.lastAt) {
@@ -8338,9 +8361,10 @@ function initAdminBubble(bubble, panel){
           fireBrowserNotification('💬 رسالة جديدة — ' + (c.email || 'زائر'), c.lastMessage || 'وصلت رسالة جديدة');
         }
       }
-      if (anyUnread && !panel.classList.contains('open')) updateBadge(true);
+      updateBadge(anyUnread && !panel.classList.contains('open'));
     }catch(e){ console.error('chat backgroundCheck crashed:', e); }
   }
+  window.__adminBubbleCheck = backgroundCheck;
   backgroundCheck();
   window.__adminBubblePoll = setInterval(backgroundCheck, 8000);
   // heartbeat خفيف كمان من هنا عشان أي زائر يشوف "الأدمن متصل" حتى لو إنت في صفحة تانية غير لوحة الشات
@@ -8368,7 +8392,7 @@ function initAdminBubble(bubble, panel){
     markAllSeenFromConvs(convs);
     body.innerHTML = convs.length ? convs.map(c=>`
       <div class="chat-conv-item" data-vid="${c.visitorId}">
-        <div style="flex:1;"><strong style="font-size:12.5px;">${c.email || 'زائر بدون إيميل'}</strong><div style="font-size:11px;color:#888;">${(c.lastMessage||'').substring(0,35)}</div></div>
+        <div style="flex:1;"><strong style="font-size:12.5px;">${c.unread ? '<span class="chat-unread-dot"></span>' : ''}${escapeHtml(c.email || 'زائر بدون إيميل')}</strong><div style="font-size:11px;color:#888;">${escapeHtml((c.lastMessage||'').substring(0,35))}</div></div>
         <div style="font-size:10px;color:#aaa;white-space:nowrap;">${formatChatTime(c.lastAt)}</div>
       </div>`).join('') : '<p style="color:#888;font-size:12px;padding:14px;text-align:center;">مفيش محادثات لسه.</p>';
     document.querySelectorAll('.chat-conv-item').forEach(el=>{
@@ -8378,6 +8402,7 @@ function initAdminBubble(bubble, panel){
 
   async function renderQuickThread(visitorId, convInfo){
     panel.dataset.openConv = visitorId;
+    markChatRead(visitorId).then(refreshChatUnreadIndicators); // الإصدار 72
     panel.innerHTML = `
       <div class="chat-header">
         <span>${(convInfo&&convInfo.email) || 'زائر'}</span>

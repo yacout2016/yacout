@@ -5,7 +5,7 @@
 -- الاستخدام: phpMyAdmin ← اختار قاعدة البيانات ← تبويب SQL ← الصق الملف كله ← Go
 -- الإصدار 69: جدول login_attempts (حماية من تخمين كلمات المرور).
 -- الإصدار 71: مفيش تغييرات في قاعدة البيانات (إصلاحات واجهة فقط: الشريط الجانبي + شعار الدردشة + طباعة كل الشاشات PDF).
--- الإصدار 72: جدول ui_customizations (استوديو التصميم: الثيمات + تعديل نصوص وتنسيق أي شاشة).
+-- الإصدار 72: جدول ui_customizations (استوديو التصميم) + جدول email_log (سجل الإيميلات) + عمود admin_read_at (حالة قراءة الشات).
 -- ============================================================
 
 -- ============================================================
@@ -602,5 +602,32 @@ CREATE TABLE IF NOT EXISTS ui_customizations (
   updated_by VARCHAR(190) NULL,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- الإصدار 72: سجل كل إيميل بيتبعت من الموقع (اتبعت / فشل + السبب) - بيظهر في لوحة التحكم ← مركز الإيميلات
+CREATE TABLE IF NOT EXISTS email_log (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  to_email VARCHAR(190) NOT NULL,
+  subject VARCHAR(255) NOT NULL,
+  mail_type VARCHAR(40) NOT NULL DEFAULT 'general',
+  status VARCHAR(10) NOT NULL,
+  transport VARCHAR(10) NULL,
+  error_text VARCHAR(500) NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_email_log_created (created_at),
+  KEY idx_email_log_to (to_email)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- الإصدار 72: حالة "اتقرت" لمحادثات الشات (آخر وقت الأدمن فتح المحادثة)
+DELIMITER $$
+DROP PROCEDURE IF EXISTS griffine_v72 $$
+CREATE PROCEDURE griffine_v72()
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='chat_conversation_meta' AND COLUMN_NAME='admin_read_at') THEN
+    ALTER TABLE chat_conversation_meta ADD COLUMN admin_read_at DATETIME NULL;
+  END IF;
+END $$
+DELIMITER ;
+CALL griffine_v72();
+DROP PROCEDURE griffine_v72;
 
 SELECT 'GRIFFINE database is up to date (v72)' AS result;

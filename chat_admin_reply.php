@@ -3,6 +3,7 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/session_boot.php';
 session_start();
 include 'db.php';
+require_once __DIR__ . '/chat_read_state.php';
 
 if (!isset($_SESSION['user_email']) || empty($_SESSION['is_admin'])) {
     http_response_code(403);
@@ -27,6 +28,8 @@ $stmt->bind_param("ss", $visitorId, $message);
 if ($stmt->execute()) {
     // نحدّث "آخر ظهور" للأدمن عشان العميل يشوف إن فريق الدعم متصل
     $conn->query("INSERT INTO admin_presence (id, last_seen) VALUES (1, NOW()) ON DUPLICATE KEY UPDATE last_seen = NOW()");
+    // الرد معناه إن الأدمن قرا المحادثة (الإصدار 72)
+    try { chat_mark_read($conn, $visitorId); } catch (Throwable $e) {}
     // نبعت إشعار Push حقيقي للعميل (لو معاه اشتراك مسجّل)
     try {
         send_web_push($conn, $visitorId, '💬 رد جديد من GRIFFINE', mb_substr($message, 0, 80), '/index.php');

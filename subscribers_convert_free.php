@@ -47,6 +47,7 @@ $stmt = $conn->prepare("UPDATE subscribers SET plan_id=?, plan_name=?, amount=0,
 $stmt->bind_param("ssssi", $planId, $planName, $startDate, $endDate, $id);
 if ($stmt->execute()) {
     if ($accountEmail) logSubscriptionEvent($conn, $accountEmail, 'gift', $planId, $planName, 0);
+    if ($accountEmail) mail_subscription_gift($conn, $accountEmail, $planName, $endDate); // الإصدار 72
     echo json_encode(["success" => true, "endDate" => $endDate]);
 } else {
     echo json_encode(["success" => false, "message" => "حدث خطأ: " . $conn->error]);

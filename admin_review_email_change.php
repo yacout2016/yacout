@@ -39,6 +39,7 @@ if ($decision === 'rejected') {
     $stmt = $conn->prepare("UPDATE email_change_requests SET status='rejected', reviewed_at=?, reviewed_by=?, review_note=? WHERE id=?");
     $stmt->bind_param("sssi", $now, $reviewer, $note, $id);
     $stmt->execute();
+    mail_email_change_reviewed($conn, $req['current_email'], $req['requested_email'], false, $note); // الإصدار 72
     echo json_encode(["success" => true]);
     exit();
 }
@@ -87,6 +88,7 @@ try {
     $stmt->close();
 
     $conn->commit();
+    mail_email_change_reviewed($conn, $oldEmail, $newEmail, true, $note); // الإصدار 72
     echo json_encode(["success" => true]);
 } catch (Exception $e) {
     $conn->rollback();

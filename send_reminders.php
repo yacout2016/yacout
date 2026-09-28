@@ -22,7 +22,6 @@ $defaultStartBefore = (int)($def['start_before_days'] ?? 6);
 $defaultInterval = (int)($def['interval_days'] ?? 2);
 
 $todayTs = strtotime(date('Y-m-d'));
-$siteHost = $_SERVER['HTTP_HOST'] ?? 'www.griffine.store';
 
 // كل المشتركين النشطين وغير المؤرشفين - يشمل الباقة المجانية كمان
 $result = $conn->query("SELECT * FROM subscribers WHERE archived = 0 AND active = 1");
@@ -52,18 +51,14 @@ while ($sub = $result->fetch_assoc()) {
     $endDateFormatted = date('d-m-Y', $endTs);
     $daysWord = ($daysLeft === 0) ? 'النهاردة' : ($daysLeft . ' يوم');
 
-    $subject = "Griffine.store - تذكير بقرب موعد انتهاء الاشتراك";
-    $message = "مرحبًا $name،\r\n\r\n"
-        . "نذكّرك إن اشتراكك في باقة \"$planName\" على Griffine.store هينتهي بتاريخ: $endDateFormatted\r\n"
-        . "الأيام المتبقية: $daysWord\r\n\r\n"
-        . "برجاء تجديد اشتراكك قبل انتهاء المدة عشان تفضل مستفيد من كل مميزات GRIFFINE بدون أي انقطاع.\r\n"
-        . "تقدر تجدد من هنا: https://$siteHost/index.php\r\n\r\n"
-        . "شكرًا لثقتك،\r\nفريق GRIFFINE - Top7";
-    $headers = "From: Griffine.store <no-reply@$siteHost>\r\nContent-Type: text/plain; charset=UTF-8";
-
-    $ok = @mail($toEmail, $subject, $message, $headers);
+    // الإصدار 72: عن طريق mailer.php (من info@griffine.store + سجل الإيميلات)
+    $res = griffine_notify($conn, $toEmail, 'تذكير بقرب انتهاء اشتراكك - GRIFFINE', 'اشتراكك قرب يخلص',
+        ["مرحبًا $name،", "نذكّرك إن اشتراكك في باقة «$planName» هينتهي بتاريخ: $endDateFormatted", "الأيام المتبقية: $daysWord",
+         'جدّد اشتراكك قبل انتهاء المدة عشان تفضل مستفيد من كل مميزات GRIFFINE بدون انقطاع.'],
+        ['label' => 'تجديد الاشتراك', 'url' => MAIL_SITE_URL . '/index.php'], 'reminder');
+    $ok = $res['ok'];
     if ($ok) $sentCount++;
-    $log[] = ["email" => $toEmail, "name" => $name, "daysLeft" => $daysLeft, "sent" => $ok];
+    $log[] = ["email" => $toEmail, "name" => $name, "daysLeft" => $daysLeft, "sent" => $ok, "error" => $res['error']];
 }
 
 echo json_encode(["success" => true, "sentCount" => $sentCount, "checkedAt" => date('Y-m-d H:i:s'), "log" => $log]);

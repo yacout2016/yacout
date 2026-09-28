@@ -106,6 +106,7 @@ if ($immediate) {
         $msg = $newActive
             ? "تم الانتقال فورًا للباقة الجديدة ($planName)، وسريانها حتى $newEnd."
             : "تم استلام طلب الانتقال الفوري وبيانات السداد — هيتم تفعيل الباقة الجديدة ($planName) فور مراجعة السداد من فريقنا.";
+        mail_plan_change_requested($conn, $email, $planName, $msg); // الإصدار 72
         echo json_encode(["success" => true, "message" => $msg]);
     } else {
         echo json_encode(["success" => false, "message" => "حدث خطأ: " . $conn->error]);
@@ -119,7 +120,9 @@ if ($immediate) {
         WHERE id=?");
     $upd->bind_param("ssdisssi", $planId, $planName, $amount, $durationDays, $paymentMethod, $paymentRef, $paymentProof, $row['id']);
     if ($upd->execute()) {
-        echo json_encode(["success" => true, "message" => "تم استلام بيانات السداد — هتفضل مستفيد بمميزات باقتك الحالية حتى " . $row['end_date'] . "، وبعدها هتتفعّل الباقة الجديدة ($planName) تلقائيًا بعد مراجعة السداد."]);
+        $msg = "تم استلام بيانات السداد — هتفضل مستفيد بمميزات باقتك الحالية حتى " . $row['end_date'] . "، وبعدها هتتفعّل الباقة الجديدة ($planName) تلقائيًا بعد مراجعة السداد.";
+        mail_plan_change_requested($conn, $email, $planName, $msg); // الإصدار 72
+        echo json_encode(["success" => true, "message" => $msg]);
     } else {
         echo json_encode(["success" => false, "message" => "حدث خطأ: " . $conn->error]);
     }

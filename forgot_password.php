@@ -34,16 +34,11 @@ if ($result->num_rows > 0) {
     $ins->execute();
     $ins->close();
 
-    $resetLink = "https://" . $_SERVER['HTTP_HOST'] . "/index.php?reset_token=" . $token;
-
-    $subject = "إعادة تعيين كلمة المرور - GRIFFINE";
-    $message = "مرحبًا،\r\n\r\nطلبت إعادة تعيين كلمة المرور لحسابك في GRIFFINE.\r\n"
-        . "اضغط على الرابط ده لتعيين كلمة مرور جديدة (صالح لمدة ساعة):\r\n\r\n"
-        . $resetLink . "\r\n\r\n"
-        . "لو مطلبتش ده، تجاهل الرسالة دي.\r\n\r\nفريق GRIFFINE - Top7";
-    $headers = "From: no-reply@" . $_SERVER['HTTP_HOST'] . "\r\nContent-Type: text/plain; charset=UTF-8";
-
-    @mail($email, $subject, $message, $headers);
+    // الإصدار 72: من info@griffine.store عن طريق mailer.php (بيتسجّل في سجل الإيميلات)
+    $resetLink = MAIL_SITE_URL . "/index.php?reset_token=" . $token;
+    griffine_notify($conn, $email, 'إعادة تعيين كلمة المرور - GRIFFINE', 'إعادة تعيين كلمة المرور',
+        ['طلبت إعادة تعيين كلمة المرور لحسابك في GRIFFINE.', 'اضغط على الزرار تحت عشان تعيّن كلمة مرور جديدة (الرابط صالح لمدة ساعة).', 'لو مطلبتش ده، تجاهل الرسالة دي - حسابك في أمان.'],
+        ['label' => 'تعيين كلمة مرور جديدة', 'url' => $resetLink], 'password_reset');
 }
 $stmt->close();
 

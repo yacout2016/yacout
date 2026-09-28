@@ -132,19 +132,22 @@ $clean = ($key === 'theme') ? uc_clean_theme($data, $ALLOWED_FONTS) : uc_clean_o
 // ---------------------------------------------------------------------
 // 6) الحفظ (null = مسح التخصيص والرجوع للشكل الأصلي)
 // ---------------------------------------------------------------------
-if ($clean === null) {
-    $stmt = $conn->prepare("DELETE FROM ui_customizations WHERE ui_key = ?");
-    $stmt->bind_param("s", $key);
-} else {
-    $json = json_encode($clean, JSON_UNESCAPED_UNICODE);
-    $by = $_SESSION['user_email'];
-    $stmt = $conn->prepare("INSERT INTO ui_customizations (ui_key, data_value, updated_by) VALUES (?, ?, ?)
-        ON DUPLICATE KEY UPDATE data_value = VALUES(data_value), updated_by = VALUES(updated_by)");
-    $stmt->bind_param("sss", $key, $json, $by);
+try {
+    if ($clean === null) {
+        $stmt = $conn->prepare("DELETE FROM ui_customizations WHERE ui_key = ?");
+        $stmt->bind_param("s", $key);
+    } else {
+        $json = json_encode($clean, JSON_UNESCAPED_UNICODE);
+        $by = $_SESSION['user_email'];
+        $stmt = $conn->prepare("INSERT INTO ui_customizations (ui_key, data_value, updated_by) VALUES (?, ?, ?)
+            ON DUPLICATE KEY UPDATE data_value = VALUES(data_value), updated_by = VALUES(updated_by)");
+        $stmt->bind_param("sss", $key, $json, $by);
+    }
+    $stmt->execute();
+    $stmt->close();
+    echo json_encode(["success" => true, "value" => $clean], JSON_UNESCAPED_UNICODE);
+} catch (Throwable $e) {
+    error_log('GRIFFINE ui_custom_save: ' . $e->getMessage());
+    echo json_encode(["success" => false, "message" => "تعذّر الحفظ - اتأكد إنك شغّلت ملف ALL_SCHEMA_UPDATES.sql (جدول ui_customizations)."]);
 }
-if (!$stmt) { echo json_encode(["success" => false, "message" => "جدول التخصيصات مش موجود - شغّل ملف ALL_SCHEMA_UPDATES.sql الأول."]); exit(); }
-
-if ($stmt->execute()) echo json_encode(["success" => true, "value" => $clean], JSON_UNESCAPED_UNICODE);
-else echo json_encode(["success" => false, "message" => "حدث خطأ: " . $conn->error]);
-$stmt->close();
 ?>

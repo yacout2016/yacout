@@ -30,6 +30,7 @@
      13. الشاشة الرئيسية
      14. شاشة حسابي
      15. حذف الحساب
+     15ب. مركز الإيميلات (لوحة التحكم)
      16. طباعة صور كل الشاشات (PDF)
      17. قائمة الزائر (قبل تسجيل الدخول)
      18. التثبيت كتطبيق (PWA)
@@ -138,6 +139,7 @@
     login:'<path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3"/><path d="M14 17l5-5-5-5M19 12H8"/>',
     menu:'<path d="M4 7h16M4 12h16M4 17h16"/>',
     target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
+    mail:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
     brush:'<path d="M18.4 2.6a2 2 0 0 1 2.9 2.9L12 14.8 9.2 12z"/><path d="M9.2 12c-2 0-3.6 1.6-3.6 3.6 0 1.6-1.1 2.9-2.6 3.4 1 1.3 2.6 2 4.3 2 3.2 0 5.7-2.6 5.7-5.7z"/>'
   };
   const icon = (n) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n] || P.info}</svg>`;
@@ -547,7 +549,7 @@
     goChatAdminBtn:'chat', goContentBtn:'star', goSuggestionsAdminBtn:'bulb', goPlansMgmtBtn:'card', goReportsBtn:'report',
     goRecommendationsBtn:'megaphone', goStaffBtn:'user', goSettingsBtn:'settings', goBlacklistBtn:'shield', goSiteDesignBtn:'grid',
     goSiteTextsBtn:'news', goArchiveBtn:'receipt', goSubscribersBtn:'user', goExportScreensBtn:'report', goExportExcelBtn:'download',
-    goStudioBtn:'brush'
+    goStudioBtn:'brush', goEmailCenterBtn:'mail'
   };
 
   let processing = false;
@@ -1016,6 +1018,77 @@
 
 
   /* =====================================================================
+     15ب. مركز الإيميلات (الإصدار 72) - لوحة التحكم
+     ---------------------------------------------------------------------
+     - حالة الإرسال: SMTP (كلمة سر info@griffine.store متحطة في db.php) ولا mail() العادية
+     - إرسال إيميل تجربة لأي عنوان
+     - سجل آخر 150 إيميل (اتبعت / فشل + السبب) - من email_center.php
+     ===================================================================== */
+  const MAIL_TYPES = {
+    verification:'تفعيل الحساب', password_reset:'استرجاع كلمة المرور', reminder:'تذكير انتهاء الاشتراك', chat_transcript:'نسخة محادثة شات',
+    chat_new:'محادثة شات جديدة', subscription_active:'تفعيل اشتراك', subscription_pending:'استلام طلب اشتراك', subscription_paused:'إيقاف اشتراك',
+    subscription_extended:'تمديد اشتراك', subscription_gift:'باقة هدية', plan_change:'تغيير باقة', email_change:'تغيير الإيميل',
+    admin_new_subscription:'تنبيه: اشتراك جديد', admin_plan_change:'تنبيه: تغيير باقة', test:'تجربة', general:'عام', notify:'تنبيه'
+  };
+
+  GS.renderEmailCenter = async function(){
+    pushNav(() => GS.renderEmailCenter());
+    try { window.scrollTo(0, 0); } catch(e){}
+    GS.seq++; GS.setTab('admin'); GS.isRoot = false; GS.markScreen('renderEmailCenter');
+    const my = GS.seq;
+    const email = await getSession();
+    if (!email) return renderLogin();
+    if (!window.__isAdmin) return renderHome();
+
+    app.innerHTML = `<div class="container wide"><div class="gs-page-title">مركز الإيميلات</div><div class="gs-skel" style="height:260px"></div></div>`;
+    let r; try { r = await apiGet('/email_center.php'); } catch(e){ r = null; }
+    if (GS.seq !== my) return;
+    if (!r || !r.success) { app.innerHTML = `<div class="container"><div class="gs-page-title">مركز الإيميلات</div><div class="error">${esc((r && r.message) || 'تعذّر تحميل البيانات.')}</div></div>`; return; }
+
+    const stats = r.stats7d || {};
+    const rows = (r.log || []).map(x => `<tr>
+        <td>${esc(x.created_at)}</td>
+        <td dir="ltr" style="text-align:right">${esc(x.to_email)}</td>
+        <td>${esc(MAIL_TYPES[x.mail_type] || x.mail_type)}</td>
+        <td>${esc(x.subject)}</td>
+        <td>${x.status === 'sent' ? '<span class="tag" style="background:var(--gs-pos-tint);color:var(--gs-pos)">اتبعت</span>' : '<span class="tag" style="background:var(--gs-neg-tint);color:var(--gs-neg)">فشل</span>'}</td>
+        <td>${esc(x.transport || '')}</td>
+        <td>${esc(x.error_text || '')}</td></tr>`).join('');
+
+    app.innerHTML = `<div class="container wide">
+      <div class="gs-page-title">مركز الإيميلات</div>
+      <div class="summary-cards">
+        <div class="summary-card"><div class="val" dir="ltr">${esc(r.from)}</div><div class="lbl">المرسل</div></div>
+        <div class="summary-card"><div class="val ${r.smtp ? 'pos' : 'neg'}">${r.smtp ? 'SMTP هوستنجر' : 'mail() العادية'}</div><div class="lbl">طريقة الإرسال</div></div>
+        <div class="summary-card"><div class="val pos">${stats.sent || 0}</div><div class="lbl">اتبعت (آخر 7 أيام)</div></div>
+        <div class="summary-card"><div class="val ${stats.failed ? 'neg' : ''}">${stats.failed || 0}</div><div class="lbl">فشل (آخر 7 أيام)</div></div>
+      </div>
+      ${r.smtp ? '' : `<div class="info" style="margin-top:12px;line-height:1.9">الإيميلات بتتبعت دلوقتي بالطريقة العادية. عشان تضمن إنها توصل ومتروحش Spam:<br>
+        افتح <b>db.php</b> واكتب كلمة سر صندوق <b dir="ltr">${esc(r.from)}</b> في السطر <b dir="ltr">define('MAIL_SMTP_PASS', '')</b> وارفعه تاني.</div>`}
+      ${r.hasLog ? '' : `<div class="error" style="margin-top:12px">سجل الإيميلات مش شغال لسه — شغّل ملف ALL_SCHEMA_UPDATES.sql (جدول email_log).</div>`}
+      <h2>إرسال إيميل تجربة</h2>
+      <div class="section-card">
+        <label for="gsMailTestTo">ابعت لـ</label>
+        <input type="email" id="gsMailTestTo" dir="ltr" value="${esc(r.adminTo || '')}">
+        <button type="button" id="gsMailTestBtn" style="margin-top:12px">إرسال إيميل تجربة</button>
+        <div id="gsMailTestMsg" style="margin-top:10px"></div>
+      </div>
+      <h2>آخر الإيميلات</h2>
+      <div class="section-card">${rows ? `<table><thead><tr><th>الوقت</th><th>إلى</th><th>النوع</th><th>العنوان</th><th>الحالة</th><th>الطريقة</th><th>السبب لو فشل</th></tr></thead><tbody>${rows}</tbody></table>` : '<p class="disclaimer">مفيش إيميلات متسجلة لسه.</p>'}</div>
+    </div>`;
+
+    $('#gsMailTestBtn').onclick = async () => {
+      const b = $('#gsMailTestBtn'), m = $('#gsMailTestMsg');
+      b.disabled = true; b.textContent = 'جاري الإرسال...';
+      let t; try { t = await apiPost('/email_center.php', { to: $('#gsMailTestTo').value.trim() }); } catch(e){ t = { success:false, message:'تعذّر الاتصال بالسيرفر.' }; }
+      m.innerHTML = `<div class="${t && t.success ? 'info' : 'error'}">${esc((t && t.message) || 'حصل خطأ')}</div>`;
+      b.disabled = false; b.textContent = 'إرسال إيميل تجربة';
+      if (t && t.success) setTimeout(() => { if (GS.currentScreen === 'renderEmailCenter') GS.renderEmailCenter(); }, 1500);
+    };
+  };
+
+
+  /* =====================================================================
      16. طباعة صور كل الشاشات في ملف PDF واحد (من لوحة التحكم)
      ---------------------------------------------------------------------
      بيفتح كل شاشة بالترتيب، يصوّرها بالشكل الحالي (فاتح/ليلي، موبايل/كمبيوتر)،
@@ -1090,6 +1163,7 @@
     ['نصوص الشاشات', 'renderSiteTextsAdminPage'],
     ['آراء العملاء والمقالات (إدارة)', 'renderContentAdminPage'],
     ['مقترحات العملاء (إدارة)', 'renderSuggestionsAdminPage'],
+    ['مركز الإيميلات', 'GS:renderEmailCenter'],
     ['الأرشيف', 'renderArchivedCustomers'],
   ];
 

@@ -64,6 +64,18 @@ if ($stmt->execute()) {
         send_web_push($conn, 'admin', '💬 رسالة جديدة' . ($visitorEmail ? " من $visitorEmail" : ''), $preview, '/index.php');
     } catch (Exception $e) { /* الإشعار مش أساسي - نتجاهل أي فشل فيه */ }
 
+    // الإصدار 72: أول رسالة في محادثة جديدة ← إيميل تنبيه على info@griffine.store (مش مع كل رسالة)
+    try {
+        $cnt = $conn->prepare("SELECT COUNT(*) AS c FROM chat_messages WHERE COALESCE(visitor_id, visitor_email) = ?");
+        $cnt->bind_param("s", $visitorId); $cnt->execute();
+        $isFirst = ((int)$cnt->get_result()->fetch_assoc()['c']) === 1; $cnt->close();
+        if ($isFirst) {
+            griffine_notify($conn, MAIL_ADMIN_TO, 'محادثة شات جديدة' . ($visitorEmail ? " من $visitorEmail" : ''), 'عميل بدأ محادثة جديدة',
+                ['العميل: ' . ($visitorEmail ?: 'زائر بدون إيميل'), 'الرسالة: ' . ($message !== '' ? mb_substr($message, 0, 500) : '(أرسل مرفق)'), 'رد عليه من لوحة التحكم ← الدردشة الفورية.'],
+                ['label' => 'فتح الدردشة', 'url' => MAIL_SITE_URL . '/index.php'], 'chat_new', ['reply_to' => $visitorEmail]);
+        }
+    } catch (Throwable $e) { /* الإيميل مش أساسي */ }
+
     echo json_encode(["success" => true, "id" => $newId]);
 } else {
     echo json_encode(["success" => false, "message" => "حدث خطأ: " . $conn->error]);

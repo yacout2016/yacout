@@ -38,6 +38,8 @@ $newEnd = date('Y-m-d', strtotime($base . ($days >= 0 ? " +$days days" : " $days
 $upd = $conn->prepare("UPDATE subscribers SET end_date = ?, is_comp = 1 WHERE id = ?");
 $upd->bind_param("si", $newEnd, $id);
 $upd->execute();
+// الإصدار 72: إيميل للعميل بالأيام الإضافية
+if ($days > 0) mail_subscription_extended($conn, $id, $days, $newEnd);
 echo json_encode(["success" => true, "newEndDate" => $newEnd]);
 $upd->close();
 ?>

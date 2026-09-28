@@ -628,3 +628,8 @@ body.g-shell:not(.gs-no-shell):not([data-gs-screen="renderAdminHub"]) #app .admi
 /* ---------- أثناء تصوير الشاشات: وقف كل الحركات ----------
    (أداة التصوير بتنسخ الصفحة فالحركة بتبدأ من الأول، والصور كانت بتطلع باهتة) */
 html.gs-exporting *, html.gs-exporting *::before, html.gs-exporting *::after{ animation:none !important; transition:none !important; }
+
+/* ---------- الشات: علامة المحادثات غير المقروءة (الإصدار 72) ---------- */
+.chat-unread-dot{ display:inline-block; vertical-align:middle; margin-inline-end:6px; }
+body.g-shell:not(.gs-no-shell) .plan-list-item.chat-unread strong{ font-weight:800; color:var(--gs-text); }
+body.g-shell:not(.gs-no-shell) .plan-list-item.chat-unread{ border-color:var(--gs-neg) !important; }
