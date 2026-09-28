@@ -50,7 +50,7 @@
      ===================================================================== */
 
   // رقم الإصدار - بيظهر في شاشة "حسابي" (غيّره مع ?v= في index.php و VERSION في sw.js)
-  const APP_VERSION = 93;
+  const APP_VERSION = 94;
 
   /* الاستعلامات المتكررة (الدردشة/التوصيات/قائمة المتابعة) - استعلام متكيّف (الإصدار 89)
      - بتقف لما التبويب يكون مخفي أو الموبايل مقفول
@@ -954,7 +954,7 @@
 
     $('#gsHomeAvatar').onclick = () => GS.renderAccount();
     wireAccessGateCard(acc);   // الإصدار 85
-    if (typeof mkAfterHome === 'function') mkAfterHome(plans, grids, ccys, sel);   // منحنى الأداء + تنبيهات الأسعار (الإصدار 89: للأدمن والموظفين كمان)
+    if (typeof mkAfterHome === 'function') mkAfterHome(plans, grids, ccys, sel, email);   // منحنى الأداء + تنبيهات الأسعار (الإصدار 89: للأدمن والموظفين كمان)
     document.querySelectorAll('.gs-quick button').forEach(b => b.onclick = () => quick[+b.dataset.i].go());
     GS.wireInstallCard();
 

@@ -2,7 +2,9 @@
 const { check, summary, launch, page, loginAdmin, q } = require('../lib');
 (async () => {
   const b = await launch();
-  const v = await page(b, { width: 420, height: 860 });
+  // الإصدار 94: 20 سؤال طويل ← القائمة على الموبايل عمودية وبتتمرر لفوق وتحت بس
+  for (let i = 1; i <= 16; i++) q(`INSERT INTO chat_faq (question, keywords, answer, sort_order) VALUES ('سؤال تجريبي رقم ${i} عن طريقة استخدام الخطط والتقارير والتنبيهات في الموقع بشكل مفصل', 'zzqq${i}', 'x', ${100 + i})`);
+  const v = await page(b, { width: 360, height: 740 });
   await v.click('#chatBubbleBtn, .chat-bubble, #chatBubble'); await v.waitForTimeout(800);
   if (await v.isVisible('#chatStartBtn')) await v.click('#chatStartBtn');
   await v.waitForTimeout(1800);
@@ -11,6 +13,10 @@ const { check, summary, launch, page, loginAdmin, q } = require('../lib');
   check('الأسئلة مقفولة افتراضيًا وزرار ❓ ظاهر', !(await v.isVisible('#chatFaq')) && await v.isVisible('#chatFaqBtn'));
   await v.click('#chatFaqBtn'); await v.waitForTimeout(200);
   check('❓ يفتح قائمة الأسئلة', await v.locator('.chat-faq-chip:visible').count() >= 3);
+  const lay = await v.evaluate(() => { const l = document.querySelector('.chat-faq-list'); const c = [...l.querySelectorAll('.chat-faq-chip')];
+    return { n: c.length, cols: new Set(c.map(x => Math.round(x.getBoundingClientRect().left))).size, v: l.scrollHeight > l.clientHeight, h: l.scrollWidth > l.clientWidth + 1 }; });
+  check('الموبايل: كل الأسئلة (20+) في عمود واحد بتمرير لفوق وتحت ومفيش تمرير بالعرض', lay.n >= 20 && lay.cols === 1 && lay.v && !lay.h, JSON.stringify(lay));
+  q("DELETE FROM chat_faq WHERE keywords LIKE 'zzqq%'");
   check('القائمة مش بتصغّر مساحة الرسائل', await v.evaluate(() => document.getElementById('chatBody').clientHeight) === bodyH0);
   await v.click('.chat-faq-x'); await v.waitForTimeout(200);
   check('✕ يقفل القائمة', !(await v.isVisible('#chatFaq')));

@@ -886,3 +886,9 @@ body.g-shell #chatPanel .chat-faq.chat-faq-dd{ background:var(--gs-surface, #fff
 #chatPanel .chat-faq-dd .chat-faq-chip{ width:100% !important; text-align:right; border:none !important; border-radius:8px !important; padding:8px 10px !important; font-size:12.5px !important; background:transparent !important; }
 #chatPanel .chat-faq-dd .chat-faq-chip:hover, #chatPanel .chat-faq-dd .chat-faq-chip:focus{ background:rgba(201,162,39,.14) !important; }
 #chatFaqBtn.on{ background:rgba(255,255,255,.18) !important; border-radius:6px; }
+
+/* الإصدار 94: قائمة أسئلة المساعد - عمودية دايمًا وبتتمرر لفوق وتحت بس (حتى 50 سؤال، ومفيش تمرير بالعرض على الموبايل) */
+#chatPanel .chat-faq.chat-faq-dd{ overflow:hidden; display:flex; flex-direction:column; max-height:calc(100% - 64px); }
+#chatPanel .chat-faq.chat-faq-dd[hidden]{ display:none; }
+#chatPanel .chat-faq-dd .chat-faq-list{ flex-direction:column !important; flex-wrap:nowrap !important; overflow-y:auto !important; overflow-x:hidden !important; max-height:min(320px, 55vh); overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
+#chatPanel .chat-faq-dd .chat-faq-chip{ flex:0 0 auto !important; white-space:normal !important; overflow-wrap:anywhere; max-width:100% !important; line-height:1.5 !important; }

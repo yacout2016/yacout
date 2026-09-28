@@ -173,11 +173,13 @@ function mkComputeTargets(plans, grids){
   });
   return out;
 }
-async function mkSyncTargets(plans, grids){
+async function mkSyncTargets(plans, grids, email){
   const t = mkComputeTargets(plans, grids);
   const sig = JSON.stringify(t);
-  if (window.__mkTargetsSig === sig) return;   // نفس المستويات ← لا يوجد داعي نبعت تاني في نفس الجلسة
-  window.__mkTargetsSig = sig;
+  // الإصدار 93: المستويات بتخص صاحب الخطط بس - لو الحساب اتغيّر (خروج/دخول بحساب تاني) منبعتش خطط الحساب القديم باسم الجديد
+  if (email && (await getSession().catch(() => null)) !== email) return;
+  if (window.__mkTargetsSig === (email || '') + '|' + sig) return;   // نفس الحساب ونفس المستويات ← لا يوجد داعي نبعت تاني
+  window.__mkTargetsSig = (email || '') + '|' + sig;
   await MK.post({ action: 'sync_targets', targets: sig });
 }
 // الإصدار 91: قائمة بتعرض أول n عناصر والباقي بالتمرير لفوق وتحت (الارتفاع محسوب من العنصر رقم n الفعلي)
@@ -466,8 +468,8 @@ async function mkPortfolioCurve(el, ccys, sel, plans, grids, rangeKey){
   svg.addEventListener('mouseleave', () => { tip.hidden = true; cur.style.display = 'none'; });
 }
 // بتتنادى من الرئيسية (shell.js) بعد الرسم
-async function mkAfterHome(plans, grids, ccys, sel){
-  try { await mkSyncTargets(plans, grids); } catch(e){}
+async function mkAfterHome(plans, grids, ccys, sel, email){
+  try { await mkSyncTargets(plans, grids, email); } catch(e){}
   mkAlertsCard(document.getElementById('gsAlertsCard'));
   mkPortfolioCurve(document.getElementById('gsCurve'), ccys, sel, plans, grids);
 }

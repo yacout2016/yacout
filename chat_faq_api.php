@@ -26,7 +26,7 @@ if ($action === 'public') {
     $on = site_config_on($conn, 'chat_bot');
     $items = [];
     if ($on) {
-        $res = $conn->query("SELECT id, question FROM chat_faq WHERE active = 1 ORDER BY sort_order, hits DESC, id LIMIT 6");
+        $res = $conn->query("SELECT id, question FROM chat_faq WHERE active = 1 ORDER BY sort_order, hits DESC, id LIMIT 50");   // الإصدار 94: كل الأسئلة (القائمة بتتمرر لفوق وتحت)
         while ($r = $res->fetch_assoc()) $items[] = ["id" => (int)$r['id'], "question" => $r['question']];
     }
     faq_out(["success" => true, "enabled" => $on, "items" => $items]);
