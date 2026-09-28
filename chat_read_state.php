@@ -129,9 +129,12 @@ function chat_mark_read($conn, $visitorKey = null){
    - الأعمدة: conv_key, visitor_id, visitor_email, last_at, last_message, last_sender, last_visitor_at, read_at, archived, deleted, unread */
 function chat_conversations_sql($conn, $where){
     $readCol = chat_has_read_col($conn) ? 'cm.admin_read_at' : 'NULL';
+    // الإصدار 91: غير مقروءة = رسالة من العميل بعد آخر رد من موظف حقيقي (ردود المساعد الذكي وتنبيهات الأسعار
+    // التلقائية مبتتحسبش رد - قبل كده رد المساعد "حوّلت محادثتك لفريق الدعم" كان بيخفي المحادثة من الإشعارات)
+    $human = "(t.last_human_at IS NULL OR t.last_visitor_at > t.last_human_at)";
     $unread = chat_has_read_col($conn)
-        ? "(lm.sender = 'visitor' AND (cm.admin_read_at IS NULL OR t.last_visitor_at > cm.admin_read_at))"
-        : "(lm.sender = 'visitor')";
+        ? "(t.last_visitor_at IS NOT NULL AND $human AND (cm.admin_read_at IS NULL OR t.last_visitor_at > cm.admin_read_at))"
+        : "(t.last_visitor_at IS NOT NULL AND $human)";
     return "
         SELECT t.conv_key, t.visitor_id, t.visitor_email, t.last_at, t.last_visitor_at,
                lm.message AS last_message, lm.sender AS last_sender,
@@ -144,7 +147,8 @@ function chat_conversations_sql($conn, $where){
             SELECT COALESCE(visitor_id, visitor_email) AS conv_key,
                    MAX(visitor_id) AS visitor_id, MAX(visitor_email) AS visitor_email,
                    MAX(created_at) AS last_at, MAX(id) AS last_id,
-                   MAX(CASE WHEN sender = 'visitor' THEN created_at END) AS last_visitor_at
+                   MAX(CASE WHEN sender = 'visitor' THEN created_at END) AS last_visitor_at,
+                   MAX(CASE WHEN sender = 'admin' AND message NOT LIKE '🤖 مساعد%' AND message NOT LIKE '🔔 تنبيه سعر%' THEN created_at END) AS last_human_at
             FROM chat_messages
             GROUP BY COALESCE(visitor_id, visitor_email)
         ) t

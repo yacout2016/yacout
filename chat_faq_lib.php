@@ -74,6 +74,14 @@ function faq_auto_reply($conn, $visitorId, $text){
         if (faq_is_handoff($text)) {
             foreach ($recentBot as $m) if (mb_strpos($m, 'حوّلت محادثتك') !== false) return false;   // اتحوّل خلاص
             $reply = FAQ_BOT_PREFIX . "\nحوّلت محادثتك لفريق الدعم 👍 سيرد عليك أحد الموظفين هنا في أقرب وقت.";
+            // الإصدار 91: تنبيه الإدارة بالإيميل (والمحادثة بتظهر غير مقروءة في شات الإدارة)
+            try {
+                $em = null; $q = $conn->prepare("SELECT visitor_email FROM chat_messages WHERE visitor_id = ? AND visitor_email IS NOT NULL ORDER BY id DESC LIMIT 1");
+                $q->bind_param("s", $visitorId); $q->execute(); $x = $q->get_result()->fetch_assoc(); $q->close(); $em = $x['visitor_email'] ?? null;
+                griffine_notify($conn, MAIL_ADMIN_TO, 'عميل يطلب التحدث مع موظف' . ($em ? ' - ' . $em : ''), 'عميل يطلب موظفًا في الشات',
+                    ['العميل: ' . ($em ?: 'زائر بدون إيميل'), 'رسالته: ' . mb_substr($text, 0, 300), 'افتح لوحة التحكم ← الدردشة الفورية للرد عليه.'],
+                    ['label' => 'فتح الدردشة', 'url' => MAIL_SITE_URL . '/index.php'], 'chat_handoff', $em ? ['reply_to' => $em] : []);
+            } catch (Throwable $e) {}
         } else {
             $f = faq_match($conn, $text);
             if (!$f) return false;

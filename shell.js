@@ -50,7 +50,7 @@
      ===================================================================== */
 
   // رقم الإصدار - بيظهر في شاشة "حسابي" (غيّره مع ?v= في index.php و VERSION في sw.js)
-  const APP_VERSION = 91;
+  const APP_VERSION = 92;
 
   /* الاستعلامات المتكررة (الدردشة/التوصيات/قائمة المتابعة) - استعلام متكيّف (الإصدار 89)
      - بتقف لما التبويب يكون مخفي أو الموبايل مقفول
@@ -877,6 +877,14 @@
       getMySubscription().catch(() => null), GS.loadAvatar()
     ]);
     if (GS.seq !== my) return;
+    // الإصدار 91: أسعار السوق الحالية لأسهم الخطط (قيمة المحفظة بسعر السوق - نفس المنحنى)
+    if (typeof mkEnsureLivePrices === 'function') {
+      try { await mkEnsureLivePrices(plans, grids); } catch(e){}
+      if (GS.seq !== my) return;
+      if (window.__mkLivePxPending) window.__mkLivePxPending.then(changed => {
+        if (changed && GS.seq === my && GS.currentScreen === 'renderHome') { window.__navSilent = true; try { renderHome(); } finally { window.__navSilent = false; } }
+      });
+    }
     GS.settings = window.__isAdmin ? {} : (settings || {});
     const sub = subRes && subRes.success ? subRes.subscription : null;
     const displayName = (sub && sub.name) ? String(sub.name).split(/\s+/)[0] : email.split('@')[0];
@@ -936,7 +944,9 @@
       ${quick.length ? `<div class="gs-quick" style="grid-template-columns:repeat(${quick.length},1fr)">${quick.map((q, i) => `<button type="button" data-i="${i}"><span class="ic ${q.brand ? 'brand' : ''}">${icon(q.ic)}</span>${q.label}</button>`).join('')}</div>` : ''}
       <div id="gsRecs"></div>
       </div><div class="c2">
-      <div class="gs-sec-head"><h2>استثماراتي</h2>${rows.length > 6 ? `<button type="button" class="gs-link" id="gsAllHold">عرض الكل (${rows.length})</button>` : ''}</div>
+      <div class="gs-sec-head gs-hold-head"><h2>استثماراتي</h2>
+        ${rows.length ? `<span class="gs-hold-ctl"><select id="gsHoldFilter" aria-label="عرض الصفقات"><option value="open">المفتوحة</option><option value="closed">المغلقة</option><option value="all">الكل</option></select>
+        <button type="button" class="gs-link" id="gsAllHold" hidden></button></span>` : ''}</div>
       <div id="gsHoldings"></div>
       <p class="disclaimer" style="margin-top:18px">الأرقام محسوبة من بيانات خططك وآخر سعر أدخلته، وليست توصية استثمارية.</p>
       </div></div>
@@ -969,7 +979,7 @@
 
       hero.innerHTML = `<div class="gs-hero">
         <div class="gs-hero-top">
-          <span class="gs-hero-label">قيمة المحفظة الحالية</span>
+          <span class="gs-hero-label">قيمة المحفظة الحالية${a.pricedLive ? ' <small class="gs-hero-src">بسعر السوق</small>' : ''}</span>
           <span style="display:flex;gap:6px;align-items:center">
             ${ccys.length > 1 ? `<span class="gs-ccy">${ccys.map(x => `<button type="button" class="${x.c === sel ? 'on' : ''}" data-c="${esc(x.c)}">${esc(CCY_CODE[x.c] || x.c)}</button>`).join('')}</span>` : ''}
             <button type="button" class="gs-eye" id="gsEye" aria-label="${valuesHidden() ? 'إظهار الأرقام' : 'إخفاء الأرقام'}">${icon(valuesHidden() ? 'eyeoff' : 'eye')}</button>
@@ -980,13 +990,14 @@
         ${parts.length ? `<div class="gs-alloc" aria-hidden="true">${parts.map(p => `<span style="width:${(p.v / totalOpen * 100).toFixed(2)}%;background:${p.color}"></span>`).join('')}</div>
           <div class="gs-legend">${parts.map(p => `<span><i style="background:${p.color}"></i>${esc(p.label)} ${(p.v / totalOpen * 100).toFixed(0)}%</span>`).join('')}</div>` : ''}
         <div class="gs-hero-stats">
-          <div>المستثمر حاليًا<b>${mask(money(a.totalInvested))}</b></div>
+          <div>تكلفة المراكز المفتوحة<b>${mask(money(a.totalOpenCost || 0))}</b></div>
+          <div>ربح غير محقق<b class="${(a.totalUnrealized || 0) >= 0 ? 'pos' : 'neg'}">${mask(((a.totalUnrealized || 0) >= 0 ? '+' : '') + money(a.totalUnrealized || 0))}</b></div>
           <div>الربح المحقق<b>${mask(money((a.totalRealized || 0) + (a.totalClosedProfit || 0)))}</b></div>
           <div>مراكز مفتوحة<b>${a.totalOpenPositionsCount || 0} / ${a.stockRows.length}</b></div>
         </div>
       </div>`;
       hero.querySelectorAll('.gs-ccy button').forEach(b => b.onclick = () => { sel = b.dataset.c; store.set('gs_ccy', sel); drawHero(); if (typeof mkPortfolioCurve === 'function') mkPortfolioCurve(document.getElementById('gsCurve'), ccys, sel, plans, grids); });
-      $('#gsEye').onclick = () => { store.set('gs_hide_values', valuesHidden() ? '0' : '1'); drawHero(); drawHoldings(); };
+      $('#gsEye').onclick = () => { store.set('gs_hide_values', valuesHidden() ? '0' : '1'); drawHero(); drawHoldings(holdAll); };
     }
 
     // ---- 3ب) صف واحد في قائمة استثماراتي ----
@@ -1015,13 +1026,24 @@
         const b = $('#gsEmptyNew'); if (b) b.onclick = () => renderPlanTypeChooser();
         return;
       }
-      const list = showAll ? rows : rows.slice(0, 6);
-      el.innerHTML = `<div class="gs-list">${list.map(holdingRow).join('')}</div>`;
+      // الإصدار 91: فلتر (المفتوحة افتراضيًا / المغلقة / الكل) + 5 صفوف والباقي تمرير + زرار عرض الكل / إغلاق
+      const f = holdFilter;
+      const filtered = rows.filter(r => f === 'all' ? true : f === 'closed' ? r.status === 'مغلقة' : r.status === 'مفتوحة');
+      const allBtn = $('#gsAllHold');
+      if (allBtn) { allBtn.hidden = filtered.length <= 5; allBtn.textContent = showAll ? 'إغلاق' : `عرض الكل (${filtered.length})`; }
+      if (!filtered.length) { el.innerHTML = `<div class="gs-empty-mini u-muted">${f === 'closed' ? 'لا توجد صفقات مغلقة.' : f === 'open' ? 'لا توجد صفقات مفتوحة الآن.' : 'لا توجد خطط.'}</div>`; return; }
+      const list = showAll ? filtered : filtered.slice(0, 5);
+      el.innerHTML = `<div class="gs-list gs-hold-list">${list.map(holdingRow).join('')}</div>`;
       el.querySelectorAll('.gs-row').forEach(b => b.onclick = () => b.dataset.type === 'Grid' ? renderGridPlanDetail(b.dataset.sym) : renderPlanDetail(b.dataset.sym));
+      const box = el.querySelector('.gs-hold-list');
+      if (showAll && typeof mkLimitList === 'function') mkLimitList(box, 5); else if (box) box.style.maxHeight = '';
     }
 
-    drawHero(); drawHoldings();
-    const allBtn = $('#gsAllHold'); if (allBtn) allBtn.onclick = () => { drawHoldings(true); allBtn.remove(); };
+    let holdFilter = store.get('gs_hold_filter', 'open'); if (!['open', 'closed', 'all'].includes(holdFilter)) holdFilter = 'open';
+    let holdAll = false;
+    drawHero(); drawHoldings(false);
+    const hf = $('#gsHoldFilter'); if (hf) { hf.value = holdFilter; hf.onchange = () => { holdFilter = hf.value; store.set('gs_hold_filter', holdFilter); holdAll = false; drawHoldings(false); }; }
+    const allBtn = $('#gsAllHold'); if (allBtn) allBtn.onclick = () => { holdAll = !holdAll; drawHoldings(holdAll); };
 
     // ---- 3د) آخر التوصيات (في الخلفية) ----
     if (!hidden('hide_recommendations_screen')) {

@@ -14,6 +14,11 @@ const { check, summary, launch, page, loginAdmin, q } = require('../lib');
   check('المساعد رد على سؤال الأسعار', await v.locator('.chat-msg.admin.bot').count() === 1);
   await v.fill('#chatTextInput', 'عايز اكلم موظف'); await v.click('#chatSendBtn'); await v.waitForTimeout(2200);
   check('«موظف» ← تحويل لفريق الدعم', (await v.locator('.chat-msg.admin.bot').last().textContent()).includes('حوّلت محادثتك'));
+  // الإصدار 91: طلب موظف ← المحادثة غير مقروءة عند الإدارة + إيميل تنبيه (قبل كده رد المساعد كان بيخفيها)
+  const adm = await page(b); await loginAdmin(adm);
+  const un = await adm.evaluate(() => apiGet('/chat_unread_count.php'));
+  check('طلب «موظف» ← إشعار عند شات الإدارة (غير مقروءة)', un && un.unreadCount >= 1, JSON.stringify(un));
+  check('طلب «موظف» ← إيميل تنبيه للإدارة', +q("SELECT COUNT(*) FROM email_log WHERE mail_type='chat_handoff' AND created_at > NOW() - INTERVAL 2 MINUTE") >= 1);
   await v.fill('#chatTextInput', 'رسالة عادية xyz'); await v.click('#chatSendBtn'); await v.waitForTimeout(1800);
   check('رسالة بدون تطابق ← لا رد تلقائي', await v.locator('.chat-msg.admin.bot').count() === 2);
   const a = await page(b); await loginAdmin(a);

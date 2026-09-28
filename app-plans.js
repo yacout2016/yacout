@@ -123,7 +123,7 @@ function wireDacStockReportSection(plans, symbols){
 
     const rowsHtml = reportAgg.stockRows.map(r=>`<tr>
       <td>${escapeHtml(r.symbol)}</td><td>${r.status}</td>
-      <td>${fmt2(r.invested)}</td><td>${r.currentValue?fmt2(r.currentValue):'-'}</td>
+      <td>${fmt2(r.openCost)}</td><td>${r.currentValue?fmt2(r.currentValue):'-'}</td>
       <td>${r.dropPercent!=null?r.dropPercent.toFixed(2)+'%':'-'}</td>
       <td>${fmt2(r.unrealized)}</td><td>${fmt2(r.realized)}</td>
       <td>${r.closedCount}</td><td>${fmt2(r.closedProfit)}</td>
@@ -153,13 +153,13 @@ function wireDacStockReportSection(plans, symbols){
       <img src="${chartImg}" width="720" height="300">
 
       <table><thead><tr>
-        <th>السهم</th><th>الحالة</th><th>المستثمر</th><th>القيمة الحالية</th><th>الانخفاض</th>
+        <th>السهم</th><th>الحالة</th><th>تكلفة المراكز المفتوحة</th><th>القيمة الحالية</th><th>الانخفاض</th>
         <th>ربح غير محقق</th><th>ربح محقق</th><th>صفقات مغلقة</th><th>ربح الصفقات المغلقة</th>
       </tr></thead><tbody>
         ${rowsHtml}
         <tr style="font-weight:bold;background:#eef6f2;">
           <td>الإجمالي</td><td></td>
-          <td>${fmt2(reportAgg.totalInvested)}</td><td>${fmt2(reportAgg.totalCurrentValue)}</td>
+          <td>${fmt2(reportAgg.totalOpenCost)}</td><td>${fmt2(reportAgg.totalCurrentValue)}</td>
           <td>${reportAgg.avgDropRate!=null?reportAgg.avgDropRate.toFixed(2)+'%':'-'}</td>
           <td>${fmt2(reportAgg.totalUnrealized)}</td><td>${fmt2(reportAgg.totalRealized)}</td>
           <td>${reportAgg.totalClosedTradesCount}</td><td>${fmt2(reportAgg.totalClosedProfit)}</td>
@@ -192,18 +192,18 @@ function wireDacStockReportSection(plans, symbols){
 
     let body = `<table><tr><td colspan="9" style="${titleTd}">GRIFFINE — تقرير أسهم وخطط: ${groupLabel}</td></tr>
       <tr><td colspan="9" style="${td}">الفترة: ${periodLabel} | تاريخ التصدير: ${new Date().toLocaleDateString('ar-EG')}</td></tr>
-      <tr><td style="${th}">السهم</td><td style="${th}">الحالة</td><td style="${th}">المستثمر</td><td style="${th}">القيمة الحالية</td>
+      <tr><td style="${th}">السهم</td><td style="${th}">الحالة</td><td style="${th}">تكلفة المراكز المفتوحة</td><td style="${th}">القيمة الحالية</td>
       <td style="${th}">الانخفاض</td><td style="${th}">ربح غير محقق</td><td style="${th}">ربح محقق</td>
       <td style="${th}">صفقات مغلقة</td><td style="${th}">ربح الصفقات المغلقة</td></tr>`;
     reportAgg.stockRows.forEach(r=>{
       body += `<tr><td style="${td}">${escapeHtml(r.symbol)}</td><td style="${td}">${r.status}</td>
-        <td style="${td}">${fmt2(r.invested)}</td><td style="${td}">${r.currentValue?fmt2(r.currentValue):'-'}</td>
+        <td style="${td}">${fmt2(r.openCost)}</td><td style="${td}">${r.currentValue?fmt2(r.currentValue):'-'}</td>
         <td style="${td}">${r.dropPercent!=null?r.dropPercent.toFixed(2)+'%':'-'}</td>
         <td style="${td}">${fmt2(r.unrealized)}</td><td style="${td}">${fmt2(r.realized)}</td>
         <td style="${td}">${r.closedCount}</td><td style="${td}">${fmt2(r.closedProfit)}</td></tr>`;
     });
     body += `<tr><td style="${totalTd}">الإجمالي</td><td style="${totalTd}"></td>
-      <td style="${totalTd}">${fmt2(reportAgg.totalInvested)}</td><td style="${totalTd}">${fmt2(reportAgg.totalCurrentValue)}</td>
+      <td style="${totalTd}">${fmt2(reportAgg.totalOpenCost)}</td><td style="${totalTd}">${fmt2(reportAgg.totalCurrentValue)}</td>
       <td style="${totalTd}">${reportAgg.avgDropRate!=null?reportAgg.avgDropRate.toFixed(2)+'%':'-'}</td>
       <td style="${totalTd}">${fmt2(reportAgg.totalUnrealized)}</td><td style="${totalTd}">${fmt2(reportAgg.totalRealized)}</td>
       <td style="${totalTd}">${reportAgg.totalClosedTradesCount}</td><td style="${totalTd}">${fmt2(reportAgg.totalClosedProfit)}</td></tr>
@@ -462,7 +462,9 @@ function buildCumulativeProfitPoints(plans, from, to, onlySymbols, grids){
 const MARKET_TO_CURRENCY_MAP = { 'مصر':'جنيه مصري', 'السعودية':'ريال سعودي', 'الإمارات':'درهم إماراتي', 'قطر':'ريال قطري', 'الكويت':'دينار كويتي' };
 
 function computeAggregates(plans, grids, allEntries, from, to, onlyKeys){
-  let totalInvested = 0, totalCurrentValue = 0, totalUnrealized = 0, totalRealized = 0;
+  let totalInvested = 0, totalCurrentValue = 0, totalUnrealized = 0, totalRealized = 0, totalOpenCost = 0, pricedLive = 0;
+  // الإصدار 91: سعر السوق الحالي (لو متاح) قبل آخر سعر أدخلته يدويًا وقبل آخر سعر شراء
+  const livePx = (sym, market) => { const m = window.__mkLivePx || {}; const v = m[String(sym).toUpperCase() + '|' + (market || 'مصر')]; return v > 0 ? v : null; };
   let totalClosedTradesCount = 0, totalClosedCapital = 0, totalClosedProfit = 0;
   let dropSum = 0, dropCount = 0;
   let earliestDate = null;
@@ -476,12 +478,15 @@ function computeAggregates(plans, grids, allEntries, from, to, onlyKeys){
       if(!p.closedTrades) p.closedTrades = [];
       const sim = simulatePlan(p);
       const isOpenPosition = sim.heldQty > 0;
-      const lastPrice = (p.manualLastPrice>0) ? p.manualLastPrice : sim.lastBoughtPrice;
+      const live = livePx(sym, p.market);
+      const lastPrice = live != null ? live : ((p.manualLastPrice>0) ? p.manualLastPrice : sim.lastBoughtPrice);
+      if (isOpenPosition && live != null) pricedLive++;
       const currentValue = (isOpenPosition && lastPrice!=null) ? sim.heldQty*lastPrice : 0;
       const unrealized = (isOpenPosition && lastPrice!=null && sim.avgCostCurrent!=null) ? (lastPrice-sim.avgCostCurrent)*sim.heldQty : 0;
       const dropPercent = (isOpenPosition && lastPrice!=null && sim.avgCostCurrent>0) ? ((lastPrice-sim.avgCostCurrent)/sim.avgCostCurrent*100) : null;
 
       totalInvested += sim.totalBuyAmountSpent;
+      if (isOpenPosition && sim.avgCostCurrent != null) totalOpenCost += sim.avgCostCurrent * sim.heldQty;   // تكلفة الكمية اللي لسه معاك
       totalCurrentValue += currentValue;
       totalUnrealized += unrealized;
       totalRealized += sim.totalRealizedProfit;
@@ -497,7 +502,7 @@ function computeAggregates(plans, grids, allEntries, from, to, onlyKeys){
       stockRows.push({
         symbol: sym, planType: 'DCA', market: p.market||'', currency: p.currency||'',
         status: isOpenPosition ? 'مفتوحة' : (p.closedTrades.length ? 'مغلقة' : 'جديدة'),
-        invested: sim.totalBuyAmountSpent, currentValue, dropPercent,
+        invested: sim.totalBuyAmountSpent, openCost: (isOpenPosition && sim.avgCostCurrent != null) ? sim.avgCostCurrent * sim.heldQty : 0, currentValue, dropPercent,
         unrealized, realized: sim.totalRealizedProfit,
         closedCount: closedInRange.length, closedProfit: closedAgg.profit
       });
@@ -509,12 +514,17 @@ function computeAggregates(plans, grids, allEntries, from, to, onlyKeys){
       const boughtLevels = g.levels.filter(l=>l.status==='bought');
       const isOpenPosition = boughtLevels.length > 0;
       const invested = boughtLevels.reduce((s,l)=>s+(l.executedQty*l.executedPrice), 0);
-      // لا يوجد تتبع سعر حي لخطط الشبكة على مستوى المحفظة - القيمة الحالية بتتساوى بالمستثمر (تحفظي، من غير افتراض ربح/خسارة غير محققة)
-      const currentValue = invested;
-      const unrealized = 0;
-      const dropPercent = null;
+      // الإصدار 91: سعر السوق الحالي لو متاح (قبل كده القيمة الحالية كانت = المستثمر)
+      const heldQtyG = boughtLevels.reduce((s,l)=>s+(+l.executedQty||0), 0);
+      const liveG = livePx(sym, g.market);
+      const currentValue = (isOpenPosition && liveG != null) ? heldQtyG * liveG : invested;
+      const unrealized = currentValue - invested;
+      const dropPercent = (isOpenPosition && liveG != null && invested > 0) ? (unrealized / invested * 100) : null;
+      if (isOpenPosition && liveG != null) pricedLive++;
 
       totalInvested += invested;
+      totalOpenCost += invested;
+      totalUnrealized += unrealized;
       totalCurrentValue += currentValue;
       if(g.createdAt){ const d = g.createdAt.split('T')[0]; if(!earliestDate || d<earliestDate) earliestDate = d; }
 
@@ -526,7 +536,7 @@ function computeAggregates(plans, grids, allEntries, from, to, onlyKeys){
       stockRows.push({
         symbol: sym, planType: 'Grid', market: g.market||'', currency: MARKET_TO_CURRENCY_MAP[g.market]||'',
         status: isOpenPosition ? 'مفتوحة' : (g.cycleHistory.length ? 'مغلقة' : 'جديدة'),
-        invested, currentValue, dropPercent,
+        invested, openCost: invested, currentValue, dropPercent,
         unrealized, realized: 0,
         closedCount: closedInRange.length, closedProfit: closedProfitSum
       });
@@ -539,7 +549,7 @@ function computeAggregates(plans, grids, allEntries, from, to, onlyKeys){
   const avgDropRate = dropCount>0 ? (dropSum/dropCount) : null;
   const totalOpenPositionsCount = stockRows.filter(r=>r.status==='مفتوحة').length;
 
-  return { totalInvested, totalCurrentValue, totalUnrealized, totalRealized, totalClosedTradesCount,
+  return { totalOpenCost, pricedLive, totalInvested, totalCurrentValue, totalUnrealized, totalRealized, totalClosedTradesCount,
     totalClosedCapital, totalClosedProfit, avgDropRate, stockRows, grandTotalProfit,
     grandTotalInvestedEver, overallProfitPercent, earliestDate, totalOpenPositionsCount };
 }
@@ -555,6 +565,12 @@ async function renderPortfolio(){
   const symbols = Object.keys(plans);
   const grids = await getGridPlans(email);
   const gridSymbols = Object.keys(grids);
+  if (typeof mkEnsureLivePrices === 'function') {   // الإصدار 91: القيم بسعر السوق (والشاشة بتتحدّث لو الأسعار وصلت متأخر)
+    try { await mkEnsureLivePrices(plans, grids); } catch(e){}
+    if (window.__mkLivePxPending) window.__mkLivePxPending.then(changed => {
+      if (changed && !screenStale(__tok)) { window.__navSilent = true; try { renderPortfolio(); } finally { window.__navSilent = false; } }
+    });
+  }
   // كل الأسهم (DCA + Grid) بمفتاح مركّب "الرمز::النوع" عشان نضمن التفرقة حتى لو نفس الرمز كان في النوعين في أوقات مختلفة
   let allEntries = [...symbols.map(s=>({key:`${s}::DCA`, sym:s, type:'DCA'})), ...gridSymbols.map(s=>({key:`${s}::Grid`, sym:s, type:'Grid'}))];
 
@@ -672,8 +688,8 @@ async function renderPortfolio(){
 
   function renderTopSummary(a){
     document.getElementById('topSummaryCards').innerHTML = `
-      <div class="summary-card"><div class="val">${fmtMoney(a.totalInvested)}</div><div class="lbl">إجمالي المبلغ المستثمر حاليًا (مراكز مفتوحة)</div></div>
-      <div class="summary-card"><div class="val">${fmtMoney(a.totalCurrentValue)}</div><div class="lbl">إجمالي قيمة الاستثمار الآن</div></div>
+      <div class="summary-card"><div class="val">${fmtMoney(a.totalOpenCost)}</div><div class="lbl">تكلفة المراكز المفتوحة (الأسهم التي معك الآن)</div></div>
+      <div class="summary-card"><div class="val">${fmtMoney(a.totalCurrentValue)}</div><div class="lbl">قيمة المحفظة الحالية${a.pricedLive ? ' (بسعر السوق)' : ''}</div></div>
       <div class="summary-card"><div class="val ${a.avgDropRate==null?'':(a.avgDropRate<0?'neg':'pos')}">${a.avgDropRate!=null?a.avgDropRate.toFixed(2)+'%':'-'}</div><div class="lbl">معدل الانخفاض (متوسط المراكز المفتوحة)</div></div>
       <div class="summary-card">
         <div style="display:flex;align-items:stretch;justify-content:space-around;">
@@ -690,14 +706,14 @@ async function renderPortfolio(){
     const r = a.stockRows;
     document.getElementById('portfolioTableWrap').innerHTML = r.length ? `<table id="portfolioTable">
       <thead><tr>
-        <th>السهم</th><th>النوع</th><th>الحالة</th><th>المبلغ المستثمر</th><th>القيمة الحالية</th>
+        <th>السهم</th><th>النوع</th><th>الحالة</th><th>تكلفة المراكز المفتوحة</th><th>القيمة الحالية</th>
         <th>نسبة الانخفاض</th><th>ربح غير محقق</th><th>ربح محقق (مراكز مفتوحة)</th>
         <th>عدد صفقات مغلقة</th><th>ربح الصفقات المغلقة</th>
       </tr></thead>
       <tbody>
         ${r.map(x=>`<tr>
           <td>${escapeHtml(x.symbol)}</td><td><span class="tag ${x.planType==='DCA'?'tag-done':'tag-next'}">${x.planType}</span></td><td>${x.status}</td>
-          <td>${fmtMoney(x.invested)}</td><td>${x.currentValue?fmtMoney(x.currentValue):'-'}</td>
+          <td>${fmtMoney(x.openCost)}</td><td>${x.currentValue?fmtMoney(x.currentValue):'-'}</td>
           <td class="${x.dropPercent==null?'':(x.dropPercent<0?'neg':'pos')}">${x.dropPercent!=null?x.dropPercent.toFixed(2)+'%':'-'}</td>
           <td class="${x.unrealized<0?'neg':x.unrealized>0?'pos':''}">${fmtMoney(x.unrealized)}</td>
           <td class="${x.realized<0?'neg':x.realized>0?'pos':''}">${fmtMoney(x.realized)}</td>
@@ -706,7 +722,7 @@ async function renderPortfolio(){
         </tr>`).join('')}
         <tr style="font-weight:bold;background:#f0f4f2;">
           <td>الإجمالي</td><td></td><td></td>
-          <td>${fmtMoney(a.totalInvested)}</td><td>${fmtMoney(a.totalCurrentValue)}</td>
+          <td>${fmtMoney(a.totalOpenCost)}</td><td>${fmtMoney(a.totalCurrentValue)}</td>
           <td class="${a.avgDropRate==null?'':(a.avgDropRate<0?'neg':'pos')}">${a.avgDropRate!=null?a.avgDropRate.toFixed(2)+'%':'-'}</td>
           <td class="${a.totalUnrealized<0?'neg':'pos'}">${fmtMoney(a.totalUnrealized)}</td>
           <td class="${a.totalRealized<0?'neg':'pos'}">${fmtMoney(a.totalRealized)}</td>
@@ -802,20 +818,20 @@ async function renderPortfolio(){
         <tr><td colspan="10" style="border:none;padding:6px;">تاريخ الطباعة: ${new Date().toLocaleDateString('ar-EG')}</td></tr>
         <tr><td colspan="10" class="u-bn"></td></tr>
         <tr>
-          <td style="${th}">السهم</td><td style="${th}">النوع</td><td style="${th}">الحالة</td><td style="${th}">المستثمر</td><td style="${th}">القيمة الحالية</td>
+          <td style="${th}">السهم</td><td style="${th}">النوع</td><td style="${th}">الحالة</td><td style="${th}">تكلفة المراكز المفتوحة</td><td style="${th}">القيمة الحالية</td>
           <td style="${th}">نسبة الانخفاض</td><td style="${th}">ربح غير محقق</td><td style="${th}">ربح محقق</td>
           <td style="${th}">صفقات مغلقة</td><td style="${th}">ربح الصفقات المغلقة</td>
         </tr>
         ${agg.stockRows.map(r=>`<tr>
           <td style="${td}">${escapeHtml(r.symbol)}</td><td style="${td}">${r.planType}</td><td style="${td}">${r.status}</td>
-          <td style="${td}${numFmt}">${r.invested.toFixed(2)}</td><td style="${td}${numFmt}">${r.currentValue.toFixed(2)}</td>
+          <td style="${td}${numFmt}">${r.openCost.toFixed(2)}</td><td style="${td}${numFmt}">${r.currentValue.toFixed(2)}</td>
           <td style="${td}">${r.dropPercent!=null?r.dropPercent.toFixed(2)+'%':'-'}</td>
           <td style="${td}${numFmt}">${r.unrealized.toFixed(2)}</td><td style="${td}${numFmt}">${r.realized.toFixed(2)}</td>
           <td style="${td}">${r.closedCount}</td><td style="${td}${numFmt}">${r.closedProfit.toFixed(2)}</td>
         </tr>`).join('')}
         <tr>
           <td style="${totalTd}">الإجمالي</td><td style="${totalTd}"></td><td style="${totalTd}"></td>
-          <td style="${totalTd}${numFmt}">${agg.totalInvested.toFixed(2)}</td><td style="${totalTd}${numFmt}">${agg.totalCurrentValue.toFixed(2)}</td>
+          <td style="${totalTd}${numFmt}">${agg.totalOpenCost.toFixed(2)}</td><td style="${totalTd}${numFmt}">${agg.totalCurrentValue.toFixed(2)}</td>
           <td style="${totalTd}">${agg.avgDropRate!=null?agg.avgDropRate.toFixed(2)+'%':'-'}</td>
           <td style="${totalTd}${numFmt}">${agg.totalUnrealized.toFixed(2)}</td><td style="${totalTd}${numFmt}">${agg.totalRealized.toFixed(2)}</td>
           <td style="${totalTd}">${agg.totalClosedTradesCount}</td><td style="${totalTd}${numFmt}">${agg.totalClosedProfit.toFixed(2)}</td>
@@ -830,7 +846,7 @@ async function renderPortfolio(){
       const chartImg = document.getElementById('profitChartImg').src;
       const w = window.open('', '_blank');
       const rowsHtml = agg.stockRows.map(r=>`<tr>
-        <td>${escapeHtml(r.symbol)}</td><td>${r.planType}</td><td>${r.status}</td><td>${fmt2(r.invested)}</td><td>${fmt2(r.currentValue)}</td>
+        <td>${escapeHtml(r.symbol)}</td><td>${r.planType}</td><td>${r.status}</td><td>${fmt2(r.openCost)}</td><td>${fmt2(r.currentValue)}</td>
         <td>${r.dropPercent!=null?r.dropPercent.toFixed(2)+'%':'-'}</td><td>${fmt2(r.unrealized)}</td>
         <td>${fmt2(r.realized)}</td><td>${r.closedCount}</td><td>${fmt2(r.closedProfit)}</td>
       </tr>`).join('');
@@ -843,9 +859,9 @@ async function renderPortfolio(){
         ${reportLogoHeaderHtml()}
         <h1>GRIFFINE — ملخص المحفظة</h1>
         <p>تاريخ الطباعة: ${new Date().toLocaleDateString('ar-EG')}</p>
-        <table><thead><tr><th>السهم</th><th>النوع</th><th>الحالة</th><th>المستثمر</th><th>القيمة الحالية</th><th>الانخفاض</th><th>ربح غير محقق</th><th>ربح محقق</th><th>صفقات مغلقة</th><th>ربح الصفقات المغلقة</th></tr></thead>
+        <table><thead><tr><th>السهم</th><th>النوع</th><th>الحالة</th><th>تكلفة المراكز المفتوحة</th><th>القيمة الحالية</th><th>الانخفاض</th><th>ربح غير محقق</th><th>ربح محقق</th><th>صفقات مغلقة</th><th>ربح الصفقات المغلقة</th></tr></thead>
         <tbody>${rowsHtml}</tbody></table>
-        <div class="agg"><strong>الإجمالي:</strong> مستثمر: ${fmt2(agg.totalInvested)} | قيمة حالية: ${fmt2(agg.totalCurrentValue)} |
+        <div class="agg"><strong>الإجمالي:</strong> تكلفة المراكز المفتوحة: ${fmt2(agg.totalOpenCost)} | قيمة حالية: ${fmt2(agg.totalCurrentValue)} |
         ربح إجمالي: ${fmt2(agg.grandTotalProfit)} (${agg.overallProfitPercent.toFixed(2)}%)</div>
         <img src="${chartImg}">
         
@@ -891,7 +907,7 @@ async function renderPortfolio(){
 
     const rowsHtml = stAgg.stockRows.map(r=>`<tr>
       <td>${escapeHtml(r.symbol)}</td><td>${r.planType}</td><td>${r.status}</td>
-      <td>${fmt2(r.invested)}</td><td>${r.currentValue?fmt2(r.currentValue):'-'}</td>
+      <td>${fmt2(r.openCost)}</td><td>${r.currentValue?fmt2(r.currentValue):'-'}</td>
       <td>${r.dropPercent!=null?r.dropPercent.toFixed(2)+'%':'-'}</td>
       <td>${fmt2(r.unrealized)}</td><td>${fmt2(r.realized)}</td>
       <td>${r.closedCount}</td><td>${fmt2(r.closedProfit)}</td>
@@ -922,13 +938,13 @@ async function renderPortfolio(){
 
       <h2 class="u-mt20">إجماليات كل الأسهم</h2>
       <table><thead><tr>
-        <th>السهم</th><th>النوع</th><th>الحالة</th><th>المستثمر</th><th>القيمة الحالية</th><th>الانخفاض</th>
+        <th>السهم</th><th>النوع</th><th>الحالة</th><th>تكلفة المراكز المفتوحة</th><th>القيمة الحالية</th><th>الانخفاض</th>
         <th>ربح غير محقق</th><th>ربح محقق</th><th>صفقات مغلقة</th><th>ربح الصفقات المغلقة</th>
       </tr></thead><tbody>
         ${rowsHtml}
         <tr style="font-weight:bold;background:#eef6f2;">
           <td>الإجمالي</td><td></td><td></td>
-          <td>${fmt2(stAgg.totalInvested)}</td><td>${fmt2(stAgg.totalCurrentValue)}</td>
+          <td>${fmt2(stAgg.totalOpenCost)}</td><td>${fmt2(stAgg.totalCurrentValue)}</td>
           <td>${stAgg.avgDropRate!=null?stAgg.avgDropRate.toFixed(2)+'%':'-'}</td>
           <td>${fmt2(stAgg.totalUnrealized)}</td><td>${fmt2(stAgg.totalRealized)}</td>
           <td>${stAgg.totalClosedTradesCount}</td><td>${fmt2(stAgg.totalClosedProfit)}</td>
@@ -960,7 +976,7 @@ async function renderPortfolio(){
 
     const aggRowsHtml = stAgg.stockRows.map(r=>`<tr>
       <td style="${td}">${escapeHtml(r.symbol)}</td><td style="${td}">${r.planType}</td><td style="${td}">${r.status}</td>
-      <td style="${td}">${r.invested.toFixed(2)}</td><td style="${td}">${r.currentValue.toFixed(2)}</td>
+      <td style="${td}">${r.openCost.toFixed(2)}</td><td style="${td}">${r.currentValue.toFixed(2)}</td>
       <td style="${td}">${r.dropPercent!=null?r.dropPercent.toFixed(2)+'%':'-'}</td>
       <td style="${td}">${r.unrealized.toFixed(2)}</td><td style="${td}">${r.realized.toFixed(2)}</td>
       <td style="${td}">${r.closedCount}</td><td style="${td}">${r.closedProfit.toFixed(2)}</td>
@@ -971,14 +987,14 @@ async function renderPortfolio(){
       <tr><td colspan="10" style="border:none;padding:6px;">الفترة من ${periodLabel} | تاريخ الطباعة: ${new Date().toLocaleDateString('ar-EG')}</td></tr>
       <tr><td colspan="10" class="u-bn"></td></tr>
       <tr>
-        <td style="${th}">السهم</td><td style="${th}">النوع</td><td style="${th}">الحالة</td><td style="${th}">المستثمر</td><td style="${th}">القيمة الحالية</td>
+        <td style="${th}">السهم</td><td style="${th}">النوع</td><td style="${th}">الحالة</td><td style="${th}">تكلفة المراكز المفتوحة</td><td style="${th}">القيمة الحالية</td>
         <td style="${th}">نسبة الانخفاض</td><td style="${th}">ربح غير محقق</td><td style="${th}">ربح محقق</td>
         <td style="${th}">صفقات مغلقة</td><td style="${th}">ربح الصفقات المغلقة</td>
       </tr>
       ${aggRowsHtml}
       <tr>
         <td style="${totalTd}">الإجمالي</td><td style="${totalTd}"></td><td style="${totalTd}"></td>
-        <td style="${totalTd}">${stAgg.totalInvested.toFixed(2)}</td><td style="${totalTd}">${stAgg.totalCurrentValue.toFixed(2)}</td>
+        <td style="${totalTd}">${stAgg.totalOpenCost.toFixed(2)}</td><td style="${totalTd}">${stAgg.totalCurrentValue.toFixed(2)}</td>
         <td style="${totalTd}">${stAgg.avgDropRate!=null?stAgg.avgDropRate.toFixed(2)+'%':'-'}</td>
         <td style="${totalTd}">${stAgg.totalUnrealized.toFixed(2)}</td><td style="${totalTd}">${stAgg.totalRealized.toFixed(2)}</td>
         <td style="${totalTd}">${stAgg.totalClosedTradesCount}</td><td style="${totalTd}">${stAgg.totalClosedProfit.toFixed(2)}</td>
@@ -1082,7 +1098,7 @@ async function renderPortfolio(){
 
     const rowsHtml = reportAgg.stockRows.map(r=>`<tr>
       <td>${escapeHtml(r.symbol)}</td><td>${r.planType}</td><td>${r.status}</td>
-      <td>${fmt2(r.invested)}</td><td>${r.currentValue?fmt2(r.currentValue):'-'}</td>
+      <td>${fmt2(r.openCost)}</td><td>${r.currentValue?fmt2(r.currentValue):'-'}</td>
       <td>${r.dropPercent!=null?r.dropPercent.toFixed(2)+'%':'-'}</td>
       <td>${fmt2(r.unrealized)}</td><td>${fmt2(r.realized)}</td>
       <td>${r.closedCount}</td><td>${fmt2(r.closedProfit)}</td>
@@ -1112,13 +1128,13 @@ async function renderPortfolio(){
       <img src="${chartImg}" width="720" height="300">
 
       <table><thead><tr>
-        <th>السهم</th><th>النوع</th><th>الحالة</th><th>المستثمر</th><th>القيمة الحالية</th><th>الانخفاض</th>
+        <th>السهم</th><th>النوع</th><th>الحالة</th><th>تكلفة المراكز المفتوحة</th><th>القيمة الحالية</th><th>الانخفاض</th>
         <th>ربح غير محقق</th><th>ربح محقق</th><th>صفقات مغلقة</th><th>ربح الصفقات المغلقة</th>
       </tr></thead><tbody>
         ${rowsHtml}
         <tr style="font-weight:bold;background:#eef6f2;">
           <td>الإجمالي</td><td></td><td></td>
-          <td>${fmt2(reportAgg.totalInvested)}</td><td>${fmt2(reportAgg.totalCurrentValue)}</td>
+          <td>${fmt2(reportAgg.totalOpenCost)}</td><td>${fmt2(reportAgg.totalCurrentValue)}</td>
           <td>${reportAgg.avgDropRate!=null?reportAgg.avgDropRate.toFixed(2)+'%':'-'}</td>
           <td>${fmt2(reportAgg.totalUnrealized)}</td><td>${fmt2(reportAgg.totalRealized)}</td>
           <td>${reportAgg.totalClosedTradesCount}</td><td>${fmt2(reportAgg.totalClosedProfit)}</td>
@@ -1153,7 +1169,7 @@ async function renderPortfolio(){
 
     const rowsHtml = reportAgg.stockRows.map(r=>`<tr>
       <td style="${td}">${escapeHtml(r.symbol)}</td><td style="${td}">${r.planType}</td><td style="${td}">${r.status}</td>
-      <td style="${td}">${r.invested.toFixed(2)}</td><td style="${td}">${r.currentValue.toFixed(2)}</td>
+      <td style="${td}">${r.openCost.toFixed(2)}</td><td style="${td}">${r.currentValue.toFixed(2)}</td>
       <td style="${td}">${r.dropPercent!=null?r.dropPercent.toFixed(2)+'%':'-'}</td>
       <td style="${td}">${r.unrealized.toFixed(2)}</td><td style="${td}">${r.realized.toFixed(2)}</td>
       <td style="${td}">${r.closedCount}</td><td style="${td}">${r.closedProfit.toFixed(2)}</td>
@@ -1181,14 +1197,14 @@ async function renderPortfolio(){
         <tr><td colspan="10" style="border:none;padding:6px;">الفترة: ${periodLabel} | تاريخ الطباعة: ${new Date().toLocaleDateString('ar-EG')}</td></tr>
         <tr><td colspan="10" class="u-bn"></td></tr>
         <tr>
-          <td style="${th}">السهم</td><td style="${th}">النوع</td><td style="${th}">الحالة</td><td style="${th}">المستثمر</td><td style="${th}">القيمة الحالية</td>
+          <td style="${th}">السهم</td><td style="${th}">النوع</td><td style="${th}">الحالة</td><td style="${th}">تكلفة المراكز المفتوحة</td><td style="${th}">القيمة الحالية</td>
           <td style="${th}">نسبة الانخفاض</td><td style="${th}">ربح غير محقق</td><td style="${th}">ربح محقق</td>
           <td style="${th}">صفقات مغلقة</td><td style="${th}">ربح الصفقات المغلقة</td>
         </tr>
         ${rowsHtml}
         <tr>
           <td style="${totalTd}">الإجمالي</td><td style="${totalTd}"></td><td style="${totalTd}"></td>
-          <td style="${totalTd}">${reportAgg.totalInvested.toFixed(2)}</td><td style="${totalTd}">${reportAgg.totalCurrentValue.toFixed(2)}</td>
+          <td style="${totalTd}">${reportAgg.totalOpenCost.toFixed(2)}</td><td style="${totalTd}">${reportAgg.totalCurrentValue.toFixed(2)}</td>
           <td style="${totalTd}">${reportAgg.avgDropRate!=null?reportAgg.avgDropRate.toFixed(2)+'%':'-'}</td>
           <td style="${totalTd}">${reportAgg.totalUnrealized.toFixed(2)}</td><td style="${totalTd}">${reportAgg.totalRealized.toFixed(2)}</td>
           <td style="${totalTd}">${reportAgg.totalClosedTradesCount}</td><td style="${totalTd}">${reportAgg.totalClosedProfit.toFixed(2)}</td>

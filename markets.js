@@ -304,6 +304,32 @@ async function renderAlertsPage(){
 /* ---------------------------------------------------------------------
    05. منحنى أداء المحفظة (SVG من غير مكتبات)
    --------------------------------------------------------------------- */
+/* الإصدار 91: أسعار السوق الحالية لأسهم الخطط (متأخرة 15 دقيقة) - بطاقة المحفظة + المحفظة والتقارير + المنحنى
+   window.__mkLivePx['SYM|السوق'] = السعر. تخزين مؤقت 5 دقائق في الجلسة. لو السعر مش متاح ← آخر سعر أدخلته / آخر سعر شراء */
+window.__mkLivePx = window.__mkLivePx || {};
+async function mkEnsureLivePrices(plans, grids, timeoutMs = 1500){
+  const need = {};
+  Object.entries(plans || {}).forEach(([s, p]) => { if (p) need[s.toUpperCase() + '|' + (p.market || 'مصر')] = { symbol: s, market: p.market || 'مصر' }; });
+  Object.entries(grids || {}).forEach(([s, g]) => { if (g) need[s.toUpperCase() + '|' + (g.market || 'مصر')] = { symbol: s, market: g.market || 'مصر' }; });
+  let cache = { at: 0, map: {} }; try { cache = JSON.parse(sessionStorage.getItem('gs_livepx') || '') || cache; } catch(e){}
+  const fresh = Date.now() - (cache.at || 0) < 5 * 60 * 1000;
+  const missing = Object.keys(need).filter(k => !fresh || !(k in cache.map));
+  // الشاشة بتترسم فورًا (بآخر أسعار متاحة) - ولو الأسعار وصلت بعد كده window.__mkLivePxPending بيرجّع true والشاشة بتتحدّث
+  const apply = () => { let changed = false; Object.keys(need).forEach(k => { const v = cache.map[k] > 0 ? cache.map[k] : undefined; if (window.__mkLivePx[k] !== v) changed = true; if (v) window.__mkLivePx[k] = v; else delete window.__mkLivePx[k]; }); return changed; };
+  window.__mkLivePxPending = null;
+  if (missing.length) {
+    let done = false;
+    const req = MK.post({ action: 'prices', items: JSON.stringify(missing.map(k => need[k])) }).then(r => {
+      if (r && r.success) { const map = fresh ? cache.map : {}; Object.entries(r.prices || {}).forEach(([k, v]) => { map[k] = v ? v.last : null; });
+        cache = { at: fresh ? cache.at : Date.now(), map }; try { sessionStorage.setItem('gs_livepx', JSON.stringify(cache)); } catch(e){} }
+      done = true;
+    }).catch(() => { done = true; });
+    await Promise.race([req, new Promise(res => setTimeout(res, timeoutMs))]);
+    if (!done) window.__mkLivePxPending = req.then(() => apply());
+  }
+  apply();
+  return window.__mkLivePx;
+}
 /* الإصدار 89: المنحنى بيظهر فورًا - النقاط القديمة بتتحسب من عمليات الشراء والبيع في الخطط
    (كل مركز مفتوح بقيمته على آخر سعر اتنفّذ عليه)، وبعدين اللقطات اليومية الحقيقية بتكمّل عليه.
    العملة بتتبعت بالكود (EGP / SAR ...) - قبل كده كانت بالاسم العربي وكل العملات كانت بتتسجّل EGP */
@@ -373,7 +399,7 @@ function mkBuildSeries(positions, hist, today, nowValue, nowCost){
 }
 async function mkPortfolioCurve(el, ccys, sel, plans, grids, rangeKey){
   if (!el) return;
-  const items = (ccys || []).filter(x => mkCode(x.c)).map(x => ({ currency: mkCode(x.c), value: +(x.a.totalCurrentValue || 0).toFixed(2), cost: +(x.a.totalInvested || 0).toFixed(2) }));
+  const items = (ccys || []).filter(x => mkCode(x.c)).map(x => ({ currency: mkCode(x.c), value: +(x.a.totalCurrentValue || 0).toFixed(2), cost: +(x.a.totalOpenCost || 0).toFixed(2) }));
   if (items.length && !el.__snapDone) { el.__snapDone = true; MK.post({ action: 'snapshot', items: JSON.stringify(items) }); }   // لقطة يومية (سجل)
   const code = mkCode(sel) || (items[0] && items[0].currency) || 'EGP';
   const now = items.find(x => x.currency === code);
@@ -392,7 +418,8 @@ async function mkPortfolioCurve(el, ccys, sel, plans, grids, rangeKey){
     if (!el.isConnected) return;
     el.__hist = (r && r.success && r.history) || {}; el.__histKey = cacheKey;
   }
-  const all = mkBuildSeries(positions, el.__hist, today, null, null);   // كله بأسعار السوق (من غير قفزة في الآخر)
+  // آخر نقطة = بطاقة المحفظة بالظبط (الاتنين دلوقتي بسعر السوق وبنفس تعريف التكلفة)
+  const all = mkBuildSeries(positions, el.__hist, today, now ? now.value : null, now ? now.cost : null);
   const RANGES = [['3m', '3 شهور', 92], ['6m', '6 شهور', 183], ['1y', 'سنة', 366], ['all', 'الكل', 99999]];
   rangeKey = rangeKey || el.__range || 'all'; el.__range = rangeKey;
   const lim = (RANGES.find(x => x[0] === rangeKey) || RANGES[3])[2];
@@ -423,7 +450,7 @@ async function mkPortfolioCurve(el, ccys, sel, plans, grids, rangeKey){
       <div class="gs-curve-tip" hidden></div>
     </div>
     <div class="gs-curve-legend"><span><i style="background:${color}"></i>القيمة السوقية</span><span><i class="dash"></i>المبلغ المستثمر</span><span class="u-muted">من ${escapeHtml(firstP.d)} · التغير في الفترة <b class="g-num" style="color:${chg >= 0 ? 'var(--gs-pos,#0E9F6E)' : 'var(--gs-neg,#E02424)'}">${chg >= 0 ? '+' : '−'}${MK.n(Math.abs(chg))}</b></span></div>
-    <div class="u-hint u-mt4">القيمة في كل يوم = الكمية التي كانت لديك × سعر إغلاق السهم في ذلك اليوم (الأسعار متأخرة).${missing.length ? ` لا توجد أسعار تاريخية لـ ${missing.map(x => `<bdi>${escapeHtml(x)}</bdi>`).join('، ')} — حُسبت بآخر سعر تنفيذ.` : ''}${now && Math.abs(now.value - last.v) > Math.max(1, last.v * 0.01) ? ` بطاقة القيمة بالأعلى (${MK.n(now.value)}) محسوبة بآخر سعر أدخلته في خططك، والمنحنى بسعر السوق.` : ''}</div>
+    <div class="u-hint u-mt4">القيمة في كل يوم = الكمية التي كانت لديك × سعر إغلاق السهم في ذلك اليوم (الأسعار متأخرة).${missing.length ? ` لا توجد أسعار تاريخية لـ ${missing.map(x => `<bdi>${escapeHtml(x)}</bdi>`).join('، ')} — حُسبت بآخر سعر تنفيذ.` : ''} آخر نقطة = قيمة المحفظة الحالية بسعر السوق (نفس البطاقة).</div>
   </div>`;
   el.querySelectorAll('[data-rng]').forEach(b => b.onclick = () => mkPortfolioCurve(el, ccys, sel, plans, grids, b.dataset.rng));
   const svg = el.querySelector('.gs-curve-svg'), tip = el.querySelector('.gs-curve-tip'), cur = el.querySelector('.gs-curve-cursor');

@@ -128,6 +128,25 @@ try {
         $st->close();
         mk_out(["success" => true]);
     }
+    if ($action === 'prices' && $isPost) {    // الإصدار 91: آخر سعر سوق لكل أسهم خطط العميل (قيمة المحفظة بسعر السوق)
+        $items = json_decode((string)($_POST['items'] ?? '[]'), true);
+        if (!is_array($items)) mk_out(["success" => false]);
+        @set_time_limit(90);
+        $out = [];
+        foreach (array_slice($items, 0, 60) as $it) {
+            $raw = strtoupper(trim((string)($it['symbol'] ?? ''))); $mkt = mk_clean_market($it['market'] ?? '');
+            if ($raw === '' || isset($out["$raw|$mkt"])) continue;
+            $cands = [$raw]; $base = preg_replace('/[\s\-_]*\d+$/', '', $raw); if ($base !== '' && $base !== $raw) $cands[] = $base;
+            $res = null;
+            foreach ($cands as $c) {
+                if (!mk_clean_symbol($c)) continue;
+                $q = mq_get_quote($c, $mkt, 'day');
+                if (!empty($q['success']) && is_numeric($q['last'] ?? null) && (float)$q['last'] > 0) { $res = ["last" => (float)$q['last'], "ticker" => $c, "currency" => $q['currency'] ?? null]; break; }
+            }
+            $out["$raw|$mkt"] = $res;
+        }
+        mk_out(["success" => true, "prices" => $out, "at" => time()]);
+    }
     if ($action === 'history' && $isPost) {   // الإصدار 91: أسعار إغلاق يومية لكل أسهم خطط العميل
         $items = json_decode((string)($_POST['items'] ?? '[]'), true);
         $range = (string)($_POST['range'] ?? '1y');
