@@ -1,5 +1,5 @@
 /* GRIFFINE — كود الواجهة الأساسي (اتفصل من index.php في الإصدار 68) */
-const GRIFFINE_LOGO_B64 = location.origin + '/img/griffine-logo-light.webp?v=84';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
+const GRIFFINE_LOGO_B64 = location.origin + '/img/griffine-logo-light.webp?v=85';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
 /* ================== حسابات مساعدة ================== */
 function daysBetween(isoStart, isoEnd){
   if(!isoStart) return null;
@@ -960,7 +960,8 @@ async function postLoginRedirect(email){
   if (window.__isAdmin) { openAfterLoginScreen(); return; }
   if (!window.__emailVerified) { renderVerifyEmailPrompt(email); return; }
   if (!(await ensureDisclaimerAccepted(email))) return;
-  const ok = await ensureAccess();
+  // الإصدار 85: الحساب الجديد بعد التفعيل بيدخل الموقع كامل (الرئيسية + القائمة الجانبية) بدل ما يتحبس في شاشة الباقات
+  const ok = await ensureAccess({ soft: true });
   if (ok) openAfterLoginScreen(); else window.__afterLoginTarget = null;
 }
 
@@ -988,7 +989,11 @@ async function renderVerifyEmailPrompt(email){
 }
 
 /* الحارس العام: يتأكد إن العميل عنده صلاحية استخدام الموقع دلوقتي، ولو لأ بيوجّهه للشاشة المناسبة ويرجع false */
-async function ensureAccess(){
+/* opts.soft (الإصدار 85): للشاشة الرئيسية وبعد الدخول - الحساب الجديد (من غير اشتراك / بانتظار التفعيل / منتهي)
+   بيدخل الموقع عادي بالقائمة الجانبية والشريط السفلي، وبيرجع { soft: 'nosub' | 'pending' | 'expired', sub }
+   عشان الرئيسية تعرض كارت "اختار باقتك". الشاشات المدفوعة (من غير soft) بتفضل تحوّل لشاشة الباقات زي الأول */
+async function ensureAccess(opts){
+  const soft = !!(opts && opts.soft);
   if (window.__isAdmin) return true; // المدير مش عميل مشترك، مالوش قيود
   // حارس تفعيل البريد الإلكتروني - كان بيتفحص بس لحظة الدخول (postLoginRedirect)، فأي حد يوصل لشاشة تانية بعدها
   // (تحديث الصفحة، أو رجوع لاحق) كان بيعدي من غير ما يتفعّل بريده. دلوقتي بيتفحص هنا مركزيًا لأن كل الشاشات المحمية بتعدي من هنا.
@@ -997,16 +1002,31 @@ async function ensureAccess(){
   const r = await getMySubscription();
   const sub = (r && r.success) ? r.subscription : null;
 
-  if (!sub) { renderSubscriptionPlans(); return false; }
-  if (!sub.active) { renderPendingActivation(sub); return false; }
+  if (!sub) { if (soft) return { soft: 'nosub', sub: null }; renderSubscriptionPlans(); return false; }
+  if (!sub.active) { if (soft) return { soft: 'pending', sub }; renderPendingActivation(sub); return false; }
 
   const defaults = await getReminderDefaults();
   const today = new Date(); today.setHours(0,0,0,0);
   const end = new Date(sub.endDate); end.setHours(0,0,0,0);
   const graceEnd = new Date(end); graceEnd.setDate(graceEnd.getDate() + (defaults.gracePeriodDays||0));
 
-  if (today > graceEnd) { renderAccessExpired(sub); return false; }
+  if (today > graceEnd) { if (soft) return { soft: 'expired', sub }; renderAccessExpired(sub); return false; }
   return true;
+}
+// كارت الرئيسية للحساب اللي لسه ماشتركش (الإصدار 85)
+function accessGateCardHtml(acc){
+  if (!acc || !acc.soft) return '';
+  const t = {
+    nosub:   ['🎉 أهلاً بيك في GRIFFINE!', 'حسابك اتفعّل. اختار باقتك (أو ابدأ التجربة المجانية) عشان تفتح خطط DCA و Grid والمحفظة والتوصيات.', 'اختار باقتك'],
+    pending: ['⏳ اشتراكك بانتظار التفعيل', 'استلمنا طلبك وهيتفعّل فور مراجعة السداد. تقدر تتصفح الموقع لحد ما يتفعّل.', 'حالة الطلب'],
+    expired: ['⌛ اشتراكك انتهى', 'جدّد اشتراكك عشان ترجع لخططك ومحفظتك.', 'تجديد الاشتراك'],
+  }[acc.soft];
+  return `<div class="section-card gs-gate-card"><div style="font-weight:800;font-size:15px;margin-bottom:4px;">${t[0]}</div><div style="font-size:13px;line-height:1.8;opacity:.85;">${t[1]}</div>
+    <button type="button" id="gsGateBtn" style="width:auto;margin-top:10px;">${t[2]}</button></div>`;
+}
+function wireAccessGateCard(acc){
+  const b = document.getElementById('gsGateBtn'); if (!b || !acc) return;
+  b.onclick = () => acc.soft === 'pending' ? renderPendingActivation(acc.sub) : acc.soft === 'expired' ? renderAccessExpired(acc.sub) : renderSubscriptionPlans();
 }
 
 async function renderPendingActivation(sub){
@@ -1045,9 +1065,9 @@ async function renderAccessExpired(sub){
 }
 
 const app = document.getElementById('app');
-const TOP7_LOGO_B64 = location.origin + '/img/top7-logo-light.webp?v=84';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
-const GRIFFINE_LOGO_DARK_B64 = location.origin + '/img/griffine-logo-dark.webp?v=84';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
-const TOP7_LOGO_DARK_B64 = location.origin + '/img/top7-logo-dark.webp?v=84';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
+const TOP7_LOGO_B64 = location.origin + '/img/top7-logo-light.webp?v=85';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
+const GRIFFINE_LOGO_DARK_B64 = location.origin + '/img/griffine-logo-dark.webp?v=85';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
+const TOP7_LOGO_DARK_B64 = location.origin + '/img/top7-logo-dark.webp?v=85';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
 /* الوضع الحالي (فاتح/ليلي) - الإصدار 71: بيتقري من الصفحة نفسها (data-theme) مش من التخزين بس،
    عشان الشعار يطلع صح حتى لو المتصفح مانع التخزين (وضع التصفح الخفي)
    (السكربت الصغير في index.php بيحط data-theme من التخزين قبل تحميل أي ملف، فالاتنين دايمًا متطابقين) */
@@ -1227,7 +1247,7 @@ async function renderTestimonialsPage(){
         <div>${'⭐'.repeat(t.rating)}</div>
         <div style="font-size:13.5px;color:#444;margin:6px 0;">"${escapeHtml(t.comment)}"</div>
         <div style="font-size:11.5px;color:#888;">— ${escapeHtml(t.displayName)} · ${formatDateAr(t.createdAt)}</div>
-        ${window.__isAdmin && hasPermission('manage_content') ? `<button class="small danger" style="width:auto;margin-top:6px;" onclick="window.__deleteTesti('${t.id}')">حذف</button>` : ''}
+        ${window.__isAdmin && hasPermission('manage_testimonials') ? `<button class="small danger" style="width:auto;margin-top:6px;" onclick="window.__deleteTesti('${t.id}')">حذف</button>` : ''}
       </div>`).join('') : '<p style="color:#888;font-size:13px;">لسه معندناش آراء منشورة.</p>';
   }
   renderList(items);
@@ -2224,11 +2244,13 @@ function adminNavButtonsHtml(){
     { title: 'المشتركون والفريق', items: [
       { id:'goSubscribersBtn', perm:'manage_subscribers', icon:'👤', label:'المشتركون والاشتراكات' },
       { id:'goStaffBtn', perm:'manage_staff', icon:'👥', label:'الموظفين والصلاحيات' },
+      { id:'goHrBtn', perm:'manage_hr', icon:'🧑‍💼', label:'شؤون الموظفين (HR): الرواتب والحضور والمستندات' },
+      { id:'goJobTitlesBtn', perm:'manage_staff', icon:'🏷️', label:'المسميات الوظيفية' },
       { id:'goArchiveBtn', perm:'manage_subscribers', icon:'🗄️', label:'أرشيف العملاء المحذوفين' },
     ]},
     { title: 'التواصل والدعم', items: [
       { id:'goChatAdminBtn', perm:'view_chat', icon:'💬', label:'الدردشة الفورية', extra:`<span id="chatUnreadBadge" class="nav-badge" style="display:none;">0</span>` },
-      { id:'goContentBtn', perm:'manage_content', icon:'📰', label:'آراء العملاء والمقالات' },
+      { id:'goContentBtn', perm:['manage_testimonials', 'manage_content'], icon:'📰', label:'آراء العملاء والمقالات' },
       { id:'goSuggestionsAdminBtn', perm:'manage_suggestions', icon:'💡', label:'مقترحات العملاء' },
     ]},
     { title: 'الإدارة المالية', items: [
@@ -2255,7 +2277,8 @@ function adminNavButtonsHtml(){
   const cardHtml = it => `<button class="admin-nav-card" id="${it.id}"><span class="nav-icon">${it.icon}</span><span class="nav-label">${escapeHtml(it.label)}</span>${it.extra||''}</button>`;
 
   const groupsHtml = groups.map(g => {
-    const items = g.items.filter(it => (!it.perm || hasPermission(it.perm)) && (!it.superOnly || window.__isSuperAdmin));
+    // perm ممكن تكون صلاحية واحدة أو أكتر (يكفي واحدة منهم) - الإصدار 85
+    const items = g.items.filter(it => (!it.perm || [].concat(it.perm).some(k => hasPermission(k))) && (!it.superOnly || window.__isSuperAdmin));
     if (!items.length) return '';
     return `<div class="admin-nav-group">
       <div class="admin-nav-group-title">${escapeHtml(g.title)}</div>
@@ -2278,6 +2301,8 @@ function wireAdminNavButtons(){
     goBlacklistBtn: renderBlacklist,
     goArchiveBtn: renderArchivedCustomers,
     goStaffBtn: renderStaffManagementPage,
+    goHrBtn: () => renderHrPage(),
+    goJobTitlesBtn: () => renderJobTitlesPage(),
     goSiteDesignBtn: renderSiteDesignPage,
     goStudioBtn: () => GStudio.openEditor(), // الإصدار 72: استوديو التصميم (studio.js)
     goEmailCenterBtn: () => GShell.renderEmailCenter(), // الإصدار 72: مركز الإيميلات (shell.js)
@@ -3677,9 +3702,9 @@ async function renderStaffManagementPage(){
       <form id="staffAddForm">
         <label>الإيميل (لازم يكون مسجّل حساب بيه بالفعل)</label>
         <input type="email" id="staffEmail" required placeholder="example@email.com">
-        <label>المسمى الوظيفي</label>
+        <label style="display:flex;justify-content:space-between;align-items:center;">المسمى الوظيفي <button type="button" class="small secondary" id="staffEditTitlesBtn" style="width:auto;margin:0;">🏷️ إضافة / تعديل المسميات</button></label>
         <select id="staffJobTitle">
-          ${Object.keys(jobTitles).map(k=>`<option value="${k}">${jobTitles[k]}</option>`).join('')}
+          ${Object.keys(jobTitles).map(k=>`<option value="${escapeHtml(k)}">${escapeHtml(jobTitles[k])}</option>`).join('')}
         </select>
         <button type="submit">إضافة</button>
       </form>
@@ -3693,6 +3718,7 @@ async function renderStaffManagementPage(){
     <div class="section-card" id="staffTableWrap"></div>
   </div>`;
 
+  document.getElementById('staffEditTitlesBtn').onclick = () => renderJobTitlesPage();   // الإصدار 85
   document.getElementById('backToAdminFromStaffBtn').onclick=()=>goAdminHome();
 
   function permCheckboxesHtml(staffId, currentPerms){
@@ -3711,8 +3737,11 @@ async function renderStaffManagementPage(){
       : (visible.length ? visible.map(s=>`
       <div class="section-card" style="margin-bottom:14px;">
         <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;align-items:center;">
-          <div><strong>${escapeHtml(s.email)}</strong> — ${jobTitles[s.jobTitle] || s.jobTitle} ${s.active ? '' : '<span class="tag tag-wait">موقوف</span>'}</div>
-          <button class="small danger" style="width:auto;" onclick="window.__removeStaff('${s.id}')">إزالة من الفريق</button>
+          <div><strong>${escapeHtml(s.email)}</strong> — ${escapeHtml(jobTitles[s.jobTitle] || s.jobTitle || "")} ${s.active ? '' : '<span class="tag tag-wait">موقوف</span>'}</div>
+          <span style="display:flex;gap:6px;flex-wrap:wrap;">${s.active
+            ? `<button class="small danger" style="width:auto;" onclick="window.__removeStaff('${s.id}')">إيقاف (إزالة من الفريق)</button>`
+            : `<button class="small btn-lightgreen" style="width:auto;" onclick="window.__staffMode('${s.id}','restore')">↩️ إرجاع للفريق</button>`}
+          <button class="small danger" style="width:auto;" onclick="window.__staffMode('${s.id}','purge')">🗑️ حذف من الفريق نهائيًا</button></span>
         </div>
         <div style="margin-top:10px;">${permCheckboxesHtml(s.id, s.permissions)}</div>
         <button class="small secondary" style="width:auto;margin-top:8px;" onclick="window.__saveStaffPerms('${s.id}')">حفظ الصلاحيات</button>
@@ -3744,6 +3773,19 @@ async function renderStaffManagementPage(){
     const selected = Array.from(boxes).filter(b=>b.checked).map(b=>b.value);
     const r = await updateStaffPermissions(staffId, selected);
     if (r.success) { alert('تم حفظ الصلاحيات.'); } else { alert(r.message || 'حصل خطأ'); }
+  };
+
+  // الإصدار 85: إرجاع عضو موقوف للفريق بنفس صلاحياته، أو حذفه من الفريق نهائيًا
+  window.__staffMode = async (staffId, mode) => {
+    const who = (staff.find(x => String(x.id) === String(staffId)) || {}).email || '';
+    const ok = mode === 'restore'
+      ? await gConfirm(`إرجاع ${who} للفريق بنفس صلاحياته القديمة؟`, { ok: 'إرجاع للفريق' })
+      : await gConfirm(`حذف ${who} من الفريق نهائيًا بكل صلاحياته؟ حسابه العادي كعميل هيفضل موجود، ولو حبيت ترجّعه بعدين تضيفه من جديد.`, { ok: 'حذف نهائي', danger: true });
+    if (!ok) return;
+    const r = await apiPost('/staff_remove.php', { staffId, mode }).catch(() => null);
+    if (!r || !r.success) { alert((r && r.message) || 'حصل خطأ'); return; }
+    const fresh = await getStaffList();
+    if (fresh.success) { staff = fresh.staff; renderStaffTable(); }
   };
 
   window.__removeStaff = async (staffId) => {
@@ -3784,6 +3826,8 @@ const BG_SCREENS = [
   {v:'admin_settings', l:'⚙️ الصلاحيات والإعدادات الإلزامية', fn:'renderAdminSettingsPage'},
   {v:'blacklist', l:'🚫 القائمة السوداء', fn:'renderBlacklist'},
   {v:'staff_management', l:'👥 الفريق والصلاحيات', fn:'renderStaffManagementPage'},
+  {v:'hr', l:'🧑‍💼 شؤون الموظفين (HR)', fn:'renderHrPage'},
+  {v:'job_titles', l:'🏷️ المسميات الوظيفية', fn:'renderJobTitlesPage'},
   {v:'site_design', l:'🎨 تنسيق الموقع', fn:'renderSiteDesignPage'},
   {v:'admin_reports', l:'📊 التقارير والإحصائيات', fn:'renderAdminReportsPage'},
   {v:'recommendations_admin', l:'📢 توصيات الشراء', fn:'renderRecommendationsAdminPage'},
@@ -4495,7 +4539,9 @@ async function renderContentAdminPage(){
   const email = await getSession();
   if(!email) return renderLogin();
   if(!window.__isAdmin) return renderHome();
-  if(!hasPermission('manage_content')) return renderAdminHub();
+  // الإصدار 85: آراء العملاء بصلاحية لوحدها (manage_testimonials) والمقالات (manage_content)
+  const canTesti = hasPermission('manage_testimonials'), canArt = hasPermission('manage_content');
+  if(!canTesti && !canArt) return renderAdminHub();
 
   const [testiRes, artRes] = await Promise.all([getTestimonials(), getArticlesAdmin()]);
   let testimonials = (testiRes && testiRes.success) ? testiRes.testimonials : [];
@@ -4507,11 +4553,13 @@ async function renderContentAdminPage(){
       ${adminNavButtonsHtml()}
     </div>
 
+    <div id="testiSection" ${canTesti ? '' : 'style="display:none"'}>
     <h2>آراء العملاء (${testimonials.length})</h2>
     <div class="std-filter-bar">
       <div class="std-filter-search"><input type="text" id="testiAdminSearch" placeholder="🔍 ابحث بالاسم أو نص الرأي..."></div>
     </div>
     <div class="section-card" id="testiAdminListWrap"></div>
+    </div>
 
     <h2 style="margin-top:20px;">إضافة/تعديل مقال</h2>
     <div class="section-card">
@@ -4540,6 +4588,8 @@ async function renderContentAdminPage(){
   </div>`;
 
   wireAdminNavButtons();
+  // الإصدار 85: من غير صلاحية المقالات ← قسم المقالات مايظهرش (السيرفر بيرفض أي تعديل كمان)
+  if (!canArt) { let n = document.getElementById('testiSection').nextElementSibling; while (n) { n.style.display = 'none'; n = n.nextElementSibling; } }
 
   function renderTestiList(){
     const q = (document.getElementById('testiAdminSearch')?.value || '').trim().toLowerCase();

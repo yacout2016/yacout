@@ -1,5 +1,5 @@
 -- ============================================================
--- GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 84)
+-- GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 85)
 -- كل تحديثات قاعدة البيانات في ملف واحد.
 -- آمن تشغّله أي عدد من المرات: بيضيف الناقص بس ومبيمسحش أي بيانات.
 -- الاستخدام: phpMyAdmin ← اختار قاعدة البيانات ← تبويب SQL ← الصق الملف كله ← Go
@@ -20,7 +20,12 @@
 --              إعدادات تنبيهات الشات (صورة الأيقونة + الصوت) بتتخزّن في جدول ui_customizations الموجود (ui_key = 'chat_notify') - مفيش جدول جديد.
 -- الإصدار 84: جدول site_config (رقم الخدمة + طرق الدفع + بيانات Paymob + رابط دخول الإدارة السري + إعدادات OTP)
 --              + جدول payment_orders (عمليات الدفع الأونلاين Paymob).
+-- الإصدار 85: شؤون الموظفين (HR): جداول job_titles (المسميات الوظيفية بقت بتتضاف وتتعدّل من لوحة التحكم)
+--              + hr_employees + hr_documents + hr_attendance (الحضور الشهري وحساب الراتب).
 -- ============================================================
+
+-- الإصدار 85: ترميز الاتصال UTF-8 عشان النصوص العربي اللي بتتضاف من الملف (زي المسميات الوظيفية) تتحفظ صح
+SET NAMES utf8mb4;
 
 -- ============================================================
 -- GRIFFINE — كل تحديثات قاعدة البيانات (نسخة نضيفة بدون أي ملاحظات)
@@ -707,4 +712,68 @@ CREATE TABLE IF NOT EXISTS payment_orders (
   KEY idx_payment_email (account_email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-SELECT 'GRIFFINE database is up to date (v84)' AS result;
+-- الإصدار 85: المسميات الوظيفية (الأدمن بيضيف ويعدّل) + الصلاحيات الافتراضية لكل مسمى
+CREATE TABLE IF NOT EXISTS job_titles (
+  title_key VARCHAR(40) NOT NULL PRIMARY KEY,
+  label VARCHAR(100) NOT NULL,
+  default_perms TEXT NULL,
+  sort_order INT NOT NULL DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+INSERT IGNORE INTO job_titles (title_key, label, default_perms, sort_order) VALUES
+  ('site_manager', 'مدير موقع', '["manage_staff","manage_admin_settings","manage_subscribers","manage_plans","manage_blacklist","manage_reminders","view_chat","reply_chat","edit_site_design","view_reports","manage_recommendations","manage_content","manage_testimonials","manage_suggestions","manage_hr"]', 1),
+  ('editor', 'مبرمج للتنسيق والتعديل', '["edit_site_design","manage_content","manage_testimonials"]', 2),
+  ('customer_service', 'خدمة عملاء', '["view_chat","reply_chat"]', 3),
+  ('sales', 'مندوب مبيعات', '["manage_subscribers","view_chat","reply_chat","view_reports","manage_recommendations"]', 4),
+  ('accounts', 'مدير حسابات', '["manage_subscribers","manage_plans","manage_reminders","view_reports","manage_hr"]', 5);
+
+-- الإصدار 85: بيانات الموظفين (شؤون الموظفين HR)
+CREATE TABLE IF NOT EXISTS hr_employees (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  full_name VARCHAR(150) NOT NULL,
+  job_title VARCHAR(40) NULL,
+  phone VARCHAR(30) NULL,
+  email VARCHAR(190) NULL,
+  national_id VARCHAR(20) NULL,
+  salary DECIMAL(12,2) NOT NULL DEFAULT 0,
+  start_date DATE NULL,
+  end_date DATE NULL,
+  status VARCHAR(10) NOT NULL DEFAULT 'active',
+  notes TEXT NULL,
+  created_by VARCHAR(190) NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY idx_hr_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- الإصدار 85: مستندات الموظف (صورة البطاقة، العقد، الشهادات ...) - الملفات نفسها في مجلد الرفع المحمي
+CREATE TABLE IF NOT EXISTS hr_documents (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  employee_id INT NOT NULL,
+  file_token VARCHAR(80) NOT NULL,
+  file_name VARCHAR(150) NOT NULL,
+  uploaded_by VARCHAR(190) NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_hr_docs_emp (employee_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- الإصدار 85: الحضور الشهري لكل موظف (أيام العمل / أيام الحضور / مكافأة / خصم) ← الراتب المستحق
+CREATE TABLE IF NOT EXISTS hr_attendance (
+  employee_id INT NOT NULL,
+  month CHAR(7) NOT NULL,
+  work_days DECIMAL(5,1) NOT NULL DEFAULT 26,
+  present_days DECIMAL(5,1) NOT NULL DEFAULT 0,
+  bonus DECIMAL(12,2) NOT NULL DEFAULT 0,
+  deductions DECIMAL(12,2) NOT NULL DEFAULT 0,
+  base_salary DECIMAL(12,2) NOT NULL DEFAULT 0,
+  note VARCHAR(255) NULL,
+  updated_by VARCHAR(190) NULL,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (employee_id, month)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- الإصدار 85: آراء العملاء بقت صلاحية لوحدها (manage_testimonials) - أي حد كان عنده "آراء العملاء والمقالات" بياخدها تلقائي
+INSERT IGNORE INTO staff_permissions (staff_id, permission_key)
+  SELECT staff_id, 'manage_testimonials' FROM staff_permissions WHERE permission_key = 'manage_content';
+
+SELECT 'GRIFFINE database is up to date (v85)' AS result;

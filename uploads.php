@@ -8,7 +8,7 @@
    - أي بيانات قديمة لسه Base64 بتفضل شغالة زي ما هي
    ===================================================================== */
 
-const UPL_CATEGORIES = ['proof', 'avatar', 'chat', 'sugg', 'bg'];
+const UPL_CATEGORIES = ['proof', 'avatar', 'chat', 'sugg', 'bg', 'hr'];   // hr = مستندات الموظفين (الإصدار 85)
 const UPL_TYPES = [
     'image/png' => 'png', 'image/jpeg' => 'jpg', 'image/jpg' => 'jpg', 'image/webp' => 'webp', 'image/gif' => 'gif',
     'application/pdf' => 'pdf',

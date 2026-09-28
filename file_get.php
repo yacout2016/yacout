@@ -10,14 +10,18 @@ require_once __DIR__ . '/uploads.php';
 
 $f = $_GET['f'] ?? '';
 // الإصدار 83: مرفقات الشات بقت تقبل فيديو وملفات مضغوطة ومستندات Office (الأنواع دي للشات بس)
-if (!preg_match('/^(proof|avatar|chat|sugg|bg)_[a-f0-9]{32}\.(png|jpg|webp|gif|pdf|mp4|webm|mov|zip|docx|xlsx|pptx|doc|xls)$/', $f, $m)) { http_response_code(404); exit; }
+if (!preg_match('/^(proof|avatar|chat|sugg|bg|hr)_[a-f0-9]{32}\.(png|jpg|webp|gif|pdf|mp4|webm|mov|zip|docx|xlsx|pptx|doc|xls)$/', $f, $m)) { http_response_code(404); exit; }
 $cat = $m[1]; $ext = $m[2];
-if ($cat !== 'chat' && !in_array($ext, ['png', 'jpg', 'webp', 'gif', 'pdf'], true)) { http_response_code(404); exit; }
+if (!in_array($cat, ['chat', 'hr'], true) && !in_array($ext, ['png', 'jpg', 'webp', 'gif', 'pdf'], true)) { http_response_code(404); exit; }
 
 $loggedIn = !empty($_SESSION['user_email']);
 $isStaff = $loggedIn && !empty($_SESSION['is_admin']);
 $allowed = false;
 if ($cat === 'bg' || $cat === 'chat') $allowed = true;
+elseif ($cat === 'hr') {
+    // الإصدار 85: مستندات الموظفين - لفريق الإدارة اللي عنده صلاحية شؤون الموظفين بس
+    if ($isStaff) { include __DIR__ . '/db.php'; $allowed = in_array('manage_hr', getCurrentUserPermissions($conn), true); }
+}
 elseif ($cat === 'avatar') $allowed = $loggedIn;
 elseif ($cat === 'proof' || $cat === 'sugg') {
     $allowed = $isStaff;

@@ -9,7 +9,7 @@ if (!isset($_SESSION['user_email']) || empty($_SESSION['is_admin'])) {
     echo json_encode(["success" => false, "message" => "غير مصرح لك."]);
     exit();
 }
-requirePermission($conn, 'manage_content');
+requirePermission($conn, 'manage_testimonials');   // الإصدار 85: صلاحية منفصلة عن المقالات
 requireCsrf();
 
 $id = intval($_POST['id'] ?? 0);

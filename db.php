@@ -236,34 +236,53 @@ function getAllPermissionKeys(){
         'edit_site_design'      => 'تنسيق محتوى الموقع (بدون بيانات جوهرية)',
         'view_reports'          => 'مشاهدة التقارير والإحصائيات',
         'manage_recommendations'=> 'إرسال ومراجعة توصيات الشراء للعملاء',
-        'manage_content'        => 'إدارة آراء العملاء والمقالات (حذف تجاوزات، نشر مقالات)',
+        'manage_testimonials'   => 'مشاهدة وإدارة آراء العملاء (حذف التجاوزات) - الإصدار 85',
+        'manage_content'        => 'إدارة المقالات (نشر وتعديل وحذف)',
         'manage_site_content'   => 'تعديل نصوص شاشات الموقع (عن جريفين، التواصل، سياسة الاسترداد، المقترحات)',
         'manage_suggestions'    => 'مراجعة مقترحات العملاء والرد عليها (الإصدار 84)',
+        'manage_hr'             => 'شؤون الموظفين HR: البيانات والرواتب والحضور والمستندات (الإصدار 85)',
     ];
+}
+
+/* المسميات الوظيفية (الإصدار 85): بقت في جدول job_titles والأدمن بيضيف ويعدّل من لوحة التحكم
+   (الفريق والصلاحيات / شؤون الموظفين). لو الجدول لسه متعملش بترجع القائمة الأصلية. */
+function defaultJobTitlesSeed(){
+    return [
+        'site_manager'     => ['مدير موقع', ['manage_staff','manage_admin_settings','manage_subscribers','manage_plans','manage_blacklist','manage_reminders','view_chat','reply_chat','edit_site_design','view_reports','manage_recommendations','manage_content','manage_testimonials','manage_suggestions','manage_hr']],
+        'editor'           => ['مبرمج للتنسيق والتعديل', ['edit_site_design','manage_content','manage_testimonials']],
+        'customer_service' => ['خدمة عملاء', ['view_chat','reply_chat']],
+        'sales'            => ['مندوب مبيعات', ['manage_subscribers','view_chat','reply_chat','view_reports','manage_recommendations']],
+        'accounts'         => ['مدير حسابات', ['manage_subscribers','manage_plans','manage_reminders','view_reports']],
+    ];
+}
+function jobTitlesTable(){
+    static $rows = null;
+    if ($rows !== null) return $rows;
+    global $conn;
+    $rows = [];
+    try {
+        $res = $conn->query("SELECT title_key, label, default_perms FROM job_titles ORDER BY sort_order, label");
+        while ($res && ($r = $res->fetch_assoc())) {
+            $perms = json_decode((string)$r['default_perms'], true);
+            $rows[$r['title_key']] = [$r['label'], is_array($perms) ? $perms : []];
+        }
+    } catch (Throwable $e) { $rows = []; }
+    if (!$rows) $rows = defaultJobTitlesSeed();
+    return $rows;
 }
 
 // كل المسميات الوظيفية المتاحة، وأسماؤها المعروضة
 function getAllJobTitles(){
-    return [
-        'site_manager'     => 'مدير موقع',
-        'editor'           => 'مبرمج للتنسيق والتعديل',
-        'customer_service' => 'خدمة عملاء',
-        'sales'            => 'مندوب مبيعات',
-        'accounts'         => 'مدير حسابات',
-    ];
+    $out = [];
+    foreach (jobTitlesTable() as $k => $v) $out[$k] = $v[0];
+    return $out;
 }
 
 // الصلاحيات الافتراضية لكل مسمى وظيفي - دي بس نقطة بداية عند الإضافة،
 // وبعد كده الأدمن يقدر يزوّد أو ينقص لأي شخص بنفسه من غير ما يتقيّد بيها
 function getDefaultPermissionsForJobTitle($jobTitle){
-    $defaults = [
-        'site_manager'     => ['manage_staff','manage_admin_settings','manage_subscribers','manage_plans','manage_blacklist','manage_reminders','view_chat','reply_chat','edit_site_design','view_reports','manage_recommendations','manage_content'],
-        'editor'           => ['edit_site_design','manage_content'],
-        'customer_service' => ['view_chat','reply_chat'],
-        'sales'            => ['manage_subscribers','view_chat','reply_chat','view_reports','manage_recommendations'],
-        'accounts'         => ['manage_subscribers','manage_plans','manage_reminders','view_reports'],
-    ];
-    return $defaults[$jobTitle] ?? [];
+    $t = jobTitlesTable();
+    return isset($t[$jobTitle]) ? $t[$jobTitle][1] : [];
 }
 
 // بيرجع كل صلاحيات المستخدم المسجّل دخوله حاليًا (مصفوفة مفاتيح)

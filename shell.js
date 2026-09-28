@@ -50,7 +50,7 @@
      ===================================================================== */
 
   // رقم الإصدار - بيظهر في شاشة "حسابي" (غيّره مع ?v= في index.php و VERSION في sw.js)
-  const APP_VERSION = 84;
+  const APP_VERSION = 85;
 
   /* الاستعلامات المتكررة (الدردشة/التوصيات) بتقف لما التبويب يكون مخفي أو الموبايل مقفول
      - بتوفّر ضغط على السيرفر وبطارية الموبايل، وبترجع تشتغل أول ما الصفحة تظهر
@@ -328,7 +328,7 @@
   };
 
   // شاشات لوحة التحكم (بتنوّر تبويب "الإدارة")
-  const ADMIN_SCREEN_RE = /^renderAdmin|^renderChatAdmin|^renderStaff|^renderBlacklist|^renderPlansManagement|^renderSiteDesign|^renderSiteTexts|^renderContentAdmin|^renderRecommendationsAdmin|^renderSuggestionsAdmin|^renderArchived/;
+  const ADMIN_SCREEN_RE = /^renderAdmin|^renderChatAdmin|^renderStaff|^renderHr|^renderJobTitles|^renderBlacklist|^renderPlansManagement|^renderSiteDesign|^renderSiteTexts|^renderContentAdmin|^renderRecommendationsAdmin|^renderSuggestionsAdmin|^renderArchived/;
 
   /* بنلف دوال الشاشات الحقيقية بس (اللي بتسجّل نفسها في سجل التنقل pushNav)
      عشان قبل كل شاشة: نحدّث التبويب النشط، ونعرف هي جذر ولا لأ، ونرجع لأول الصفحة */
@@ -437,6 +437,7 @@
       items.push({ sec:'الإدارة' }, { screen:'renderAdminHub', label:'لوحة التحكم', ic:'admin', go:() => renderAdminHub() });
       if (can('manage_subscribers')) items.push({ screen:'renderAdminSubscribers', label:'المشتركون والاشتراكات', ic:'card', go:() => renderAdminSubscribers() });
       if (can('manage_staff')) items.push({ screen:'renderStaffManagementPage', label:'الموظفين والصلاحيات', ic:'user', go:() => renderStaffManagementPage() });
+      if (can('manage_hr')) items.push({ screen:'renderHrPage', label:'شؤون الموظفين (HR)', ic:'user', go:() => renderHrPage() });
       if (can('view_chat')) items.push({ screen:'renderChatAdminPage', label:'الدردشة الفورية', ic:'chat', go:() => renderChatAdminPage() });
     }
     return items;
@@ -760,7 +761,9 @@
     const email = await getSession();
     if (!email) return renderLogin();
     setBackButtonVisible(false);
-    if (!(await ensureAccess())) return;
+    // الإصدار 85: الرئيسية متاحة لأي حساب مفعّل - اللي ماشتركش بيشوف كارت "اختار باقتك" فوق
+    const acc = await ensureAccess({ soft: true });
+    if (!acc) return;
     if (GS.seq !== my) return;
 
     // ---- 1) هيكل التحميل ----
@@ -826,6 +829,7 @@
         <div><div class="hello">${greeting()}</div><div class="name">${esc(displayName)}</div></div>
         <button type="button" class="gs-avatar" id="gsHomeAvatar" aria-label="حسابي">${avatar ? `<img src="${esc(avatar)}" alt="">` : esc(displayName.charAt(0).toUpperCase())}</button>
       </div>
+      ${accessGateCardHtml(acc)}
       ${installCard}
       <div class="gs-home-cols"><div class="c1">
       <div id="gsHero"></div>
@@ -839,6 +843,7 @@
     </div>`;
 
     $('#gsHomeAvatar').onclick = () => GS.renderAccount();
+    wireAccessGateCard(acc);   // الإصدار 85
     document.querySelectorAll('.gs-quick button').forEach(b => b.onclick = () => quick[+b.dataset.i].go());
     GS.wireInstallCard();
 
@@ -1244,6 +1249,8 @@
     ['التقارير', 'renderAdminReportsPage'],
     ['الإعدادات الإلزامية', 'renderAdminSettingsPage'],
     ['الفريق والصلاحيات', 'renderStaffManagementPage'],
+    ['شؤون الموظفين (HR)', 'renderHrPage'],
+    ['المسميات الوظيفية', 'renderJobTitlesPage'],
     ['القائمة السوداء', 'renderBlacklist'],
     ['إدارة الباقات', 'renderPlansManagementPage'],
     ['توصيات الشراء (إدارة)', 'renderRecommendationsAdminPage'],
