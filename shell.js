@@ -50,7 +50,7 @@
      ===================================================================== */
 
   // رقم الإصدار - بيظهر في شاشة "حسابي" (غيّره مع ?v= في index.php و VERSION في sw.js)
-  const APP_VERSION = 89;
+  const APP_VERSION = 90;
 
   /* الاستعلامات المتكررة (الدردشة/التوصيات/قائمة المتابعة) - استعلام متكيّف (الإصدار 89)
      - بتقف لما التبويب يكون مخفي أو الموبايل مقفول
@@ -916,7 +916,7 @@
 
     $('#gsHomeAvatar').onclick = () => GS.renderAccount();
     wireAccessGateCard(acc);   // الإصدار 85
-    if (typeof mkAfterHome === 'function' && !window.__isAdmin) mkAfterHome(plans, grids, ccys, sel);   // الإصدار 88: منحنى الأداء + تنبيهات الأسعار
+    if (typeof mkAfterHome === 'function') mkAfterHome(plans, grids, ccys, sel);   // منحنى الأداء + تنبيهات الأسعار (الإصدار 89: للأدمن والموظفين كمان)
     document.querySelectorAll('.gs-quick button').forEach(b => b.onclick = () => quick[+b.dataset.i].go());
     GS.wireInstallCard();
 
@@ -957,7 +957,7 @@
           <div>مراكز مفتوحة<b>${a.totalOpenPositionsCount || 0} / ${a.stockRows.length}</b></div>
         </div>
       </div>`;
-      hero.querySelectorAll('.gs-ccy button').forEach(b => b.onclick = () => { sel = b.dataset.c; store.set('gs_ccy', sel); drawHero(); });
+      hero.querySelectorAll('.gs-ccy button').forEach(b => b.onclick = () => { sel = b.dataset.c; store.set('gs_ccy', sel); drawHero(); if (typeof mkPortfolioCurve === 'function') mkPortfolioCurve(document.getElementById('gsCurve'), ccys, sel, plans, grids); });
       $('#gsEye').onclick = () => { store.set('gs_hide_values', valuesHidden() ? '0' : '1'); drawHero(); drawHoldings(); };
     }
 

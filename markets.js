@@ -277,33 +277,71 @@ async function renderAlertsPage(){
 /* ---------------------------------------------------------------------
    05. منحنى أداء المحفظة (SVG من غير مكتبات)
    --------------------------------------------------------------------- */
-async function mkPortfolioCurve(el, ccys, sel){
+/* الإصدار 89: المنحنى بيظهر فورًا - النقاط القديمة بتتحسب من عمليات الشراء والبيع في الخطط
+   (كل مركز مفتوح بقيمته على آخر سعر اتنفّذ عليه)، وبعدين اللقطات اليومية الحقيقية بتكمّل عليه.
+   العملة بتتبعت بالكود (EGP / SAR ...) - قبل كده كانت بالاسم العربي وكل العملات كانت بتتسجّل EGP */
+const MK_CCY_CODE = { 'جنيه مصري':'EGP', 'ريال سعودي':'SAR', 'درهم إماراتي':'AED', 'ريال قطري':'QAR', 'دينار كويتي':'KWD', 'دولار أمريكي':'USD' };
+const mkCode = (c) => MK_CCY_CODE[c] || (/^[A-Z]{3}$/.test(c || '') ? c : '');
+function mkHistoryFromPlans(plans, grids, code){
+  const ev = [];
+  const d10 = (x) => x ? String(x).slice(0, 10) : '';
+  const ccyOfDca = (p) => mkCode(p.currency || (typeof MARKET_TO_CURRENCY_MAP !== 'undefined' ? MARKET_TO_CURRENCY_MAP[p.market] : '') || 'جنيه مصري');
+  const ccyOfGrid = (g) => mkCode((typeof MARKET_TO_CURRENCY_MAP !== 'undefined' ? MARKET_TO_CURRENCY_MAP[g.market] : '') || 'جنيه مصري');
+  Object.entries(plans || {}).forEach(([sym, p]) => {
+    if (!p || ccyOfDca(p) !== code) return;
+    (p.levels || []).forEach(lv => {
+      if (lv.executed && +lv.actualQty && +lv.actualPrice && d10(lv.execDate)) ev.push({ d: d10(lv.execDate), k: 'D:' + sym, q: +lv.actualQty, p: +lv.actualPrice });
+      (lv.sells || []).forEach(sl => { if (+sl.qty && d10(sl.date)) ev.push({ d: d10(sl.date), k: 'D:' + sym, q: -sl.qty, p: +sl.price }); });
+    });
+  });
+  Object.entries(grids || {}).forEach(([sym, g]) => {
+    if (!g || ccyOfGrid(g) !== code) return;
+    (g.levels || []).forEach(lv => {
+      if (lv.status === 'bought' && +lv.executedQty && +lv.executedPrice && d10(lv.executedDate)) ev.push({ d: d10(lv.executedDate), k: 'G:' + sym, q: +lv.executedQty, p: +lv.executedPrice });
+      (lv.sells || []).forEach(sl => { if (+sl.qty && d10(sl.date)) ev.push({ d: d10(sl.date), k: 'G:' + sym, q: -sl.qty, p: +sl.price }); });
+    });
+  });
+  ev.sort((a, b) => a.d < b.d ? -1 : a.d > b.d ? 1 : 0);
+  const qty = {}, last = {}, out = [];
+  ev.forEach(e => {
+    qty[e.k] = Math.max(0, (qty[e.k] || 0) + e.q); last[e.k] = e.p;
+    const v = Object.keys(qty).reduce((s, k) => s + qty[k] * (last[k] || 0), 0);
+    if (out.length && out[out.length - 1].d === e.d) out[out.length - 1].v = v; else out.push({ d: e.d, v });
+  });
+  return out;
+}
+async function mkPortfolioCurve(el, ccys, sel, plans, grids){
   if (!el) return;
-  // لقطة النهارده لكل عملة
-  const items = (ccys || []).filter(x => x.c && x.c !== '—').map(x => ({ currency: x.c, value: +(x.a.totalCurrentValue || 0).toFixed(2), cost: +(x.a.totalInvested || 0).toFixed(2) }));
+  // لقطة النهارده لكل عملة (بالكود)
+  const items = (ccys || []).filter(x => mkCode(x.c)).map(x => ({ currency: mkCode(x.c), value: +(x.a.totalCurrentValue || 0).toFixed(2), cost: +(x.a.totalInvested || 0).toFixed(2) }));
   if (items.length) await MK.post({ action: 'snapshot', items: JSON.stringify(items) });
-  const r = await MK.get('action=snapshots&days=180');
+  const r = await MK.get('action=snapshots&days=365');
+  if (!el.isConnected) return;
   const series = (r.success && r.series) || {};
-  const ccy = series[sel] ? sel : Object.keys(series)[0];
-  const pts = ccy ? series[ccy] : [];
-  if (!pts || pts.length < 2) { el.innerHTML = `<div class="section-card gs-curve"><div class="section-title">📈 أداء المحفظة</div><div style="font-size:12.5px;opacity:.75;">المنحنى يبدأ في الظهور بعد يومين من تسجيل قيمة محفظتك (يُحفظ تلقائيًا كل يوم تفتح فيه الموقع).</div></div>`; return; }
+  const ccy = mkCode(sel) || Object.keys(series)[0] || 'EGP';
+  const snaps = (series[ccy] || []).map(p => ({ d: p.d, v: p.v }));
+  // تاريخ من الخطط قبل أول لقطة + اللقطات الحقيقية
+  const firstSnap = snaps.length ? snaps[0].d : '9999-12-31';
+  const hist = mkHistoryFromPlans(plans, grids, ccy).filter(p => p.d < firstSnap);
+  const pts = hist.concat(snaps);
+  if (pts.length < 2) { el.innerHTML = `<div class="section-card gs-curve"><div class="section-title">📈 أداء المحفظة</div><div class="u-fs13 u-muted">سيظهر المنحنى بعد تسجيل أول عمليات شراء في خططك (بتاريخ التنفيذ)، ويتحدث تلقائيًا كل يوم تفتح فيه الموقع.</div></div>`; return; }
   const W = 600, H = 170, P = 8;
   const vals = pts.map(p => p.v), min = Math.min(...vals), max = Math.max(...vals), span = (max - min) || 1;
   const x = (i) => P + i * (W - 2 * P) / (pts.length - 1), y = (v) => H - P - (v - min) / span * (H - 2 * P);
   const line = pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join(' ');
-  const first = pts[0].v, last = pts[pts.length - 1].v, diff = last - first, pct = first ? diff / first * 100 : 0, up = diff >= 0;
+  const first = pts[0].v, lastV = pts[pts.length - 1].v, diff = lastV - first, pct = first ? diff / first * 100 : 0, up = diff >= 0;
   const color = up ? 'var(--gs-pos, #0E9F6E)' : 'var(--gs-neg, #E02424)';
-  el.innerHTML = `<div class="section-card gs-curve"><div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px;">
-      <div class="section-title" style="margin:0">📈 أداء المحفظة (${escapeHtml(ccy)})</div>
-      <div class="u-fs13"><b dir="ltr">${MK.n(last)}</b> <span style="color:${color}" dir="ltr">${up ? '▲' : '▼'} ${MK.n(Math.abs(diff))} (${Math.abs(pct).toFixed(2)}%)</span> <small style="opacity:.7">منذ ${escapeHtml(pts[0].d)}</small></div></div>
+  el.innerHTML = `<div class="section-card gs-curve"><div class="u-row" style="align-items:baseline;flex-wrap:wrap;gap:6px;">
+      <div class="section-title u-m0">📈 أداء إجمالي المحفظة (${escapeHtml(ccy)})</div>
+      <div class="u-fs13"><b class="g-num">${MK.n(lastV)}</b> <span style="color:${color}" class="g-num">${up ? '▲' : '▼'} ${MK.n(Math.abs(diff))} (${Math.abs(pct).toFixed(2)}%)</span> <small class="u-muted">منذ ${escapeHtml(pts[0].d)}</small></div></div>
     <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:170px;display:block;margin-top:8px;" role="img" aria-label="منحنى قيمة المحفظة">
       <path d="${line} L${x(pts.length - 1).toFixed(1)},${H} L${x(0).toFixed(1)},${H} Z" fill="${color}" opacity=".12"></path>
       <path d="${line}" fill="none" stroke="${color}" stroke-width="2.5" vector-effect="non-scaling-stroke" stroke-linejoin="round"></path>
-    </svg></div>`;
+    </svg>${hist.length ? `<div class="u-hint u-mt4">النقاط قبل ${escapeHtml(snaps.length ? firstSnap : 'اليوم')} محسوبة من عمليات الشراء والبيع في خططك (بسعر التنفيذ)، وبعدها قيمة المحفظة الفعلية يوميًا.</div>` : ''}</div>`;
 }
 // بتتنادى من الرئيسية (shell.js) بعد الرسم
 async function mkAfterHome(plans, grids, ccys, sel){
   try { await mkSyncTargets(plans, grids); } catch(e){}
   mkAlertsCard(document.getElementById('gsAlertsCard'));
-  mkPortfolioCurve(document.getElementById('gsCurve'), ccys, sel);
+  mkPortfolioCurve(document.getElementById('gsCurve'), ccys, sel, plans, grids);
 }
