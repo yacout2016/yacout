@@ -473,7 +473,9 @@ async function getSession(){
           }
           return r.email;
         }
+        // الإصدار 78: مش مسجّل دخول ← كل علامات الإدارة بتتمسح (كان __isSuperAdmin بيفضل من الحساب اللي قبله)
         window.__isAdmin = false;
+        window.__isSuperAdmin = false;
         window.__myPermissions = [];
         return null;
       }catch(e){ return null; }
@@ -485,7 +487,7 @@ function invalidateSessionCache(){ __sessionPromise = null; }
 async function setSession(email){
   // بيتسجل فعليًا في login.php/register.php - الاستدعاء ده بيتعامل بس مع الخروج (تسجيل خروج)
   invalidateSessionCache();
-  if (!email) { try{ await apiPost('/logout.php', {}); }catch(e){} window.__isAdmin = false; }
+  if (!email) { try{ await apiPost('/logout.php', {}); }catch(e){} window.__isAdmin = false; window.__isSuperAdmin = false; window.__myPermissions = []; }
 }
 
 async function getSubscription(email){ try{ return JSON.parse(localStorage.getItem('griffine_subscription:'+email)||'null'); }catch(e){ return null; } }
@@ -8218,7 +8220,25 @@ async function subscribeToPushNotifications(ownerKey){
   }catch(e){ /* الإشعارات مش أساسية لتشغيل الموقع - نتجاهل أي فشل */ }
 }
 
+/* الإصدار 78: الشات بيتظبط حسب الحساب الحالي - ولو الحساب اتغيّر (خروج / دخول بحساب تاني من غير تحديث الصفحة)
+   بيتقفل ويتعمل من جديد. قبل كده كان بيفضل بوضع الحساب القديم: عميل يلاقي لوحة "محادثات العملاء"
+   بتاعة الأدمن والسيرفر يرفض ← "غير مصرح لك". */
+function chatWidgetMode(email){ return (email || 'guest') + '|' + ((window.__isAdmin && hasPermission('view_chat')) ? 'admin' : 'visitor'); }
+function teardownChatWidget(){
+  ['__chatBgPoll', '__chatPollInterval', '__adminBubblePoll', '__adminBubbleHeartbeat', '__chatQuickPoll'].forEach(k => { if (window[k]) { clearInterval(window[k]); window[k] = null; } });
+  window.__adminBubbleCheck = null;
+  ['chatBubble', 'chatPanel'].forEach(id => { const el = document.getElementById(id); if (el) el.remove(); });
+  window.__chatWidgetMode = null;
+}
+async function syncChatWidget(email){
+  if (window.__chatWidgetMode === undefined) return;            // الشات لسه متعملش أول مرة (init هيعمله)
+  if (window.__chatWidgetMode === chatWidgetMode(email)) return; // نفس الحساب ونفس الوضع
+  teardownChatWidget();
+  await initChatWidget(email);
+}
+
 async function initChatWidget(sessionEmail){
+  window.__chatWidgetMode = chatWidgetMode(sessionEmail);
   const settings = await getAdminSettings();
   if (settings.chat_enabled === false) return; // الشات موقوف خالص
   if (settings.chat_icon_visible === false) return; // الأيقونة مخفية
@@ -8679,6 +8699,7 @@ function initDarkModeToggle(){
 async function refreshTopNav(){
   const email = await getSession();
   if (window.GShell && GShell.enabled) GShell.refresh(email);
+  syncChatWidget(email); // الإصدار 78: الشات بيتبع الحساب الحالي بعد أي دخول/خروج
   const isAdmin = window.__isAdmin;
   if (isAdmin) updateChatUnreadBadge();
   const row1 = document.getElementById('gtopnavRow1');
