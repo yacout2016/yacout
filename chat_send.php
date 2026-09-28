@@ -58,6 +58,16 @@ $stmt->bind_param("sssss", $visitorId, $visitorEmail, $message, $attachment, $at
 
 if ($stmt->execute()) {
     $newId = $conn->insert_id; // لازم يتاخد قبل أي استعلام تاني (الإشعار بيعمل استعلامات)
+
+    // الإصدار 81: رسالة جديدة من العميل بترجّع المحادثة للمحادثات النشطة (زي ماسنجر/واتساب)
+    // قبل كده لو الأدمن أرشف أو حذف المحادثة، أي رسالة جديدة من نفس العميل كانت بتفضل مستخبية
+    // في الأرشيف/سلة المحذوفات - من غير نقطة حمرا ولا إشعار، والأدمن يفتكر إن الرسالة موصلتش
+    try {
+        $re = $conn->prepare("INSERT INTO chat_conversation_meta (visitor_key, archived, deleted) VALUES (?, 0, 0)
+            ON DUPLICATE KEY UPDATE archived = 0, deleted = 0");
+        $re->bind_param("s", $visitorId);
+        $re->execute(); $re->close();
+    } catch (Throwable $e) { error_log('GRIFFINE chat_send reactivate: ' . $e->getMessage()); }
     // نبعت إشعار Push حقيقي للأدمن (لو معاه اشتراك مسجّل)
     try {
         $preview = $message ? mb_substr($message, 0, 80) : 'أرسل مرفقًا';
