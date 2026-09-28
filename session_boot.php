@@ -26,5 +26,23 @@ if (session_status() === PHP_SESSION_NONE) {
         'httponly' => true,
         'samesite' => 'Lax',
     ]);
+
+    /* الإصدار 87: المتصفح العادي (مش المتخفي) ممكن يكون شايل كوكي جلسة قديمة من إصدار قديم
+       (كوكي على griffine.store بس، جنب الكوكي الجديد على .griffine.store) - فبيبعت الاتنين،
+       وPHP بياخد القديم ← الدخول بيفشل أو الجلسة بتضيع، والمتخفي شغال عادي لأن مفيهوش كوكيز قديمة.
+       لو فيه أكتر من كوكي جلسة: بنمسح النسخ القديمة (من غير دومين) ونسيب الجديدة */
+    $rawCookie = $_SERVER['HTTP_COOKIE'] ?? '';
+    $sessName = session_name();
+    if ($cookieDomain !== '' && substr_count($rawCookie, $sessName . '=') > 1 && !headers_sent()) {
+        // من غير domain = الكوكي القديم بتاع الدومين ده بس (أي domain هنا كان هيمسح الكوكي الجديد كمان).
+        // بيتضاف لحظة إرسال الرد (session_start بيشيل أي Set-Cookie بنفس الاسم لو اتبعت قبله)
+        $delHeader = 'Set-Cookie: ' . $sessName . '=deleted; expires=Thu, 01 Jan 1970 00:00:01 GMT; Max-Age=0; path=/' . ($secure ? '; secure' : '') . '; HttpOnly; SameSite=Lax';
+        header_register_callback(function () use ($delHeader) { header($delHeader, false); });
+        // نكمّل بآخر قيمة (الكوكي الأحدث) بدل القديمة
+        if (preg_match_all('/(?:^|;\s*)' . preg_quote($sessName, '/') . '=([^;]+)/', $rawCookie, $mm) && !empty($mm[1])) {
+            $last = end($mm[1]);
+            if (preg_match('/^[a-zA-Z0-9,-]{20,128}$/', $last)) session_id($last);
+        }
+    }
 }
 ?>

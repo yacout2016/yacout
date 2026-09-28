@@ -2,21 +2,23 @@
 // 1) إشعارات Push حقيقية (زي ما كانت)
 // 2) تشغيل كتطبيق: تخزين ملفات الواجهة الثابتة + صفحة "غير متصل" لما الإنترنت يقطع
 // ملحوظة: طلبات الـ API (ملفات .php) مش بتتخزن أبدًا - البيانات المالية لازم تيجي من السيرفر دايمًا
-const VERSION = 'griffine-v86';
+const VERSION = 'griffine-v87';
 const STATIC_ASSETS = [
   '/offline.html',
-  '/shell.css?v=86',
-  '/shell.js?v=86',
-  '/studio.js?v=86',
-  '/img/griffine-logo-light.webp?v=86',
-  '/img/griffine-logo-dark.webp?v=86',
+  '/shell.css?v=87',
+  '/shell.js?v=87',
+  '/studio.js?v=87',
+  '/griffine-logo-light.webp?v=87',
+  '/griffine-logo-dark.webp?v=87',
   '/icon-192.png',
   '/icon-512.png',
   '/manifest.json'
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(VERSION).then((c) => c.addAll(STATIC_ASSETS)).then(() => self.skipWaiting()));
+  // الإصدار 87: كل ملف لوحده - لو ملف واحد ناقص على السيرفر الإصدار الجديد يتثبّت برضه
+  // (قبل كده ملف واحد ناقص كان بيوقف التحديث والمتصفح العادي يفضل على النسخة القديمة)
+  event.waitUntil(caches.open(VERSION).then((c) => Promise.allSettled(STATIC_ASSETS.map((u) => c.add(u)))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (event) => {

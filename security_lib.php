@@ -217,7 +217,9 @@ function phone_used_trial($conn, $phone){
    05. إتمام تسجيل الدخول — رقم جلسة جديد عشان محدش يثبّت جلسة مسبقًا (session fixation)
    --------------------------------------------------------------------- */
 function login_complete($email, $isAdmin){
-    session_regenerate_id(true);
+    // الإصدار 87: false = رقم جلسة جديد من غير ما نمسح القديمة فورًا (المسح الفوري كان بيضيّع الجلسة
+    // في المتصفحات اللي شايلة كوكي قديم - والحماية من تثبيت الجلسة لسه شغالة لأن الرقم بيتغيّر)
+    session_regenerate_id(false);
     $_SESSION['user_email'] = $email;
     $_SESSION['is_admin'] = (int)$isAdmin;
     $_SESSION['login_at'] = time();
