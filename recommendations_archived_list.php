@@ -1,0 +1,30 @@
+<?php
+header('Content-Type: application/json');
+require_once __DIR__ . '/session_boot.php';
+session_start();
+include 'db.php';
+
+if (!isset($_SESSION['user_email']) || empty($_SESSION['is_admin'])) {
+    http_response_code(403);
+    echo json_encode(["success" => false, "message" => "غير مصرح لك."]);
+    exit();
+}
+requirePermission($conn, 'manage_recommendations');
+
+$result = $conn->query("SELECT * FROM recommendations WHERE archived = 1 ORDER BY archived_at DESC LIMIT 200");
+$rows = [];
+while ($r = $result->fetch_assoc()) {
+    $rows[] = [
+        "id" => (string)$r['id'],
+        "symbol" => $r['symbol'],
+        "stockName" => $r['stock_name'],
+        "buyFrom" => (float)$r['buy_from'],
+        "buyTo" => (float)$r['buy_to'],
+        "validityHours" => (int)$r['validity_hours'],
+        "createdBy" => $r['created_by'],
+        "createdAt" => $r['created_at'],
+        "archivedAt" => $r['archived_at'],
+    ];
+}
+echo json_encode(["success" => true, "recommendations" => $rows]);
+?>

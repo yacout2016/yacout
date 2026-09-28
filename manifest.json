@@ -1,0 +1,25 @@
+{
+  "name": "GRIFFINE — خطط الاستثمار الذكية",
+  "short_name": "GRIFFINE",
+  "description": "خطط تعزيز المتوسط (DCA) والشبكة (Grid) ومتابعة محفظتك في البورصة المصرية والخليجية.",
+  "lang": "ar",
+  "dir": "rtl",
+  "id": "/index.php",
+  "start_url": "/index.php?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "background_color": "#0A0F16",
+  "theme_color": "#0A0F16",
+  "categories": ["finance", "productivity"],
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "خطة جديدة", "url": "/index.php?go=new", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] },
+    { "name": "المحفظة", "url": "/index.php?go=portfolio", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

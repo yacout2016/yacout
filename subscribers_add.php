@@ -1,0 +1,111 @@
+<?php
+header('Content-Type: application/json');
+require_once __DIR__ . '/session_boot.php';
+session_start();
+include 'db.php';
+require_once __DIR__ . '/uploads.php';
+
+if (!isset($_SESSION['user_email'])) {
+    http_response_code(401);
+    echo json_encode(["success" => false, "message" => "يرجى تسجيل الدخول أولاً."]);
+    exit();
+}
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    echo json_encode(["success" => false, "message" => "طريقة طلب غير صالحة."]);
+    exit();
+}
+requireCsrf();
+
+$accountEmail   = $_SESSION['user_email'];
+$name           = trim($_POST['name'] ?? '');
+$phone          = trim($_POST['phone'] ?? '');
+$contactEmail   = trim($_POST['contactEmail'] ?? '');
+$planId         = trim($_POST['planId'] ?? '');
+$currency       = trim($_POST['currency'] ?? '');
+$market         = trim($_POST['market'] ?? '');
+$paymentMethod  = trim($_POST['paymentMethod'] ?? '');
+$paymentRef     = trim($_POST['paymentRef'] ?? '');
+$paymentProof   = $_POST['paymentProof'] ?? null; // صورة Base64 (لاحقًا يُفضّل تُخزَّن كملف على السيرفر بدل قاعدة البيانات)
+$startDate      = date('Y-m-d'); // تاريخ البداية بيحدده السيرفر (مش العميل)
+
+if (empty($name) || empty($phone) || empty($contactEmail) || empty($planId)) {
+    echo json_encode(["success" => false, "message" => "بيانات ناقصة."]);
+    exit();
+}
+
+// صورة إثبات الدفع بتتحفظ كملف (مش Base64 جوه قاعدة البيانات)
+if (!empty($paymentProof)) {
+    $paymentProof = upl_store($paymentProof, 'proof', true);
+    if ($paymentProof === false) {
+        echo json_encode(["success" => false, "message" => "صيغة ملف إثبات الدفع غير مدعومة. ارفع صورة (JPG/PNG) أو PDF."]);
+        exit();
+    }
+}
+
+// الباقة والسعر والمدة بييجوا من قاعدة البيانات مباشرة - مش من الطلب - عشان محدش يقدر
+// يبعت amount=0 أو planId وهمي ويفتح لنفسه اشتراك مجاني
+$planStmt = $conn->prepare("SELECT id, name, amount, duration_days FROM subscription_plans WHERE id = ? AND is_active = 1 LIMIT 1");
+$planStmt->bind_param("s", $planId);
+$planStmt->execute();
+$planRow = $planStmt->get_result()->fetch_assoc();
+$planStmt->close();
+
+if (!$planRow) {
+    echo json_encode(["success" => false, "message" => "الباقة المختارة غير متاحة."]);
+    exit();
+}
+
+$planName = $planRow['name'];
+$amount = (float)$planRow['amount'];
+
+// التجربة المجانية مرة واحدة بس لكل حساب
+if ($amount <= 0 && hasEverSubscribed($conn, $accountEmail)) {
+    echo json_encode(["success" => false, "message" => "التجربة المجانية متاحة مرة واحدة بس لكل حساب. اختار باقة مدفوعة."]);
+    exit();
+}
+$endDate = date('Y-m-d', strtotime($startDate . ' +' . (int)$planRow['duration_days'] . ' days'));
+
+// القائمة السوداء - الاسم أو الهاتف أو الإيميل الموقوف مايقدرش يكمّل اشتراك خالص
+if (isBlacklisted($conn, 'name', $name) || isBlacklisted($conn, 'phone', $phone)
+    || isBlacklisted($conn, 'email', $contactEmail) || isBlacklisted($conn, 'email', $accountEmail)) {
+    echo json_encode(["success" => false, "message" => "تعذّر إتمام الاشتراك."]);
+    exit();
+}
+
+// اشتراكات مدفوعة عن طريق تحويل لازم يكون معاها رقم عملية وصورة إثبات (حسب إعدادات الأدمن) - مفيش تفعيل بدونهم
+if ($amount > 0 && ($paymentMethod === 'wallet' || $paymentMethod === 'bank')) {
+    $needRef = getAdminSetting($conn, 'require_payment_ref', true);
+    $needProof = getAdminSetting($conn, 'require_payment_proof', true);
+    if (($needRef && empty($paymentRef)) || ($needProof && empty($paymentProof))) {
+        echo json_encode(["success" => false, "message" => "لازم إدخال رقم عملية التحويل وإرفاق صورة إثبات التحويل."]);
+        exit();
+    }
+}
+
+// التفعيل تلقائي بس للتجربة المجانية، أو لو الأدمن أوقف خاصية "مراجعة السداد يدويًا"
+$requireManualActivation = getAdminSetting($conn, 'require_manual_activation', true);
+$active = ($amount == 0 || !$requireManualActivation) ? 1 : 0;
+// الدفع بالبطاقة لسه مفيش بوابة دفع حقيقية بتتحقق منه - فلازم مراجعة يدوية دايمًا
+if ($amount > 0 && $paymentMethod === 'card') $active = 0;
+
+$stmt = $conn->prepare("INSERT INTO subscribers
+    (account_email, name, phone, contact_email, plan_id, plan_name, amount, currency, market, payment_method, payment_ref, payment_proof, start_date, end_date, active)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+$stmt->bind_param(
+    "ssssssdsssssssi",
+    $accountEmail, $name, $phone, $contactEmail, $planId, $planName,
+    $amount, $currency, $market, $paymentMethod, $paymentRef, $paymentProof, $startDate, $endDate, $active
+);
+
+if ($stmt->execute()) {
+    logSubscriptionEvent($conn, $accountEmail, 'new_subscription', $planId, $planName, $amount);
+    if ((int)$active === 1) {
+        maybeRewardReferral($conn, $accountEmail);
+    }
+    echo json_encode(["success" => true, "id" => $conn->insert_id, "active" => (bool)$active]);
+} else {
+    echo json_encode(["success" => false, "message" => "حدث خطأ أثناء حفظ بيانات الاشتراك."]);
+}
+$stmt->close();
+?>

@@ -1,0 +1,56 @@
+<?php
+header('Content-Type: application/json');
+require_once __DIR__ . '/session_boot.php';
+session_start();
+include 'db.php';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    requireCsrf();
+    $email = isset($_POST['email']) ? trim(strtolower($_POST['email'])) : '';
+    $password = isset($_POST['password']) ? $_POST['password'] : '';
+
+    if (empty($email) || empty($password)) {
+        echo json_encode(["success" => false, "message" => "يرجى إدخال البريد الإلكتروني وكلمة المرور."]);
+        exit();
+    }
+    $locked = loginLockedMinutes($conn, $email);
+    if ($locked > 0) {
+        http_response_code(429);
+        echo json_encode(["success" => false, "message" => "محاولات دخول كتير. حاول تاني بعد $locked دقيقة، أو استخدم «نسيت كلمة المرور»."]);
+        exit();
+    }
+    if (isBlacklisted($conn, 'email', $email)) {
+        echo json_encode(["success" => false, "message" => "البريد الإلكتروني أو كلمة المرور غير صحيحة."]);
+        exit();
+    }
+
+    $stmt = $conn->prepare("SELECT id, password, is_admin FROM users WHERE username = ? AND archived = 0 LIMIT 1");
+    $stmt->bind_param("s", $email);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result->num_rows > 0) {
+        $row = $result->fetch_assoc();
+        if (password_verify($password, $row['password'])) {
+            clearLoginFailures($conn, $email);
+            if (password_needs_rehash($row['password'], PASSWORD_DEFAULT)) {
+                $nh = password_hash($password, PASSWORD_DEFAULT);
+                $up = $conn->prepare("UPDATE users SET password = ? WHERE id = ?"); $up->bind_param("si", $nh, $row['id']); $up->execute(); $up->close();
+            }
+            $_SESSION['user_email'] = $email;
+            $_SESSION['is_admin'] = (int)$row['is_admin'];
+            echo json_encode(["success" => true, "is_admin" => (bool)$row['is_admin'], "csrfToken" => csrf_token()]);
+        } else {
+            recordLoginFailure($conn, $email);
+            echo json_encode(["success" => false, "message" => "البريد الإلكتروني أو كلمة المرور غير صحيحة."]);
+        }
+    } else {
+        recordLoginFailure($conn, $email);
+        password_verify($password, '$2y$10$abcdefghijklmnopqrstuuT1bJ8qx7rS9cO2mB6Qm9x3dXv5wF1a'); // نفس زمن الرد سواء الحساب موجود أو لأ
+        echo json_encode(["success" => false, "message" => "البريد الإلكتروني أو كلمة المرور غير صحيحة."]);
+    }
+    $stmt->close();
+} else {
+    echo json_encode(["success" => false, "message" => "طريقة طلب غير صالحة."]);
+}
+?>

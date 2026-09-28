@@ -1,0 +1,603 @@
+/* =====================================================================
+   GRIFFINE App Shell — واجهة التطبيق الجديدة (على طريقة تطبيقات الاستثمار الحديثة)
+   بيتحمّل بعد تنسيقات index.php، وكل القواعد هنا تحت body.g-shell
+   عشان لو اتشال الملف ده الموقع يرجع لشكله القديم من غير ما يبوظ.
+   ===================================================================== */
+
+:root{
+  --gs-bg:#F3F4F6;
+  --gs-surface:#FFFFFF;
+  --gs-surface-2:#F8FAFC;
+  --gs-surface-3:#EEF1F5;
+  --gs-border:#E5E7EB;
+  --gs-text:#0F172A;
+  --gs-muted:#64748B;
+  --gs-faint:#94A3B8;
+  --gs-brand:#C9A227;
+  --gs-brand-strong:#A6811E;
+  --gs-brand-tint:rgba(201,162,39,.14);
+  --gs-ink:#0F172A;            /* لون الأزرار الأساسية الغامقة */
+  --gs-on-ink:#FFFFFF;
+  --gs-pos:#0E9F6E;
+  --gs-pos-tint:rgba(14,159,110,.12);
+  --gs-neg:#E02424;
+  --gs-neg-tint:rgba(224,36,36,.10);
+  --gs-info-tint:#EEF2F7;
+  --gs-radius:18px;
+  --gs-radius-sm:12px;
+  --gs-shadow:0 1px 2px rgba(15,23,42,.05), 0 1px 1px rgba(15,23,42,.03);
+  --gs-shadow-lg:0 12px 32px rgba(15,23,42,.14);
+  --gs-appbar-h:56px;
+  --gs-tabbar-h:64px;
+  --gs-sidebar-w:260px;
+  --gs-safe-b:env(safe-area-inset-bottom, 0px);
+  --gs-safe-t:env(safe-area-inset-top, 0px);
+}
+html[data-theme="dark"]{
+  --gs-bg:#0A0F16;
+  --gs-surface:#111923;
+  --gs-surface-2:#16202C;
+  --gs-surface-3:#1C2835;
+  --gs-border:#223040;
+  --gs-text:#F1F5F9;
+  --gs-muted:#9AA8B8;
+  --gs-faint:#6B7A8C;
+  --gs-brand:#D4AF37;
+  --gs-brand-strong:#E6C45A;
+  --gs-brand-tint:rgba(212,175,55,.16);
+  --gs-ink:#D4AF37;
+  --gs-on-ink:#0A0F16;
+  --gs-pos:#31C48D;
+  --gs-pos-tint:rgba(49,196,141,.14);
+  --gs-neg:#F87171;
+  --gs-neg-tint:rgba(248,113,113,.14);
+  --gs-info-tint:#16202C;
+  --gs-shadow:0 1px 2px rgba(0,0,0,.4);
+  --gs-shadow-lg:0 16px 40px rgba(0,0,0,.55);
+}
+
+/* ---------- ربط متغيرات الموقع القديمة بنظام الألوان الجديد ---------- */
+body.g-shell:not(.gs-no-shell){
+  --bg:var(--gs-bg); --card-bg:var(--gs-surface); --border:var(--gs-border); --border-soft:var(--gs-border);
+  --text:var(--gs-text); --text-muted:var(--gs-muted); --text-faint:var(--gs-faint);
+  --green-light:var(--gs-surface-2);
+  --gold:var(--gs-brand); --gold-dark:var(--gs-brand-strong); --danger:var(--gs-neg);
+  --radius:var(--gs-radius); --radius-sm:var(--gs-radius-sm);
+  --shadow-sm:var(--gs-shadow); --shadow-md:var(--gs-shadow-lg);
+  background:var(--gs-bg) !important;
+  color:var(--gs-text);
+  padding:calc(var(--gs-appbar-h) + var(--gs-safe-t)) 0 calc(var(--gs-tabbar-h) + var(--gs-safe-b) + 12px) !important;
+  font-size:15px;
+  font-feature-settings:"tnum" 1;
+}
+body.g-shell:not(.gs-no-shell) .gtopnav, body.g-shell:not(.gs-no-shell) .gtopnav-backdrop, body.g-shell:not(.gs-no-shell) .gbottomnav-sheet,
+body.g-shell:not(.gs-no-shell) #siteFooter, body.g-shell:not(.gs-no-shell) .logo-header{ display:none !important; }
+body.g-shell.gs-no-shell{ padding:0 !important; }
+body.g-shell.gs-no-shell .gs-appbar, body.g-shell.gs-no-shell .gs-tabbar, body.g-shell.gs-no-shell .gs-sidebar{ display:none !important; }
+
+/* ---------- شريط التطبيق العلوي ---------- */
+body.g-shell:not(.gs-no-shell) .gs-appbar{
+  position:fixed; top:0; right:0; left:0; z-index:260;
+  height:calc(var(--gs-appbar-h) + var(--gs-safe-t)); padding:var(--gs-safe-t) 8px 0;
+  display:flex; align-items:center; gap:4px;
+  background:var(--gs-bg);
+  background:color-mix(in srgb, var(--gs-bg) 82%, transparent);
+  -webkit-backdrop-filter:saturate(1.6) blur(14px); backdrop-filter:saturate(1.6) blur(14px);
+  border-bottom:1px solid transparent; transition:border-color .2s, background .2s;
+}
+body.g-shell:not(.gs-no-shell) .gs-appbar.scrolled{ border-bottom-color:var(--gs-border); }
+body.g-shell:not(.gs-no-shell) .gs-appbar-title{
+  flex:1; min-width:0; text-align:center; font-weight:700; font-size:16px; color:var(--gs-text);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; opacity:0; transform:translateY(4px);
+  transition:opacity .18s, transform .18s; font-family:var(--font-head, inherit);
+}
+body.g-shell:not(.gs-no-shell) .gs-appbar.scrolled .gs-appbar-title, body.g-shell:not(.gs-no-shell) .gs-appbar.title-always .gs-appbar-title{ opacity:1; transform:none; }
+body.g-shell:not(.gs-no-shell) .gs-appbar-brand{ display:flex; align-items:center; gap:8px; padding:0 6px; cursor:pointer; background:none; border:0; width:auto; margin:0; color:var(--gs-text); }
+body.g-shell:not(.gs-no-shell) .gs-appbar-brand img{ height:30px; width:auto; }
+body.g-shell:not(.gs-no-shell) .gs-appbar-brand span{ font-weight:800; letter-spacing:2px; font-size:14px; }
+body.g-shell:not(.gs-no-shell) .gs-iconbtn{
+  position:relative; width:44px; height:44px; min-width:44px; margin:0; padding:0; border:0; border-radius:50%;
+  display:inline-flex; align-items:center; justify-content:center; background:transparent; color:var(--gs-text);
+  cursor:pointer; transition:background .15s;
+}
+body.g-shell:not(.gs-no-shell) .gs-iconbtn:hover{ background:var(--gs-surface-3); }
+body.g-shell:not(.gs-no-shell) .gs-iconbtn svg{ width:24px; height:24px; }
+body.g-shell:not(.gs-no-shell) .gs-badge{
+  position:absolute; top:6px; left:6px; min-width:18px; height:18px; padding:0 5px; border-radius:9px;
+  background:var(--gs-neg); color:#fff; font-size:11px; font-weight:700; line-height:18px; text-align:center;
+  box-shadow:0 0 0 2px var(--gs-bg);
+}
+body.g-shell:not(.gs-no-shell) .gs-appbar .gs-spacer{ flex:1; }
+
+/* ---------- شريط التبويبات السفلي ---------- */
+body.g-shell:not(.gs-no-shell) .gs-tabbar{
+  position:fixed; bottom:0; right:0; left:0; z-index:260;
+  height:calc(var(--gs-tabbar-h) + var(--gs-safe-b)); padding-bottom:var(--gs-safe-b);
+  display:grid; grid-template-columns:repeat(5,1fr);
+  background:var(--gs-surface);
+  background:color-mix(in srgb, var(--gs-surface) 92%, transparent);
+  -webkit-backdrop-filter:saturate(1.6) blur(14px); backdrop-filter:saturate(1.6) blur(14px);
+  border-top:1px solid var(--gs-border);
+}
+body.g-shell:not(.gs-no-shell) .gs-tab{
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+  width:auto; margin:0; padding:6px 0 4px; background:none !important; border:0; border-radius:0;
+  color:var(--gs-muted); font-size:11px; font-weight:600; cursor:pointer; box-shadow:none;
+}
+body.g-shell:not(.gs-no-shell) .gs-tab:active{ transform:none; }
+body.g-shell:not(.gs-no-shell) .gs-tab-icon{ width:56px; height:30px; border-radius:15px; display:flex; align-items:center; justify-content:center; transition:background .2s; }
+body.g-shell:not(.gs-no-shell) .gs-tab svg{ width:23px; height:23px; }
+body.g-shell:not(.gs-no-shell) .gs-tab.active{ color:var(--gs-text); }
+body.g-shell:not(.gs-no-shell) .gs-tab.active .gs-tab-icon{ background:var(--gs-brand-tint); color:var(--gs-brand-strong); }
+html[data-theme="dark"] body.g-shell:not(.gs-no-shell) .gs-tab.active .gs-tab-icon{ color:var(--gs-brand); }
+
+/* ---------- الشريط الجانبي للكمبيوتر ---------- */
+body.g-shell:not(.gs-no-shell) .gs-sidebar{ display:none; }
+@media (min-width:1024px){
+  body.g-shell{ padding:calc(var(--gs-appbar-h) + 8px) var(--gs-sidebar-w) 32px 0 !important; }
+  body.g-shell:not(.gs-no-shell) .gs-tabbar{ display:none; }
+  body.g-shell:not(.gs-no-shell) .gs-appbar{ right:var(--gs-sidebar-w); }
+  body.g-shell:not(.gs-no-shell) .gs-appbar .gs-appbar-brand{ display:none; }
+  body.g-shell:not(.gs-no-shell) .gs-appbar-title{ text-align:right; padding-right:8px; opacity:1; transform:none; font-size:17px; }
+  body.g-shell:not(.gs-no-shell) .gs-sidebar{
+    display:flex; flex-direction:column; position:fixed; top:0; bottom:0; right:0; width:var(--gs-sidebar-w); z-index:270;
+    background:var(--gs-surface); border-left:1px solid var(--gs-border); padding:18px 14px; overflow-y:auto;
+  }
+  body.g-shell:not(.gs-no-shell) .gs-side-brand{ display:flex; align-items:center; gap:10px; padding:6px 10px 20px; cursor:pointer; }
+  body.g-shell:not(.gs-no-shell) .gs-side-brand img{ height:38px; }
+  body.g-shell:not(.gs-no-shell) .gs-side-brand span{ font-weight:800; letter-spacing:3px; font-size:16px; color:var(--gs-text); }
+  body.g-shell:not(.gs-no-shell) .gs-side-sec{ font-size:11.5px; font-weight:700; color:var(--gs-faint); padding:14px 12px 6px; }
+  body.g-shell:not(.gs-no-shell) .gs-side-item{
+    display:flex; align-items:center; gap:12px; width:100%; margin:1px 0; padding:10px 12px; border:0; border-radius:12px;
+    background:transparent; color:var(--gs-muted); font-size:14px; font-weight:600; text-align:right; cursor:pointer; box-shadow:none;
+  }
+  body.g-shell:not(.gs-no-shell) .gs-side-item svg{ width:21px; height:21px; flex-shrink:0; }
+  body.g-shell:not(.gs-no-shell) .gs-side-item:hover{ background:var(--gs-surface-3); color:var(--gs-text); }
+  body.g-shell:not(.gs-no-shell) .gs-side-item.active{ background:var(--gs-brand-tint); color:var(--gs-text); }
+  body.g-shell:not(.gs-no-shell) .gs-side-item.active svg{ color:var(--gs-brand-strong); }
+  html[data-theme="dark"] body.g-shell:not(.gs-no-shell) .gs-side-item.active svg{ color:var(--gs-brand); }
+  body.g-shell:not(.gs-no-shell) .gs-side-foot{ margin-top:auto; padding-top:14px; border-top:1px solid var(--gs-border); }
+  body.g-shell:not(.gs-no-shell) .gs-side-user{ display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:12px; cursor:pointer; }
+  body.g-shell:not(.gs-no-shell) .gs-side-user:hover{ background:var(--gs-surface-3); }
+  body.g-shell:not(.gs-no-shell) .gs-side-user .t{ min-width:0; font-size:13px; }
+  body.g-shell:not(.gs-no-shell) .gs-side-user .t b{ display:block; color:var(--gs-text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  body.g-shell:not(.gs-no-shell) .gs-side-user .t small{ color:var(--gs-muted); }
+}
+
+/* ---------- الحاوية والعناصر العامة ---------- */
+body.g-shell:not(.gs-no-shell) .container, body.g-shell:not(.gs-no-shell) .container.wide{
+  background:transparent !important; border:0 !important; box-shadow:none !important; border-radius:0 !important;
+  max-width:760px; margin:0 auto !important; padding:8px 16px 24px !important; min-height:auto;
+}
+body.g-shell:not(.gs-no-shell) .container.wide{ max-width:1180px; }
+@media (min-width:1024px){ body.g-shell:not(.gs-no-shell) .container{ max-width:880px; padding:12px 28px 32px !important; } }
+body.g-shell:not(.gs-no-shell) .container.has-screen-bg{ border-radius:var(--gs-radius) !important; }
+
+body.g-shell:not(.gs-no-shell) h2{
+  border:0 !important; padding:0 !important; margin:26px 0 12px; font-size:18px; font-weight:800; color:var(--gs-text);
+  background:none !important; display:block;
+}
+body.g-shell:not(.gs-no-shell) .container > h2:first-child,
+body.g-shell:not(.gs-no-shell) .gs-page-title{ font-size:26px; margin:6px 0 16px; letter-spacing:-.2px; }
+body.g-shell:not(.gs-no-shell) h3{ font-size:15px; font-weight:700; }
+
+body.g-shell:not(.gs-no-shell) .topbar{
+  border:0 !important; padding:0 !important; margin:4px 0 14px !important; font-size:14px; align-items:center; gap:8px;
+}
+body.g-shell:not(.gs-no-shell) .topbar > div:first-child{ font-size:22px; font-weight:800; color:var(--gs-text); font-family:var(--font-head, inherit); }
+body.g-shell:not(.gs-no-shell) .topbar.gs-topbar-plain > div:first-child{ font-size:14px; font-weight:600; color:var(--gs-muted); }
+body.g-shell:not(.gs-no-shell) .gs-hide{ display:none !important; }
+
+body.g-shell:not(.gs-no-shell) .section-card, body.g-shell:not(.gs-no-shell) .plan-list-item, body.g-shell:not(.gs-no-shell) .summary-card, body.g-shell:not(.gs-no-shell) .price-card,
+body.g-shell:not(.gs-no-shell) .std-filter-bar, body.g-shell:not(.gs-no-shell) .closed-card{
+  background:var(--gs-surface) !important; border:1px solid var(--gs-border) !important; border-radius:var(--gs-radius) !important;
+  box-shadow:var(--gs-shadow) !important;
+}
+body.g-shell:not(.gs-no-shell) .section-card{ padding:18px; }
+body.g-shell:not(.gs-no-shell) .section-card:hover, body.g-shell:not(.gs-no-shell) .summary-card:hover, body.g-shell:not(.gs-no-shell) .price-card:hover{ transform:none; }
+body.g-shell:not(.gs-no-shell) .plan-list-item{ padding:14px 16px; }
+body.g-shell:not(.gs-no-shell) .plan-list-item:hover{ border-color:var(--gs-brand) !important; transform:none; }
+
+/* بطاقات الأرقام: العنوان فوق والرقم كبير تحته */
+body.g-shell:not(.gs-no-shell) .summary-cards{ grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; }
+body.g-shell:not(.gs-no-shell) .summary-card{ display:flex; flex-direction:column-reverse; justify-content:flex-end; text-align:right; padding:14px 16px; gap:6px; }
+body.g-shell:not(.gs-no-shell) .summary-card .val{ font-size:21px; font-weight:800; color:var(--gs-text); font-variant-numeric:tabular-nums; letter-spacing:-.3px; direction:ltr; text-align:right; }
+body.g-shell:not(.gs-no-shell) .summary-card .lbl{ font-size:12.5px; color:var(--gs-muted); font-weight:600; line-height:1.45; }
+body.g-shell:not(.gs-no-shell) .pos, body.g-shell:not(.gs-no-shell) .summary-card .val.pos{ color:var(--gs-pos) !important; }
+body.g-shell:not(.gs-no-shell) .neg, body.g-shell:not(.gs-no-shell) .summary-card .val.neg{ color:var(--gs-neg) !important; }
+
+/* الجداول */
+body.g-shell:not(.gs-no-shell) table{ font-size:13px; border-collapse:separate; border-spacing:0; }
+body.g-shell:not(.gs-no-shell) th{
+  background:var(--gs-surface-2) !important; color:var(--gs-muted) !important; font-size:12px; font-weight:700;
+  padding:10px 8px; border-bottom:1px solid var(--gs-border); border-radius:0 !important;
+}
+body.g-shell:not(.gs-no-shell) th:first-child{ border-top-right-radius:10px !important; }
+body.g-shell:not(.gs-no-shell) th:last-child{ border-top-left-radius:10px !important; }
+body.g-shell:not(.gs-no-shell) td{ padding:11px 8px; border-bottom:1px solid var(--gs-border) !important; color:var(--gs-text); }
+body.g-shell:not(.gs-no-shell) tr:last-child td{ border-bottom:0 !important; }
+body.g-shell:not(.gs-no-shell) tr:hover td{ background:var(--gs-surface-2) !important; }
+
+/* النماذج */
+body.g-shell:not(.gs-no-shell) label{ font-size:13px; font-weight:600; color:var(--gs-muted); margin:14px 0 6px; }
+body.g-shell:not(.gs-no-shell) input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+body.g-shell:not(.gs-no-shell) select, body.g-shell:not(.gs-no-shell) textarea, body.g-shell:not(.gs-no-shell) .ms-toggle{
+  min-height:48px; padding:12px 14px; border:1px solid var(--gs-border) !important; border-radius:var(--gs-radius-sm);
+  background:var(--gs-surface-2) !important; color:var(--gs-text) !important; font-size:15px;
+}
+body.g-shell:not(.gs-no-shell) input:focus, body.g-shell:not(.gs-no-shell) select:focus, body.g-shell:not(.gs-no-shell) textarea:focus{
+  border-color:var(--gs-brand) !important; background:var(--gs-surface) !important; box-shadow:0 0 0 4px var(--gs-brand-tint) !important;
+}
+body.g-shell:not(.gs-no-shell) input[type="checkbox"], body.g-shell:not(.gs-no-shell) input[type="radio"]{ accent-color:var(--gs-brand); width:18px; height:18px; }
+body.g-shell:not(.gs-no-shell) .ms-panel{ background:var(--gs-surface) !important; border-color:var(--gs-border) !important; }
+
+/* الأزرار */
+body.g-shell:not(.gs-no-shell) button{
+  min-height:48px; border-radius:14px; font-size:15px; font-weight:700; box-shadow:none;
+  background:var(--gs-ink); color:var(--gs-on-ink); border:1px solid transparent;
+}
+body.g-shell:not(.gs-no-shell) button:hover{ background:var(--gs-ink); filter:brightness(1.08); }
+body.g-shell:not(.gs-no-shell) button.secondary, body.g-shell:not(.gs-no-shell) button.btn-gray, body.g-shell:not(.gs-no-shell) button.btn-lightblue{
+  background:var(--gs-surface) !important; color:var(--gs-text) !important; border:1px solid var(--gs-border) !important;
+}
+body.g-shell:not(.gs-no-shell) button.secondary:hover, body.g-shell:not(.gs-no-shell) button.btn-gray:hover, body.g-shell:not(.gs-no-shell) button.btn-lightblue:hover{ background:var(--gs-surface-3) !important; filter:none; }
+body.g-shell:not(.gs-no-shell) button.btn-lightgreen{ background:var(--gs-brand-tint) !important; color:var(--gs-text) !important; border:1px solid transparent !important; }
+body.g-shell:not(.gs-no-shell) button.btn-active, body.g-shell:not(.gs-no-shell) button.secondary.btn-active{ background:var(--gs-ink) !important; color:var(--gs-on-ink) !important; border-color:var(--gs-ink) !important; }
+body.g-shell:not(.gs-no-shell) button.danger, body.g-shell:not(.gs-no-shell) #logoutBtn, body.g-shell:not(.gs-no-shell) #gateLogoutBtn{ background:var(--gs-neg-tint) !important; color:var(--gs-neg) !important; border:1px solid transparent !important; }
+body.g-shell:not(.gs-no-shell) button.small{ min-height:36px; padding:7px 14px; font-size:13px; border-radius:999px; }
+body.g-shell:not(.gs-no-shell) button:focus-visible, body.g-shell:not(.gs-no-shell) .gs-row:focus-visible, body.g-shell:not(.gs-no-shell) .gs-tab:focus-visible{ outline:3px solid var(--gs-brand); outline-offset:2px; }
+body.g-shell:not(.gs-no-shell) a{ color:var(--gs-brand-strong); }
+html[data-theme="dark"] body.g-shell:not(.gs-no-shell) a{ color:var(--gs-brand); }
+
+/* الرسائل */
+body.g-shell:not(.gs-no-shell) .info{ background:var(--gs-info-tint) !important; color:var(--gs-text) !important; border:1px solid var(--gs-border) !important; border-radius:var(--gs-radius-sm); font-size:14px; padding:12px 14px; }
+body.g-shell:not(.gs-no-shell) .error{ background:var(--gs-neg-tint) !important; color:var(--gs-neg) !important; border:0 !important; border-radius:var(--gs-radius-sm); font-size:14px; }
+body.g-shell:not(.gs-no-shell) .success-banner{ border-radius:var(--gs-radius-sm); }
+body.g-shell:not(.gs-no-shell) .tag{ border-radius:999px; font-size:11.5px; padding:3px 9px; }
+body.g-shell:not(.gs-no-shell) .disclaimer{ color:var(--gs-faint); font-size:12px; }
+
+/* فقاعة الدردشة فوق شريط التبويبات */
+body.g-shell:not(.gs-no-shell) #chatBubble{ bottom:calc(var(--gs-tabbar-h) + var(--gs-safe-b) + 14px) !important; left:14px !important; width:52px !important; height:52px !important; border:2px solid var(--gs-brand) !important; background:var(--gs-surface) !important; }
+@media (min-width:1024px){ body.g-shell:not(.gs-no-shell) #chatBubble{ bottom:22px !important; left:22px !important; } }
+
+/* النوافذ القديمة */
+body.g-shell:not(.gs-no-shell) .proof-modal-box, body.g-shell:not(.gs-no-shell) .login-modal-box{ background:var(--gs-surface) !important; color:var(--gs-text); border-radius:var(--gs-radius) !important; }
+
+/* ===================== مكونات الشاشات الجديدة ===================== */
+body.g-shell:not(.gs-no-shell) .gs-greet{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin:4px 0 16px; }
+body.g-shell:not(.gs-no-shell) .gs-greet .hello{ font-size:13.5px; color:var(--gs-muted); font-weight:600; }
+body.g-shell:not(.gs-no-shell) .gs-greet .name{ font-size:22px; font-weight:800; color:var(--gs-text); line-height:1.3; }
+body.g-shell:not(.gs-no-shell) .gs-avatar{
+  width:44px; height:44px; border-radius:50%; flex-shrink:0; overflow:hidden; display:flex; align-items:center; justify-content:center;
+  background:var(--gs-brand-tint); color:var(--gs-brand-strong); font-weight:800; font-size:17px; border:0; padding:0; margin:0; cursor:pointer; min-height:0;
+}
+body.g-shell:not(.gs-no-shell) .gs-avatar img{ width:100%; height:100%; object-fit:cover; }
+
+body.g-shell:not(.gs-no-shell) .gs-hero{
+  position:relative; overflow:hidden; border-radius:24px; padding:20px 20px 18px; color:#fff;
+  background:radial-gradient(120% 140% at 100% 0%, #26364A 0%, #121B27 55%, #0B111A 100%);
+  box-shadow:0 10px 30px rgba(11,17,26,.25);
+}
+html[data-theme="dark"] body.g-shell:not(.gs-no-shell) .gs-hero{ background:radial-gradient(120% 140% at 100% 0%, #2A2410 0%, #17150D 50%, #0F1115 100%); border:1px solid #2B2616; }
+body.g-shell:not(.gs-no-shell) .gs-hero::after{ content:""; position:absolute; width:220px; height:220px; left:-70px; bottom:-120px; border-radius:50%; background:radial-gradient(circle, rgba(212,175,55,.28), transparent 70%); pointer-events:none; }
+body.g-shell:not(.gs-no-shell) .gs-hero-top{ display:flex; align-items:center; justify-content:space-between; gap:8px; position:relative; z-index:1; }
+body.g-shell:not(.gs-no-shell) .gs-hero-label{ font-size:13px; color:rgba(255,255,255,.72); font-weight:600; }
+body.g-shell:not(.gs-no-shell) .gs-eye{ width:36px; height:36px; min-height:0; margin:0; padding:0; border-radius:50%; background:rgba(255,255,255,.1) !important; color:#fff !important; border:0; display:inline-flex; align-items:center; justify-content:center; }
+body.g-shell:not(.gs-no-shell) .gs-eye svg{ width:19px; height:19px; }
+body.g-shell:not(.gs-no-shell) .gs-hero-value{ position:relative; z-index:1; margin-top:6px; font-size:34px; font-weight:800; letter-spacing:-.6px; direction:ltr; text-align:right; font-variant-numeric:tabular-nums; line-height:1.2; }
+body.g-shell:not(.gs-no-shell) .gs-hero-value small{ font-size:15px; font-weight:600; color:rgba(255,255,255,.7); margin-right:6px; letter-spacing:0; }
+body.g-shell:not(.gs-no-shell) .gs-chip{ display:inline-flex; align-items:center; gap:4px; padding:4px 10px; border-radius:999px; font-size:13px; font-weight:700; direction:ltr; }
+body.g-shell:not(.gs-no-shell) .gs-chip.pos{ background:rgba(49,196,141,.18); color:#5EE0AE !important; }
+body.g-shell:not(.gs-no-shell) .gs-chip.neg{ background:rgba(248,113,113,.18); color:#FFA3A3 !important; }
+body.g-shell:not(.gs-no-shell) .gs-hero-pl{ position:relative; z-index:1; margin-top:8px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:12.5px; color:rgba(255,255,255,.7); }
+body.g-shell:not(.gs-no-shell) .gs-hero-stats{ position:relative; z-index:1; display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:18px; padding-top:14px; border-top:1px solid rgba(255,255,255,.12); }
+body.g-shell:not(.gs-no-shell) .gs-hero-stats div{ font-size:11.5px; color:rgba(255,255,255,.62); font-weight:600; }
+body.g-shell:not(.gs-no-shell) .gs-hero-stats b{ display:block; margin-top:3px; font-size:15px; color:#fff; direction:ltr; text-align:right; font-variant-numeric:tabular-nums; }
+body.g-shell:not(.gs-no-shell) .gs-ccy{ display:flex; gap:6px; position:relative; z-index:1; flex-wrap:wrap; }
+body.g-shell:not(.gs-no-shell) .gs-ccy button{ min-height:28px; width:auto; margin:0; padding:3px 11px; font-size:12px; border-radius:999px; background:rgba(255,255,255,.1) !important; color:rgba(255,255,255,.8) !important; border:0 !important; }
+body.g-shell:not(.gs-no-shell) .gs-ccy button.on{ background:#fff !important; color:#111 !important; }
+body.g-shell:not(.gs-no-shell) .gs-alloc{ position:relative; z-index:1; display:flex; height:6px; border-radius:3px; overflow:hidden; margin-top:14px; background:rgba(255,255,255,.1); gap:2px; }
+body.g-shell:not(.gs-no-shell) .gs-alloc span{ display:block; height:100%; }
+body.g-shell:not(.gs-no-shell) .gs-legend{ position:relative; z-index:1; display:flex; flex-wrap:wrap; gap:6px 14px; margin-top:10px; font-size:11.5px; color:rgba(255,255,255,.72); }
+body.g-shell:not(.gs-no-shell) .gs-legend i{ display:inline-block; width:8px; height:8px; border-radius:50%; margin-left:5px; vertical-align:middle; }
+
+body.g-shell:not(.gs-no-shell) .gs-quick{ display:grid; grid-template-columns:repeat(5,1fr); gap:6px; margin:18px 0 6px; }
+body.g-shell:not(.gs-no-shell) .gs-quick button{
+  display:flex; flex-direction:column; align-items:center; gap:7px; width:auto; min-height:0; margin:0; padding:4px 0;
+  background:none !important; border:0 !important; color:var(--gs-text) !important; font-size:12px; font-weight:600; box-shadow:none;
+}
+body.g-shell:not(.gs-no-shell) .gs-quick .ic{ width:52px; height:52px; border-radius:18px; display:flex; align-items:center; justify-content:center; background:var(--gs-surface); border:1px solid var(--gs-border); color:var(--gs-text); box-shadow:var(--gs-shadow); }
+body.g-shell:not(.gs-no-shell) .gs-quick .ic.brand{ background:var(--gs-brand); border-color:var(--gs-brand); color:#111; }
+body.g-shell:not(.gs-no-shell) .gs-quick svg{ width:23px; height:23px; }
+
+body.g-shell:not(.gs-no-shell) .gs-sec-head{ display:flex; align-items:center; justify-content:space-between; margin:24px 0 10px; }
+body.g-shell:not(.gs-no-shell) .gs-sec-head h2{ margin:0 !important; }
+body.g-shell:not(.gs-no-shell) .gs-link{ width:auto; min-height:0; margin:0; padding:6px 4px; background:none !important; border:0 !important; color:var(--gs-brand-strong) !important; font-size:13.5px; font-weight:700; box-shadow:none; }
+html[data-theme="dark"] body.g-shell:not(.gs-no-shell) .gs-link{ color:var(--gs-brand) !important; }
+
+body.g-shell:not(.gs-no-shell) .gs-list{ background:var(--gs-surface); border:1px solid var(--gs-border); border-radius:var(--gs-radius); overflow:hidden; box-shadow:var(--gs-shadow); }
+body.g-shell:not(.gs-no-shell) .gs-row{
+  display:flex; align-items:center; gap:12px; width:100%; min-height:68px; margin:0; padding:12px 16px; border:0; border-radius:0;
+  background:transparent !important; color:var(--gs-text) !important; text-align:right; cursor:pointer; box-shadow:none; font-weight:400;
+}
+body.g-shell:not(.gs-no-shell) .gs-row + .gs-row{ border-top:1px solid var(--gs-border); }
+body.g-shell:not(.gs-no-shell) .gs-row:hover{ background:var(--gs-surface-2) !important; filter:none; }
+body.g-shell:not(.gs-no-shell) .gs-sym{ width:42px; height:42px; border-radius:12px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; letter-spacing:.3px; color:#fff; direction:ltr; }
+body.g-shell:not(.gs-no-shell) .gs-row-main{ flex:1; min-width:0; }
+body.g-shell:not(.gs-no-shell) .gs-row-main b{ display:block; font-size:15px; font-weight:700; }
+body.g-shell:not(.gs-no-shell) .gs-row-main small{ display:block; font-size:12.5px; color:var(--gs-muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+body.g-shell:not(.gs-no-shell) .gs-row-end{ text-align:left; flex-shrink:0; }
+body.g-shell:not(.gs-no-shell) .gs-row-end b{ display:block; font-size:15px; font-weight:700; direction:ltr; font-variant-numeric:tabular-nums; }
+body.g-shell:not(.gs-no-shell) .gs-row-end small{ display:block; font-size:12.5px; font-weight:700; direction:ltr; margin-top:2px; }
+body.g-shell:not(.gs-no-shell) .gs-pill{ display:inline-block; padding:1px 7px; border-radius:6px; font-size:10.5px; font-weight:800; background:var(--gs-surface-3); color:var(--gs-muted); margin-inline-start:6px; vertical-align:2px; }
+body.g-shell:not(.gs-no-shell) .gs-pill.grid{ background:rgba(59,130,246,.14); color:#3B82F6; }
+body.g-shell:not(.gs-no-shell) .gs-pill.dca{ background:var(--gs-brand-tint); color:var(--gs-brand-strong); }
+html[data-theme="dark"] body.g-shell:not(.gs-no-shell) .gs-pill.dca{ color:var(--gs-brand); }
+body.g-shell:not(.gs-no-shell) .gs-chev{ color:var(--gs-faint); flex-shrink:0; display:flex; align-items:center; }
+body.g-shell:not(.gs-no-shell) .gs-chev svg{ width:18px; height:18px; }
+body.g-shell:not(.gs-no-shell) .gs-row .gs-row-ic{ width:40px; height:40px; border-radius:12px; flex-shrink:0; display:flex; align-items:center; justify-content:center; background:var(--gs-surface-3); color:var(--gs-text); }
+body.g-shell:not(.gs-no-shell) .gs-row .gs-row-ic svg{ width:21px; height:21px; }
+body.g-shell:not(.gs-no-shell) .gs-row.danger, body.g-shell:not(.gs-no-shell) .gs-row.danger .gs-row-ic{ color:var(--gs-neg) !important; }
+body.g-shell:not(.gs-no-shell) .gs-row.danger .gs-row-ic{ background:var(--gs-neg-tint); }
+
+body.g-shell:not(.gs-no-shell) .gs-empty{ text-align:center; padding:32px 20px; background:var(--gs-surface); border:1px dashed var(--gs-border); border-radius:var(--gs-radius); }
+body.g-shell:not(.gs-no-shell) .gs-empty .ic{ width:64px; height:64px; margin:0 auto 12px; border-radius:20px; display:flex; align-items:center; justify-content:center; background:var(--gs-brand-tint); color:var(--gs-brand-strong); }
+body.g-shell:not(.gs-no-shell) .gs-empty .ic svg{ width:30px; height:30px; }
+body.g-shell:not(.gs-no-shell) .gs-empty b{ display:block; font-size:17px; margin-bottom:6px; }
+body.g-shell:not(.gs-no-shell) .gs-empty p{ color:var(--gs-muted); font-size:14px; margin:0 0 16px; }
+body.g-shell:not(.gs-no-shell) .gs-empty button{ width:auto; padding:0 24px; margin:0; }
+
+body.g-shell:not(.gs-no-shell) .gs-rec{ display:flex; gap:12px; align-items:flex-start; padding:14px 16px; }
+body.g-shell:not(.gs-no-shell) .gs-rec + .gs-rec{ border-top:1px solid var(--gs-border); }
+body.g-shell:not(.gs-no-shell) .gs-rec .gs-row-main small{ white-space:normal; }
+
+body.g-shell:not(.gs-no-shell) .gs-seg{ display:flex; background:var(--gs-surface-3); border-radius:14px; padding:4px; gap:4px; margin:0 0 14px; }
+body.g-shell:not(.gs-no-shell) .gs-seg button{ flex:1; min-height:40px; margin:0; border-radius:11px; background:transparent !important; color:var(--gs-muted) !important; border:0 !important; font-size:14px; }
+body.g-shell:not(.gs-no-shell) .gs-seg button.on{ background:var(--gs-surface) !important; color:var(--gs-text) !important; box-shadow:var(--gs-shadow) !important; }
+
+body.g-shell:not(.gs-no-shell) .gs-profile{ display:flex; align-items:center; gap:14px; padding:18px; }
+body.g-shell:not(.gs-no-shell) .gs-profile .gs-avatar{ width:58px; height:58px; font-size:22px; }
+body.g-shell:not(.gs-no-shell) .gs-profile b{ display:block; font-size:18px; }
+body.g-shell:not(.gs-no-shell) .gs-profile small{ color:var(--gs-muted); font-size:13px; }
+body.g-shell:not(.gs-no-shell) .gs-sub-chip{ display:inline-flex; align-items:center; gap:6px; margin-top:6px; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:700; background:var(--gs-pos-tint); color:var(--gs-pos); }
+body.g-shell:not(.gs-no-shell) .gs-sub-chip.warn{ background:var(--gs-neg-tint); color:var(--gs-neg); }
+body.g-shell:not(.gs-no-shell) .gs-list-title{ font-size:13px; font-weight:700; color:var(--gs-muted); margin:22px 4px 8px; }
+body.g-shell:not(.gs-no-shell) .gs-switch{ position:relative; width:46px; height:28px; flex-shrink:0; }
+body.g-shell:not(.gs-no-shell) .gs-switch input{ opacity:0; width:0; height:0; position:absolute; }
+body.g-shell:not(.gs-no-shell) .gs-switch span{ position:absolute; inset:0; border-radius:14px; background:var(--gs-surface-3); border:1px solid var(--gs-border); transition:.2s; }
+body.g-shell:not(.gs-no-shell) .gs-switch span::before{ content:""; position:absolute; width:22px; height:22px; top:2px; right:2px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.25); transition:.2s; }
+body.g-shell:not(.gs-no-shell) .gs-switch input:checked + span{ background:var(--gs-brand); border-color:var(--gs-brand); }
+body.g-shell:not(.gs-no-shell) .gs-switch input:checked + span::before{ transform:translateX(-18px); }
+body.g-shell:not(.gs-no-shell) .gs-version{ text-align:center; color:var(--gs-faint); font-size:12px; margin:20px 0 4px; }
+
+/* ---------- الإشعارات المنبثقة Toast ---------- */
+body.g-shell:not(.gs-no-shell) .gs-toasts{ position:fixed; z-index:400; top:calc(var(--gs-appbar-h) + var(--gs-safe-t) + 8px); right:0; left:0; display:flex; flex-direction:column; align-items:center; gap:8px; pointer-events:none; padding:0 16px; }
+@media (min-width:1024px){ body.g-shell:not(.gs-no-shell) .gs-toasts{ right:var(--gs-sidebar-w); } }
+body.g-shell:not(.gs-no-shell) .gs-toast{
+  pointer-events:auto; max-width:520px; width:100%; display:flex; align-items:flex-start; gap:10px; padding:13px 14px; border-radius:14px;
+  background:var(--gs-ink); color:var(--gs-on-ink); font-size:14px; line-height:1.55; box-shadow:var(--gs-shadow-lg);
+  animation:gsToastIn .22s ease-out; white-space:pre-line;
+}
+html[data-theme="dark"] body.g-shell:not(.gs-no-shell) .gs-toast{ background:#1F2B39; color:#F1F5F9; border:1px solid var(--gs-border); }
+body.g-shell:not(.gs-no-shell) .gs-toast.err{ background:#B42318; color:#fff; }
+body.g-shell:not(.gs-no-shell) .gs-toast.ok .ti{ color:#5EE0AE; }
+body.g-shell:not(.gs-no-shell) .gs-toast .ti{ flex-shrink:0; margin-top:1px; }
+body.g-shell:not(.gs-no-shell) .gs-toast .ti svg{ width:20px; height:20px; }
+body.g-shell:not(.gs-no-shell) .gs-toast .tx{ flex:1; }
+body.g-shell:not(.gs-no-shell) .gs-toast .tc{ width:28px; height:28px; min-height:0; margin:-4px -4px 0 0; padding:0; border-radius:50%; background:transparent !important; color:inherit !important; opacity:.7; border:0; }
+body.g-shell:not(.gs-no-shell) .gs-toast.out{ animation:gsToastOut .2s ease-in forwards; }
+@keyframes gsToastIn{ from{ opacity:0; transform:translateY(-10px) scale(.98);} to{ opacity:1; transform:none; } }
+@keyframes gsToastOut{ to{ opacity:0; transform:translateY(-8px); } }
+
+/* ---------- القائمة المنبثقة من الأسفل (Bottom Sheet) ---------- */
+body.g-shell:not(.gs-no-shell) .gs-sheet-back{ position:fixed; inset:0; z-index:380; background:rgba(2,6,12,.5); opacity:0; transition:opacity .2s; }
+body.g-shell:not(.gs-no-shell) .gs-sheet-back.show{ opacity:1; }
+body.g-shell:not(.gs-no-shell) .gs-sheet{
+  position:fixed; z-index:390; right:0; left:0; bottom:0; max-height:86vh; overflow-y:auto;
+  background:var(--gs-surface); border-radius:24px 24px 0 0; padding:8px 16px calc(18px + var(--gs-safe-b));
+  transform:translateY(100%); transition:transform .26s cubic-bezier(.2,.8,.2,1); box-shadow:var(--gs-shadow-lg);
+}
+body.g-shell:not(.gs-no-shell) .gs-sheet.show{ transform:none; }
+body.g-shell:not(.gs-no-shell) .gs-sheet-grab{ width:40px; height:5px; border-radius:3px; background:var(--gs-border); margin:4px auto 12px; }
+body.g-shell:not(.gs-no-shell) .gs-sheet h4{ margin:4px 4px 12px; font-size:17px; }
+@media (min-width:1024px){
+  body.g-shell:not(.gs-no-shell) .gs-sheet{ right:50%; left:auto; bottom:auto; top:50%; width:440px; border-radius:24px; transform:translate(50%,-46%) scale(.97); opacity:0; pointer-events:none; transition:transform .2s, opacity .2s; }
+  body.g-shell:not(.gs-no-shell) .gs-sheet.show{ transform:translate(50%,-50%); opacity:1; pointer-events:auto; }
+}
+
+/* ---------- لافتة تثبيت التطبيق ---------- */
+body.g-shell:not(.gs-no-shell) .gs-install{ display:flex; align-items:center; gap:12px; padding:12px 14px; margin:0 0 14px; border-radius:var(--gs-radius); background:var(--gs-brand-tint); border:1px solid var(--gs-border); }
+body.g-shell:not(.gs-no-shell) .gs-install img{ width:40px; height:40px; border-radius:10px; }
+body.g-shell:not(.gs-no-shell) .gs-install .t{ flex:1; font-size:13px; color:var(--gs-muted); }
+body.g-shell:not(.gs-no-shell) .gs-install .t b{ display:block; color:var(--gs-text); font-size:14px; }
+body.g-shell:not(.gs-no-shell) .gs-install button{ width:auto; min-height:36px; margin:0; padding:0 14px; font-size:13px; border-radius:999px; }
+body.g-shell:not(.gs-no-shell) .gs-install .x{ background:none !important; color:var(--gs-muted) !important; border:0 !important; padding:0 6px; }
+
+/* ---------- حركة دخول الشاشات ---------- */
+body.g-shell:not(.gs-no-shell) #app > .container{ animation:gsIn .22s ease-out; }
+@keyframes gsIn{ from{ opacity:0; transform:translateY(6px);} to{ opacity:1; transform:none; } }
+@media (prefers-reduced-motion: reduce){
+  body.g-shell:not(.gs-no-shell) #app > .container, body.g-shell:not(.gs-no-shell) .gs-toast, body.g-shell:not(.gs-no-shell) .gs-sheet{ animation:none !important; transition:none !important; }
+}
+
+/* ---------- شاشة البداية أثناء التحميل ---------- */
+body.g-shell:not(.gs-no-shell) .gs-skel{ border-radius:var(--gs-radius); background:linear-gradient(90deg, var(--gs-surface-3) 0%, var(--gs-surface-2) 50%, var(--gs-surface-3) 100%); background-size:200% 100%; animation:gsSk 1.2s infinite linear; }
+@keyframes gsSk{ from{ background-position:200% 0;} to{ background-position:-200% 0;} }
+
+html:not([data-theme="dark"]) body.g-shell:not(.gs-no-shell) .gs-appbar-brand img, html:not([data-theme="dark"]) body.g-shell:not(.gs-no-shell) .gs-side-brand img{ mix-blend-mode:multiply; }
+body.g-shell:not(.gs-no-shell) .std-filter-search::before{
+  content:''; width:18px; height:18px; right:14px; opacity:1; background-color:var(--gs-muted);
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") center/contain no-repeat;
+          mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") center/contain no-repeat;
+}
+body.g-shell:not(.gs-no-shell) .std-filter-search input{ padding-right:42px !important; }
+body.g-shell:not(.gs-no-shell) button.small{ white-space:nowrap; }
+body.g-shell.gs-anon{ padding-bottom:24px !important; }
+body.g-shell.gs-anon .gs-tabbar, body.g-shell.gs-anon .gs-sidebar{ display:none !important; }
+@media (min-width:1024px){
+  body.g-shell.gs-anon{ padding-right:0 !important; }
+  body.g-shell.gs-anon .gs-appbar{ right:0; }
+  body.g-shell.gs-anon .gs-appbar .gs-appbar-brand{ display:flex; }
+  body.g-shell:not(.gs-no-shell) .container.gs-home{ max-width:1180px; }
+  body.g-shell:not(.gs-no-shell) .gs-home-cols{ display:grid; grid-template-columns:minmax(0,1.05fr) minmax(0,1fr); gap:28px; align-items:start; }
+  body.g-shell:not(.gs-no-shell) .gs-home-cols .c2 .gs-sec-head:first-child{ margin-top:0; }
+}
+
+/* ---------- عناصر عائمة فوق شريط التبويبات ---------- */
+body.g-shell:not(.gs-no-shell) #chatPanel{ bottom:calc(var(--gs-tabbar-h) + var(--gs-safe-b) + 76px) !important; left:14px !important; background:var(--gs-surface) !important; }
+body.g-shell:not(.gs-no-shell) #bgShortcutBtn{ bottom:calc(var(--gs-tabbar-h) + var(--gs-safe-b) + 14px) !important; right:14px !important; }
+body.g-shell:not(.gs-no-shell) #bgPreviewBar{ bottom:calc(var(--gs-tabbar-h) + var(--gs-safe-b) + 10px) !important; }
+@media (min-width:1024px){
+  body.g-shell:not(.gs-no-shell) #chatPanel{ bottom:88px !important; left:22px !important; }
+  body.g-shell:not(.gs-no-shell) #bgShortcutBtn{ bottom:22px !important; right:calc(var(--gs-sidebar-w) + 22px) !important; }
+  body.g-shell:not(.gs-no-shell) #bgPreviewBar{ bottom:12px !important; right:calc(var(--gs-sidebar-w) + 12px) !important; }
+}
+
+/* ---------- بطاقات لوحة التحكم ---------- */
+body.g-shell:not(.gs-no-shell) .admin-nav-card{
+  background:var(--gs-surface) !important; color:var(--gs-text) !important; border:1px solid var(--gs-border) !important;
+  box-shadow:var(--gs-shadow) !important; border-radius:var(--gs-radius) !important; min-height:96px;
+  display:flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:10px; padding:16px !important; text-align:right; position:relative;
+}
+body.g-shell:not(.gs-no-shell) .admin-nav-card:hover{ border-color:var(--gs-brand) !important; filter:none; }
+body.g-shell:not(.gs-no-shell) .admin-nav-card .nav-icon{
+  width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center;
+  background:var(--gs-brand-tint); color:var(--gs-brand-strong); font-size:0;
+}
+html[data-theme="dark"] body.g-shell:not(.gs-no-shell) .admin-nav-card .nav-icon{ color:var(--gs-brand); }
+body.g-shell:not(.gs-no-shell) .admin-nav-card .nav-icon svg{ width:21px; height:21px; }
+body.g-shell:not(.gs-no-shell) .admin-nav-card .nav-label{ font-size:14px; font-weight:700; line-height:1.4; }
+body.g-shell:not(.gs-no-shell) #siteAnnouncementBar{
+  background:var(--gs-brand-tint) !important; color:var(--gs-text) !important; border:1px solid var(--gs-border);
+  border-radius:14px; margin:8px auto 0; max-width:728px; width:calc(100% - 32px); font-size:13.5px !important; font-weight:600;
+}
+@media (min-width:1024px){ body.g-shell:not(.gs-no-shell) #siteAnnouncementBar{ max-width:824px; } }
+body.g-shell:not(.gs-no-shell) #announcementCloseBtn{ min-height:0 !important; width:auto !important; margin:0 !important; padding:4px 6px !important; color:var(--gs-muted) !important; }
+
+/* رأس الدردشة: نفس هوية الشريط الجديد */
+body.g-shell:not(.gs-no-shell) .chat-header{ background:var(--gs-ink) !important; color:var(--gs-on-ink) !important; }
+body.g-shell:not(.gs-no-shell) .chat-header button{ color:inherit !important; background:none !important; min-height:0 !important; }
+
+/* =====================================================================
+   شاشة الترحيب + شاشات الدخول/التسجيل (الإصدار 69)
+   - بتملى الشاشة بالظبط على الموبايل وكتطبيق مثبّت (من غير سكرول)
+   - الأزرار والحقول بنفس الشكل في الوضعين
+   - صورة الغلاف المخصصة من لوحة التحكم بتتعرض زي ما هي (من غير قلب ألوان في الوضع الليلي)
+   ===================================================================== */
+html, body{ overscroll-behavior-y:none; }
+body{ overflow-x:hidden; }
+@media (display-mode: standalone){ html, body{ -webkit-user-select:none; user-select:none; } input, textarea, [contenteditable]{ -webkit-user-select:text; user-select:text; } }
+body.gs-no-shell #siteFooter, body.g-shell #siteFooter{ display:none !important; }
+
+/* الترحيب */
+.wl-lang{ display:none !important; }
+@media (max-width:599px){
+  .wl-screen{ min-height:100vh; min-height:100dvh; }
+  .wl-main{ flex:0 0 auto; padding:max(18px, env(safe-area-inset-top)) 22px 4px; }
+  .wl-logo img{ width:clamp(80px, 15dvh, 140px); }
+  .wl-wordmark{ font-size:clamp(22px, 3.6dvh, 30px); margin-top:4px; }
+  .wl-tagline{ margin:clamp(6px,1.4dvh,12px) auto clamp(12px,2.4dvh,20px); font-size:clamp(17px, 2.8dvh, 23px); }
+  .wl-tile-ico{ width:clamp(48px, 7.4dvh, 66px); height:clamp(48px, 7.4dvh, 66px); border-radius:18px; margin-bottom:6px; }
+  .wl-tile-t{ font-size:14px; }
+  .wl-art{ flex:1 1 auto; aspect-ratio:auto; min-height:clamp(90px, 18dvh, 360px); }
+  .wl-art img{ object-position:center 30%; }
+  .wl-cta{ flex:0 0 auto; padding:0 22px max(18px, env(safe-area-inset-bottom)); }
+  .wl-screen button.wl-start{ height:54px; }
+  .wl-cap{ margin-top:8px; }
+}
+.wl-screen button.wl-tile, .wl-screen button.wl-tile:hover{ background:transparent !important; border:0 !important; box-shadow:none !important; }
+
+/* صورة مخصصة من لوحة التحكم: متتقلبش ألوانها في الوضع الليلي، وعليها تدرّج خفيف يدمجها مع الخلفية */
+html[data-theme="dark"] .gl-custom-bg .gl-hero, html[data-theme="dark"] .wl-art.wl-custom{ mix-blend-mode:normal; }
+html[data-theme="dark"] .gl-custom-bg .gl-hero img, html[data-theme="dark"] .wl-art.wl-custom img{ filter:none; opacity:1; }
+
+/* شاشات الدخول */
+.gl-auth{ display:flex; flex-direction:column; }
+.gl-auth .gl-hero{ flex:0 0 auto; aspect-ratio:auto; height:clamp(90px, 20dvh, 240px); }
+@media (max-height:700px){ .gl-auth .gl-logo{ display:none; } .gl-auth .gl-title{ margin-top:4px; } }
+.gl-auth .gl-hero img{ object-position:center 35%; }
+.gl-auth .gl-body{ flex:1 1 auto; margin-top:-18px; padding:0 24px max(22px, env(safe-area-inset-bottom)); display:flex; flex-direction:column; }
+.gl-auth .gl-logo img{ width:clamp(64px, 9dvh, 92px); }
+.gl-auth .gl-wordmark{ font-size:18px; margin-top:2px; }
+.gl-auth .gl-title{ font-size:24px; margin:14px 0 4px; }
+.gl-auth .gl-sub{ font-size:15px; margin:0 6px 18px; line-height:1.7; }
+.gl-back{
+  position:absolute; z-index:5; top:max(12px, env(safe-area-inset-top)); right:12px; width:42px; height:42px; min-height:0; margin:0; padding:0;
+  border-radius:50%; border:1px solid var(--border); background:color-mix(in srgb, var(--card-bg) 85%, transparent) !important;
+  -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); color:var(--text) !important; display:flex; align-items:center; justify-content:center; cursor:pointer;
+}
+.gl-field{ display:block; margin:0 0 12px; font-weight:600; }
+.gl-field-label{ display:block; font-size:13px; color:var(--text-muted); margin:0 2px 6px; }
+.gl-input{ display:flex; align-items:center; gap:10px; height:52px; padding:0 14px; border-radius:14px; border:1.5px solid var(--border); background:#F7F8FA; color:var(--text-muted); transition:border-color .15s, box-shadow .15s, background .15s; }
+html[data-theme="dark"] .gl-input{ background:#16202C; }
+.gl-input:focus-within{ border-color:#C9A227; box-shadow:0 0 0 4px rgba(201,162,39,.16); background:var(--card-bg); }
+.gl-screen .gl-input input{ flex:1; min-width:0; height:100%; border:0 !important; outline:0; background:transparent !important; box-shadow:none !important; padding:0 !important; margin:0; font-size:16px; color:var(--text); font-family:inherit; text-align:left; }
+.gl-screen .gl-input input::placeholder{ color:var(--text-faint); text-align:right; }
+.gl-input > svg{ flex-shrink:0; }
+.gl-eye{ width:38px; height:38px; min-height:0; margin:0 -8px 0 0; padding:0; border:0; border-radius:50%; background:transparent !important; color:var(--text-muted) !important; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:none; }
+.gl-row-end{ display:flex; justify-content:flex-start; margin:-4px 0 14px; }
+.gl-link{ width:auto; min-height:0; margin:0; padding:4px 2px; border:0; background:transparent !important; color:var(--text) !important; font-weight:700; font-size:14px; text-decoration:underline; text-underline-offset:3px; cursor:pointer; box-shadow:none; font-family:inherit; }
+.gl-screen button.gl-btn{ height:54px; margin:0 0 12px; justify-content:center; font-size:16px; font-weight:700; border-radius:16px; }
+.gl-screen button.gl-btn:disabled{ opacity:.7; cursor:progress; }
+.gl-screen button.gl-btn-outline{ background:transparent; color:var(--text); border:1.5px solid var(--border); box-shadow:none; }
+.gl-screen button.gl-btn-outline:hover{ background:rgba(127,127,127,.08); }
+.gl-divider{ display:flex; align-items:center; gap:12px; margin:8px 0 14px; color:var(--text-faint); font-size:13px; }
+.gl-divider::before, .gl-divider::after{ content:''; flex:1; height:1px; background:var(--border); }
+.gl-divider span{ background:none !important; padding:0 !important; }
+.gl-alert{ display:flex; gap:8px; align-items:flex-start; text-align:right; padding:11px 14px; border-radius:12px; font-size:14px; line-height:1.6; margin:0 0 14px; }
+.gl-alert.err{ background:rgba(224,36,36,.1); color:#C81E1E; }
+html[data-theme="dark"] .gl-alert.err{ background:rgba(248,113,113,.14); color:#FCA5A5; }
+.gl-alert.ok{ background:rgba(14,159,110,.1); color:#057A55; }
+html[data-theme="dark"] .gl-alert.ok{ background:rgba(49,196,141,.14); color:#84E1BC; }
+.gl-alert svg{ flex-shrink:0; margin-top:1px; }
+.gl-hint{ font-size:12.5px; color:var(--text-muted); margin:-4px 2px 12px; }
+.gl-hint.ok{ color:#0E9F6E; }
+.gl-hint.ok::before{ content:'✓ '; }
+.gl-check{ display:flex; gap:10px; align-items:flex-start; font-size:13.5px; line-height:1.7; color:var(--text); font-weight:500; margin:2px 0 16px; cursor:pointer; }
+.gl-check input{ width:20px; height:20px; margin:2px 0 0; flex-shrink:0; accent-color:#C9A227; }
+.gl-check a{ color:var(--text); font-weight:700; text-decoration:underline; text-underline-offset:3px; cursor:pointer; }
+.gl-who{ display:flex; align-items:center; gap:10px; padding:10px 12px; margin:0 0 14px; border-radius:14px; border:1px solid var(--border); background:#F7F8FA; }
+html[data-theme="dark"] .gl-who{ background:#16202C; }
+.gl-who-av{ width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:rgba(201,162,39,.16); color:#A6811E; font-weight:800; flex-shrink:0; }
+.gl-who-t{ flex:1; min-width:0; font-size:14px; font-weight:600; direction:ltr; text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.gl-who .gl-link{ font-size:13px; }
+.gl-foot-link{ text-align:center; font-size:14px; color:var(--text-muted); margin:6px 0 0; }
+.gl-auth .gl-terms{ margin:auto 6px 0; padding-top:18px; font-size:12.5px; }
+.gl-spin{ display:inline-block; width:16px; height:16px; margin-left:8px; border:2px solid currentColor; border-right-color:transparent; border-radius:50%; animation:glSpin .7s linear infinite; vertical-align:-3px; }
+@keyframes glSpin{ to{ transform:rotate(360deg); } }
+@media (min-width:1024px){
+  .gl-auth{ display:grid; }
+  .gl-auth .gl-hero{ height:100%; }
+  .gl-auth .gl-body{ margin-top:0; padding:36px 56px; }
+  .gl-back{ right:auto; left:12px; }
+}
+body.g-shell.gs-no-shell, body.g-shell.gs-no-shell.gs-anon{ padding:0 !important; }
+.wl-art.wl-custom > img{ -webkit-mask-image:var(--art-mask); mask-image:var(--art-mask); }
+.wl-art.wl-custom .ap-motto{ display:none; }
+
+/* الوضع الليلي: أي عنصر جواه لون خلفية فاتح مكتوب ثابت في الكود (صفوف الإجمالي، الوسوم، التنبيهات) بيتحوّل تلقائيًا */
+html[data-theme="dark"] body.g-shell:not(.gs-no-shell) #app [style*="background:#f"],
+html[data-theme="dark"] body.g-shell:not(.gs-no-shell) #app [style*="background:#F"],
+html[data-theme="dark"] body.g-shell:not(.gs-no-shell) #app [style*="background:#e"],
+html[data-theme="dark"] body.g-shell:not(.gs-no-shell) #app [style*="background:#E"],
+html[data-theme="dark"] body.g-shell:not(.gs-no-shell) #app [style*="background:#c8f0d8"],
+html[data-theme="dark"] body.g-shell:not(.gs-no-shell) #app [style*="background: #f"],
+html[data-theme="dark"] body.g-shell:not(.gs-no-shell) #app [style*="background:white"],
+html[data-theme="dark"] body.g-shell:not(.gs-no-shell) #app [style*="background:#fff"]{
+  background:var(--gs-surface-3) !important; color:var(--gs-text) !important; border-color:var(--gs-border) !important;
+}
+html[data-theme="dark"] body.g-shell:not(.gs-no-shell) #app [style*="background:#fff8e1"]{ background:rgba(212,175,55,.12) !important; }
+html[data-theme="dark"] body.g-shell:not(.gs-no-shell) #app [style*="color:#7a5c00"],
+html[data-theme="dark"] body.g-shell:not(.gs-no-shell) #app [style*="color:#555"],
+html[data-theme="dark"] body.g-shell:not(.gs-no-shell) #app [style*="color:#333"],
+html[data-theme="dark"] body.g-shell:not(.gs-no-shell) #app [style*="color:#111"],
+html[data-theme="dark"] body.g-shell:not(.gs-no-shell) #app [style*="color:#222"]{ color:var(--gs-text) !important; }
+html[data-theme="dark"] body.g-shell:not(.gs-no-shell) #app [style*="color:#888"],
+html[data-theme="dark"] body.g-shell:not(.gs-no-shell) #app [style*="color:#666"]{ color:var(--gs-muted) !important; }
+/* زر الخروج مكانه الوحيد شاشة "حسابي" */
+body.g-shell:not(.gs-no-shell) #app #logoutFromProfileBtn{ display:none !important; }
+/* أثناء تصوير الشاشات لملف PDF: ألوان صريحة بدل color-mix (أداة التصوير مبتدعمهاش) */
+html.gs-exporting body.g-shell:not(.gs-no-shell) .gs-appbar, html.gs-exporting .gs-appbar{ background:var(--gs-bg) !important; -webkit-backdrop-filter:none !important; backdrop-filter:none !important; }
+html.gs-exporting .gs-tabbar, html.gs-exporting body.g-shell:not(.gs-no-shell) .gs-tabbar{ display:none !important; }
+html.gs-exporting .gl-back{ background:var(--card-bg) !important; -webkit-backdrop-filter:none !important; backdrop-filter:none !important; }
+html.gs-exporting .gs-sheet-back, html.gs-exporting .gs-toasts{ display:none !important; }

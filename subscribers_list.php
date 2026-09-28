@@ -1,0 +1,47 @@
+<?php
+header('Content-Type: application/json');
+require_once __DIR__ . '/session_boot.php';
+session_start();
+include 'db.php';
+require_once __DIR__ . '/uploads.php';
+
+if (!isset($_SESSION['user_email']) || empty($_SESSION['is_admin'])) {
+    http_response_code(403);
+    echo json_encode(["success" => false, "message" => "غير مصرح لك بالدخول لهذه الصفحة."]);
+    exit();
+}
+requirePermission($conn, 'manage_subscribers');
+
+$result = $conn->query("SELECT * FROM subscribers WHERE archived = 0 ORDER BY start_date DESC, id DESC");
+$rows = [];
+while ($r = $result->fetch_assoc()) {
+    $rows[] = [
+        "id" => (string)$r['id'],
+        "accountEmail" => $r['account_email'],
+        "name" => $r['name'],
+        "phone" => $r['phone'],
+        "contactEmail" => $r['contact_email'],
+        "planId" => $r['plan_id'],
+        "planName" => $r['plan_name'],
+        "amount" => (float)$r['amount'],
+        "currency" => $r['currency'],
+        "market" => $r['market'],
+        "paymentMethod" => $r['payment_method'],
+        "paymentRef" => $r['payment_ref'],
+        "paymentProof" => upl_url($r['payment_proof']),
+        "startDate" => $r['start_date'],
+        "endDate" => $r['end_date'],
+        "active" => (bool)$r['active'],
+        "reminderEnabled" => (bool)$r['reminder_enabled'],
+        "reminderIntervalDays" => (int)$r['reminder_interval_days'],
+        "pendingPlanId" => $r['pending_plan_id'],
+        "pendingPlanName" => $r['pending_plan_name'],
+        "pendingAmount" => $r['pending_amount'] !== null ? (float)$r['pending_amount'] : null,
+        "pendingPaymentMethod" => $r['pending_payment_method'],
+        "pendingPaymentRef" => $r['pending_payment_ref'],
+        "pendingPaymentProof" => upl_url($r['pending_payment_proof']),
+        "isComp" => (bool)$r['is_comp'],
+    ];
+}
+echo json_encode(["success" => true, "subscribers" => $rows]);
+?>
