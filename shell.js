@@ -1,16 +1,57 @@
 /* =====================================================================
-   GRIFFINE App Shell — واجهة التطبيق الجديدة
-   - شريط علوي + شريط تبويبات سفلي (موبايل) / شريط جانبي (كمبيوتر)
-   - شاشة رئيسية جديدة بقيمة المحفظة والأرباح والاستثمارات
-   - شاشة "حسابي" بدل القائمة المنسدلة القديمة
-   - إشعارات Toast بدل نوافذ alert
-   - تثبيت الموقع كتطبيق (PWA)
-   كل النصوص اللي جاية من المستخدم بتعدّي على esc() قبل ما تتعرض.
+   GRIFFINE App Shell — واجهة التطبيق (الإصدار 71)
+   ---------------------------------------------------------------------
+   الملف ده هو "الهيكل" اللي بيلف كل شاشات الموقع القديمة (griffine.js):
+     - شريط علوي + شريط تبويبات سفلي (موبايل) / شريط جانبي (كمبيوتر)
+     - الشاشة الرئيسية الجديدة (قيمة المحفظة والأرباح والاستثمارات)
+     - شاشة "حسابي" بدل القائمة المنسدلة القديمة
+     - إشعارات Toast بدل نوافذ alert
+     - تثبيت الموقع كتطبيق (PWA)
+     - طباعة صور كل الشاشات في ملف PDF واحد (من لوحة التحكم)
+
+   قاعدة أمان: كل نص جاي من المستخدم بيعدّي على esc() قبل ما يتعرض.
+
+   ---------------------------------------------------------------------
+   فهرس الأقسام (كل قسم عليه فاصل ورقمه):
+     00. إعدادات عامة (رقم الإصدار + إيقاف الاستعلامات والصفحة مخفية)
+     01. أدوات مساعدة (esc / $ / store)
+     02. الأيقونات الخطية
+     03. ثوابت ودوال التنسيق (العملات / الألوان / الأرقام)
+     04. الإشعارات المنبثقة Toast
+     05. القائمة المنبثقة من الأسفل (Bottom Sheet)
+     06. التنقل: ربط كل شاشة بالتبويب بتاعها
+     07. بناء الهيكل (الشريط العلوي / التبويبات / الشريط الجانبي)
+     08. الوضع الليلي/النهاري + الشعارين (فاتح وغامق)
+     09. الصورة الشخصية + تسجيل الخروج
+     10. التوصيات: عداد الجرس
+     11. معالجة كل شاشة بعد رسمها (تنظيف الإيموجي / العنوان / زر الرجوع)
+     12. مفتاح DCA / Grid فوق قوائم الخطط
+     13. الشاشة الرئيسية
+     14. شاشة حسابي
+     15. حذف الحساب
+     16. طباعة صور كل الشاشات (PDF)
+     17. قائمة الزائر (قبل تسجيل الدخول)
+     18. التثبيت كتطبيق (PWA)
+     19. التشغيل (init)
+
+   طريقة الإضافة (قابلية التطوير):
+     - شاشة جديدة للعميل: أضفها في TAB_OF (قسم 06) وفي SCREENS_TO_PRINT (قسم 16)
+     - عنصر جديد في الشريط الجانبي: sideItems() (قسم 06)
+     - أيقونة جديدة: جدول P (قسم 02)
    ===================================================================== */
 (function(){
   'use strict';
+
+  /* =====================================================================
+     00. إعدادات عامة
+     ===================================================================== */
+
+  // رقم الإصدار - بيظهر في شاشة "حسابي" (غيّره مع ?v= في index.php و VERSION في sw.js)
+  const APP_VERSION = 71;
+
   /* الاستعلامات المتكررة (الدردشة/التوصيات) بتقف لما التبويب يكون مخفي أو الموبايل مقفول
-     - بتوفّر ضغط على سيرفر هوستنجر وبطارية الموبايل، وبترجع تشتغل أول ما الصفحة تظهر */
+     - بتوفّر ضغط على السيرفر وبطارية الموبايل، وبترجع تشتغل أول ما الصفحة تظهر
+     - أي مؤقت أطول من دقيقة بيفضل شغال عادي */
   (function(){
     const nativeSetInterval = window.setInterval.bind(window);
     window.setInterval = function(fn, ms){
@@ -20,18 +61,42 @@
     };
   })();
 
-  const GS = window.GShell = { enabled: false, seq: 0, tab: 'home', email: null, settings: {}, deferredInstall: null };
+  // الكائن العام للهيكل - متاح لـ griffine.js باسم window.GShell
+  const GS = window.GShell = {
+    enabled: false,          // اتفعّل ولا لسه (init)
+    seq: 0,                  // عدّاد الشاشات - أي تحميل متأخر لشاشة قديمة بيتلغي لو الرقم اتغيّر
+    tab: 'home',             // التبويب النشط
+    email: null,             // بريد المستخدم الحالي (null = زائر)
+    settings: {},            // إعدادات إخفاء الشاشات من لوحة التحكم
+    deferredInstall: null,   // حدث تثبيت التطبيق (PWA) لحد ما المستخدم يدوس "تثبيت"
+    version: APP_VERSION
+  };
 
-  /* ---------------- أدوات مساعدة ---------------- */
+
+  /* =====================================================================
+     01. أدوات مساعدة
+     ===================================================================== */
+
+  // تأمين النصوص قبل وضعها في HTML
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   GS.esc = esc;
+
+  // اختصار querySelector
   const $ = (sel, root) => (root || document).querySelector(sel);
+
+  // التخزين المحلي - محمي بـ try عشان وضع التصفح الخفي
   const store = {
     get(k, d){ try{ const v = localStorage.getItem(k); return v == null ? d : v; }catch(e){ return d; } },
     set(k, v){ try{ localStorage.setItem(k, v); }catch(e){} }
   };
 
-  /* أيقونات خطية موحّدة (على طراز Lucide) - بدل الإيموجي */
+  // انتظار عدد ملي ثانية
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+
+  /* =====================================================================
+     02. الأيقونات الخطية (على طراز Lucide) - بدل الإيموجي
+     ===================================================================== */
   const P = {
     home:'<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/>',
     layers:'<path d="m12 3 9 5-9 5-9-5 9-5z"/><path d="m3 13 9 5 9-5"/>',
@@ -75,58 +140,114 @@
   const icon = (n) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n] || P.info}</svg>`;
   GS.icon = icon;
 
+
+  /* =====================================================================
+     03. ثوابت ودوال التنسيق
+     ===================================================================== */
+
+  // اسم العملة بالعربي → الكود المختصر
   const CCY_CODE = { 'جنيه مصري':'EGP', 'ريال سعودي':'SAR', 'درهم إماراتي':'AED', 'ريال قطري':'QAR', 'دينار كويتي':'KWD' };
+
+  // ألوان شريط توزيع المحفظة
   const PALETTE = ['#D4AF37','#3B82F6','#10B981','#F97316','#A855F7','#EC4899','#14B8A6','#EAB308'];
-  const symColor = (s) => { let h = 0; for (const ch of String(s)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return ['#1F2A44','#0F766E','#7C3AED','#B45309','#1D4ED8','#BE123C','#047857','#374151'][h % 8]; };
+
+  // لون ثابت لكل رمز سهم (نفس الرمز = نفس اللون دايمًا)
+  const SYMBOL_COLORS = ['#1F2A44','#0F766E','#7C3AED','#B45309','#1D4ED8','#BE123C','#047857','#374151'];
+  const symColor = (s) => { let h = 0; for (const ch of String(s)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return SYMBOL_COLORS[h % SYMBOL_COLORS.length]; };
+
+  // تنسيق المبالغ (بيستخدم fmtMoney من griffine.js لو موجودة)
   const money = (n) => (typeof fmtMoney === 'function') ? fmtMoney(n) : Number(n || 0).toFixed(2);
+
+  // هل الشاشة دي مخفية من لوحة التحكم؟
   const hidden = (k) => GS.settings && GS.settings[k] === true;
+
+  // زرار "العين" لإخفاء الأرقام في الرئيسية
   const valuesHidden = () => store.get('gs_hide_values', '0') === '1';
   const mask = (s) => valuesHidden() ? '••••••' : s;
+
+  // نسبة مئوية بعلامة + / -
   const pct = (n) => (n == null || isNaN(n)) ? '—' : `${n >= 0 ? '+' : ''}${Number(n).toFixed(2)}%`;
+
+  // تحية حسب الوقت
   const greeting = () => { const h = new Date().getHours(); return h < 12 ? 'صباح الخير' : 'مساء الخير'; };
 
-  /* ---------------- Toast بدل alert ---------------- */
+
+  /* =====================================================================
+     04. الإشعارات المنبثقة Toast (بدل alert)
+     - النوع بيتحدد تلقائيًا من نص الرسالة لو مش متحدد (خطأ / نجاح / معلومة)
+     - أقصى 3 إشعارات ظاهرة في نفس الوقت
+     ===================================================================== */
   GS.toast = function(msg, type){
     msg = String(msg == null ? '' : msg).trim();
     if (!msg) return;
+
+    // 1) تحديد النوع
     if (!type) {
       if (/خطأ|فشل|تعذّر|تعذر|مينفعش|غير صحيح|غير صالح|لازم|مش موجود|مرفوض|لا يمكن|حدث خطأ/.test(msg)) type = 'err';
       else if (/تم |تم$|بنجاح|اتحفظ|اتبعت|✅/.test(msg)) type = 'ok';
       else type = 'info';
     }
+
+    // 2) الحاوية (بتتعمل مرة واحدة)
     let wrap = $('.gs-toasts');
-    if (!wrap) { wrap = document.createElement('div'); wrap.className = 'gs-toasts'; wrap.setAttribute('role','status'); wrap.setAttribute('aria-live','polite'); document.body.appendChild(wrap); }
+    if (!wrap) {
+      wrap = document.createElement('div');
+      wrap.className = 'gs-toasts';
+      wrap.setAttribute('role','status');
+      wrap.setAttribute('aria-live','polite');
+      document.body.appendChild(wrap);
+    }
+
+    // 3) الإشعار نفسه
     const t = document.createElement('div');
     t.className = 'gs-toast ' + type;
     t.innerHTML = `<span class="ti">${icon(type === 'err' ? 'alert' : type === 'ok' ? 'check' : 'info')}</span><span class="tx"></span><button type="button" class="tc" aria-label="إغلاق">${icon('x')}</button>`;
     t.querySelector('.tx').textContent = msg.replace(/^[✅❌⚠️\s]+/u, '');
+
     const close = () => { t.classList.add('out'); setTimeout(() => t.remove(), 200); };
     t.querySelector('.tc').onclick = close;
     wrap.appendChild(t);
     while (wrap.children.length > 3) wrap.firstChild.remove();
+
+    // 4) يختفي لوحده (مدة أطول للرسائل الطويلة)
     setTimeout(close, Math.min(9000, 3200 + msg.length * 45));
   };
 
-  /* ---------------- Bottom Sheet ---------------- */
+
+  /* =====================================================================
+     05. القائمة المنبثقة من الأسفل (Bottom Sheet)
+     - على الكمبيوتر بتظهر كنافذة في النص (من shell.css)
+     ===================================================================== */
   GS.sheet = function(title, html, onMount){
     GS.closeSheet();
-    const back = document.createElement('div'); back.className = 'gs-sheet-back'; back.id = 'gsSheetBack';
-    const sh = document.createElement('div'); sh.className = 'gs-sheet'; sh.id = 'gsSheet'; sh.setAttribute('role','dialog'); sh.setAttribute('aria-modal','true');
+    const back = document.createElement('div');
+    back.className = 'gs-sheet-back'; back.id = 'gsSheetBack';
+
+    const sh = document.createElement('div');
+    sh.className = 'gs-sheet'; sh.id = 'gsSheet';
+    sh.setAttribute('role','dialog'); sh.setAttribute('aria-modal','true');
     sh.innerHTML = `<div class="gs-sheet-grab"></div>${title ? `<h4>${esc(title)}</h4>` : ''}${html}`;
-    document.body.appendChild(back); document.body.appendChild(sh);
+
+    document.body.appendChild(back);
+    document.body.appendChild(sh);
     back.onclick = GS.closeSheet;
     requestAnimationFrame(() => { back.classList.add('show'); sh.classList.add('show'); });
     if (onMount) onMount(sh);
     return sh;
   };
+
   GS.closeSheet = function(){
     const b = $('#gsSheetBack'), s = $('#gsSheet');
     if (b) { b.classList.remove('show'); setTimeout(() => b.remove(), 220); }
     if (s) { s.classList.remove('show'); setTimeout(() => s.remove(), 260); }
   };
 
-  /* ---------------- التنقل ---------------- */
-  // كل تبويب ليه شاشة جذر - الشاشات دي مبيظهرش فيها زرار الرجوع
+
+  /* =====================================================================
+     06. التنقل: ربط كل شاشة بالتبويب بتاعها
+     ===================================================================== */
+
+  // كل دالة شاشة → التبويب اللي يتنوّر وهي مفتوحة
   const TAB_OF = {
     renderHome:'home',
     renderPlansList:'plans', renderGridPlansList:'plans', renderPlanDetail:'plans', renderGridPlanDetail:'plans',
@@ -139,37 +260,54 @@
     renderArticlesListPage:'account', renderArticleDetailPage:'account', renderTestimonialsPage:'account', renderSuggestionsPage:'account',
     renderDisclaimerPage:'account', renderPrivacyPolicyPage:'account', renderCheckoutForm:'account', renderPlanChangeCheckout:'account'
   };
+
+  // شاشات الجذر - مبيظهرش فيها زرار الرجوع
   const ROOTS = { renderHome:1, renderPlansList:1, renderPortfolio:1, renderScreener:1, renderAccount:1, renderPublicHome:1 };
 
+  // شاشات لوحة التحكم (بتنوّر تبويب "الإدارة")
+  const ADMIN_SCREEN_RE = /^renderAdmin|^renderChatAdmin|^renderStaff|^renderBlacklist|^renderPlansManagement|^renderSiteDesign|^renderSiteTexts|^renderContentAdmin|^renderRecommendationsAdmin|^renderSuggestionsAdmin|^renderArchived/;
+
+  /* بنلف دوال الشاشات الحقيقية بس (اللي بتسجّل نفسها في سجل التنقل pushNav)
+     عشان قبل كل شاشة: نحدّث التبويب النشط، ونعرف هي جذر ولا لأ، ونرجع لأول الصفحة */
   function wrapRenderers(){
-    // بنلف بس دوال الشاشات الحقيقية (اللي بتسجّل نفسها في سجل التنقل pushNav) - مش دوال الرسم المساعدة
-    Object.keys(window).filter(k => /^render[A-Z]/.test(k) && typeof window[k] === 'function' && !window[k].__gsWrapped && /pushNav\(/.test(Function.prototype.toString.call(window[k]))).forEach(name => {
-      const orig = window[name];
-      const tab = TAB_OF[name] || (/^renderAdmin|^renderChatAdmin|^renderStaff|^renderBlacklist|^renderPlansManagement|^renderSiteDesign|^renderSiteTexts|^renderContentAdmin|^renderRecommendationsAdmin|^renderSuggestionsAdmin|^renderArchived/.test(name) ? 'admin' : null);
-      const wrapped = function(){
-        GS.seq++;
-        GS.sub = /Grid/.test(name) ? 'grid' : (tab === 'plans' ? 'dca' : null);
-        if (tab) GS.setTab(tab);
-        GS.isRoot = !!ROOTS[name];
-        GS.currentScreen = name;
-        GS.titleHint = (name === 'renderPlanDetail' || name === 'renderGridPlanDetail') && arguments[0] ? `${arguments[0]} · ${name === 'renderGridPlanDetail' ? 'خطة شبكة Grid' : 'خطة DCA'}` : '';
-        // شاشة جديدة تبدأ من فوق (زي أي تطبيق)
-        try { window.scrollTo(0, 0); } catch(e){}
-        const r = orig.apply(this, arguments);
-        if (name === 'renderPlansList' || name === 'renderGridPlansList') {
-          const my = GS.seq;
-          Promise.resolve(r).then(() => { if (GS.seq === my) GS.injectPlanSwitch(name === 'renderPlansList' ? 'dca' : 'grid'); });
-        }
-        return r;
-      };
-      wrapped.__gsWrapped = true;
-      window[name] = wrapped;
-    });
+    Object.keys(window)
+      .filter(k => /^render[A-Z]/.test(k) && typeof window[k] === 'function' && !window[k].__gsWrapped && /pushNav\(/.test(Function.prototype.toString.call(window[k])))
+      .forEach(name => {
+        const orig = window[name];
+        const tab = TAB_OF[name] || (ADMIN_SCREEN_RE.test(name) ? 'admin' : null);
+
+        const wrapped = function(){
+          GS.seq++;
+          GS.sub = /Grid/.test(name) ? 'grid' : (tab === 'plans' ? 'dca' : null);
+          if (tab) GS.setTab(tab);
+          GS.isRoot = !!ROOTS[name];
+          GS.currentScreen = name;
+          GS.titleHint = (name === 'renderPlanDetail' || name === 'renderGridPlanDetail') && arguments[0]
+            ? `${arguments[0]} · ${name === 'renderGridPlanDetail' ? 'خطة شبكة Grid' : 'خطة DCA'}`
+            : '';
+
+          // شاشة جديدة تبدأ من فوق (زي أي تطبيق)
+          try { window.scrollTo(0, 0); } catch(e){}
+
+          const r = orig.apply(this, arguments);
+
+          // مفتاح DCA/Grid فوق قوائم الخطط بعد ما الشاشة تخلص رسم
+          if (name === 'renderPlansList' || name === 'renderGridPlansList') {
+            const my = GS.seq;
+            Promise.resolve(r).then(() => { if (GS.seq === my) GS.injectPlanSwitch(name === 'renderPlansList' ? 'dca' : 'grid'); });
+          }
+          return r;
+        };
+        wrapped.__gsWrapped = true;
+        window[name] = wrapped;
+      });
+
     // دالة الرجوع القديمة بتخفي/تظهر زرارها - بنربطها بزرار الرجوع الجديد
     const origBackVis = window.setBackButtonVisible;
     window.setBackButtonVisible = function(v){ try{ origBackVis && origBackVis(v); }catch(e){} GS.setBackVisible(v); };
   }
 
+  // تنوير التبويب/العنصر النشط في الشريط السفلي والجانبي
   GS.setTab = function(tab){
     GS.tab = tab;
     document.querySelectorAll('.gs-tab').forEach(el => el.classList.toggle('active', el.dataset.tab === tab));
@@ -181,6 +319,8 @@
       el.classList.toggle('active', !!on);
     });
   };
+
+  // زرار الرجوع مكان الشعار (في غير شاشات الجذر)
   GS.setBackVisible = function(v){
     const b = $('#gsBackBtn'), brand = $('#gsBrandBtn');
     if (!b) return;
@@ -189,6 +329,7 @@
     if (brand) brand.style.display = show ? 'none' : '';
   };
 
+  // تبويبات الموبايل السفلية (حسب الشاشات المسموحة)
   function tabsForUser(){
     const tabs = [ { tab:'home', label:'الرئيسية', ic:'home', go:() => renderHome() } ];
     if (!(hidden('hide_dac_screen') && hidden('hide_grid_screen'))) tabs.push({ tab:'plans', label:'خططي', ic:'layers', go:() => hidden('hide_dac_screen') ? renderGridPlansList() : renderPlansList() });
@@ -199,6 +340,7 @@
     return tabs;
   }
 
+  // عناصر الشريط الجانبي على الكمبيوتر ({sec} = عنوان قسم)
   function sideItems(){
     const items = [
       { tab:'home', label:'الرئيسية', ic:'home', go:() => renderHome() },
@@ -216,8 +358,12 @@
     return items;
   }
 
-  /* ---------------- بناء الهيكل ---------------- */
+
+  /* =====================================================================
+     07. بناء الهيكل (بيتعمل مرة واحدة) + تحديثه مع كل دخول/خروج
+     ===================================================================== */
   function buildChrome(){
+    // الشريط العلوي
     if (!$('.gs-appbar')) {
       const bar = document.createElement('header');
       bar.className = 'gs-appbar';
@@ -230,18 +376,21 @@
       $('#gsBackBtn').onclick = () => (typeof goBack === 'function' ? goBack() : history.back());
       $('#gsBrandBtn').onclick = () => GS.email ? renderHome() : renderPublicHome();
     }
+    // شريط التبويبات السفلي (موبايل)
     if (!$('.gs-tabbar')) {
-      const tb = document.createElement('nav'); tb.className = 'gs-tabbar'; tb.setAttribute('aria-label','التنقل الرئيسي');
+      const tb = document.createElement('nav');
+      tb.className = 'gs-tabbar'; tb.setAttribute('aria-label','التنقل الرئيسي');
       document.body.appendChild(tb);
     }
+    // الشريط الجانبي (كمبيوتر)
     if (!$('.gs-sidebar')) {
-      const sb = document.createElement('aside'); sb.className = 'gs-sidebar'; sb.setAttribute('aria-label','القائمة الجانبية');
+      const sb = document.createElement('aside');
+      sb.className = 'gs-sidebar'; sb.setAttribute('aria-label','القائمة الجانبية');
       document.body.appendChild(sb);
     }
   }
 
-  function brandSrc(){ try { return griffineLogoSrc(); } catch(e){ return ''; } }
-
+  // تحديث الهيكل كله حسب المستخدم الحالي (بتتنادى من refreshTopNav في griffine.js)
   GS.refresh = async function(email){
     if (!GS.enabled) return;
     GS.email = email || null;
@@ -249,7 +398,7 @@
     try { GS.settings = (email && !window.__isAdmin) ? await getAdminSettings() : {}; } catch(e){ GS.settings = {}; }
     const img = $('#gsBrandImg'); if (img) img.src = brandSrc();
 
-    // أزرار نهاية الشريط العلوي
+    // ---- أزرار نهاية الشريط العلوي ----
     const end = $('#gsBarEnd');
     if (email) {
       end.innerHTML = `${!hidden('hide_recommendations_screen') ? `<button type="button" class="gs-iconbtn" id="gsBellBtn" aria-label="التوصيات">${icon('bell')}<span class="gs-badge" id="gsBellBadge" style="display:none"></span></button>` : ''}
@@ -262,7 +411,7 @@
     }
     $('#gsThemeBtn').onclick = GS.toggleTheme;
 
-    // التبويبات السفلية
+    // ---- التبويبات السفلية ----
     const tb = $('.gs-tabbar');
     if (email) {
       const tabs = tabsForUser();
@@ -271,12 +420,14 @@
       tb.querySelectorAll('.gs-tab').forEach(b => b.onclick = () => { GS.closeSheet(); tabs[+b.dataset.i].go(); });
     } else tb.innerHTML = '';
 
-    // الشريط الجانبي
+    // ---- الشريط الجانبي ----
     const sb = $('.gs-sidebar');
     if (email) {
       const items = sideItems();
       sb.innerHTML = `<div class="gs-side-brand" id="gsSideBrand"><img src="${brandSrc()}" alt="GRIFFINE"><span>GRIFFINE</span></div>
-        ${items.map((it, i) => it.sec ? `<div class="gs-side-sec">${it.sec}</div>` : `<button type="button" class="gs-side-item" data-i="${i}" ${it.tab ? `data-tab="${it.tab}"` : ''} ${it.screen ? `data-screen="${it.screen}"` : ''} ${it.sub ? `data-sub="${it.sub}"` : ''}>${icon(it.ic)}<span>${it.label}</span></button>`).join('')}
+        ${items.map((it, i) => it.sec
+          ? `<div class="gs-side-sec">${it.sec}</div>`
+          : `<button type="button" class="gs-side-item" data-i="${i}" ${it.tab ? `data-tab="${it.tab}"` : ''} ${it.screen ? `data-screen="${it.screen}"` : ''} ${it.sub ? `data-sub="${it.sub}"` : ''}>${icon(it.ic)}<span>${it.label}</span></button>`).join('')}
         <div class="gs-side-foot"><div class="gs-side-user" id="gsSideUser"><span class="gs-avatar" id="gsSideAvatar">${esc(email.charAt(0).toUpperCase())}</span><span class="t"><b>${esc(email)}</b><small>الملف الشخصي والإعدادات</small></span></div></div>`;
       sb.querySelectorAll('.gs-side-item').forEach(b => b.onclick = () => items[+b.dataset.i].go());
       $('#gsSideBrand').onclick = () => renderHome();
@@ -284,24 +435,52 @@
       GS.loadAvatar().then(src => { const a = $('#gsSideAvatar'); if (src && a) a.innerHTML = `<img src="${esc(src)}" alt="">`; });
       GS.updateBell();
     } else sb.innerHTML = '';
+
     GS.setTab(GS.tab);
   };
 
-  GS.loadAvatar = async function(){
-    if (GS._avatar !== undefined) return GS._avatar;
-    try { const r = await apiGet('/avatar_get.php'); GS._avatar = (r && r.success && r.avatar && /^(data:image\/|file_get\.php)/.test(r.avatar)) ? r.avatar : null; }
-    catch(e){ GS._avatar = null; }
-    return GS._avatar;
+
+  /* =====================================================================
+     08. الوضع الليلي/النهاري + الشعارين
+     ---------------------------------------------------------------------
+     عندنا شعارين في griffine.js:
+       GRIFFINE_LOGO_B64       → غامق على خلفية شفافة (للوضع النهاري)
+       GRIFFINE_LOGO_DARK_B64  → فاتح على خلفية شفافة (للوضع الليلي) - عكس الأول بالظبط
+     griffineLogoSrc() بترجع المناسب حسب الوضع الحالي.
+     إصلاح الإصدار 71: أيقونة الدردشة مكانتش بتتحدّث مع تبديل الوضع (كان بيفضل الشعار الفاتح
+     على خلفية بيضا فميبانش) - دلوقتي syncThemeAssets بتحدّث كل صور الشعار في الصفحة.
+     ===================================================================== */
+  const isDark = () => document.documentElement.getAttribute('data-theme') === 'dark';
+  function brandSrc(){ try { return griffineLogoSrc(); } catch(e){ return ''; } }
+
+  // تحديث كل حاجة مرتبطة بالوضع: الشعارات + لون شريط المتصفح + مفتاح "حسابي"
+  GS.syncThemeAssets = function(){
+    // كل صور شعار GRIFFINE (الشريط / الجانبي / الترحيب / الدردشة ...) - ماعدا أيقونة التطبيق في لافتة التثبيت
+    document.querySelectorAll('img[alt*="GRIFFINE"], img.brand-logo-img').forEach(img => { img.src = brandSrc(); });
+    try { document.querySelectorAll('img[alt="Top7"]').forEach(img => { img.src = top7LogoSrc(); }); } catch(e){}
+    const meta = $('meta[name="theme-color"]'); if (meta) meta.setAttribute('content', isDark() ? '#0A0F16' : '#F3F4F6');
+    const sw = $('#gsDarkSwitch'); if (sw) sw.checked = isDark();
   };
 
   GS.toggleTheme = function(){
-    const dark = document.documentElement.getAttribute('data-theme') === 'dark';
-    if (dark) document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme','dark');
-    store.set('griffine_theme', dark ? 'light' : 'dark');
-    document.querySelectorAll('img[alt="GRIFFINE"], img.brand-logo-img').forEach(img => { img.src = brandSrc(); });
-    try { document.querySelectorAll('img[alt="Top7"]').forEach(img => { img.src = top7LogoSrc(); }); } catch(e){}
-    const meta = $('meta[name="theme-color"]'); if (meta) meta.setAttribute('content', dark ? '#F3F4F6' : '#0A0F16');
-    const sw = $('#gsDarkSwitch'); if (sw) sw.checked = !dark;
+    const toDark = !isDark();
+    if (toDark) document.documentElement.setAttribute('data-theme','dark');
+    else document.documentElement.removeAttribute('data-theme');
+    store.set('griffine_theme', toDark ? 'dark' : 'light');
+    GS.syncThemeAssets();
+  };
+
+
+  /* =====================================================================
+     09. الصورة الشخصية + تسجيل الخروج
+     ===================================================================== */
+  GS.loadAvatar = async function(){
+    if (GS._avatar !== undefined) return GS._avatar;   // متحملة قبل كده
+    try {
+      const r = await apiGet('/avatar_get.php');
+      GS._avatar = (r && r.success && r.avatar && /^(data:image\/|file_get\.php)/.test(r.avatar)) ? r.avatar : null;
+    } catch(e){ GS._avatar = null; }
+    return GS._avatar;
   };
 
   GS.logout = async function(){
@@ -312,7 +491,10 @@
     renderLogin();
   };
 
-  /* ---------------- التوصيات: عداد الجرس ---------------- */
+
+  /* =====================================================================
+     10. التوصيات: عداد الجرس (عدد التوصيات اللي المستخدم لسه مشافهاش)
+     ===================================================================== */
   GS.updateBell = async function(recs){
     const badge = $('#gsBellBadge'); if (!badge) return;
     try {
@@ -324,20 +506,34 @@
       badge.style.display = n ? '' : 'none';
     } catch(e){}
   };
+
   GS.markRecsSeen = function(){
     if (GS._recs) store.set('gs_seen_recs', GS._recs.map(x => x.id).join(','));
     const badge = $('#gsBellBadge'); if (badge) badge.style.display = 'none';
   };
 
-  /* ---------------- معالجة كل شاشة بعد رسمها ---------------- */
+
+  /* =====================================================================
+     11. معالجة كل شاشة بعد رسمها
+     - بتتنادى تلقائيًا من MutationObserver (قسم 19) مع أي تغيير في #app
+     ===================================================================== */
   const EMOJI_LEAD = /^[\s‍️⃣\p{Extended_Pictographic}]+/u;
+
+  // شيل الإيموجي من أول عقدة نصية فعلية في العنصر
   function stripLeadingEmoji(el){
-    // أول عقدة نصية فعلية بس (لو فيه عنصر قبلها زي checkbox عادي)
     const tn = Array.from(el.childNodes).find(n => n.nodeType === 3 && n.nodeValue.trim());
     if (!tn) return;
     const v = tn.nodeValue, nv = v.replace(EMOJI_LEAD, '');
     if (nv !== v && nv.trim()) tn.nodeValue = nv;
   }
+
+  // أيقونات بطاقات لوحة التحكم (كانت إيموجي)
+  const ADMIN_IC = {
+    goChatAdminBtn:'chat', goContentBtn:'star', goSuggestionsAdminBtn:'bulb', goPlansMgmtBtn:'card', goReportsBtn:'report',
+    goRecommendationsBtn:'megaphone', goStaffBtn:'user', goSettingsBtn:'settings', goBlacklistBtn:'shield', goSiteDesignBtn:'grid',
+    goSiteTextsBtn:'news', goArchiveBtn:'receipt', goSubscribersBtn:'user', goExportScreensBtn:'report', goExportExcelBtn:'download'
+  };
+
   let processing = false;
   function processScreen(){
     if (processing) return;
@@ -345,58 +541,74 @@
     try {
       const app = document.getElementById('app');
       if (!app) return;
+
+      // 1) شاشات الترحيب/الدخول بتملى الشاشة كلها - من غير هيكل
       const fullScreen = !!app.querySelector('.wl-screen, .gl-screen');
       document.body.classList.toggle('gs-no-shell', fullScreen);
       if (fullScreen) return;
 
-      // عبارات الترحيب القديمة ("مرحبًا email") مش محتاجينها - الحساب ظاهر في الشريط
+      // 2) عبارات الترحيب القديمة ("مرحبًا email") - الحساب ظاهر في الشريط
       app.querySelectorAll('.topbar').forEach(tb => {
         const first = tb.firstElementChild;
         if (first && /^\s*مرحب/.test(first.textContent)) first.classList.add('gs-hide');
         const visible = Array.from(tb.children).some(c => !c.classList.contains('gs-hide') && c.offsetParent !== null);
         if (!visible) tb.classList.add('gs-hide');
       });
-      // أزرار "الشاشة الرئيسية" داخل الصفحات - شريط التبويبات بيغني عنها
+
+      // 3) أزرار "الشاشة الرئيسية" داخل الصفحات - شريط التبويبات بيغني عنها
       app.querySelectorAll('button').forEach(b => {
         if (b.id === 'homeBtn' || /^\s*🏠/u.test(b.textContent) || /^\s*(🏠\s*)?الشاشة الرئيسية\s*$/.test(b.textContent)) b.classList.add('gs-hide');
       });
-      // إيموجي في أول الأزرار والعناوين → نص نظيف (الأيقونات الموحدة في الشريط والقوائم)
+
+      // 4) إيموجي في أول الأزرار والعناوين → نص نظيف
       app.querySelectorAll('button, h2, h3, .topbar > div, .info, .lbl, label, [style*="var(--green-dark)"]').forEach(stripLeadingEmoji);
-      // أيقونات لوحة التحكم (كانت إيموجي)
-      const ADMIN_IC = { goChatAdminBtn:'chat', goContentBtn:'star', goSuggestionsAdminBtn:'bulb', goPlansMgmtBtn:'card', goReportsBtn:'report',
-        goRecommendationsBtn:'megaphone', goStaffBtn:'user', goSettingsBtn:'settings', goBlacklistBtn:'shield', goSiteDesignBtn:'grid', goSiteTextsBtn:'news', goArchiveBtn:'receipt', goSubscribersBtn:'user', goExportScreensBtn:'report', goExportExcelBtn:'download' };
+
+      // 5) أيقونات لوحة التحكم
       app.querySelectorAll('.admin-nav-card .nav-icon').forEach(el => {
         if (el.dataset.gs) return;
         const id = el.closest('.admin-nav-card').id;
         el.dataset.gs = '1'; el.innerHTML = icon(ADMIN_IC[id] || 'settings');
       });
-      // إيموجي داخل placeholder مربعات البحث (الأيقونة بقت مرسومة)
-      app.querySelectorAll('input[placeholder]').forEach(i => { const v = i.getAttribute('placeholder'), nv = v.replace(EMOJI_LEAD, ''); if (nv !== v && nv.trim()) i.setAttribute('placeholder', nv); });
-      // topbars فاضية بعد إخفاء زرار الرئيسية
+
+      // 6) إيموجي داخل placeholder مربعات البحث
+      app.querySelectorAll('input[placeholder]').forEach(i => {
+        const v = i.getAttribute('placeholder'), nv = v.replace(EMOJI_LEAD, '');
+        if (nv !== v && nv.trim()) i.setAttribute('placeholder', nv);
+      });
+
+      // 7) topbars بقت فاضية بعد إخفاء زرار الرئيسية
       app.querySelectorAll('.topbar').forEach(tb => {
-        const any = Array.from(tb.querySelectorAll('*')).some(c => !c.closest('.gs-hide') && (c.tagName === 'BUTTON' || c.textContent.trim()) );
+        const any = Array.from(tb.querySelectorAll('*')).some(c => !c.closest('.gs-hide') && (c.tagName === 'BUTTON' || c.textContent.trim()));
         if (!any && !tb.textContent.trim()) tb.classList.add('gs-hide');
       });
-      // عنوان الشريط العلوي
+
+      // 8) عنوان الشريط العلوي + عنوان التبويب في المتصفح
       const t = app.querySelector('.gs-page-title') || Array.from(app.querySelectorAll('.container > .topbar:not(.gs-hide) > div:first-child:not(.gs-hide), .container > h2, .container h2')).find(e => e.textContent.trim());
       const title = GS.titleHint || (t ? t.textContent.replace(EMOJI_LEAD, '').replace(/\s+/g, ' ').trim() : '');
       const tt = $('#gsTitle'); if (tt) tt.textContent = GS.currentScreen === 'renderHome' ? '' : title.slice(0, 60);
       document.title = title && GS.currentScreen !== 'renderHome' ? `${title} — GRIFFINE` : 'GRIFFINE';
+
+      // 9) زرار الرجوع
       GS.setBackVisible(!GS.isRoot);
     } finally {
       // نسيب المراقب يتجاهل التعديلات اللي عملناها إحنا
       setTimeout(() => { processing = false; }, 0);
     }
   }
+
   let raf = 0;
   function scheduleProcess(){ if (processing) return; cancelAnimationFrame(raf); raf = requestAnimationFrame(processScreen); }
 
+  // خط تحت الشريط العلوي بعد السكرول
   function onScroll(){
     const bar = $('.gs-appbar'); if (!bar) return;
     bar.classList.toggle('scrolled', window.scrollY > 40);
   }
 
-  /* ---------------- مفتاح DCA / Grid فوق قوائم الخطط ---------------- */
+
+  /* =====================================================================
+     12. مفتاح DCA / Grid فوق قوائم الخطط
+     ===================================================================== */
   GS.injectPlanSwitch = function(active){
     const c = document.querySelector('#app > .container'); if (!c || c.querySelector('.gs-seg')) return;
     if (hidden('hide_dac_screen') || hidden('hide_grid_screen')) return;
@@ -408,8 +620,14 @@
     GS.isRoot = true; GS.setBackVisible(false);
   };
 
+
   /* =====================================================================
-     الشاشة الرئيسية الجديدة
+     13. الشاشة الرئيسية
+     ---------------------------------------------------------------------
+     الترتيب: هيكل تحميل (skeleton) ← جلب البيانات ← رسم الشاشة ← رسم الأجزاء:
+       drawHero()      بطاقة قيمة المحفظة (لكل عملة لوحدها)
+       drawHoldings()  قائمة استثماراتي
+       آخر التوصيات   (بتتحمّل في الخلفية)
      ===================================================================== */
   GS.renderHome = async function(){
     pushNav(() => renderHome());
@@ -420,12 +638,14 @@
     if (!(await ensureAccess())) return;
     if (GS.seq !== my) return;
 
+    // ---- 1) هيكل التحميل ----
     app.innerHTML = `<div class="container gs-home">
       <div class="gs-greet"><div><div class="hello">${greeting()}</div><div class="gs-skel" style="width:160px;height:26px;margin-top:6px"></div></div><span class="gs-avatar"></span></div>
       <div class="gs-skel" style="height:220px;border-radius:24px"></div>
       <div class="gs-skel" style="height:70px;margin-top:18px"></div>
       <div class="gs-skel" style="height:220px;margin-top:24px"></div></div>`;
 
+    // ---- 2) البيانات ----
     const [settings, plans, grids, subRes, avatar] = await Promise.all([
       getAdminSettings().catch(() => ({})), getPlans(email).catch(() => ({})), getGridPlans(email).catch(() => ({})),
       getMySubscription().catch(() => null), GS.loadAvatar()
@@ -435,11 +655,15 @@
     const sub = subRes && subRes.success ? subRes.subscription : null;
     const displayName = (sub && sub.name) ? String(sub.name).split(/\s+/)[0] : email.split('@')[0];
 
+    // كل الخطط (DCA + Grid) في قائمة واحدة
     const entries = [
       ...Object.keys(plans || {}).map(s => ({ key:`${s}::DCA`, sym:s, type:'DCA' })),
       ...Object.keys(grids || {}).map(s => ({ key:`${s}::Grid`, sym:s, type:'Grid' }))
     ];
-    const ccyOf = (e) => e.type === 'DCA' ? (plans[e.sym].currency || MARKET_TO_CURRENCY_MAP[plans[e.sym].market] || '') : (MARKET_TO_CURRENCY_MAP[grids[e.sym].market] || '');
+    const ccyOf = (e) => e.type === 'DCA'
+      ? (plans[e.sym].currency || MARKET_TO_CURRENCY_MAP[plans[e.sym].market] || '')
+      : (MARKET_TO_CURRENCY_MAP[grids[e.sym].market] || '');
+
     let all = { stockRows: [] };
     try { all = computeAggregates(plans, grids, entries, null, null); } catch(e){ console.error(e); }
     const rowCcy = {}; entries.forEach(e => { rowCcy[`${e.sym}::${e.type}`] = ccyOf(e); });
@@ -454,6 +678,7 @@
     let sel = store.get('gs_ccy', '');
     if (!ccys.find(x => x.c === sel)) sel = ccys.length ? ccys[0].c : '';
 
+    // الاختصارات السريعة
     const quick = [
       { k:'new', label:'خطة جديدة', ic:'plus', brand:true, go:() => renderPlanTypeChooser(), show: !(hidden('hide_dac_screen') && hidden('hide_grid_screen')) },
       { k:'dca', label:'خطط DCA', ic:'layers', go:() => renderPlansList(), show: !hidden('hide_dac_screen') },
@@ -462,6 +687,7 @@
       { k:'rep', label:'التقارير', ic:'report', go:() => renderPortfolio(), show: !hidden('hide_portfolio_screen') },
     ].filter(q => q.show);
 
+    // ترتيب الاستثمارات: المفتوحة ← الجديدة ← المغلقة، وبعدين الأكبر قيمة
     const rows = (all.stockRows || []).slice().sort((a, b) => {
       const o = (r) => r.status === 'مفتوحة' ? 0 : r.status === 'جديدة' ? 1 : 2;
       return o(a) - o(b) || (b.currentValue - a.currentValue);
@@ -469,6 +695,7 @@
 
     const installCard = GS.installCardHtml();
 
+    // ---- 3) رسم الشاشة ----
     app.innerHTML = `<div class="container gs-home">
       <div class="gs-greet">
         <div><div class="hello">${greeting()}</div><div class="name">${esc(displayName)}</div></div>
@@ -490,6 +717,7 @@
     document.querySelectorAll('.gs-quick button').forEach(b => b.onclick = () => quick[+b.dataset.i].go());
     GS.wireInstallCard();
 
+    // ---- 3أ) بطاقة قيمة المحفظة ----
     function drawHero(){
       const cur = ccys.find(x => x.c === sel);
       const hero = $('#gsHero'); if (!hero) return;
@@ -500,11 +728,14 @@
       }
       const a = cur.a, code = CCY_CODE[cur.c] || cur.c;
       const pl = a.grandTotalProfit || 0, plPct = a.overallProfitPercent || 0;
+
+      // توزيع المراكز المفتوحة: أكبر 5 + "أخرى"
       const openRows = a.stockRows.filter(r => r.status === 'مفتوحة' && r.currentValue > 0).sort((x, y) => y.currentValue - x.currentValue);
       const totalOpen = openRows.reduce((s, r) => s + r.currentValue, 0);
       const top = openRows.slice(0, 5), rest = openRows.slice(5).reduce((s, r) => s + r.currentValue, 0);
       const parts = top.map((r, i) => ({ label:r.symbol, v:r.currentValue, color:PALETTE[i] }));
       if (rest > 0) parts.push({ label:'أخرى', v:rest, color:'#64748B' });
+
       hero.innerHTML = `<div class="gs-hero">
         <div class="gs-hero-top">
           <span class="gs-hero-label">قيمة المحفظة الحالية</span>
@@ -519,7 +750,7 @@
           <div class="gs-legend">${parts.map(p => `<span><i style="background:${p.color}"></i>${esc(p.label)} ${(p.v / totalOpen * 100).toFixed(0)}%</span>`).join('')}</div>` : ''}
         <div class="gs-hero-stats">
           <div>المستثمر حاليًا<b>${mask(money(a.totalInvested))}</b></div>
-          <div>الربح المحقق<b class="${(a.totalRealized + a.totalClosedProfit) >= 0 ? '' : ''}">${mask(money((a.totalRealized || 0) + (a.totalClosedProfit || 0)))}</b></div>
+          <div>الربح المحقق<b>${mask(money((a.totalRealized || 0) + (a.totalClosedProfit || 0)))}</b></div>
           <div>مراكز مفتوحة<b>${a.totalOpenPositionsCount || 0} / ${a.stockRows.length}</b></div>
         </div>
       </div>`;
@@ -527,6 +758,7 @@
       $('#gsEye').onclick = () => { store.set('gs_hide_values', valuesHidden() ? '0' : '1'); drawHero(); drawHoldings(); };
     }
 
+    // ---- 3ب) صف واحد في قائمة استثماراتي ----
     function holdingRow(r){
       const ccy = CCY_CODE[rowCcy[`${r.symbol}::${r.planType}`]] || '';
       const open = r.status === 'مفتوحة';
@@ -542,6 +774,8 @@
         <span class="gs-row-end"><b>${main}</b><small class="${cls}">${esc(subV)}</small></span>
       </button>`;
     }
+
+    // ---- 3ج) قائمة استثماراتي ----
     function drawHoldings(showAll){
       const el = $('#gsHoldings'); if (!el) return;
       if (!rows.length) {
@@ -554,10 +788,11 @@
       el.innerHTML = `<div class="gs-list">${list.map(holdingRow).join('')}</div>`;
       el.querySelectorAll('.gs-row').forEach(b => b.onclick = () => b.dataset.type === 'Grid' ? renderGridPlanDetail(b.dataset.sym) : renderPlanDetail(b.dataset.sym));
     }
+
     drawHero(); drawHoldings();
     const allBtn = $('#gsAllHold'); if (allBtn) allBtn.onclick = () => { drawHoldings(true); allBtn.remove(); };
 
-    // آخر التوصيات
+    // ---- 3د) آخر التوصيات (في الخلفية) ----
     if (!hidden('hide_recommendations_screen')) {
       getRecommendations().then(r => {
         if (GS.seq !== my) return;
@@ -575,8 +810,9 @@
     }
   };
 
+
   /* =====================================================================
-     شاشة حسابي
+     14. شاشة حسابي
      ===================================================================== */
   GS.renderAccount = async function(){
     pushNav(() => GS.renderAccount());
@@ -586,11 +822,16 @@
     const email = await getSession();
     if (!email) return renderLogin();
     setBackButtonVisible(false);
-    const [subRes, avatar, settings] = await Promise.all([ getMySubscription().catch(() => null), GS.loadAvatar(), window.__isAdmin ? {} : getAdminSettings().catch(() => ({})) ]);
+
+    const [subRes, avatar, settings] = await Promise.all([
+      getMySubscription().catch(() => null), GS.loadAvatar(), window.__isAdmin ? {} : getAdminSettings().catch(() => ({}))
+    ]);
     if (GS.seq !== my) return;
     GS.settings = settings || {};
     const sub = subRes && subRes.success ? subRes.subscription : null;
     const name = sub && sub.name ? sub.name : email.split('@')[0];
+
+    // شارة الاشتراك تحت الاسم
     let subChip = '';
     if (window.__isAdmin) subChip = `<span class="gs-sub-chip">${window.__isSuperAdmin ? 'مدير الموقع' : 'فريق العمل'}</span>`;
     else if (sub) {
@@ -600,8 +841,10 @@
         ? `<span class="gs-sub-chip ${days != null && days <= 5 ? 'warn' : ''}">${esc(sub.planName || 'مشترك')}${days != null ? ` · متبقي ${Math.max(days, 0)} يوم` : ''}</span>`
         : `<span class="gs-sub-chip warn">بانتظار التفعيل</span>`;
     }
-    const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+
+    // صف في القائمة: R(id, أيقونة, النص, كلاس إضافي)
     const R = (id, ic, label, extra) => `<button type="button" class="gs-row ${extra || ''}" id="${id}"><span class="gs-row-ic">${icon(ic)}</span><span class="gs-row-main"><b>${label}</b></span><span class="gs-chev">${icon('chev')}</span></button>`;
+    // عنوان الشاشة المخصص من لوحة التحكم (لو موجود)
     const pt = (k, f) => { try { return pageTitle(k, f); } catch(e){ return f; } };
 
     app.innerHTML = `<div class="container">
@@ -631,7 +874,7 @@
       <div class="gs-list-title">المظهر</div>
       <div class="gs-list"><label class="gs-row" style="cursor:pointer;margin:0">
         <span class="gs-row-ic">${icon('moon')}</span><span class="gs-row-main"><b>الوضع الليلي</b></span>
-        <span class="gs-switch"><input type="checkbox" id="gsDarkSwitch" ${dark ? 'checked' : ''} aria-label="الوضع الليلي"><span></span></span>
+        <span class="gs-switch"><input type="checkbox" id="gsDarkSwitch" ${isDark() ? 'checked' : ''} aria-label="الوضع الليلي"><span></span></span>
       </label></div>
 
       <div class="gs-list-title">عن GRIFFINE</div>
@@ -648,9 +891,10 @@
 
       <div class="gs-list" style="margin-top:22px">${R('gsAccLogout','logout','تسجيل الخروج','danger')}</div>
       ${window.__isSuperAdmin ? '' : `<div class="gs-list" style="margin-top:12px">${R('gsAccDelete','x','حذف الحساب نهائيًا','danger')}</div>`}
-      <div class="gs-version">GRIFFINE · الإصدار 70</div>
+      <div class="gs-version">GRIFFINE · الإصدار ${APP_VERSION}</div>
     </div>`;
 
+    // ربط الأزرار (on = لو العنصر موجود)
     const on = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = fn; };
     on('gsAccProfile', () => renderProfilePage());
     on('gsAccSub', () => renderSubscriptionPlans());
@@ -674,8 +918,10 @@
     const sw = $('#gsDarkSwitch'); if (sw) sw.onchange = () => GS.toggleTheme();
   };
 
+
   /* =====================================================================
-     حذف الحساب (متطلب Google Play: مسار داخل التطبيق + رابط ويب index.php?page=delete-account)
+     15. حذف الحساب
+     (متطلب Google Play: مسار داخل التطبيق + رابط ويب index.php?page=delete-account)
      ===================================================================== */
   GS.renderDeleteAccount = async function(){
     pushNav(() => GS.renderDeleteAccount());
@@ -683,6 +929,7 @@
     GS.seq++; GS.setTab('account'); GS.isRoot = false; GS.currentScreen = 'renderDeleteAccount';
     const email = await getSession();
     if (!email) { window.__afterLoginTarget = 'deleteAccount'; return renderLogin(); }
+
     app.innerHTML = `<div class="container">
       <div class="gs-page-title">حذف الحساب</div>
       <div class="error" style="line-height:1.8">الحذف نهائي ومينفعش يرجع. هيتمسح حسابك <b dir="ltr">${esc(email)}</b> وكل خططك (DCA وGrid) وصفقاتك المغلقة وصورتك الشخصية ومقترحاتك ومحادثاتك.</div>
@@ -701,15 +948,28 @@
       </form>
       <button type="button" class="secondary" id="gsDelCancel" style="margin-top:10px">إلغاء والرجوع</button>
     </div>`;
+
     document.getElementById('gsDelCancel').onclick = () => GS.renderAccount();
     document.getElementById('gsDelForm').onsubmit = async (e) => {
       e.preventDefault();
       const btn = document.getElementById('gsDelBtn'), msg = document.getElementById('gsDelMsg');
+
+      // 1) التأكد من كلمة «حذف»
       const confirmWord = document.getElementById('gsDelConfirm').value.trim();
       if (confirmWord !== 'حذف') { msg.innerHTML = '<div class="error">اكتب كلمة «حذف» بالظبط للتأكيد.</div>'; return; }
+
+      // 2) طلب الحذف من السيرفر
       btn.disabled = true; btn.textContent = 'جاري الحذف...';
-      let r; try { r = await apiPost('/account_delete.php', { password: document.getElementById('gsDelPw').value, confirm: confirmWord }); } catch(err){ r = { success:false, message:'تعذّر الاتصال بالسيرفر.' }; }
-      if (!r || !r.success) { msg.innerHTML = `<div class="error">${esc((r && r.message) || 'تعذّر الحذف.')}</div>`; btn.disabled = false; btn.textContent = 'حذف حسابي نهائيًا'; return; }
+      let r;
+      try { r = await apiPost('/account_delete.php', { password: document.getElementById('gsDelPw').value, confirm: confirmWord }); }
+      catch(err){ r = { success:false, message:'تعذّر الاتصال بالسيرفر.' }; }
+      if (!r || !r.success) {
+        msg.innerHTML = `<div class="error">${esc((r && r.message) || 'تعذّر الحذف.')}</div>`;
+        btn.disabled = false; btn.textContent = 'حذف حسابي نهائيًا';
+        return;
+      }
+
+      // 3) تنظيف بيانات الجهاز والرجوع لشاشة الترحيب
       try { ['griffine_remembered_email','griffine_plans:'+email,'griffine_grid_plans:'+email,'griffine_subscription:'+email].forEach(k => localStorage.removeItem(k)); } catch(err){}
       GS._avatar = undefined;
       invalidateSessionCache();
@@ -720,108 +980,320 @@
     };
   };
 
+
   /* =====================================================================
-     طباعة صور كل الشاشات في ملف PDF واحد (من لوحة التحكم)
-     بيفتح كل شاشة بالترتيب، يصوّرها بالشكل الحالي (فاتح/ليلي، موبايل/كمبيوتر)، ويجمعهم في PDF
+     16. طباعة صور كل الشاشات في ملف PDF واحد (من لوحة التحكم)
+     ---------------------------------------------------------------------
+     بيفتح كل شاشة بالترتيب، يصوّرها بالشكل الحالي (فاتح/ليلي، موبايل/كمبيوتر)،
+     ويجمعهم في PDF: صفحة غلاف ← صفحة لكل شاشة ← صفحة ملخص في الآخر.
+
+     إصلاح الإصدار 71 (الملف كان بيطلع 4 شاشات بس):
+       السبب: أداة التصوير html2canvas 1.4.1 بتقف عند أي لون مكتوب بـ color-mix()
+       (كان موجود في الشريط العلوي وشريط التبويبات) - فأول ما بنوصل لأول شاشة داخلية
+       كل الشاشات اللي بعدها كانت بتفشل في صمت. الحل:
+         1) shell.css بقى من غير color-mix خالص (ألوان rgba جاهزة)
+         2) أي شاشة تفشل بتاخد صفحة فيها سبب الفشل بدل ما تختفي، وبتظهر في صفحة الملخص
+         3) إضافة شاشات التفاصيل (أول خطة DCA / Grid وتعديلها، أول مقال...)
+
+     إضافة شاشة جديدة للطباعة: سطر جديد في SCREENS_TO_PRINT بالشكل
+         ['اسم الشاشة', 'اسم_الدالة']            ← دالة في griffine.js
+         ['اسم الشاشة', 'GS:اسم_الدالة']         ← دالة في الملف ده
+         ['اسم الشاشة', 'اسم_الدالة', 'dca']     ← بتاخد رمز أول خطة DCA (أو grid / article)
      ===================================================================== */
+
+  // ---- 16أ) قائمة الشاشات بالترتيب (سطر من عنصر واحد = عنوان قسم) ----
+  const SCREENS_TO_PRINT = [
+    ['— الشاشات العامة —'],
+    ['شاشة الترحيب', 'renderPublicHome'],
+    ['تسجيل الدخول', 'renderLogin'],
+    ['إنشاء حساب', 'renderRegister'],
+    ['نسيت كلمة المرور', 'renderForgotPassword'],
+    ['خطط الاستثمار (للزوار)', 'renderPublicPlansInfo'],
+    ['الباقات والأسعار (للزوار)', 'renderPublicPricing'],
+
+    ['— شاشات العميل —'],
+    ['الرئيسية', 'renderHome'],
+    ['خطط DCA', 'renderPlansList'],
+    ['تفاصيل خطة DCA', 'renderPlanDetail', 'dca'],
+    ['إعدادات خطة DCA', 'renderEditPlanSettings', 'dca'],
+    ['خطط Grid', 'renderGridPlansList'],
+    ['تفاصيل خطة Grid', 'renderGridPlanDetail', 'grid'],
+    ['إعدادات خطة Grid', 'renderGridEditPlanSettings', 'grid'],
+    ['اختيار نوع الخطة', 'renderPlanTypeChooser'],
+    ['خطة DCA جديدة', 'renderNewPlanForm'],
+    ['خطة Grid جديدة', 'renderGridPlanForm'],
+    ['ملخص المحفظة', 'renderPortfolio'],
+    ['تقرير التنويع', 'renderDiversificationReport'],
+    ['كشاف الأسهم', 'renderScreener'],
+    ['التوصيات', 'renderRecommendationsCustomerPage'],
+    ['حسابي', 'GS:renderAccount'],
+    ['الملف الشخصي', 'renderProfilePage'],
+    ['الاشتراك والباقات', 'renderSubscriptionPlans'],
+    ['سجل اشتراكي', 'renderMySubscriptionHistory'],
+    ['ادعُ صديقك', 'renderReferralPage'],
+    ['عن GRIFFINE', 'renderAboutPage'],
+    ['تواصل معنا', 'renderContactInfo'],
+    ['مقالات', 'renderArticlesListPage'],
+    ['تفاصيل مقال', 'renderArticleDetailPage', 'article'],
+    ['آراء العملاء', 'renderTestimonialsPage'],
+    ['شاركنا مقترحاتك', 'renderSuggestionsPage'],
+    ['سياسة الاسترداد', 'renderRefundPolicyPage'],
+    ['إخلاء المسؤولية', 'renderDisclaimerPage'],
+    ['سياسة الخصوصية', 'renderPrivacyPolicyPage'],
+    ['حذف الحساب', 'GS:renderDeleteAccount'],
+
+    ['— لوحة التحكم —'],
+    ['لوحة التحكم', 'renderAdminHub'],
+    ['المشتركون', 'renderAdminSubscribers'],
+    ['التقارير', 'renderAdminReportsPage'],
+    ['الإعدادات الإلزامية', 'renderAdminSettingsPage'],
+    ['الفريق والصلاحيات', 'renderStaffManagementPage'],
+    ['القائمة السوداء', 'renderBlacklist'],
+    ['إدارة الباقات', 'renderPlansManagementPage'],
+    ['توصيات الشراء (إدارة)', 'renderRecommendationsAdminPage'],
+    ['الدردشة الفورية (إدارة)', 'renderChatAdminPage'],
+    ['تنسيق الموقع', 'renderSiteDesignPage'],
+    ['نصوص الشاشات', 'renderSiteTextsAdminPage'],
+    ['آراء العملاء والمقالات (إدارة)', 'renderContentAdminPage'],
+    ['مقترحات العملاء (إدارة)', 'renderSuggestionsAdminPage'],
+    ['الأرشيف', 'renderArchivedCustomers'],
+  ];
+
+  // إعدادات التصوير
+  const PRINT = {
+    scale: 1.5,            // دقة الصورة (1.5 = أوضح من الشاشة بنص مرة)
+    waitAfterRender: 1200, // انتظار بعد فتح الشاشة (تحميل البيانات والصور)
+    renderTimeout: 6000,   // أقصى انتظار لشاشة بطيئة
+    maxShotHeight: 9000,   // أقصى طول للصورة (بكسل) - الشاشات الطويلة جدًا بتتقص
+    pageWidthMm: 210,      // عرض صفحة PDF (A4)
+    maxPageHeightMm: 5000, // أقصى طول لصفحة PDF (حد مكتبة jsPDF)
+    headerPx: 64,          // ارتفاع شريط العنوان فوق كل صورة
+    gold: '#D4AF37',
+    font: '"IBM Plex Sans Arabic", Tahoma, sans-serif'
+  };
+
+  // تحميل مكتبة خارجية مرة واحدة
   function loadScript(src){
-    return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('تعذّر تحميل ' + src)); document.head.appendChild(s); });
+    return new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = src; s.onload = res; s.onerror = () => rej(new Error('تعذّر تحميل ' + src));
+      document.head.appendChild(s);
+    });
   }
-  GS.exportScreensPdf = async function(){
-    if (GS._exporting) return;
-    const L = [
-      ['— الشاشات العامة —'],
-      ['شاشة الترحيب', 'renderPublicHome'], ['تسجيل الدخول', 'renderLogin'], ['إنشاء حساب', 'renderRegister'], ['نسيت كلمة المرور', 'renderForgotPassword'],
-      ['الباقات والأسعار (للزوار)', 'renderPublicPricing'],
-      ['— شاشات العميل —'],
-      ['الرئيسية', 'renderHome'], ['خطط DCA', 'renderPlansList'], ['خطط Grid', 'renderGridPlansList'], ['اختيار نوع الخطة', 'renderPlanTypeChooser'],
-      ['خطة DCA جديدة', 'renderNewPlanForm'], ['خطة Grid جديدة', 'renderGridPlanForm'], ['ملخص المحفظة', 'renderPortfolio'], ['تقرير التنويع', 'renderDiversificationReport'],
-      ['كشاف الأسهم', 'renderScreener'], ['التوصيات', 'renderRecommendationsCustomerPage'], ['حسابي', 'GS:renderAccount'], ['الملف الشخصي', 'renderProfilePage'],
-      ['الاشتراك والباقات', 'renderSubscriptionPlans'], ['سجل اشتراكي', 'renderMySubscriptionHistory'], ['ادعُ صديقك', 'renderReferralPage'],
-      ['عن GRIFFINE', 'renderAboutPage'], ['تواصل معنا', 'renderContactInfo'], ['مقالات', 'renderArticlesListPage'], ['آراء العملاء', 'renderTestimonialsPage'],
-      ['شاركنا مقترحاتك', 'renderSuggestionsPage'], ['سياسة الاسترداد', 'renderRefundPolicyPage'], ['إخلاء المسؤولية', 'renderDisclaimerPage'], ['سياسة الخصوصية', 'renderPrivacyPolicyPage'],
-      ['— لوحة التحكم —'],
-      ['لوحة التحكم', 'renderAdminHub'], ['المشتركون', 'renderAdminSubscribers'], ['التقارير', 'renderAdminReportsPage'], ['الإعدادات الإلزامية', 'renderAdminSettingsPage'],
-      ['الفريق والصلاحيات', 'renderStaffManagementPage'], ['القائمة السوداء', 'renderBlacklist'], ['إدارة الباقات', 'renderPlansManagementPage'],
-      ['توصيات الشراء (إدارة)', 'renderRecommendationsAdminPage'], ['الدردشة الفورية (إدارة)', 'renderChatAdminPage'], ['تنسيق الموقع', 'renderSiteDesignPage'],
-      ['نصوص الشاشات', 'renderSiteTextsAdminPage'], ['آراء العملاء والمقالات (إدارة)', 'renderContentAdminPage'], ['مقترحات العملاء (إدارة)', 'renderSuggestionsAdminPage'], ['الأرشيف', 'renderArchivedCustomers'],
-    ];
-    const list = L.filter(x => x.length === 1 || (x[1].startsWith('GS:') ? typeof GS[x[1].slice(3)] === 'function' : typeof window[x[1]] === 'function'));
-    const total = list.filter(x => x.length > 1).length;
-    if (!confirm(`هيتم فتح ${total} شاشة وتصويرها واحدة واحدة وتجميعها في ملف PDF.\nالعملية بتاخد حوالي دقيقة - متقفلش الصفحة.\n\nالصور هتطلع بالشكل الحالي (${document.documentElement.getAttribute('data-theme') === 'dark' ? 'الوضع الليلي' : 'الوضع النهاري'}، ${window.innerWidth < 1024 ? 'موبايل' : 'كمبيوتر'}).`)) return;
-    GS._exporting = true;
-    document.documentElement.classList.add('gs-exporting');
+
+  // ---- 16ب) البيانات اللي شاشات التفاصيل محتاجاها (أول خطة / أول مقال) ----
+  async function loadPrintArgs(){
+    const args = { dca: null, grid: null, article: null };
+    try {
+      const email = await getSession();
+      if (email) {
+        const [plans, grids] = await Promise.all([getPlans(email).catch(() => ({})), getGridPlans(email).catch(() => ({}))]);
+        args.dca = Object.keys(plans || {})[0] || null;
+        args.grid = Object.keys(grids || {})[0] || null;
+      }
+    } catch(e){}
+    try {
+      const r = await getArticles();
+      const list = (r && r.success && r.articles) || [];
+      args.article = list.length ? list[0].slug : null;
+    } catch(e){}
+    return args;
+  }
+
+  // ---- 16ج) بناء القائمة النهائية (بنشيل اللي دالته مش موجودة أو محتاج بيانات مش موجودة) ----
+  function buildPrintList(args){
+    const fnOf = (name) => name.startsWith('GS:') ? GS[name.slice(3)] : window[name];
+    const list = [];
+    let section = '';
+    SCREENS_TO_PRINT.forEach(row => {
+      if (row.length === 1) { section = row[0].replace(/—/g, '').trim(); return; }
+      const [label, fnName, argKey] = row;
+      if (typeof fnOf(fnName) !== 'function') return;          // الشاشة مش موجودة في الإصدار ده
+      if (argKey && !args[argKey]) return;                      // مفيش خطة/مقال نعرض تفاصيله
+      list.push({ section, label: argKey ? `${label} (${args[argKey]})` : label, fnName, arg: argKey ? args[argKey] : undefined, fn: fnOf(fnName) });
+    });
+    return list;
+  }
+
+  // ---- 16د) أدوات الرسم على canvas (العناوين والصفحات النصية) ----
+
+  // شريط العنوان الغامق بخط ذهبي تحته
+  function drawHeaderBar(g, width, title, subtitle){
+    const s = PRINT.scale, head = PRINT.headerPx * s;
+    g.fillStyle = isDark() ? '#111923' : '#0F172A'; g.fillRect(0, 0, width, head);
+    g.fillStyle = PRINT.gold; g.fillRect(0, head - 4, width, 4);
+    g.direction = 'rtl'; g.textAlign = 'right'; g.fillStyle = '#FFFFFF';
+    g.font = `700 ${Math.round(22 * s)}px ${PRINT.font}`;
+    g.fillText(title, width - 24, head * 0.45);
+    g.font = `500 ${Math.round(13 * s)}px ${PRINT.font}`; g.fillStyle = 'rgba(255,255,255,.7)';
+    g.fillText(subtitle, width - 24, head * 0.8);
+    return head;
+  }
+
+  // صفحة نصية كاملة (غلاف / شاشة فشلت / ملخص): lines = [{ text, size, bold, color }]
+  function textPage(title, subtitle, lines){
+    const s = PRINT.scale;
+    const width = Math.round(document.documentElement.clientWidth * s);
+    const lineH = (l) => Math.round((l.size || 15) * 1.9 * s);
+    const bodyH = lines.reduce((h, l) => h + lineH(l), 0);
+    const c = document.createElement('canvas');
+    c.width = width; c.height = Math.round(PRINT.headerPx * s + bodyH + 60 * s);
+    const g = c.getContext('2d');
+    g.fillStyle = isDark() ? '#0A0F16' : '#FFFFFF'; g.fillRect(0, 0, c.width, c.height);
+    let y = drawHeaderBar(g, width, title, subtitle) + 30 * s;
+    g.direction = 'rtl'; g.textAlign = 'right';
+    lines.forEach(l => {
+      y += lineH(l) * 0.75;
+      g.font = `${l.bold ? 700 : 500} ${Math.round((l.size || 15) * s)}px ${PRINT.font}`;
+      g.fillStyle = l.color || (isDark() ? '#F1F5F9' : '#0F172A');
+      g.fillText(l.text, width - 32 * s, y);
+      y += lineH(l) * 0.25;
+    });
+    return c;
+  }
+
+  // تصوير الشاشة الحالية
+  async function captureCurrentScreen(bg){
+    return html2canvas(document.body, {
+      backgroundColor: bg, scale: PRINT.scale, useCORS: true, logging: false,
+      windowWidth: document.documentElement.clientWidth,
+      height: Math.min(document.documentElement.scrollHeight, PRINT.maxShotHeight),
+      ignoreElements: (el) => el.id === 'gsExportOverlay' || el.id === 'chatBubble' || el.id === 'chatPanel' || el.tagName === 'IFRAME'
+    });
+  }
+
+  // إضافة canvas كصفحة في الـPDF (الصفحة بعرض A4 وطولها حسب الصورة)
+  function addCanvasPage(state, canvas){
+    const wmm = PRINT.pageWidthMm;
+    const hmm = Math.min(Math.round(canvas.height * wmm / canvas.width), PRINT.maxPageHeightMm);
+    const orient = hmm >= wmm ? 'portrait' : 'landscape';
+    const img = canvas.toDataURL('image/jpeg', 0.82);
+    if (!state.pdf) state.pdf = new state.jsPDF({ unit: 'mm', format: [wmm, hmm], orientation: orient, compress: true });
+    else state.pdf.addPage([wmm, hmm], orient);
+    state.pdf.addImage(img, 'JPEG', 0, 0, wmm, hmm, undefined, 'FAST');
+  }
+
+  // ---- 16هـ) شاشة التقدّم فوق الصفحة أثناء التصوير ----
+  function showExportOverlay(){
     const ov = document.createElement('div');
     ov.id = 'gsExportOverlay'; ov.setAttribute('data-html2canvas-ignore', 'true');
     ov.style.cssText = 'position:fixed;inset:0;z-index:1000;background:rgba(2,6,12,.72);display:flex;align-items:center;justify-content:center;color:#fff;font:600 16px/1.8 inherit;text-align:center;padding:24px';
     ov.innerHTML = '<div><div id="gsExportTxt">جاري تحميل أدوات الطباعة...</div><div style="margin-top:12px;width:260px;height:6px;border-radius:3px;background:rgba(255,255,255,.2);overflow:hidden"><div id="gsExportBar" style="height:100%;width:0;background:#D4AF37;transition:width .2s"></div></div></div>';
     document.body.appendChild(ov);
-    const setTxt = (t, p) => { const e = document.getElementById('gsExportTxt'); if (e) e.textContent = t; const b = document.getElementById('gsExportBar'); if (b && p != null) b.style.width = p + '%'; };
-    const origAlert = window.alert; window.alert = () => {};
-    const origConfirm = window.confirm; 
+    return {
+      set(t, p){
+        const e = document.getElementById('gsExportTxt'); if (e) e.textContent = t;
+        const b = document.getElementById('gsExportBar'); if (b && p != null) b.style.width = p + '%';
+      },
+      remove(){ ov.remove(); }
+    };
+  }
+
+  // ---- 16و) الدالة الرئيسية (زرار "طباعة صور كل الشاشات" في لوحة التحكم) ----
+  GS.exportScreensPdf = async function(){
+    if (GS._exporting) return;
+
+    // 1) تجهيز القائمة
+    const args = await loadPrintArgs();
+    const list = buildPrintList(args);
+    const total = list.length;
+    const themeName = isDark() ? 'الوضع الليلي' : 'الوضع النهاري';
+    const deviceName = window.innerWidth < 1024 ? 'موبايل' : 'كمبيوتر';
+    if (!confirm(`هيتم فتح ${total} شاشة وتصويرها واحدة واحدة وتجميعها في ملف PDF.\nالعملية بتاخد حوالي دقيقتين - متقفلش الصفحة.\n\nالصور هتطلع بالشكل الحالي (${themeName}، ${deviceName}).`)) return;
+
+    // 2) قفل الصفحة أثناء التصوير
+    GS._exporting = true;
+    document.documentElement.classList.add('gs-exporting');
+    const overlay = showExportOverlay();
+    const origAlert = window.alert, origConfirm = window.confirm;
+    window.alert = () => {};
+
+    const results = [];   // { label, ok, reason }
     try {
+      // 3) تحميل المكتبات
       if (!window.html2canvas) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
       if (!window.jspdf) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
       window.confirm = () => false; // أي تأكيد بيظهر من شاشة أثناء التصوير بيتلغي تلقائيًا
-      const { jsPDF } = window.jspdf;
-      let pdf = null, done = 0, section = '';
-      const bg = getComputedStyle(document.body).backgroundColor || '#ffffff';
-      const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+
+      const state = { jsPDF: window.jspdf.jsPDF, pdf: null };
+      const dateStr = new Date().toISOString().slice(0, 10);
+
+      // 4) صفحة الغلاف
+      addCanvasPage(state, textPage('GRIFFINE — صور كل الشاشات', `الإصدار ${APP_VERSION} · ${dateStr}`, [
+        { text: `عدد الشاشات: ${total}`, size: 20, bold: true },
+        { text: `الشكل: ${themeName} · ${deviceName} (عرض ${document.documentElement.clientWidth}px)`, size: 16 },
+        { text: 'كل شاشة في صفحة لوحدها بالترتيب، وفي آخر الملف ملخص بكل الشاشات.', size: 15 },
+      ]));
+
+      // 5) الشاشات واحدة واحدة
+      let n = 0;
       for (const item of list) {
-        if (item.length === 1) { section = item[0].replace(/—/g, '').trim(); continue; }
-        const [label, fnName] = item;
-        done++; setTxt(`جاري تصوير الشاشة ${done} من ${total}: ${label}`, Math.round(done / total * 100));
+        n++;
+        overlay.set(`جاري تصوير الشاشة ${n} من ${total}: ${item.label}`, Math.round(n / total * 100));
+
+        // أ) فتح الشاشة من غير ما تتسجل في سجل الرجوع
         window.__navSilent = true;
         try {
-          const fn = fnName.startsWith('GS:') ? GS[fnName.slice(3)] : window[fnName];
-          await Promise.race([Promise.resolve(fn()), new Promise(r => setTimeout(r, 6000))]);
-        } catch(e){ /* شاشة فشلت - نكمل الباقي */ }
+          await Promise.race([Promise.resolve(item.arg !== undefined ? item.fn(item.arg) : item.fn()), sleep(PRINT.renderTimeout)]);
+        } catch(e){ /* الشاشة رمت خطأ - هنصوّر اللي اترسم منها */ }
         finally { window.__navSilent = false; }
-        await new Promise(r => setTimeout(r, 1100));
+        await sleep(PRINT.waitAfterRender);
         window.scrollTo(0, 0);
         document.querySelectorAll('.gs-toast').forEach(t => t.remove());
-        let shot;
-        try {
-          shot = await html2canvas(document.body, { backgroundColor: bg, scale: 1.5, useCORS: true, logging: false,
-            windowWidth: document.documentElement.clientWidth, height: Math.min(document.documentElement.scrollHeight, 9000),
-            ignoreElements: (el) => el.id === 'gsExportOverlay' || el.id === 'chatBubble' || el.tagName === 'IFRAME' });
-        } catch(e){ console.warn('screen capture failed:', label, e && e.message); continue; }
-        // شريط عنوان فوق كل صورة (اسم الشاشة + القسم)
-        const head = 64 * 1.5, c = document.createElement('canvas');
-        c.width = shot.width; c.height = shot.height + head;
-        const g = c.getContext('2d');
-        g.fillStyle = dark ? '#111923' : '#0F172A'; g.fillRect(0, 0, c.width, head);
-        g.fillStyle = '#D4AF37'; g.fillRect(0, head - 4, c.width, 4);
-        g.direction = 'rtl'; g.textAlign = 'right'; g.fillStyle = '#FFFFFF';
-        g.font = `700 ${Math.round(22 * 1.5)}px "IBM Plex Sans Arabic", Tahoma, sans-serif`;
-        g.fillText(`${done}. ${label}`, c.width - 24, head * 0.45);
-        g.font = `500 ${Math.round(13 * 1.5)}px "IBM Plex Sans Arabic", Tahoma, sans-serif`; g.fillStyle = 'rgba(255,255,255,.7)';
-        g.fillText(`${section} · GRIFFINE`, c.width - 24, head * 0.8);
-        g.drawImage(shot, 0, head);
-        const wmm = 210, hmm = Math.min(Math.round(c.height * wmm / c.width), 5000);
-        const img = c.toDataURL('image/jpeg', 0.82);
-        if (!pdf) pdf = new jsPDF({ unit: 'mm', format: [wmm, hmm], orientation: hmm >= wmm ? 'portrait' : 'landscape', compress: true });
-        else pdf.addPage([wmm, hmm], hmm >= wmm ? 'portrait' : 'landscape');
-        pdf.addImage(img, 'JPEG', 0, 0, wmm, hmm, undefined, 'FAST');
+
+        // ب) التصوير
+        const bg = getComputedStyle(document.body).backgroundColor || '#ffffff';
+        let shot = null, reason = '';
+        try { shot = await captureCurrentScreen(bg); }
+        catch(e){ reason = (e && e.message) || String(e); console.warn('screen capture failed:', item.label, reason); }
+
+        // ج) صفحة الشاشة (أو صفحة توضّح إنها فشلت - عشان مفيش شاشة تختفي من الملف)
+        if (shot) {
+          const c = document.createElement('canvas');
+          const head = PRINT.headerPx * PRINT.scale;
+          c.width = shot.width; c.height = shot.height + head;
+          const g = c.getContext('2d');
+          drawHeaderBar(g, c.width, `${n}. ${item.label}`, `${item.section} · GRIFFINE`);
+          g.drawImage(shot, 0, head);
+          addCanvasPage(state, c);
+          results.push({ label: item.label, ok: true });
+        } else {
+          addCanvasPage(state, textPage(`${n}. ${item.label}`, `${item.section} · GRIFFINE`, [
+            { text: 'تعذّر تصوير هذه الشاشة', size: 20, bold: true, color: '#E02424' },
+            { text: `السبب: ${reason.slice(0, 120)}`, size: 14 },
+          ]));
+          results.push({ label: item.label, ok: false, reason });
+        }
       }
-      if (!pdf) throw new Error('مفيش شاشات اتصورت');
-      setTxt('جاري حفظ الملف...', 100);
-      pdf.save(`griffine-screens-${new Date().toISOString().slice(0, 10)}.pdf`);
-      GS.toast(`تم حفظ ملف PDF بصور ${done} شاشة`, 'ok');
+
+      // 6) صفحة الملخص في الآخر
+      const okCount = results.filter(r => r.ok).length;
+      addCanvasPage(state, textPage('ملخص الشاشات', `${okCount} من ${total} اتصورت بنجاح`,
+        results.map((r, i) => ({ text: `${i + 1}. ${r.label} — ${r.ok ? 'تم ✓' : 'فشل ✗'}`, size: 14, color: r.ok ? undefined : '#E02424' }))));
+
+      // 7) الحفظ
+      overlay.set('جاري حفظ الملف...', 100);
+      state.pdf.save(`griffine-screens-v${APP_VERSION}-${dateStr}-${isDark() ? 'DARK' : 'LIGHT'}.pdf`);
+      GS.toast(okCount === total ? `تم حفظ ملف PDF بصور ${total} شاشة` : `تم حفظ ملف PDF: ${okCount} من ${total} شاشة (الباقي موضّح في آخر صفحة)`, okCount === total ? 'ok' : 'info');
     } catch(e){
       GS.toast('تعذّر إنشاء ملف PDF: ' + (e && e.message ? e.message : e), 'err');
     } finally {
+      // 8) رجوع كل حاجة زي ما كانت
       window.alert = origAlert; window.confirm = origConfirm;
-      ov.remove(); GS._exporting = false; document.documentElement.classList.remove('gs-exporting');
+      overlay.remove(); GS._exporting = false;
+      document.documentElement.classList.remove('gs-exporting');
       try { renderAdminHub(); } catch(e){}
     }
   };
 
-  /* قائمة الزائر (قبل تسجيل الدخول) */
+
+  /* =====================================================================
+     17. قائمة الزائر (قبل تسجيل الدخول)
+     ===================================================================== */
   GS.openPublicMenu = function(){
     const pt = (k, f) => { try { return pageTitle(k, f); } catch(e){ return f; } };
     const items = [
-      ['login','تسجيل الدخول / إنشاء حساب', () => openLoginModal ? openLoginModal() : renderLogin()],
+      ['login','تسجيل الدخول / إنشاء حساب', () => (typeof openLoginModal === 'function') ? openLoginModal() : renderLogin()],
       ['card','الباقات والأسعار', () => renderPublicPricing()],
       ['info', pt('about_page','عن GRIFFINE'), () => renderAboutPage()],
       ['phone', pt('contact_info','تواصل معنا'), () => renderContactInfo()],
@@ -830,26 +1302,38 @@
       ['refund', pt('refund_policy_page','سياسة استرداد الاشتراك'), () => renderRefundPolicyPage()],
       ['shield','إخلاء المسؤولية', () => renderDisclaimerPage()],
     ];
-    GS.sheet('القائمة', `<div class="gs-list">${items.map((it, i) => `<button type="button" class="gs-row" data-i="${i}"><span class="gs-row-ic">${icon(it[0])}</span><span class="gs-row-main"><b>${esc(it[1])}</b></span><span class="gs-chev">${icon('chev')}</span></button>`).join('')}</div>`,
+    GS.sheet('القائمة',
+      `<div class="gs-list">${items.map((it, i) => `<button type="button" class="gs-row" data-i="${i}"><span class="gs-row-ic">${icon(it[0])}</span><span class="gs-row-main"><b>${esc(it[1])}</b></span><span class="gs-chev">${icon('chev')}</span></button>`).join('')}</div>`,
       (sh) => sh.querySelectorAll('.gs-row').forEach(b => b.onclick = () => { GS.closeSheet(); items[+b.dataset.i][2](); }));
   };
 
+
   /* =====================================================================
-     التثبيت كتطبيق (PWA)
+     18. التثبيت كتطبيق (PWA)
      ===================================================================== */
   const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
   const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+
+  // لافتة "ثبّت التطبيق" في الرئيسية
   GS.installCardHtml = function(){
     if (isStandalone() || store.get('gs_install_dismissed', '0') === '1') return '';
     if (!GS.deferredInstall && !isIOS()) return '';
     return `<div class="gs-install" id="gsInstall"><img src="icon-192.png" alt=""><div class="t"><b>ثبّت تطبيق GRIFFINE ${window.innerWidth >= 1024 ? 'على جهازك' : 'على موبايلك'}</b>${isIOS() && !GS.deferredInstall ? 'من زر المشاركة اختر «إضافة إلى الشاشة الرئيسية»' : 'افتحه بضغطة واحدة زي أي تطبيق'}</div>
       ${GS.deferredInstall ? `<button type="button" id="gsInstallBtn">تثبيت</button>` : ''}<button type="button" class="x gs-iconbtn" id="gsInstallX" aria-label="إخفاء">${icon('x')}</button></div>`;
   };
+
   GS.wireInstallCard = function(){
     const b = $('#gsInstallBtn'), x = $('#gsInstallX');
-    if (b) b.onclick = async () => { const p = GS.deferredInstall; if (!p) return; p.prompt(); try { await p.userChoice; } catch(e){} GS.deferredInstall = null; const c = $('#gsInstall'); if (c) c.remove(); };
+    if (b) b.onclick = async () => {
+      const p = GS.deferredInstall; if (!p) return;
+      p.prompt();
+      try { await p.userChoice; } catch(e){}
+      GS.deferredInstall = null;
+      const c = $('#gsInstall'); if (c) c.remove();
+    };
     if (x) x.onclick = () => { store.set('gs_install_dismissed', '1'); const c = $('#gsInstall'); if (c) c.remove(); };
   };
+
   window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); GS.deferredInstall = e; });
   window.addEventListener('appinstalled', () => { GS.deferredInstall = null; const c = $('#gsInstall'); if (c) c.remove(); GS.toast('تم تثبيت GRIFFINE على جهازك', 'ok'); });
 
@@ -858,28 +1342,37 @@
     navigator.serviceWorker.register('/sw.js').catch(() => {});
   }
 
+
   /* =====================================================================
-     التشغيل
+     19. التشغيل (بيتنادى مرة واحدة من init في griffine.js)
      ===================================================================== */
   GS.init = function(email){
     if (GS.enabled) return;
     GS.enabled = true;
     GS.email = email || null;
     document.body.classList.add('g-shell');
+
+    // 1) الهيكل + لف دوال الشاشات
     buildChrome();
     wrapRenderers();
-    // alert → Toast (نفس الرسالة بس من غير ما توقف الشاشة)
+
+    // 2) alert → Toast (نفس الرسالة بس من غير ما توقف الشاشة)
     window.__nativeAlert = window.alert.bind(window);
     window.alert = (m) => GS.toast(m);
+
+    // 3) مراقبة تغيير الشاشات
     const appEl = document.getElementById('app');
     // شاشات الترحيب/الدخول الكاملة بتتعرف فورًا (قبل الرسم) عشان تنسيقات الشاشات الداخلية متلمسهاش
     const syncFull = () => { if (appEl) document.body.classList.toggle('gs-no-shell', !!appEl.querySelector('.wl-screen, .gl-screen')); };
     if (appEl) new MutationObserver(() => { syncFull(); scheduleProcess(); }).observe(appEl, { childList:true, subtree:true });
     syncFull();
+
+    // 4) أحداث عامة
     window.addEventListener('scroll', onScroll, { passive:true });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') GS.closeSheet(); });
     registerSW();
-    // اختصارات أيقونة التطبيق (ضغطة مطوّلة على الأيقونة): ?go=new أو ?go=portfolio
+
+    // 5) اختصارات أيقونة التطبيق (ضغطة مطوّلة على الأيقونة): ?go=new أو ?go=portfolio
     try {
       const qs = new URLSearchParams(location.search);
       const go = qs.get('go'); if (go === 'new' || go === 'portfolio') window.__afterLoginTarget = go;

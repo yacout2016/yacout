@@ -33,13 +33,13 @@ header("Content-Security-Policy: object-src 'none'; base-uri 'self'; frame-ances
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@500;700;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script>(function(){try{if(localStorage.getItem('griffine_theme')==='dark')document.documentElement.setAttribute('data-theme','dark');}catch(e){}})();</script>
-<link rel="stylesheet" href="griffine.css?v=70">
-<link rel="stylesheet" href="shell.css?v=70">
+<link rel="stylesheet" href="griffine.css?v=71">
+<link rel="stylesheet" href="shell.css?v=71">
 </head>
 <body>
 <div id="app"></div>
 
-<script src="shell.js?v=70"></script>
-<script src="griffine.js?v=70"></script>
+<script src="shell.js?v=71"></script>
+<script src="griffine.js?v=71"></script>
 </body>
 </html>

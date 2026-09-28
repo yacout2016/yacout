@@ -1,5 +1,5 @@
 /* =====================================================================
-   GRIFFINE App Shell — واجهة التطبيق الجديدة (على طريقة تطبيقات الاستثمار الحديثة)
+   GRIFFINE App Shell — واجهة التطبيق الجديدة (على طريقة تطبيقات الاستثمار الحديثة) — الإصدار 71
    بيتحمّل بعد تنسيقات index.php، وكل القواعد هنا تحت body.g-shell
    عشان لو اتشال الملف ده الموقع يرجع لشكله القديم من غير ما يبوظ.
    ===================================================================== */
@@ -32,6 +32,10 @@
   --gs-sidebar-w:260px;
   --gs-safe-b:env(safe-area-inset-bottom, 0px);
   --gs-safe-t:env(safe-area-inset-top, 0px);
+  /* ألوان شفافة جاهزة (بدل دالة الخلط اللي أداة تصوير الشاشات html2canvas مبتفهمهاش) */
+  --gs-bg-glass:rgba(243,244,246,.82);       /* = --gs-bg بشفافية 82% (الشريط العلوي) */
+  --gs-surface-glass:rgba(255,255,255,.92);  /* = --gs-surface بشفافية 92% (شريط التبويبات) */
+  --gl-card-glass:rgba(255,255,255,.85);     /* = --card-bg بشفافية 85% (زرار الرجوع في شاشات الدخول) */
 }
 html[data-theme="dark"]{
   --gs-bg:#0A0F16;
@@ -54,6 +58,9 @@ html[data-theme="dark"]{
   --gs-info-tint:#16202C;
   --gs-shadow:0 1px 2px rgba(0,0,0,.4);
   --gs-shadow-lg:0 16px 40px rgba(0,0,0,.55);
+  --gs-bg-glass:rgba(10,15,22,.82);
+  --gs-surface-glass:rgba(17,25,35,.92);
+  --gl-card-glass:rgba(22,29,39,.85);
 }
 
 /* ---------- ربط متغيرات الموقع القديمة بنظام الألوان الجديد ---------- */
@@ -81,7 +88,7 @@ body.g-shell:not(.gs-no-shell) .gs-appbar{
   height:calc(var(--gs-appbar-h) + var(--gs-safe-t)); padding:var(--gs-safe-t) 8px 0;
   display:flex; align-items:center; gap:4px;
   background:var(--gs-bg);
-  background:color-mix(in srgb, var(--gs-bg) 82%, transparent);
+  background:var(--gs-bg-glass);
   -webkit-backdrop-filter:saturate(1.6) blur(14px); backdrop-filter:saturate(1.6) blur(14px);
   border-bottom:1px solid transparent; transition:border-color .2s, background .2s;
 }
@@ -115,7 +122,7 @@ body.g-shell:not(.gs-no-shell) .gs-tabbar{
   height:calc(var(--gs-tabbar-h) + var(--gs-safe-b)); padding-bottom:var(--gs-safe-b);
   display:grid; grid-template-columns:repeat(5,1fr);
   background:var(--gs-surface);
-  background:color-mix(in srgb, var(--gs-surface) 92%, transparent);
+  background:var(--gs-surface-glass);
   -webkit-backdrop-filter:saturate(1.6) blur(14px); backdrop-filter:saturate(1.6) blur(14px);
   border-top:1px solid var(--gs-border);
 }
@@ -134,7 +141,10 @@ html[data-theme="dark"] body.g-shell:not(.gs-no-shell) .gs-tab.active .gs-tab-ic
 /* ---------- الشريط الجانبي للكمبيوتر ---------- */
 body.g-shell:not(.gs-no-shell) .gs-sidebar{ display:none; }
 @media (min-width:1024px){
-  body.g-shell{ padding:calc(var(--gs-appbar-h) + 8px) var(--gs-sidebar-w) 32px 0 !important; }
+  /* إصلاح الإصدار 71: المحتوى كان بيدخل تحت الشريط الجانبي.
+     السبب: القاعدة دي كانت body.g-shell، وقاعدة الموبايل فوق body.g-shell:not(.gs-no-shell) أقوى منها في الأولوية
+     فكانت بتلغيها وتخلي المسافة اليمين = 0. دلوقتي نفس المحدد بالظبط، فتكسب لأنها مكتوبة بعدها. */
+  body.g-shell:not(.gs-no-shell){ padding:calc(var(--gs-appbar-h) + 8px) var(--gs-sidebar-w) 32px 0 !important; }
   body.g-shell:not(.gs-no-shell) .gs-tabbar{ display:none; }
   body.g-shell:not(.gs-no-shell) .gs-appbar{ right:var(--gs-sidebar-w); }
   body.g-shell:not(.gs-no-shell) .gs-appbar .gs-appbar-brand{ display:none; }
@@ -523,7 +533,7 @@ html[data-theme="dark"] .gl-custom-bg .gl-hero img, html[data-theme="dark"] .wl-
 .gl-auth .gl-sub{ font-size:15px; margin:0 6px 18px; line-height:1.7; }
 .gl-back{
   position:absolute; z-index:5; top:max(12px, env(safe-area-inset-top)); right:12px; width:42px; height:42px; min-height:0; margin:0; padding:0;
-  border-radius:50%; border:1px solid var(--border); background:color-mix(in srgb, var(--card-bg) 85%, transparent) !important;
+  border-radius:50%; border:1px solid var(--border); background:var(--gl-card-glass) !important;
   -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); color:var(--text) !important; display:flex; align-items:center; justify-content:center; cursor:pointer;
 }
 .gl-field{ display:block; margin:0 0 12px; font-weight:600; }
@@ -596,7 +606,7 @@ html[data-theme="dark"] body.g-shell:not(.gs-no-shell) #app [style*="color:#888"
 html[data-theme="dark"] body.g-shell:not(.gs-no-shell) #app [style*="color:#666"]{ color:var(--gs-muted) !important; }
 /* زر الخروج مكانه الوحيد شاشة "حسابي" */
 body.g-shell:not(.gs-no-shell) #app #logoutFromProfileBtn{ display:none !important; }
-/* أثناء تصوير الشاشات لملف PDF: ألوان صريحة بدل color-mix (أداة التصوير مبتدعمهاش) */
+/* أثناء تصوير الشاشات لملف PDF: من غير شفافية وضبابية (الإصدار 71: color-mix اتشالت من الملف كله لأن html2canvas بيقف عندها) */
 html.gs-exporting body.g-shell:not(.gs-no-shell) .gs-appbar, html.gs-exporting .gs-appbar{ background:var(--gs-bg) !important; -webkit-backdrop-filter:none !important; backdrop-filter:none !important; }
 html.gs-exporting .gs-tabbar, html.gs-exporting body.g-shell:not(.gs-no-shell) .gs-tabbar{ display:none !important; }
 html.gs-exporting .gl-back{ background:var(--card-bg) !important; -webkit-backdrop-filter:none !important; backdrop-filter:none !important; }
