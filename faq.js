@@ -25,7 +25,7 @@ async function renderFaqAdminPage(){
     ${d.success ? '' : `<div class="card"><p class="u-danger">${escapeHtml(d.message || 'خطأ')}</p></div>`}
     <div class="card">
       <div class="u-row"><div><b>المساعد ${d.enabled ? 'يعمل ✅' : 'متوقف ⛔'}</b>
-        <p class="u-note u-m0">يرد فورًا على أسئلة العملاء الشائعة، ويسكت تلقائيًا لو موظف رد في المحادثة آخر 15 دقيقة. العميل يكتب «موظف» للتحويل لفريق الدعم.</p></div>
+        <p class="u-note u-m0">يرد فورًا على أي سؤال من الأسئلة الشائعة في كل مرة. لو السؤال غير معروف يوجّه العميل للأسئلة أو لكتابة «موظف»، و«موظف» يحوّله لفريق الدعم ويرسل لك إيميل.</p></div>
         <button class="small ${d.enabled ? 'danger' : ''} u-wa" id="faqToggle">${d.enabled ? 'إيقاف المساعد' : 'تشغيل المساعد'}</button></div>
     </div>
     <div class="card">

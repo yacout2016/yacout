@@ -1,4 +1,4 @@
-// المساعد الذكي في الشات: اقتراحات + رد تلقائي + تحويل لموظف + يسكت بعد رد موظف + إدارة
+// المساعد الذكي في الشات: اقتراحات + رد تلقائي في كل مرة + تحويل لموظف + توجيه للسؤال غير المعروف + إدارة
 const { check, summary, launch, page, loginAdmin, q } = require('../lib');
 (async () => {
   const b = await launch();
@@ -30,12 +30,23 @@ const { check, summary, launch, page, loginAdmin, q } = require('../lib');
   check('طلب «موظف» ← إشعار عند شات الإدارة (غير مقروءة)', un && un.unreadCount >= 1, JSON.stringify(un));
   check('طلب «موظف» ← إيميل تنبيه للإدارة', +q("SELECT COUNT(*) FROM email_log WHERE mail_type='chat_handoff' AND created_at > NOW() - INTERVAL 2 MINUTE") >= 1);
   await v.fill('#chatTextInput', 'رسالة عادية xyz'); await v.click('#chatSendBtn'); await v.waitForTimeout(1800);
-  check('رسالة بدون تطابق ← لا رد تلقائي', await v.locator('.chat-msg.admin.bot').count() === 2);
+  check('بعد التحويل لموظف: رسالة غير معروفة ← المساعد يسيبها للموظف', await v.locator('.chat-msg.admin.bot').count() === 2);
   const a = await page(b); await loginAdmin(a);
   const vid = q("SELECT visitor_id FROM chat_messages WHERE sender='visitor' ORDER BY id DESC LIMIT 1");
   await a.evaluate(async id => apiPost('/chat_admin_reply.php', { visitorId: id, message: 'معك فريق الدعم' }), vid);
   await v.fill('#chatTextInput', 'كم سعر الباقة'); await v.click('#chatSendBtn'); await v.waitForTimeout(2000);
-  check('بعد رد موظف ← المساعد يسكت', await v.locator('.chat-msg.admin.bot').count() === 2);
+  check('بعد رد موظف ← المساعد لسه بيرد على الأسئلة المعروفة (الإصدار 95)', await v.locator('.chat-msg.admin.bot').count() === 3);
+  await v.fill('#chatTextInput', 'كم سعر الباقة'); await v.click('#chatSendBtn'); await v.waitForTimeout(2000);
+  check('نفس السؤال مرة تانية ← بيترد عليه تاني', await v.locator('.chat-msg.admin.bot').count() === 4);
+  // زائر جديد: سؤال غير معروف ← توجيه (مرة واحدة بس)
+  const g = await page(b, { width: 412, height: 860 });
+  await g.click('#chatBubbleBtn, .chat-bubble, #chatBubble'); await g.waitForTimeout(800);
+  if (await g.isVisible('#chatStartBtn')) await g.click('#chatStartBtn');
+  await g.waitForTimeout(1500);
+  await g.fill('#chatTextInput', 'qwe سؤال غريب جدا'); await g.click('#chatSendBtn'); await g.waitForTimeout(2000);
+  const fb = await g.locator('.chat-msg.admin.bot').count(); const fbTxt = fb ? await g.locator('.chat-msg.admin.bot').last().textContent() : '';
+  await g.fill('#chatTextInput', 'asd سؤال غريب تاني'); await g.click('#chatSendBtn'); await g.waitForTimeout(2000);
+  check('سؤال غير معروف ← توجيه للأسئلة أو «موظف» (مرة واحدة)', fb === 1 && fbTxt.includes('لم أجد إجابة') && await g.locator('.chat-msg.admin.bot').count() === 1);
   await a.evaluate(() => renderFaqAdminPage()); await a.waitForTimeout(1500);
   await a.fill('#faqTestIn', 'ازاي ادفع الاشتراك'); await a.click('#faqTestBtn'); await a.waitForTimeout(800);
   check('تجربة المطابقة من لوحة التحكم', (await a.textContent('#faqTestOut')).includes('كيف أشترك'));

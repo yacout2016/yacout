@@ -5,8 +5,9 @@
    الأدمن بيضيف أسئلة شائعة (سؤال + كلمات مفتاحية + إجابة) من لوحة التحكم.
    لما العميل يكتب رسالة: لو فيها كلمة مفتاحية أو شبه سؤال معروف ← المساعد بيرد فورًا
    (برسالة واضح إنها رد تلقائي) - والمحادثة بتفضل ظاهرة لفريق الدعم زي الأول.
-   - لو موظف رد في المحادثة آخر 15 دقيقة ← المساعد بيسكت (فيه إنسان بيتابع)
-   - العميل يكتب «موظف» ← بيتحوّل لفريق الدعم برسالة تأكيد
+   - الإصدار 95: أي سؤال معروف بيترد عليه في كل مرة (حتى لو اتكرر أو موظف رد)
+   - سؤال مش معروف ← توجيه للأسئلة الشائعة أو «موظف» (مرة كل 10 دقائق، ومش لو موظف بيتابع المحادثة)
+   - العميل يكتب «موظف» ← تأكيد في كل مرة + إيميل للإدارة (مرة كل 15 دقيقة) والمحادثة بتظهر غير مقروءة
    ===================================================================== */
 require_once __DIR__ . '/security_lib.php';
 
@@ -61,33 +62,46 @@ function faq_match($conn, $text){
 function faq_auto_reply($conn, $visitorId, $text){
     try {
         if (!site_config_on($conn, 'chat_bot') || !faq_table_ready($conn) || trim($text) === '') return false;
-        // موظف رد آخر 15 دقيقة ← إنسان بيتابع المحادثة
-        $st = $conn->prepare("SELECT message, created_at FROM chat_messages WHERE visitor_id = ? AND sender = 'admin' AND created_at > NOW() - INTERVAL 15 MINUTE ORDER BY id DESC");
+        // الإصدار 95: المساعد بيرد على أي سؤال معروف في كل مرة (حتى لو اتكرر أو موظف رد) - قبل كده كان بيسكت
+        // 15 دقيقة بعد أي رد من موظف أو لو نفس السؤال اتسأل تاني، فالعميل كان بيبعت ومفيش رد
+        $st = $conn->prepare("SELECT message FROM chat_messages WHERE visitor_id = ? AND sender = 'admin' AND created_at > NOW() - INTERVAL 15 MINUTE ORDER BY id DESC");
         $st->bind_param("s", $visitorId); $st->execute(); $res = $st->get_result();
-        $recentBot = [];
+        $humanRecent = false; $handedOff = false; $fallbackRecent = false;
         while ($r = $res->fetch_assoc()) {
-            if (mb_strpos((string)$r['message'], '🔔 تنبيه سعر') === 0) continue;   // تنبيه سعر تلقائي - مش موظف
-            if (mb_strpos((string)$r['message'], '🤖 مساعد') !== 0) { $st->close(); return false; }
-            $recentBot[] = (string)$r['message'];
+            $m = (string)$r['message'];
+            if (mb_strpos($m, '🔔 تنبيه سعر') === 0) continue;
+            if (mb_strpos($m, '🤖 مساعد') !== 0) { $humanRecent = true; continue; }
+            if (mb_strpos($m, 'حوّلت محادثتك') !== false || mb_strpos($m, 'طلبك وصل لفريق الدعم') !== false) $handedOff = true;
+            if (mb_strpos($m, 'لم أجد إجابة') !== false) $fallbackRecent = true;
         }
         $st->close();
         if (faq_is_handoff($text)) {
-            foreach ($recentBot as $m) if (mb_strpos($m, 'حوّلت محادثتك') !== false) return false;   // اتحوّل خلاص
-            $reply = FAQ_BOT_PREFIX . "\nحوّلت محادثتك لفريق الدعم 👍 سيرد عليك أحد الموظفين هنا في أقرب وقت.";
-            // الإصدار 91: تنبيه الإدارة بالإيميل (والمحادثة بتظهر غير مقروءة في شات الإدارة)
-            try {
-                $em = null; $q = $conn->prepare("SELECT visitor_email FROM chat_messages WHERE visitor_id = ? AND visitor_email IS NOT NULL ORDER BY id DESC LIMIT 1");
-                $q->bind_param("s", $visitorId); $q->execute(); $x = $q->get_result()->fetch_assoc(); $q->close(); $em = $x['visitor_email'] ?? null;
-                griffine_notify($conn, MAIL_ADMIN_TO, 'عميل يطلب التحدث مع موظف' . ($em ? ' - ' . $em : ''), 'عميل يطلب موظفًا في الشات',
-                    ['العميل: ' . ($em ?: 'زائر بدون إيميل'), 'رسالته: ' . mb_substr($text, 0, 300), 'افتح لوحة التحكم ← الدردشة الفورية للرد عليه.'],
-                    ['label' => 'فتح الدردشة', 'url' => MAIL_SITE_URL . '/index.php'], 'chat_handoff', $em ? ['reply_to' => $em] : []);
-            } catch (Throwable $e) {}
+            if ($handedOff) {
+                $reply = FAQ_BOT_PREFIX . "\nطلبك وصل لفريق الدعم بالفعل 👍 سيرد عليك أحد الموظفين هنا في أقرب وقت.";
+            } else {
+                $reply = FAQ_BOT_PREFIX . "\nحوّلت محادثتك لفريق الدعم 👍 سيرد عليك أحد الموظفين هنا في أقرب وقت.";
+                // تنبيه الإدارة بالإيميل (مرة واحدة كل 15 دقيقة) - والمحادثة بتظهر غير مقروءة في شات الإدارة
+                try {
+                    $em = null; $q = $conn->prepare("SELECT visitor_email FROM chat_messages WHERE visitor_id = ? AND visitor_email IS NOT NULL ORDER BY id DESC LIMIT 1");
+                    $q->bind_param("s", $visitorId); $q->execute(); $x = $q->get_result()->fetch_assoc(); $q->close(); $em = $x['visitor_email'] ?? null;
+                    griffine_notify($conn, MAIL_ADMIN_TO, 'عميل يطلب التحدث مع موظف' . ($em ? ' - ' . $em : ''), 'عميل يطلب موظفًا في الشات',
+                        ['العميل: ' . ($em ?: 'زائر بدون إيميل'), 'رسالته: ' . mb_substr($text, 0, 300), 'افتح لوحة التحكم ← الدردشة الفورية للرد عليه.'],
+                        ['label' => 'فتح الدردشة', 'url' => MAIL_SITE_URL . '/index.php'], 'chat_handoff', $em ? ['reply_to' => $em] : []);
+                } catch (Throwable $e) {}
+            }
         } else {
             $f = faq_match($conn, $text);
-            if (!$f) return false;
-            $reply = FAQ_BOT_PREFIX . "\n" . trim($f['answer']) . "\n\n— رد تلقائي. لو محتاج موظف اكتب «موظف».";
-            foreach ($recentBot as $m) if ($m === $reply) return false;   // نفس الإجابة من شوية - منكررهاش
-            $u = $conn->prepare("UPDATE chat_faq SET hits = hits + 1 WHERE id = ?"); $u->bind_param("i", $f['id']); $u->execute(); $u->close();
+            if ($f) {
+                $reply = FAQ_BOT_PREFIX . "\n" . trim($f['answer']) . "\n\n— رد تلقائي. لو محتاج موظف اكتب «موظف».";
+                $u = $conn->prepare("UPDATE chat_faq SET hits = hits + 1 WHERE id = ?"); $u->bind_param("i", $f['id']); $u->execute(); $u->close();
+            } else {
+                // مش لاقي إجابة: توجيه العميل (مرة كل 10 دقائق، ومش لو موظف بيتابع المحادثة دلوقتي)
+                if ($humanRecent || $handedOff) return false;
+                $c = $conn->prepare("SELECT COUNT(*) c FROM chat_messages WHERE visitor_id = ? AND sender = 'admin' AND message LIKE '%لم أجد إجابة%' AND created_at > NOW() - INTERVAL 10 MINUTE");
+                $c->bind_param("s", $visitorId); $c->execute(); $n = (int)$c->get_result()->fetch_assoc()['c']; $c->close();
+                if ($n > 0 || $fallbackRecent) return false;
+                $reply = FAQ_BOT_PREFIX . "\nلم أجد إجابة جاهزة لسؤالك. اختر من الأسئلة الشائعة (زر ❓ أعلى الشات)، أو اكتب «موظف» ليرد عليك أحد فريق الدعم.";
+            }
         }
         $reply = gm_bidi($reply);   // الإصدار 91: منع انعكاس النص المختلط
         $i = $conn->prepare("INSERT INTO chat_messages (visitor_id, sender, message) VALUES (?, 'admin', ?)");
