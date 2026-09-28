@@ -174,7 +174,7 @@
   function buildUi(){
     if (!document.getElementById('gsStudioCss')) {
       const l = document.createElement('link');
-      l.id = 'gsStudioCss'; l.rel = 'stylesheet'; l.href = 'studio.css?v=78';
+      l.id = 'gsStudioCss'; l.rel = 'stylesheet'; l.href = 'studio.css?v=79';
       document.head.appendChild(l);
     }
     const root = document.createElement('div');
@@ -364,7 +364,11 @@
     let textHtml = '';
     if (tn) {
       textHtml = `<div class="gst-sec"><div class="gst-sec-t">النص</div>
-        <textarea id="gstText" rows="2">${esc(tn.nodeValue.trim())}</textarea>
+        <textarea id="gstText" rows="3">${esc(tn.nodeValue.trim())}</textarea>
+        <div class="gst-row2" style="margin:6px 0 0;grid-template-columns:auto 1fr;align-items:center;">
+          <button type="button" class="gst-btn" id="gstNewLine" title="نزّل الكلام اللي بعد المؤشر لسطر جديد">↵ سطر جديد</button>
+          <span class="gst-hint" style="margin:0;">أو دوس Enter جوه الخانة في المكان اللي عايز تقسم منه</span>
+        </div>
         <div class="gst-radio">
           <label><input type="radio" name="gstTM" value="el" ${state.textMode === 'el' ? 'checked' : ''}> العنصر ده بس</label>
           <label><input type="radio" name="gstTM" value="word" ${state.textMode === 'word' ? 'checked' : ''}> نفس الكلمة في كل مكان</label>
@@ -434,7 +438,8 @@
       const origText = ST.originalText(tn).trim();
       // المكان والنوع بيتاخدوا لحظة الكتابة (مش لحظة التنفيذ) - عشان لو اتحدد عنصر تاني بسرعة
       const applyText = (place, mode, value) => {
-        const v = value.replace(/\s+/g, ' ');
+        // المسافات الزيادة بتتشال، بس السطور الجديدة (Enter) بتفضل - الإصدار 79
+        const v = value.replace(/[ \t]+/g, ' ').replace(/ *\n */g, '\n').replace(/\n{3,}/g, '\n\n').trim();
         // نشيل أي تعديل قديم للعنصر ده في المكان ده وبعدين نحط الجديد حسب النوع
         setElText(place, sel, null, origText);
         setWord(place, origText, null);
@@ -445,6 +450,13 @@
       const applyTextLater = debounce(applyText, 250);
       txt.oninput = () => applyTextLater(place, state.textMode, txt.value);
       body.querySelectorAll('input[name="gstTM"]').forEach(r => r.onchange = () => { state.textMode = r.value; applyText(place, state.textMode, txt.value); });
+      // زرار "سطر جديد": بيحط سطر جديد مكان المؤشر (مفيد على الموبايل)
+      $('#gstNewLine').onclick = () => {
+        const a = txt.selectionStart != null ? txt.selectionStart : txt.value.length, b = txt.selectionEnd != null ? txt.selectionEnd : a;
+        txt.value = txt.value.slice(0, a) + '\n' + txt.value.slice(b);
+        txt.focus(); txt.selectionStart = txt.selectionEnd = a + 1;
+        applyText(place, state.textMode, txt.value);
+      };
     }
     const ph = $('#gstPh');
     if (ph) {

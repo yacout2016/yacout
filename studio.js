@@ -335,6 +335,13 @@
     return map;
   }
 
+  /* الإصدار 79: النص المعدّل ممكن يبقى أكتر من سطر (Enter في شاشة التعديل)
+     ← العنصر اللي فيه النص بياخد class gs-st-br (white-space:pre-line) عشان السطور تظهر تحت بعض */
+  function markLineBreaks(node){
+    const p = node.parentElement; if (!p) return;
+    p.classList.toggle('gs-st-br', /\n/.test(node.nodeValue));
+  }
+
   // عناصر مستثناة: شاشة التعديل نفسها + حقول الكتابة
   const SKIP = 'script,style,textarea,noscript,[data-gs-studio],[contenteditable="true"]';
 
@@ -356,9 +363,9 @@
       const to = dict.get(key);
       if (to != null) {
         const next = orig.replace(key, to);
-        if (n.nodeValue !== next) { if (!ORIG.has(n)) ORIG.set(n, orig); n.nodeValue = next; }
+        if (n.nodeValue !== next) { if (!ORIG.has(n)) ORIG.set(n, orig); n.nodeValue = next; markLineBreaks(n); }
       } else if (ORIG.has(n) && n.nodeValue !== orig) {
-        n.nodeValue = orig;                                    // التعديل اتشال ← رجوع للأصل
+        n.nodeValue = orig; markLineBreaks(n);                 // التعديل اتشال ← رجوع للأصل
       }
     }
 
@@ -390,19 +397,20 @@
       const orig = ST.originalText(tn);
       if (!ORIG.has(tn)) ORIG.set(tn, orig);
       const next = orig.replace(orig.trim(), r.text);
-      if (tn.nodeValue !== next) tn.nodeValue = next;
+      if (tn.nodeValue !== next) { tn.nodeValue = next; markLineBreaks(tn); }
       tn.__gsEl = true;
       now.add(tn);
     });
     // عناصر كانت متعدّلة والتعديل اتشال
-    touchedEls.forEach(tn => { if (!now.has(tn) && tn.isConnected) { tn.__gsEl = false; tn.nodeValue = ORIG.get(tn); } });
+    touchedEls.forEach(tn => { if (!now.has(tn) && tn.isConnected) { tn.__gsEl = false; tn.nodeValue = ORIG.get(tn); markLineBreaks(tn); } });
     touchedEls = now;
   }
 
   // تطبيق كل تعديلات الشاشات (بيتنادى من shell.js بعد رسم أي شاشة)
   ST.apply = function(){
     try {
-      styleTag('gsStudioRules').textContent = ST.stylesCss(ST.overrides);
+      // .gs-st-br = نص فيه أكتر من سطر (بيغلب "الجداول في سطر واحد" كمان)
+      styleTag('gsStudioRules').textContent = '.gs-st-br{white-space:pre-line !important;}\n' + ST.stylesCss(ST.overrides);
       applyElTexts();
       applyTexts();
     } catch(e){ console.warn('studio apply:', e); }
@@ -453,7 +461,7 @@
     if (!window.GStudioEditor) {
       await new Promise((res, rej) => {
         const s = document.createElement('script');
-        s.src = 'studio-editor.js?v=78'; s.onload = res; s.onerror = () => rej(new Error('تعذّر تحميل استوديو التصميم'));
+        s.src = 'studio-editor.js?v=79'; s.onload = res; s.onerror = () => rej(new Error('تعذّر تحميل استوديو التصميم'));
         document.head.appendChild(s);
       }).catch(e => { if (window.GShell) GShell.toast(e.message, 'err'); });
     }
