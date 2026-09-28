@@ -877,3 +877,12 @@ html[data-theme="dark"] .chat-msg.admin.bot{ background:#2E2A1C !important; bord
 .gs-hold-ctl select{ width:auto !important; margin:0 !important; padding:5px 28px 5px 10px !important; font-size:12.5px !important; border-radius:999px !important; }
 .gs-hold-list{ overflow-y:auto; overscroll-behavior:contain; }
 .gs-empty-mini{ padding:18px; text-align:center; font-size:13px; }
+
+/* الإصدار 92: أسئلة المساعد = قائمة منسدلة من زرار ❓ (فوق الرسائل، مش بتاخد من مساحة الشات) */
+#chatPanel .chat-faq.chat-faq-dd{ position:absolute; top:50px; inset-inline-end:8px; width:min(290px, calc(100% - 16px)); z-index:5; padding:8px; border:1px solid var(--border, #e5e7eb); border-radius:12px; box-shadow:0 10px 28px rgba(0,0,0,.25); background:var(--card-bg, #fff); }
+body.g-shell #chatPanel .chat-faq.chat-faq-dd{ background:var(--gs-surface, #fff); }
+#chatPanel .chat-faq-dd .chat-faq-head{ margin-bottom:4px; }
+#chatPanel .chat-faq-dd .chat-faq-list{ display:flex; flex-direction:column; gap:2px; max-height:220px; overflow-y:auto; }
+#chatPanel .chat-faq-dd .chat-faq-chip{ width:100% !important; text-align:right; border:none !important; border-radius:8px !important; padding:8px 10px !important; font-size:12.5px !important; background:transparent !important; }
+#chatPanel .chat-faq-dd .chat-faq-chip:hover, #chatPanel .chat-faq-dd .chat-faq-chip:focus{ background:rgba(201,162,39,.14) !important; }
+#chatFaqBtn.on{ background:rgba(255,255,255,.18) !important; border-radius:6px; }

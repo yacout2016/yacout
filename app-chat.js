@@ -257,16 +257,20 @@ async function initChatWidget(sessionEmail){
     apiGet('/chat_faq_api.php?action=public').then(f => {
       const box = document.getElementById('chatFaq');
       if (!box || !f || !f.enabled || !(f.items || []).length) return;
-      // الإصدار 90: قائمة واضحة (كل الأسئلة ظاهرة) + زرار ❓ في رأس الشات لإظهارها وإخفائها
-      box.innerHTML = `<div class="chat-faq-head"><span class="chat-faq-lbl">🤖 اختر سؤالًا ويرد عليك المساعد فورًا:</span><button type="button" class="chat-faq-x" aria-label="إخفاء">✕</button></div>`
+      // الإصدار 92: قائمة منسدلة صغيرة من زرار ❓ جنب الترس (مقفولة افتراضيًا) - مساحة الشات تفضل للرسائل
+      box.classList.add('chat-faq-dd');
+      box.innerHTML = `<div class="chat-faq-head"><span class="chat-faq-lbl">🤖 أسئلة شائعة - رد فوري</span><button type="button" class="chat-faq-x" aria-label="إغلاق">✕</button></div>`
         + `<div class="chat-faq-list">${f.items.map(it => `<button type="button" class="chat-faq-chip" data-q="${escapeHtml(it.question)}">${escapeHtml(it.question)}</button>`).join('')}</div>`;
       const qb = document.getElementById('chatFaqBtn');
-      const setOpen = (on) => { box.hidden = !on; try { localStorage.setItem('griffine_chat_faq', on ? '1' : '0'); } catch(e){} };
-      let open = true; try { open = localStorage.getItem('griffine_chat_faq') !== '0'; } catch(e){}
-      setOpen(open);
-      if (qb) { qb.hidden = false; qb.onclick = () => setOpen(box.hidden); }
+      const outside = (ev) => { if (!box.contains(ev.target) && ev.target !== qb) setOpen(false); };
+      const setOpen = (on) => {
+        box.hidden = !on; if (qb) qb.classList.toggle('on', on);
+        if (on) setTimeout(() => document.addEventListener('click', outside, true), 0); else document.removeEventListener('click', outside, true);
+      };
+      setOpen(false);
+      if (qb) { qb.hidden = false; qb.onclick = (ev) => { ev.stopPropagation(); setOpen(box.hidden); }; }
       box.querySelector('.chat-faq-x').onclick = () => setOpen(false);
-      box.querySelectorAll('.chat-faq-chip').forEach(b => b.onclick = () => { const inp = document.getElementById('chatTextInput'); if (!inp) return; inp.value = b.dataset.q; doSend(); });
+      box.querySelectorAll('.chat-faq-chip').forEach(b => b.onclick = () => { const inp = document.getElementById('chatTextInput'); if (!inp) return; setOpen(false); inp.value = b.dataset.q; doSend(); });
     }).catch(() => {});
   }
 

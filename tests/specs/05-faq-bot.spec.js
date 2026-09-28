@@ -6,10 +6,14 @@ const { check, summary, launch, page, loginAdmin, q } = require('../lib');
   await v.click('#chatBubbleBtn, .chat-bubble, #chatBubble'); await v.waitForTimeout(800);
   if (await v.isVisible('#chatStartBtn')) await v.click('#chatStartBtn');
   await v.waitForTimeout(1800);
-  check('اقتراحات الأسئلة ظاهرة في الشات (كلها في قائمة)', await v.locator('.chat-faq-chip:visible').count() >= 3);
+  // الإصدار 92: الأسئلة قائمة منسدلة من زرار ❓ (مقفولة افتراضيًا - مساحة الشات للرسائل)
+  const bodyH0 = await v.evaluate(() => document.getElementById('chatBody').clientHeight);
+  check('الأسئلة مقفولة افتراضيًا وزرار ❓ ظاهر', !(await v.isVisible('#chatFaq')) && await v.isVisible('#chatFaqBtn'));
+  await v.click('#chatFaqBtn'); await v.waitForTimeout(200);
+  check('❓ يفتح قائمة الأسئلة', await v.locator('.chat-faq-chip:visible').count() >= 3);
+  check('القائمة مش بتصغّر مساحة الرسائل', await v.evaluate(() => document.getElementById('chatBody').clientHeight) === bodyH0);
   await v.click('.chat-faq-x'); await v.waitForTimeout(200);
-  const hid = !(await v.isVisible('#chatFaq')); await v.click('#chatFaqBtn'); await v.waitForTimeout(200);
-  check('زرار ❓ يخفي ويظهر الأسئلة', hid && await v.isVisible('#chatFaq'));
+  check('✕ يقفل القائمة', !(await v.isVisible('#chatFaq')));
   await v.fill('#chatTextInput', 'كم سعر الباقات؟'); await v.click('#chatSendBtn'); await v.waitForTimeout(2200);
   check('المساعد رد على سؤال الأسعار', await v.locator('.chat-msg.admin.bot').count() === 1);
   await v.fill('#chatTextInput', 'عايز اكلم موظف'); await v.click('#chatSendBtn'); await v.waitForTimeout(2200);
