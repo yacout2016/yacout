@@ -199,6 +199,8 @@ function mkLimitList(box, n){
   if (!box) return;
   const fit = () => {
     const kids = box.children; if (kids.length <= n) { box.style.maxHeight = 'none'; return; }
+    // الإصدار 102: التمرير مفروض هنا مباشرة - أي قاعدة CSS تانية فيها overflow:hidden مبقتش توقف التمرير بالماوس/الصباع
+    box.style.overflowY = 'auto'; box.style.overscrollBehavior = 'contain';
     const top = box.getBoundingClientRect().top - box.scrollTop, last = kids[n - 1].getBoundingClientRect();
     const mb = parseFloat(getComputedStyle(kids[n - 1]).marginBottom) || 0;
     const h = Math.ceil(last.bottom + mb - top); if (h > 0) box.style.maxHeight = h + 'px';

@@ -50,7 +50,7 @@
      ===================================================================== */
 
   // رقم الإصدار - بيظهر في شاشة "حسابي" (غيّره مع ?v= في index.php و VERSION في sw.js)
-  const APP_VERSION = 102;
+  const APP_VERSION = 103;
 
   /* الاستعلامات المتكررة (الدردشة/التوصيات/قائمة المتابعة) - استعلام متكيّف (الإصدار 89)
      - بتقف لما التبويب يكون مخفي أو الموبايل مقفول
@@ -1224,7 +1224,7 @@
       showAll = true;
       if (!filtered.length) { el.innerHTML = `<div class="gs-empty-mini u-muted">${f === 'closed' ? 'لا توجد صفقات مغلقة.' : f === 'open' ? 'لا توجد صفقات مفتوحة الآن.' : 'لا توجد خطط.'}</div>`; return; }
       const list = showAll ? filtered : filtered.slice(0, 5);
-      el.innerHTML = `<div class="gs-list gs-hold-list">${list.map(holdingRow).join('')}</div>`;
+      el.innerHTML = `<div class="gs-list gs-hold-list">${list.map(holdingRow).join('')}</div>${list.length > 5 ? `<small class="gs-hold-more">↕ ${list.length} خطة — مرّر القائمة لفوق وتحت لعرض الباقي</small>` : ''}`;
       el.querySelectorAll('.gs-row').forEach(b => b.onclick = () => b.dataset.type === 'Grid' ? renderGridPlanDetail(b.dataset.sym) : renderPlanDetail(b.dataset.sym));
       const box = el.querySelector('.gs-hold-list');
       if (showAll && typeof mkLimitList === 'function') mkLimitList(box, 5); else if (box) box.style.maxHeight = '';

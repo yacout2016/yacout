@@ -35,7 +35,7 @@
     (document.body || document.documentElement).appendChild(box);
     return box;
   }
-  const logo = () => { const dark = document.documentElement.getAttribute('data-theme') === 'dark'; return `<img class="gs-emg-logo" src="${dark ? 'griffine-logo-dark.webp' : 'griffine-logo-light.webp'}?v=102" alt="GRIFFINE">`; };
+  const logo = () => { const dark = document.documentElement.getAttribute('data-theme') === 'dark'; return `<img class="gs-emg-logo" src="${dark ? 'griffine-logo-dark.webp' : 'griffine-logo-light.webp'}?v=103" alt="GRIFFINE">`; };
   const ICON = { maint: '🛠️', offline: '📡', down: '☁️', slow: '' };
   function paint(kind, extra){
     const c = cfg[kind] || {}; const b = ensure();
@@ -82,7 +82,7 @@
     if (maintOn && !admin && !staffBypass) show('maint'); else hide('maint');
   }
   // الإصدار 102: لو السيرفر عليه نسخة أحدث من اللي شغالة على الجهاز (كاش قديم) ← مسح الكاش وإعادة تحميل مرة واحدة
-  const BUILD = 102;
+  const BUILD = 103;
   function checkBuild(b){
     b = parseInt(b, 10) || 0; if (b <= BUILD) return;
     let done = null; try { done = sessionStorage.getItem('gs_build_reload'); } catch(e){}

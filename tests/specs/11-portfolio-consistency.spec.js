@@ -35,6 +35,13 @@ const num = (t) => { const m = String(t || '').replace(/[⁦⁩]/g, '').match(/-
   check('فلتر «المغلقة»', await rows() === 2);
   await p.selectOption('#gsHoldFilter', 'all'); await p.waitForTimeout(600);
   check('فلتر «الكل» (10 خطط، 5 ظاهرين والباقي تمرير)', await rows() === 10 && await vis() === 5);
+  // الإصدار 102: تمرير حقيقي بعجلة الماوس (مش scrollTop من الكود - ده كان بيشتغل حتى مع overflow:hidden)
+  const hb = await p.locator('.gs-hold-list').boundingBox();
+  await p.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2); await p.mouse.wheel(0, 400); await p.waitForTimeout(400);
+  const wheel = await p.evaluate(() => { const b = document.querySelector('.gs-hold-list'); return { top: b.scrollTop, ov: getComputedStyle(b).overflowY, hint: !!document.querySelector('.gs-hold-more') }; });
+  check('«الكل»: القائمة بتتحرك بعجلة الماوس لتحت + تلميح التمرير', wheel.top > 0 && wheel.ov === 'auto' && wheel.hint, JSON.stringify(wheel));
+  await p.mouse.wheel(0, -400); await p.waitForTimeout(400);
+  check('وبترجع لفوق', await p.evaluate(() => document.querySelector('.gs-hold-list').scrollTop) === 0);
   // نفس الكلام على شاشة موبايل (الفلتر «الكل» محفوظ)
   await p.setViewportSize({ width: 390, height: 844 }); await p.evaluate(() => renderHome()); await p.waitForTimeout(3500);
   const mob = await p.evaluate(() => { const box = document.querySelector('.gs-hold-list'); const bb = box.getBoundingClientRect().bottom + 1; const rs = [...box.querySelectorAll('.gs-row')];
