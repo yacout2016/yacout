@@ -1014,6 +1014,27 @@ CALL griffine_v96();
 DROP PROCEDURE griffine_v96;
 -- الحسابات الحالية بتاخد أكوادها تلقائيًا بترتيب تاريخ التسجيل أول ما الإدارة تفتح شاشة المشتركين (codes_lib.php)
 
+-- الإصدار 96: أسواق الحسابات - كل حساب ليه سوق (كل الحسابات الحالية = مصر) + الباقات والتوصيات لكل سوق
+DELIMITER $$
+DROP PROCEDURE IF EXISTS griffine_v96m $$
+CREATE PROCEDURE griffine_v96m()
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='users' AND COLUMN_NAME='account_market') THEN
+    ALTER TABLE users ADD COLUMN account_market VARCHAR(20) NOT NULL DEFAULT 'مصر';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='subscription_plans' AND COLUMN_NAME='market') THEN
+    ALTER TABLE subscription_plans ADD COLUMN market VARCHAR(20) NOT NULL DEFAULT 'مصر';
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='recommendations')
+     AND NOT EXISTS (SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='recommendations' AND COLUMN_NAME='market') THEN
+    ALTER TABLE recommendations ADD COLUMN market VARCHAR(20) NOT NULL DEFAULT 'مصر';
+  END IF;
+END $$
+DELIMITER ;
+CALL griffine_v96m();
+DROP PROCEDURE griffine_v96m;
+UPDATE subscribers SET market = 'مصر' WHERE market IS NULL OR market = '';
+
 -- @@V96_MORE@@
 
 SELECT 'GRIFFINE database is up to date (v96)' AS result;

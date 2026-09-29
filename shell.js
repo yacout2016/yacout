@@ -185,6 +185,16 @@
   };
   const icon = (n) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n] || P.info}</svg>`;
   GS.icon = icon;
+  /* الإصدار 96: أسواق الحسابات - window.__acct = { market, currency, ccyAr, active[], markets{}, payment }
+     allowedMarkets(): العميل ← سوق حسابه بس ، الأدمن/الموظف ← الأسواق المفعّلة */
+  GS.loadAccountMarket = async (fresh) => {
+    if (!fresh && window.__acct) return window.__acct;
+    const r = await apiGet('/account_market.php');
+    if (r && r.success) window.__acct = r;
+    return window.__acct;
+  };
+  window.gAllowedMarkets = () => { const a = window.__acct; if (!a) return null; return (window.__isAdmin ? a.active : [a.market]).slice(); };
+  window.gCcyAr = (m) => { const a = window.__acct; return a && a.markets && a.markets[m] ? a.markets[m].ccyAr : ''; };
   GS.versionLabel = () => { if (!GS.__verP) GS.__verP = apiGet('/site_public_config.php').then(r => (r && r.config && r.config.versionLabel) || '').catch(() => ''); return GS.__verP; };
 
 
@@ -538,6 +548,8 @@
     GS.email = email || null;
     document.body.classList.toggle('gs-anon', !email);
     try { GS.settings = (email && !window.__isAdmin) ? await getAdminSettings() : {}; } catch(e){ GS.settings = {}; }
+    // الإصدار 96: سوق الحساب وعملته + الأسواق المفعّلة (الأدمن بيشتغل على الأسواق المفعّلة كلها)
+    try { await GS.loadAccountMarket(true); } catch(e){}
     const img = $('#gsBrandImg'); if (img) img.src = brandSrc();
 
     // ---- أزرار نهاية الشريط العلوي ----
@@ -756,6 +768,7 @@
       // 10) الجداول: كل جدول جوه غلاف بيتحرك يمين وشمال، والبيانات في سطر واحد (shell.css)
       wrapTables(app);
       enhanceTables(app);   // الإصدار 96: ترتيب + فلتر لكل عمود + بحث في كل الجداول
+      lockMarkets(app);     // الإصدار 96: قوائم السوق والعملة ← سوق الحساب بس (الأدمن: الأسواق المفعّلة)
       // 10أ) الإصدار 90: شاشة المحفظة والتقارير ← كل جدول بيعرض 10 صفوف والباقي بالتمرير لفوق وتحت
       if (ROWS10_SCREENS[GS.currentScreen]) { limitTableRows(app, 10); setTimeout(relimit, 400); }
     } finally {
@@ -897,6 +910,29 @@
       };
       q.addEventListener('input', apply); filters.forEach(f => f && f.addEventListener(f.tagName === 'SELECT' ? 'change' : 'input', apply));
       apply();
+    });
+  }
+
+  /* الإصدار 96: أي قائمة اختيار سوق (مصر/السعودية/...) أو عملة (جنيه مصري/ريال سعودي أو EGP/SAR) في أي شاشة
+     ← بتتقصر على الأسواق المسموحة: العميل سوق حسابه بس ، الأدمن الأسواق المفعّلة
+     - قوائم تعديل خطة قديمة (e_ / ge_) بتحتفظ بقيمتها الحالية حتى لو سوق تاني (عشان متتبوظش)
+     - القائمة اللي عليها data-g-mkt="skip" (فلتر السوق في لوحة الإدارة) مبتتلمسش */
+  function lockMarkets(root){
+    const allowed = window.gAllowedMarkets && window.gAllowedMarkets(); if (!allowed || !allowed.length) return;
+    const a = window.__acct, ccyAr = allowed.map(m => a.markets[m].ccyAr), ccyCode = allowed.map(m => a.markets[m].ccy);
+    root.querySelectorAll('select:not([data-g-mkt])').forEach(sel => {
+      const val = (o) => o.value || o.textContent.trim();
+      const vals = Array.from(sel.options).map(val);
+      const isMkt = vals.includes('مصر') && vals.includes('السعودية');
+      const isAr = vals.includes('جنيه مصري') && vals.includes('ريال سعودي');
+      const isCode = vals.includes('EGP') && vals.includes('SAR');
+      if (!isMkt && !isAr && !isCode) return;
+      sel.dataset.gMkt = '1';
+      const keep = /^(e_|ge_|edit)/i.test(sel.id) ? sel.value : null;
+      const list = isMkt ? allowed : isAr ? ccyAr : ccyCode;
+      Array.from(sel.options).forEach(o => { const v = val(o); if (!list.includes(v) && v !== keep) o.remove(); });
+      if (!Array.from(sel.options).some(o => val(o) === sel.value) || !sel.value) { if (sel.options[0]) { sel.value = val(sel.options[0]); sel.dispatchEvent(new Event('change', { bubbles: true })); } }
+      if (sel.options.length <= 1) { sel.classList.add('g-locked'); sel.title = 'حسب بورصة حسابك'; }
     });
   }
 

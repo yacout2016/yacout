@@ -3,6 +3,7 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/session_boot.php';
 session_start();
 include 'db.php';
+require_once __DIR__ . '/markets_core.php';
 
 if (!isset($_SESSION['user_email'])) {
     http_response_code(401);
@@ -18,7 +19,15 @@ if (empty($_SESSION['is_admin']) && !hasActiveSubscription($conn, $_SESSION['use
 
 cleanupExpiredRecommendations($conn);
 
-$result = $conn->query("SELECT * FROM recommendations WHERE archived = 0 ORDER BY created_at DESC");
+// العميل بيشوف توصيات سوق حسابه بس - الإدارة بتشوف الكل ومعاها عمود السوق
+$hasRecMkt = mc_col($conn, 'recommendations', 'market');
+if ($hasRecMkt && empty($_SESSION['is_admin'])) {
+    $myMkt = mc_account_market($conn, $_SESSION['user_email']);
+    $st = $conn->prepare("SELECT * FROM recommendations WHERE archived = 0 AND COALESCE(market, 'مصر') = ? ORDER BY created_at DESC");
+    $st->bind_param("s", $myMkt); $st->execute(); $result = $st->get_result();
+} else {
+    $result = $conn->query("SELECT * FROM recommendations WHERE archived = 0 ORDER BY created_at DESC");
+}
 $rows = [];
 while ($r = $result->fetch_assoc()) {
     $rows[] = [
@@ -40,6 +49,7 @@ while ($r = $result->fetch_assoc()) {
         "validityHours" => (int)$r['validity_hours'],
         "createdBy" => $r['created_by'],
         "createdAt" => $r['created_at'],
+        "market" => ($hasRecMkt && mc_valid($r['market'] ?? '')) ? $r['market'] : 'مصر',
     ];
 }
 echo json_encode(["success" => true, "recommendations" => $rows]);

@@ -404,6 +404,7 @@ async function renderRegister(error){
       ${authField('email', 'email', 'البريد الإلكتروني', AUTH_ICONS.mail, 'autocomplete="email" inputmode="email" required dir="ltr"')}
       ${authField('password', 'password', 'كلمة المرور', AUTH_ICONS.lock, 'autocomplete="new-password" required minlength="8" dir="ltr"')}
       <div class="gl-hint" id="pwHint">8 أحرف على الأقل، وفيها حرف ورقم.</div>
+      <div id="regMarketWrap" hidden></div>
       ${refCode ? `<div class="gl-alert ok">${AUTH_ICONS.check}<span>كود الدعوة <b dir="ltr">${escapeHtml(refCode)}</b> سيُسجَّل مع حسابك.</span></div>` : ''}
       <label class="gl-check"><input type="checkbox" id="acceptDisclaimer"><span>قرأت <a id="viewDisclaimerLink">إخلاء المسؤولية</a> وأوافق عليه: الأدوات هنا للتحليل والتعليم، وليست توصية استثمارية، والقرار والمسؤولية المالية عليّ بالكامل.</span></label>
       <button type="submit" class="gl-btn gl-btn-primary" id="regSubmit">إنشاء الحساب</button>
@@ -416,6 +417,14 @@ async function renderRegister(error){
   const pwIn = document.getElementById('password'), hint = document.getElementById('pwHint');
   const pwOk = (v) => v.length >= 8 && /[0-9]/.test(v) && /[A-Za-z؀-ۿ]/.test(v);
   pwIn.addEventListener('input', () => { hint.classList.toggle('ok', pwOk(pwIn.value)); });
+  // الإصدار 96: سوق الحساب - بيظهر بس لو الأدمن مفعّل أكتر من سوق (غير كده الحساب مصري تلقائي)
+  apiGet('/account_market.php').then(m => {
+    const w = document.getElementById('regMarketWrap'); if (!w || !m || !m.success || (m.active || []).length < 2) return;
+    w.innerHTML = `<label class="gl-mkt-label" for="regMarket">بورصة حسابك</label>
+      <select id="regMarket" class="gl-mkt-select">${m.active.map(x => `<option value="${escapeHtml(x)}">${escapeHtml(x)} — ${escapeHtml(m.markets[x].ccyAr)}</option>`).join('')}</select>
+      <div class="gl-hint">كل شيء في حسابك (الباقات والخطط والتقارير) سيكون بعملة هذه البورصة، ولا يمكن تغييرها بعد التسجيل. لبورصة أخرى سجّل حسابًا جديدًا ببريد مختلف.</div>`;
+    w.hidden = false;
+  }).catch(() => {});
   document.getElementById('regForm').onsubmit = async (e) => {
     e.preventDefault();
     const email = document.getElementById('email').value.trim().toLowerCase();
@@ -425,7 +434,8 @@ async function renderRegister(error){
     if (!document.getElementById('acceptDisclaimer').checked) return renderRegister('يجب الموافقة على إخلاء المسؤولية لإكمال التسجيل.');
     const btn = document.getElementById('regSubmit'); authBusy(btn, true, 'جاري إنشاء الحساب...');
     try{
-      const r = await apiPost('/register.php', { email, password, acceptDisclaimer: '1', refCode });
+      const mSel = document.getElementById('regMarket');
+      const r = await apiPost('/register.php', { email, password, acceptDisclaimer: '1', refCode, market: mSel ? mSel.value : 'مصر' });
       if (!r.success) return renderRegister(r.message || 'حصل خطأ أثناء إنشاء الحساب.');
       try { localStorage.setItem('griffine_remembered_email', email); } catch(e){}
       invalidateSessionCache();

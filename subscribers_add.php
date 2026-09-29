@@ -47,7 +47,7 @@ if (!empty($paymentProof)) {
 
 // الباقة والسعر والمدة بييجوا من قاعدة البيانات مباشرة - مش من الطلب - عشان محدش يقدر
 // يبعت amount=0 أو planId وهمي ويفتح لنفسه اشتراك مجاني
-$planStmt = $conn->prepare("SELECT id, name, amount, duration_days FROM subscription_plans WHERE id = ? AND is_active = 1 LIMIT 1");
+$planStmt = $conn->prepare("SELECT * FROM subscription_plans WHERE id = ? AND is_active = 1 LIMIT 1");
 $planStmt->bind_param("s", $planId);
 $planStmt->execute();
 $planRow = $planStmt->get_result()->fetch_assoc();
@@ -60,6 +60,16 @@ if (!$planRow) {
 
 $planName = $planRow['name'];
 $amount = (float)$planRow['amount'];
+
+// الإصدار 96: الباقة لازم تكون من بورصة الحساب ، والعملة والسوق بيتحددوا من الحساب (مش من الطلب)
+require_once __DIR__ . '/markets_core.php';
+$acctMarket = mc_account_market($conn, $accountEmail);
+if (isset($planRow['market']) && $planRow['market'] !== $acctMarket) {
+    echo json_encode(["success" => false, "message" => "هذه الباقة ليست متاحة لبورصة حسابك (" . $acctMarket . ")."]);
+    exit();
+}
+$currency = mc_ccy($acctMarket);
+$market = $acctMarket;
 
 // التجربة المجانية مرة واحدة بس لكل حساب
 if ($amount <= 0 && hasEverSubscribed($conn, $accountEmail)) {
@@ -75,7 +85,7 @@ if ($amount <= 0 && phone_used_trial($conn, $phone)) {
 }
 
 // الإصدار 84: طرق الدفع المتاحة (الأدمن بيشغّلها ويقفلها من لوحة التحكم)
-if ($amount > 0 && !payment_method_allowed($conn, $paymentMethod)) {
+if ($amount > 0 && !mc_method_allowed($conn, $acctMarket, $paymentMethod)) {
     echo json_encode(["success" => false, "message" => "طريقة الدفع هذه غير متاحة الآن. اختر طريقة أخرى."]);
     exit();
 }

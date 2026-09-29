@@ -43,6 +43,13 @@ function site_config_defaults(){
         'chat_bot'           => '1',
         // الإصدار 96: رقم الإصدار اللي بيظهر للمستخدمين (فاضي = الرقم التلقائي)
         'app_version_label'  => '',
+        // الإصدار 96: الأسواق المفعّلة (أسماء مفصولة بفاصلة) - الافتراضي مصر بس
+        'active_markets'     => 'مصر',
+        'bank_on_eg' => '0', 'bank_name_eg' => '', 'bank_holder_eg' => '', 'bank_iban_eg' => '', 'bank_note_eg' => '', 'extra_on_eg' => '0', 'extra_label_eg' => '', 'extra_details_eg' => '', 'paymob_on_eg' => '0',
+        'bank_on_sa' => '0', 'bank_name_sa' => '', 'bank_holder_sa' => '', 'bank_iban_sa' => '', 'bank_note_sa' => '', 'extra_on_sa' => '0', 'extra_label_sa' => '', 'extra_details_sa' => '', 'paymob_on_sa' => '0',
+        'bank_on_ae' => '0', 'bank_name_ae' => '', 'bank_holder_ae' => '', 'bank_iban_ae' => '', 'bank_note_ae' => '', 'extra_on_ae' => '0', 'extra_label_ae' => '', 'extra_details_ae' => '', 'paymob_on_ae' => '0',
+        'bank_on_qa' => '0', 'bank_name_qa' => '', 'bank_holder_qa' => '', 'bank_iban_qa' => '', 'bank_note_qa' => '', 'extra_on_qa' => '0', 'extra_label_qa' => '', 'extra_details_qa' => '', 'paymob_on_qa' => '0',
+        'bank_on_kw' => '0', 'bank_name_kw' => '', 'bank_holder_kw' => '', 'bank_iban_kw' => '', 'bank_note_kw' => '', 'extra_on_kw' => '0', 'extra_label_kw' => '', 'extra_details_kw' => '', 'paymob_on_kw' => '0',
     ];
 }
 // المفاتيح السرية اللي عمرها ما بتترجع للمتصفح (بيترجع بس إنها متسجّلة ولا لأ)

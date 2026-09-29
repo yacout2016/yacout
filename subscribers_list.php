@@ -17,7 +17,7 @@ require_once __DIR__ . '/codes_lib.php';
 codes_ensure_all($conn);
 $hasCodes = codes_ready($conn);
 $result = $conn->query($hasCodes
-    ? "SELECT s.*, u.inv_code, u.member_no, st.staff_code, st.active AS staff_active FROM subscribers s
+    ? "SELECT s.*, u.inv_code, u.member_no, u.account_market, st.staff_code, st.active AS staff_active FROM subscribers s
        LEFT JOIN users u ON u.username = s.account_email LEFT JOIN staff_members st ON st.email = s.account_email
        WHERE s.archived = 0 ORDER BY (u.inv_code = 'Top-7') DESC, s.start_date DESC, s.id DESC"
     : "SELECT * FROM subscribers WHERE archived = 0 ORDER BY start_date DESC, id DESC");
@@ -29,6 +29,7 @@ while ($r = $result->fetch_assoc()) {
         "memberCode" => $hasCodes ? codes_display($r['inv_code'] ?? '', $r['staff_code'] ?? '', !empty($r['staff_active'])) : '',
         "memberNo" => isset($r['member_no']) ? (int)$r['member_no'] : null,
         "staffCode" => $r['staff_code'] ?? null,
+        "accountMarket" => $r['account_market'] ?? 'مصر',   // الإصدار 96: بورصة الحساب
         "name" => $r['name'],
         "phone" => $r['phone'],
         "contactEmail" => $r['contact_email'],

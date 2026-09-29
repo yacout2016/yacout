@@ -912,3 +912,21 @@ table.g-enh .g-filter{ width:100% !important; min-width:70px; margin:0 !importan
 .gs-tscroll.gs-rows-limit table.g-enh thead{ position:sticky; top:0; z-index:3; }
 .gs-tscroll.gs-rows-limit table.g-enh thead th{ position:static !important; }
 @media print{ .g-tbar, .g-filter-row{ display:none !important; } }
+
+/* الإصدار 96: بورصة الحساب في شاشة التسجيل */
+.gl-mkt-label{ display:block; font-size:13px; font-weight:600; margin:14px 0 6px; }
+.gl-mkt-select{ width:100%; padding:12px 14px; border-radius:14px; border:1px solid var(--border, #e5e7eb); font-size:14px; background:var(--card-bg, #fff); color:var(--text, #111); }
+
+/* الإصدار 96: قائمة سوق/عملة فيها اختيار واحد (بورصة الحساب) */
+select.g-locked{ pointer-events:none; background-image:none !important; opacity:.85; }
+
+/* الإصدار 96: إعدادات الأسواق */
+details.mkt-cfg{ border:1px solid var(--border, #e5e7eb); border-radius:12px; padding:10px 12px; margin-bottom:10px; }
+details.mkt-cfg summary{ cursor:pointer; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+details.mkt-cfg textarea{ width:100%; }
+
+/* v96: شريط اختيار السوق للأدمن + وسم السوق */
+.g-mkt-bar{display:flex;align-items:center;gap:8px;margin:8px 0;flex-wrap:wrap}
+.g-mkt-bar label{display:flex;align-items:center;gap:6px;font-weight:600;margin:0}
+.g-mkt-bar select{width:auto;min-width:170px;margin:0}
+.g-mkt-tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;background:var(--gs-soft,rgba(127,127,127,.12));margin-inline-start:6px;white-space:nowrap}

@@ -27,6 +27,7 @@ async function renderTradesReportPage(f){
       <label>السهم <input id="trSym" dir="ltr" placeholder="COMI" value="${escapeHtml(f.symbol)}"></label>
       ${staff ? `<label>العميل <input id="trEmail" dir="ltr" placeholder="email" value="${escapeHtml(f.email)}"></label>` : ''}
     </div>
+    ${staff && typeof gAdminMarketBarHtml === 'function' ? gAdminMarketBarHtml('trMarket') : ''}
     <div class="radio-row u-mt10">
       <button class="small" id="trGo">عرض</button>
       <button class="small secondary" id="trCsv">⬇️ Excel</button>
@@ -45,7 +46,8 @@ async function renderTradesReportPage(f){
     GShell.toast(r.success ? `تم: ${r.rows} عملية لـ ${r.accounts} خطة` : (r.message || 'تعذّر التنفيذ'), r.success ? 'ok' : 'err');
     if (r.success) rerender();
   };
-  const qs = new URLSearchParams({ action:'report', ...f }).toString();
+  if (staff && typeof gWireAdminMarket === 'function') gWireAdminMarket('trMarket', rerender);
+  const qs = new URLSearchParams({ action:'report', ...f, market: staff && typeof gAdminMarket === 'function' ? gAdminMarket() : '' }).toString();
   const d = await apiGet('/trades_report.php?' + qs).catch(() => ({ success:false, message:'تعذّر الاتصال بالسيرفر' }));
   const body = document.getElementById('trBody');
   if (screenStale(__tok) || !body || !body.isConnected) return;
@@ -78,7 +80,7 @@ async function renderTradesReportPage(f){
   document.getElementById('trPrint').onclick = () => {
     const tbl = (head, rows) => `<table><tr>${head.map(h => `<th>${h}</th>`).join('')}</tr>${rows.map(r => `<tr>${r.map(c => `<td>${escapeHtml(String(c ?? ''))}</td>`).join('')}</tr>`).join('')}</table>`;
     const period = (f.from || f.to) ? `الفترة: ${f.from || '...'} ← ${f.to || '...'}` : 'كل الفترات';
-    hrPrint(staff ? 'تقرير الصفقات' : 'تقرير صفقاتي', `<p>${escapeHtml(period)}${f.kind ? ' · ' + f.kind : ''}${f.symbol ? ' · ' + escapeHtml(f.symbol) : ''}</p>
+    hrPrint(staff ? 'تقرير الصفقات' : 'تقرير صفقاتي', `<p>${escapeHtml(period)}${f.kind ? ' · ' + f.kind : ''}${f.symbol ? ' · ' + escapeHtml(f.symbol) : ''}${staff && typeof gAdminMarket === 'function' && gAdminMarket() ? ' · السوق: ' + escapeHtml(gAdminMarket()) : ''}</p>
       ${tbl(['العملاء', 'عمليات شراء', 'عمليات بيع', 'صفقات مقفولة', 'قيمة الشراء', 'قيمة البيع', 'الربح المحقق', 'نسبة الرابحة'], [[t.customers || 0, t.buys || 0, t.sells || 0, t.closed || 0, trMoney(t.buy_value), trMoney(t.sell_value), trMoney(t.profit), winRate + '%']])}
       <h3>حسب السهم</h3>${tbl(['السهم', 'العملاء', 'شراء', 'بيع', 'مقفولة', 'قيمة الشراء', 'قيمة البيع', 'الربح'], (d.bySymbol || []).map(r => [r.symbol, r.customers, r.buys, r.sells, r.closed, trMoney(r.buy_value), trMoney(r.sell_value), trMoney(r.profit)]))}
       ${staff ? `<h3>حسب العميل</h3>${tbl(['العميل', 'الأسهم', 'شراء', 'بيع', 'مقفولة', 'قيمة الشراء', 'قيمة البيع', 'الربح'], (d.byCustomer || []).map(r => [r.account_email, r.symbols, r.buys, r.sells, r.closed, trMoney(r.buy_value), trMoney(r.sell_value), trMoney(r.profit)]))}` : ''}`, staff ? 'تقرير الصفقات' : 'تقرير صفقاتي');

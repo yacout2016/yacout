@@ -10,6 +10,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = isset($_POST['email']) ? trim($_POST['email']) : '';
     $password = isset($_POST['password']) ? $_POST['password'] : '';
     $refCode = isset($_POST['refCode']) ? trim($_POST['refCode']) : '';
+    // الإصدار 96: سوق الحساب (من الأسواق المفعّلة بس - الافتراضي مصر) - مبيتغيّرش بعد التسجيل
+    require_once __DIR__ . '/markets_core.php';
+    $acctMarket = trim((string)($_POST['market'] ?? 'مصر'));
+    if (!in_array($acctMarket, mc_active($conn), true)) $acctMarket = mc_active($conn)[0];
 
     if (empty($email) || empty($password)) {
         echo json_encode(["success" => false, "message" => "يرجى ملء جميع الحقول المطلوبة."]);
@@ -94,6 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         generateReferralCode($conn, $email);
         recordReferral($conn, $refCode, $email);
         try { require_once __DIR__ . '/codes_lib.php'; codes_assign_user($conn, $email); } catch (Throwable $e) {}   // الإصدار 96: كود العضو (INV-n) تلقائي
+        if (mc_ready($conn)) { $mk = $conn->prepare("UPDATE users SET account_market = ? WHERE username = ?"); $mk->bind_param("ss", $acctMarket, $email); $mk->execute(); $mk->close(); }
         $needsVerify = getAdminSetting($conn, 'require_email_verification', true);
         if ($needsVerify) sendVerificationEmail($conn, $email);
         echo json_encode(["success" => true, "message" => $needsVerify ? "تم إنشاء الحساب بنجاح. أرسلنا إليك رابط تفعيل على بريدك." : "تم إنشاء الحساب بنجاح.", "is_admin" => (bool)$isAdmin]);

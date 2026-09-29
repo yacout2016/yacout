@@ -13,7 +13,7 @@ async function renderSubscriptionPlans(){
 
   const myRes = await getMySubscription();
   const mySub = (myRes && myRes.success) ? myRes.subscription : null;
-  const selectedMarket = (mySub && mySub.market) || 'مصر';
+  const selectedMarket = (window.__acct && window.__acct.market) || 'مصر';   // الإصدار 96: بورصة الحساب
 
   window.__lastPageKey='subscription_plans'; if (screenStale(__tok)) return; app.innerHTML = `<div class="container wide">${logoHeader()}
     <div class="topbar"><div>مرحبًا <strong>${email}</strong></div></div>
@@ -23,7 +23,7 @@ async function renderSubscriptionPlans(){
     <h2>${mySub ? 'طلب ترقية أو تخفيض الباقة' : 'اختر باقة الاشتراك'}</h2>
     ${mySub ? `<div class="info">الباقة الجديدة التي ستختارها ستتفعّل تلقائيًا فور انتهاء باقتك الحالية (${formatDateAr(mySub.endDate)}) — لن تدفع ولن تتأثر خدمتك قبل ذلك.</div>` : ''}
     <div class="section-card">
-      <label>الدولة / البورصة (لتحديد العملة)</label>
+      <label>بورصة حسابك (الباقات والأسعار بعملتها)</label>
       <select id="subMarket" style="max-width:260px;">
         <option value="مصر">مصر (EGX) — جنيه مصري</option>
         <option value="السعودية">السعودية (تداول) — ريال سعودي</option>
@@ -94,7 +94,7 @@ async function renderSubscriptionPlans(){
         <div class="price-plan-name">${escapeHtml(p.name)}</div>
         <div class="price-amount">${p.amount===0?'مجانًا':p.amount.toLocaleString('en-US')}<span> ${p.amount>0?currency:''}</span></div>
         <div class="u-fs12 u-muted">${escapeHtml(p.periodLabel)}</div>
-        ${p.saveNote?`<div class="price-save">${p.saveNote.replace('عن السعر', 'جنيه عن السعر')}</div>`:'<div style="height:18px;"></div>'}
+        ${p.saveNote?`<div class="price-save">${p.saveNote.replace('عن السعر', (((window.__acct && window.__acct.markets && window.__acct.markets[market]) || {}).short || 'جنيه') + ' عن السعر')}</div>`:'<div style="height:18px;"></div>'}
         <ul class="price-features">${(p.features||[]).map(f=>`<li>${f}</li>`).join('')}</ul>
         <button class="small choosePlanBtn u-w100" data-plan="${p.id}">
           ${mySub ? (mySub.planId===p.id ? 'باقتك الحالية' : 'طلب التحويل لهذه الباقة') : (p.amount===0?'ابدأ التجربة المجانية':'اشترك الآن')}
@@ -198,7 +198,7 @@ async function renderPlanChangeCheckout(newPlan, currentSub){
   }
 
   async function submitPlanChange(method, ref, proof){
-    if (newPlan.amount > 0 && (method==='vodafone' || method==='instapay')) {
+    if (newPlan.amount > 0 && ['vodafone', 'instapay', 'bank', 'wallet'].includes(method)) {
       if ((needRef && !ref) || (needProof && !proof)) {
         alert('يجب إدخال رقم عملية التحويل وإرفاق صورة إثبات التحويل قبل تأكيد تغيير الباقة — لا تحويل بدون السداد والإشعار.');
         return;
@@ -240,9 +240,13 @@ const PAY_LABELS = { vodafone: 'فودافون كاش', instapay: 'إنستاب�
 function payMethodLabel(m){ return PAY_LABELS[m] || m || '—'; }
 function paymentMethodsHtml(p, cfg, needRef, needProof){
   const opts = [];
-  if (cfg.payVodafone) opts.push(['vodafone', '📱 فودافون كاش (تحويل + صورة التحويل)']);
-  if (cfg.payInstapay) opts.push(['instapay', '🏦 إنستاباي (تحويل + صورة التحويل)']);
-  if (cfg.payPaymob) opts.push(['paymob', '💳 فيزا / ماستركارد / ميزة (دفع أونلاين فوري)']);
+  // الإصدار 96: طرق الدفع حسب بورصة الحساب (مصر: فودافون كاش / إنستاباي / Paymob ، باقي الأسواق: تحويل بنكي + طريقة إضافية)
+  const mp = (window.__acct && window.__acct.payment) || {}, isEg = !window.__acct || window.__acct.market === 'مصر';
+  if (isEg && cfg.payVodafone) opts.push(['vodafone', '📱 فودافون كاش (تحويل + صورة التحويل)']);
+  if (isEg && cfg.payInstapay) opts.push(['instapay', '🏦 إنستاباي (تحويل + صورة التحويل)']);
+  if (isEg && cfg.payPaymob) opts.push(['paymob', '💳 فيزا / ماستركارد / ميزة (دفع أونلاين فوري)']);
+  if (mp.bank) opts.push(['bank', '🏦 تحويل بنكي (تحويل + صورة التحويل)']);
+  if (mp.extra) opts.push(['wallet', '📲 ' + (mp.extraLabel || 'طريقة دفع أخرى') + ' (تحويل + صورة التحويل)']);
   if (!opts.length) return `<div class="error">لا توجد طرق دفع متاحة الآن - تواصل معنا على ${escapeHtml(cfg.servicePhone)}.</div>`;
   return `
     <label>طريقة السداد</label>
@@ -262,11 +266,14 @@ function wirePaymentMethods(p, cfg){
   const sel = document.getElementById(p + 'Method'); if (!sel) return { get: () => ({ method: null, ref: '', proof: null }) };
   let proof = null;
   const sync = () => {
-    const m = sel.value, isT = m === 'vodafone' || m === 'instapay';
+    const m = sel.value, isT = m === 'vodafone' || m === 'instapay' || m === 'bank' || m === 'wallet';
     document.getElementById(p + 'TransferFields').style.display = isT ? '' : 'none';
     document.getElementById(p + 'PaymobNote').style.display = m === 'paymob' ? '' : 'none';
     const num = m === 'instapay' ? (cfg.instapayAddress || cfg.servicePhone) : cfg.servicePhone;
-    document.getElementById(p + 'PayNote').innerHTML = `💚 حوّل المبلغ ${m === 'instapay' ? 'عن طريق <strong>إنستاباي</strong> على' : 'على محفظة <strong>فودافون كاش</strong> رقم'}: <strong style="font-size:16px;letter-spacing:1px;" dir="ltr">${escapeHtml(num)}</strong><br><small>وبعدها اكتب رقم العملية وارفع صورة التحويل.</small>`;
+    const mp = (window.__acct && window.__acct.payment) || {};
+    if (m === 'bank') document.getElementById(p + 'PayNote').innerHTML = `🏦 حوّل المبلغ على الحساب البنكي:<br>البنك: <strong>${escapeHtml(mp.bankName || '—')}</strong><br>اسم الحساب: <strong>${escapeHtml(mp.bankHolder || '—')}</strong><br>رقم الحساب / IBAN: <strong dir="ltr">${escapeHtml(mp.bankIban || '—')}</strong>${mp.bankNote ? `<br>${escapeHtml(mp.bankNote)}` : ''}<br>ثم اكتب رقم العملية وارفع صورة التحويل.`;
+    else if (m === 'wallet') document.getElementById(p + 'PayNote').innerHTML = `📲 ${escapeHtml(mp.extraLabel || 'طريقة الدفع')}:<br><span class="u-prose">${escapeHtml(mp.extraDetails || '')}</span><br>ثم اكتب رقم العملية وارفع صورة التحويل.`;
+    else document.getElementById(p + 'PayNote').innerHTML = `💚 حوّل المبلغ ${m === 'instapay' ? 'عن طريق <strong>إنستاباي</strong> على' : 'على محفظة <strong>فودافون كاش</strong> رقم'}: <strong style="font-size:16px;letter-spacing:1px;" dir="ltr">${escapeHtml(num)}</strong><br><small>وبعدها اكتب رقم العملية وارفع صورة التحويل.</small>`;
   };
   sel.addEventListener('change', sync); sync();
   document.getElementById(p + 'Proof').addEventListener('change', (e) => {
@@ -323,7 +330,7 @@ async function renderCheckoutForm(planInfo){
     const pv = pay ? pay.get() : { method: 'trial', ref: '', proof: null };
     const paymentMethod = pv.method || 'trial', paymentRef = pv.ref, paymentProofData = pv.proof;
     if (planInfo.amount > 0 && !pv.method) { alert('لا توجد طريقة دفع متاحة الآن.'); return; }
-    if (planInfo.amount > 0 && (paymentMethod === 'vodafone' || paymentMethod === 'instapay')) {
+    if (planInfo.amount > 0 && ['vodafone', 'instapay', 'bank', 'wallet'].includes(paymentMethod)) {
       if ((needRef && !paymentRef) || (needProof && !paymentProofData)) {
         alert('يجب إدخال رقم عملية التحويل وإرفاق صورة إثبات التحويل قبل تأكيد الاشتراك — لا يتفعّل الاشتراك إلا بعد استلام السداد والإشعار.');
         return;

@@ -25,6 +25,7 @@ while ($r = $result->fetch_assoc()) {
         "features" => json_decode($r['features'] ?: '[]'),
         "isActive" => (bool)$r['is_active'],
         "sortOrder" => (int)$r['sort_order'],
+        "market" => $r['market'] ?? 'مصر',
     ];
 }
 echo json_encode(["success" => true, "plans" => $plans]);

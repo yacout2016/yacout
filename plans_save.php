@@ -22,6 +22,9 @@ $badge = trim($_POST['badge'] ?? '');
 $saveNote = trim($_POST['saveNote'] ?? '');
 $featuresRaw = trim($_POST['features'] ?? ''); // نص، سطر لكل ميزة
 $sortOrder = intval($_POST['sortOrder'] ?? 0);
+// الإصدار 96: كل باقة لسوق (عملتها عملة السوق)
+require_once __DIR__ . '/markets_core.php';
+$planMarket = trim((string)($_POST['market'] ?? 'مصر')); if (!mc_valid($planMarket)) $planMarket = 'مصر';
 
 if (empty($id) || empty($name) || empty($periodLabel) || $durationDays <= 0) {
     echo json_encode(["success" => false, "message" => "بيانات ناقصة أو غير صحيحة."]);
@@ -46,6 +49,7 @@ $stmt = $conn->prepare("INSERT INTO subscription_plans (id, name, amount, period
 $stmt->bind_param("ssdsisssi", $id, $name, $amount, $periodLabel, $durationDays, $badgeVal, $saveNoteVal, $featuresJson, $sortOrder);
 
 if ($stmt->execute()) {
+    try { $m = $conn->prepare("UPDATE subscription_plans SET market = ? WHERE id = ?"); $m->bind_param("ss", $planMarket, $id); $m->execute(); $m->close(); } catch (Throwable $e) {}
     echo json_encode(["success" => true]);
 } else {
     echo json_encode(["success" => false, "message" => "حدث خطأ: " . $conn->error]);

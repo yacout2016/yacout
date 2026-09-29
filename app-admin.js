@@ -152,6 +152,7 @@ async function renderAdminSubscribers(){
       ${adminNavButtonsHtml()}
     </div>
     <div class="info">🛡️ هذه اللوحة متصلة بقاعدة بيانات حقيقية — كل البيانات هنا فعلية.</div>
+    ${gAdminMarketBarHtml('admSubMarket')}
 
     ${emailChangeRequests.length ? `
     <h2 class="u-mt20">✏️ طلبات تعديل البريد الإلكتروني (${emailChangeRequests.length})</h2>
@@ -247,14 +248,15 @@ async function renderAdminSubscribers(){
   }
 
   function filteredList(){
-    return subscribers.filter(r => (!currentFrom || r.startDate>=currentFrom) && (!currentTo || r.startDate<=currentTo));
+    const mkt = gAdminMarket();   // الإصدار 96: فلتر السوق
+    return subscribers.filter(r => (!currentFrom || r.startDate>=currentFrom) && (!currentTo || r.startDate<=currentTo) && (!mkt || (r.accountMarket || 'مصر') === mkt));
   }
 
   function renderSummary(list){
     const total = computeTotals(list);
     document.getElementById('adminSummaryCards').innerHTML = `
       <div class="summary-card"><div class="val">${list.length}</div><div class="lbl">عدد المشتركين (في الفترة المحددة)</div></div>
-      <div class="summary-card"><div class="val">${fmtMoney(total)}</div><div class="lbl">إجمالي السداد لكل العملاء</div></div>
+      <div class="summary-card"><div class="val">${gTotalsByCcy(list, r => r.amount, r => gMktCcy(r.accountMarket))}</div><div class="lbl">إجمالي السداد${gAdminMarket() ? ' — ' + escapeHtml(gAdminMarket()) : ' (لكل عملة لوحدها)'}</div></div>
       <div class="summary-card"><div class="val">${list.filter(r=>r.planId==='monthly').length}</div><div class="lbl">مشتركين شهري</div></div>
       <div class="summary-card"><div class="val">${list.filter(r=>r.planId==='yearly').length}</div><div class="lbl">مشتركين سنوي</div></div>
       <div class="summary-card"><div class="val">${list.filter(r=>r.planId==='trial').length}</div><div class="lbl">تجربة مجانية</div></div>`;
@@ -412,6 +414,7 @@ async function renderAdminSubscribers(){
     renderMsChecks(list);
   }
   refreshAdmin();
+  gWireAdminMarket('admSubMarket', () => refreshAdmin());   // الإصدار 96
   loadReminderDefaultsUI();
 
   document.getElementById('saveRemDefaultsBtn').onclick = async () => {
@@ -660,6 +663,8 @@ async function renderPlansManagementPage(){
     </div>
     <div class="info">أي تعديل هنا (سعر، إيقاف، حذف) يؤثر فقط على الاشتراكات الجديدة من الآن — ولا يغيّر شيئًا في اشتراكات العملاء السارية حاليًا، لأن بياناتها تُحفظ مستقلة وقت الاشتراك. يمكنك استخدام ذلك لعمل عروض وتخفيضات في أي وقت.</div>
 
+    ${gAdminMarketBarHtml('plansMarket')}
+    <div class="info">كل باقة تتبع سوقًا واحدًا، وسعرها بعملة هذا السوق. العميل يرى باقات بورصة حسابه فقط. يمكنك تجهيز باقات سوق غير مفعّل مسبقًا.</div>
     <h2>الخطط الحالية</h2>
     <div class="section-card" id="plansListWrap"></div>
 
@@ -668,6 +673,8 @@ async function renderPlansManagementPage(){
       <form id="planForm">
         <label>معرّف الخطة (حروف إنجليزية وأرقام فقط، بدون مسافات - مثل monthly)</label>
         <input type="text" id="planIdInput" required placeholder="مثال: quarterly">
+        <label>السوق (الباقة وسعرها بعملته)</label>
+        <select id="planMarketInput" data-g-mkt="skip">${Object.entries((window.__acct && window.__acct.markets) || { 'مصر': { ccyAr: 'جنيه مصري', active: true } }).map(([m, x]) => `<option value="${escapeHtml(m)}">${escapeHtml(m)} — ${escapeHtml(x.ccyAr)}${x.active ? '' : ' (غير مفعّل)'}</option>`).join('')}</select>
         <label>اسم الخطة</label>
         <input type="text" id="planNameInput" required placeholder="مثال: الخطة ربع السنوية">
         <label>السعر</label>
@@ -697,6 +704,7 @@ async function renderPlansManagementPage(){
     editingId = null;
     document.getElementById('formTitle').textContent = 'إضافة خطة جديدة';
     document.getElementById('planForm').reset();
+    document.getElementById('planMarketInput').value = gAdminMarket() || 'مصر';
     document.getElementById('planIdInput').disabled = false;
     document.getElementById('planFormSubmitBtn').textContent = 'حفظ الخطة';
     document.getElementById('planFormCancelBtn').style.display = 'none';
@@ -705,13 +713,16 @@ async function renderPlansManagementPage(){
   async function refreshPlansList(){
     const wrap = document.getElementById('plansListWrap');
     const res = await getPlansAdminList();
-    plans = (res && res.success) ? res.plans : [];
+    const mf = gAdminMarket();   // الإصدار 96: باقات السوق المختار
+    plans = ((res && res.success) ? res.plans : []).filter(p => !mf || (p.market || 'مصر') === mf);
+    const ccyOfM = (m) => ((window.__acct && window.__acct.markets && window.__acct.markets[m || 'مصر']) || {}).ccy || '';
     wrap.innerHTML = plans.length ? `<table>
-      <thead><tr><th>الاسم</th><th>السعر</th><th>المدة</th><th>الحالة</th><th></th></tr></thead>
+      <thead><tr><th>السوق</th><th>الاسم</th><th>السعر</th><th>المدة</th><th>الحالة</th><th></th></tr></thead>
       <tbody>
         ${plans.map(p=>`<tr>
+          <td>${escapeHtml(p.market || 'مصر')}</td>
           <td>${escapeHtml(p.name)} ${p.badge?`<span class="tag" style="background:#e6f4ea;color:var(--green);">${escapeHtml(p.badge)}</span>`:''}</td>
-          <td>${p.amount===0?'مجانًا':fmtMoney(p.amount)}</td>
+          <td>${p.amount===0?'مجانًا':fmtMoney(p.amount) + ' ' + ccyOfM(p.market)}</td>
           <td>${escapeHtml(p.periodLabel)} (${p.durationDays} يوم)</td>
           <td><span class="tag ${p.isActive?'tag-done':'tag-wait'}">${p.isActive?'مفعّلة':'موقوفة'}</span></td>
           <td style="white-space:nowrap;">
@@ -724,6 +735,8 @@ async function renderPlansManagementPage(){
     </table>` : '<p class="u-note">لا توجد خطط مضافة بعد.</p>';
   }
   await refreshPlansList();
+  document.getElementById('planMarketInput').value = gAdminMarket() || 'مصر';
+  gWireAdminMarket('plansMarket', () => { refreshPlansList(); if (!editingId) document.getElementById('planMarketInput').value = gAdminMarket() || 'مصر'; });
 
   window.__editPlan = (id) => {
     const p = plans.find(x=>x.id===id);
@@ -732,6 +745,7 @@ async function renderPlansManagementPage(){
     document.getElementById('formTitle').textContent = 'تعديل خطة: ' + p.name;
     document.getElementById('planIdInput').value = p.id;
     document.getElementById('planIdInput').disabled = true; // غير ممكن تغيّر المعرّف وقت التعديل
+    document.getElementById('planMarketInput').value = p.market || 'مصر';
     document.getElementById('planNameInput').value = p.name;
     document.getElementById('planAmountInput').value = p.amount;
     document.getElementById('planPeriodInput').value = p.periodLabel;
@@ -764,6 +778,7 @@ async function renderPlansManagementPage(){
     const plan = {
       id: document.getElementById('planIdInput').value.trim(),
       name: document.getElementById('planNameInput').value.trim(),
+      market: document.getElementById('planMarketInput').value,
       amount: parseFloat(document.getElementById('planAmountInput').value) || 0,
       periodLabel: document.getElementById('planPeriodInput').value.trim(),
       durationDays: parseInt(document.getElementById('planDurationInput').value) || 30,
@@ -1297,6 +1312,10 @@ async function renderAdminSettingsPage(){
     <div class="info">يظهر لكل المستخدمين في صفحة «حسابي» (مثلًا V.5.09). لو تركته فارغًا يظهر الرقم التلقائي للإصدار. رقم البناء الداخلي يظهر بجانبه صغيرًا للتأكد أن الجهاز على آخر نسخة.</div>
     <div class="section-card"><div class="u-row"><input id="cfgVersionLabel" maxlength="30" dir="ltr" placeholder="الرقم التلقائي" class="u-m0"><button class="small u-wa" id="cfgVersionSave">💾 حفظ</button></div><div id="cfgVersionMsg" class="u-note u-mt6"></div></div>
 
+    <h2 class="u-mt20">🌍 الأسواق وطرق الدفع لكل سوق</h2>
+    <div class="info">فعّل الأسواق التي يعمل بها الموقع. السوق غير المفعّل لا يظهر في التسجيل ولا عند المستخدمين، ويمكنك تجهيز باقاته وطرق دفعه مسبقًا. كل حساب له بورصة واحدة يختارها عند التسجيل (لو سوق واحد مفعّل يكون تلقائيًا). مصر: فودافون كاش وإنستاباي وPaymob من القسم أعلاه، ويمكنك إضافة تحويل بنكي. Paymob بالجنيه فقط لذلك متاح لمصر فقط.</div>
+    <div class="section-card" id="marketsCfgWrap">جارٍ التحميل...</div>
+
     <h2 class="u-mt20">إخفاء شاشات عن العميل</h2>
     <div class="info">فعّل أي مفتاح هنا لإخفاء الزر المقابل من الشاشة الرئيسية للعميل، دون حذف أي بيانات أو خطط موجودة بالفعل. الافتراضي أن كل الأزرار ظاهرة.</div>
     <div class="section-card" id="visibilityListWrap"></div>
@@ -1313,6 +1332,41 @@ async function renderAdminSettingsPage(){
     </div>` : ''}
   </div>`;
 
+  // الإصدار 96: الأسواق المفعّلة + طرق الدفع لكل سوق
+  (async () => {
+    const wrap = document.getElementById('marketsCfgWrap'); if (!wrap) return;
+    const [r, am] = await Promise.all([siteCfgAdminApi(), apiGet('/account_market.php').catch(() => null)]);
+    if (!r || !r.success || !am || !wrap.isConnected) { wrap.textContent = 'تعذّر التحميل'; return; }
+    const c = r.config, active = (c.active_markets || 'مصر').split(',');
+    const mk = Object.entries(am.markets);
+    const fld = (id, label, val, ph, long) => `<label class="u-fs12">${label}${long ? `<textarea id="${id}" rows="2" placeholder="${ph || ''}">${escapeHtml(val || '')}</textarea>` : `<input id="${id}" value="${escapeHtml(val || '')}" placeholder="${ph || ''}">`}</label>`;
+    wrap.innerHTML = mk.map(([name, m]) => { const cc = m.code.toLowerCase(); return `
+      <details class="mkt-cfg" ${active.includes(name) ? 'open' : ''}>
+        <summary><label class="u-check mkt-on-lbl"><input type="checkbox" class="mktOn" value="${escapeHtml(name)}" ${active.includes(name) ? 'checked' : ''}> <b>${escapeHtml(name)}</b></label> <span class="u-muted u-fs12">— ${escapeHtml(m.ccyAr)} (${m.ccy})</span> ${active.includes(name) ? '<span class="tag tag-done">مفعّل</span>' : '<span class="tag">غير مفعّل</span>'}</summary>
+        <div class="g-grid-filters u-mt8">
+          <label class="u-check"><input type="checkbox" id="bank_on_${cc}" ${c['bank_on_' + cc] === '1' ? 'checked' : ''}> تحويل بنكي</label>
+          ${fld('bank_name_' + cc, 'اسم البنك', c['bank_name_' + cc])}${fld('bank_holder_' + cc, 'اسم صاحب الحساب', c['bank_holder_' + cc])}${fld('bank_iban_' + cc, 'رقم الحساب / IBAN', c['bank_iban_' + cc], 'SA00 0000 ...')}
+        </div>
+        ${fld('bank_note_' + cc, 'ملاحظة للعميل (اختياري)', c['bank_note_' + cc], '', true)}
+        <div class="g-grid-filters u-mt8">
+          <label class="u-check"><input type="checkbox" id="extra_on_${cc}" ${c['extra_on_' + cc] === '1' ? 'checked' : ''}> طريقة إضافية</label>
+          ${fld('extra_label_' + cc, 'اسم الطريقة', c['extra_label_' + cc], 'مثلًا STC Pay')}
+        </div>
+        ${fld('extra_details_' + cc, 'تفاصيل الدفع (الرقم / التعليمات)', c['extra_details_' + cc], '', true)}
+      </details>`; }).join('') + `<button class="u-mt10 u-wa" id="mktSave">💾 حفظ الأسواق وطرق الدفع</button><div id="mktMsg" class="u-note u-mt6"></div>`;
+    wrap.querySelectorAll('.mkt-on-lbl').forEach(l => l.addEventListener('click', e => e.stopPropagation()));
+    document.getElementById('mktSave').onclick = async () => {
+      const on = Array.from(wrap.querySelectorAll('.mktOn:checked')).map(x => x.value);
+      if (!on.length) { document.getElementById('mktMsg').textContent = 'فعّل سوقًا واحدًا على الأقل.'; return; }
+      const data = { action: 'save', active_markets: on.join(',') };
+      mk.forEach(([, m]) => { const cc = m.code.toLowerCase();
+        data['bank_on_' + cc] = document.getElementById('bank_on_' + cc).checked ? '1' : '0'; data['extra_on_' + cc] = document.getElementById('extra_on_' + cc).checked ? '1' : '0';
+        ['bank_name', 'bank_holder', 'bank_iban', 'bank_note', 'extra_label', 'extra_details'].forEach(f => { data[f + '_' + cc] = document.getElementById(f + '_' + cc).value.trim(); }); });
+      const rr = await siteCfgAdminApi(data);
+      document.getElementById('mktMsg').textContent = rr && rr.success ? `تم الحفظ ✓ — الأسواق المفعّلة: ${on.join('، ')}` : ((rr && rr.message) || 'تعذّر الحفظ');
+      if (rr && rr.success && window.GShell) GShell.loadAccountMarket(true);
+    };
+  })();
   // الإصدار 96: رقم الإصدار المعروض
   siteCfgAdminApi().then(r => { const i = document.getElementById('cfgVersionLabel'); if (i && r && r.config) i.value = r.config.app_version_label || ''; });
   const vbtn = document.getElementById('cfgVersionSave'); if (vbtn) vbtn.onclick = async () => {
@@ -2137,7 +2191,8 @@ async function renderAdminReportsPage(){
   if(!window.__isAdmin) return renderHome();
   if(!hasPermission('view_reports')) return renderAdminHub();
 
-  const res = await getAdminReports();
+  const mkt = gAdminMarket();   // الإصدار 96: التقارير حسب السوق
+  const res = await getAdminReports(mkt);
   if (!res || !res.success) {
     if (screenStale(__tok)) return; app.innerHTML = `<div class="container">${logoHeader()}<div class="error">تعذّر تحميل التقارير.</div></div>`;
     return;
@@ -2151,6 +2206,14 @@ async function renderAdminReportsPage(){
     </div>`;
   }
 
+  // كل الأسواق وفيه إيرادات بأكتر من عملة ← الرسوم مش هتجمع عملات مختلفة (الملخص بيعرض كل سوق بعملته)
+  const revMarkets = (res.summary || []).filter(x => x.revenue > 0);
+  const mixed = !mkt && new Set(revMarkets.map(x => x.ccy)).size > 1;
+  const ccyTxt = mkt ? (res.currency || '') : (revMarkets[0] ? revMarkets[0].ccy : '');
+  const money = (v) => fmtMoney(v) + (ccyTxt ? ' ' + ccyTxt : '');
+  const summaryHtml = (res.summary || []).length ? `<h2 class="u-mt20">ملخص الأسواق</h2><div class="section-card"><div class="table-scroll"><table class="g-table" id="mktSummary"><thead><tr><th>السوق</th><th>الحالة</th><th>المسجلين</th><th>المشتركين النشطين</th><th>كل الاشتراكات</th><th>الإيراد (الكل)</th><th>إيراد الشهر الحالي</th></tr></thead><tbody>
+    ${res.summary.map(x => `<tr data-mkt="${escapeHtml(x.market)}" class="g-click"><td><b>${escapeHtml(x.market)}</b></td><td>${x.active ? 'مفعّل' : 'غير مفعّل'}</td><td class="g-num">${x.registered}</td><td class="g-num">${x.activeSubs}</td><td class="g-num">${x.subscribers}</td><td class="g-num">${fmtMoney(x.revenue)} ${x.ccy}</td><td class="g-num">${fmtMoney(x.revenueMonth)} ${x.ccy}</td></tr>`).join('')}
+    </tbody></table></div><div class="u-hint u-mt6">اضغط على سوق لعرض تقاريره بالتفصيل. كل سوق بعملته - لا يتم جمع عملات مختلفة.</div></div>` : '';
   const maxRevenue = Math.max(1, ...res.revenueByMonth.map(r=>r.total));
   const maxSignups = Math.max(1, ...res.signupsByMonth.map(r=>r.count));
   const maxPlan = Math.max(1, ...res.byPlan.map(r=>r.total));
@@ -2160,6 +2223,8 @@ async function renderAdminReportsPage(){
       <div>${pageTitle('admin_reports','📊 التقارير والإحصائيات')}</div>
       ${adminNavButtonsHtml()}
     </div>
+    ${gAdminMarketBarHtml('repMarket')}
+    ${mkt ? `<div class="info">السوق: <b>${escapeHtml(mkt)}</b> — العملة: ${escapeHtml(res.currency || '')}</div>` : summaryHtml}
 
     <h2>لقطة سريعة</h2>
     <div class="summary-cards">
@@ -2169,7 +2234,7 @@ async function renderAdminReportsPage(){
 
     <h2 class="u-mt20">الإيرادات شهريًا (آخر 12 شهر)</h2>
     <div class="section-card">
-      ${res.revenueByMonth.length ? res.revenueByMonth.map(r=>barRow(r.month, r.total, maxRevenue, v=>fmtMoney(v))).join('') : '<p class="u-note">لا يوجد بيانات كافية بعد.</p>'}
+      ${mixed ? '<p class="u-note">الإيرادات بأكثر من عملة - اختر سوقًا من القائمة أعلاه لعرض الرسم بعملته.</p>' : res.revenueByMonth.length ? res.revenueByMonth.map(r=>barRow(r.month, r.total, maxRevenue, money)).join('') : '<p class="u-note">لا يوجد بيانات كافية بعد.</p>'}
     </div>
 
     <h2 class="u-mt20">اشتراكات جديدة شهريًا (آخر 12 شهر)</h2>
@@ -2179,10 +2244,13 @@ async function renderAdminReportsPage(){
 
     <h2 class="u-mt20">الإيرادات حسب الباقة (كل الأوقات)</h2>
     <div class="section-card">
-      ${res.byPlan.length ? res.byPlan.map(r=>barRow(`${escapeHtml(r.planName)} (${r.count})`, r.total, maxPlan, v=>fmtMoney(v))).join('') : '<p class="u-note">لا يوجد بيانات كافية بعد.</p>'}
+      ${mixed ? '<p class="u-note">اختر سوقًا لعرض الإيرادات حسب الباقة بعملته.</p>' : ''}${!mixed && res.byPlan.length ? res.byPlan.map(r=>barRow(`${escapeHtml(r.planName)} (${r.count})`, r.total, maxPlan, money)).join('') : (mixed ? '' : '<p class="u-note">لا يوجد بيانات كافية بعد.</p>')}
     </div>
   </div>`;
   wireAdminNavButtons();
+  const rerender = () => { window.__navSilent = true; try { renderAdminReportsPage(); } finally { window.__navSilent = false; } };
+  gWireAdminMarket('repMarket', rerender);
+  app.querySelectorAll('#mktSummary tr[data-mkt]').forEach(tr => tr.addEventListener('click', () => { try { localStorage.setItem('gs_admin_market', tr.dataset.mkt); } catch(e){} rerender(); }));
 }
 
 /* ================== توصيات الشراء - لوحة الأدمن/الموظف ================== */
@@ -2217,6 +2285,8 @@ async function renderRecommendationsAdminPage(){
           <div><label>نقطة الشراء من</label><input type="number" step="any" id="rec_buyFrom" required></div>
           <div><label>نقطة الشراء إلى</label><input type="number" step="any" id="rec_buyTo" required></div>
         </div>
+        <label>السوق (التوصية بتظهر وبتوصل كإشعار لحسابات السوق ده بس)</label>
+        <select id="rec_market" data-g-mkt="skip">${(() => { const a = window.__acct, mk = a && a.markets ? Object.keys(a.markets) : ['مصر'], cur = gAdminMarket() || 'مصر'; return mk.map(m => `<option value="${escapeHtml(m)}" ${m === cur ? 'selected' : ''}>${escapeHtml(m)}${a && a.markets[m] && !a.markets[m].active ? ' (غير مفعّل)' : ''}</option>`).join(''); })()}</select>
         <label>مدة صلاحية التوصية (بعدها تتقفل تلقائيًا ومتظهرش للعميل)</label>
         <select id="rec_validity">
           <option value="24">24 ساعة</option>
@@ -2242,6 +2312,7 @@ async function renderRecommendationsAdminPage(){
 
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:20px;">
       <h2 class="u-m0">سجل التوصيات (<span id="recCount">${recs.length}</span>)</h2>
+      ${gAdminMarketBarHtml('recMarketF')}
       <button class="secondary small u-wa" id="clearNowBtn">🗑️ إلغاء كل النشطة الآن</button>
     </div>
     <div class="section-card" id="recListWrap"></div>
@@ -2264,8 +2335,9 @@ async function renderRecommendationsAdminPage(){
   }
 
   function renderList(){
-    document.getElementById('recCount').textContent = recs.length;
-    document.getElementById('recListWrap').innerHTML = recs.length ? recs.map(r=>{
+    const mf = gAdminMarket(), shown = mf ? recs.filter(r => (r.market || 'مصر') === mf) : recs;
+    document.getElementById('recCount').textContent = shown.length;
+    document.getElementById('recListWrap').innerHTML = shown.length ? shown.map(r=>{
       const canCancel = r.status === 'active' && (window.__isSuperAdmin || (r.createdBy && r.createdBy.toLowerCase() === email.toLowerCase()));
       const st = statusInfo[r.status] || statusInfo.active;
       const timeInfo = r.status === 'active' ? remainingLabel(r.createdAt, r.validityHours) : `أُغلقت: ${formatDateAr(r.archivedAt)}`;
@@ -2273,6 +2345,7 @@ async function renderRecommendationsAdminPage(){
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
           <div><strong>${escapeHtml(r.stockName)} (${escapeHtml(r.symbol)})</strong> — شراء من ${r.buyFrom} إلى ${r.buyTo}
             <span style="font-size:11px;font-weight:bold;color:${st.color};margin-inline-start:8px;">${escapeHtml(st.label)}</span>
+            <span class="g-mkt-tag">🌍 ${escapeHtml(r.market || 'مصر')}</span>
           </div>
           ${canCancel ? `<button class="small danger u-wa" data-gcall="__deleteRec" data-gargs="${gArgs([String(r.id)])}">🗑️ إلغاء الآن</button>` : ''}
         </div>
@@ -2281,6 +2354,7 @@ async function renderRecommendationsAdminPage(){
     }).join('') : '<p class="u-note">لا توجد أي توصيات في السجل بعد.</p>';
   }
   renderList();
+  gWireAdminMarket('recMarketF', renderList);
   window.__recLogTick = setInterval(renderList, 60000); // تحديث العد التنازلي كل دقيقة
 
   window.__deleteRec = async (id) => {
@@ -2309,7 +2383,7 @@ async function renderRecommendationsAdminPage(){
     const data = {
       symbol: val('rec_symbol').trim(), stockName: val('rec_name').trim(),
       buyFrom: val('rec_buyFrom'), buyTo: val('rec_buyTo'),
-      validityHours: val('rec_validity'),
+      validityHours: val('rec_validity'), market: val('rec_market'),
       resistance1: val('rec_r1'), resistance1Pct: val('rec_r1p'),
       resistance2: val('rec_r2'), resistance2Pct: val('rec_r2p'),
       resistance3: val('rec_r3'), resistance3Pct: val('rec_r3p'),
@@ -2319,7 +2393,7 @@ async function renderRecommendationsAdminPage(){
     const resultEl = document.getElementById('addRecResult');
     if (r.success) {
       resultEl.innerHTML = '<div class="info u-mt8">✅ تم إرسال التوصية.</div>';
-      document.getElementById('addRecForm').reset();
+      const keepMkt = val('rec_market'); document.getElementById('addRecForm').reset(); document.getElementById('rec_market').value = keepMkt;
       const fresh = await getRecommendationsLog();
       if (fresh.success) { recs = fresh.recommendations; renderList(); }
     } else {

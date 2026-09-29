@@ -701,7 +701,7 @@ async function saveSiteContent(key, value){ return apiPost('/site_content_save.p
 async function getAllPageBackgrounds(){ try{ return await apiGet('/page_background_get.php'); }catch(e){ return {success:false}; } }
 async function savePageBackground(key, image){ return apiPost('/page_background_save.php', { key, image }); }
 async function getMySubscriptionHistory(){ try{ return await apiGet('/my_subscription_history.php'); }catch(e){ return {success:false}; } }
-async function getAdminReports(){ try{ return await apiGet('/admin_reports.php'); }catch(e){ return {success:false}; } }
+async function getAdminReports(market){ try{ return await apiGet('/admin_reports.php' + (market ? '?market=' + encodeURIComponent(market) : '')); }catch(e){ return {success:false}; } }
 async function getDisclaimerStatus(){ try{ return await apiGet('/disclaimer_status.php'); }catch(e){ return {success:false}; } }
 async function getPublicDisclaimerText(){ try{ return await apiGet('/disclaimer_text.php'); }catch(e){ return {success:false}; } }
 async function acceptDisclaimer(){ return apiPost('/disclaimer_accept.php', { agreed: '1' }); }
@@ -779,6 +779,24 @@ function chatAttachmentHtml(m){
   return `<a href="${url}" target="_blank" rel="noopener"><img src="${url}" alt="${name}"></a>`;
 }
 // الإصدار 96: رسم الرسائل بالتدريج - لو الرسائل القديمة زي ما هي بتتضاف الجديدة بس (من غير إعادة رسم ولا تحميل الصور تاني)
+/* الإصدار 96: قائمة "السوق" في شاشات الإدارة (كل الأسواق + الأسواق الخمسة) - الاختيار بيتحفظ بين الشاشات */
+function gAdminMarket(){ try { return localStorage.getItem('gs_admin_market') || ''; } catch(e){ return ''; } }
+function gAdminMarketBarHtml(id){
+  const a = window.__acct, mk = a && a.markets ? Object.keys(a.markets) : ['مصر'], v = gAdminMarket();
+  return `<div class="g-mkt-bar"><label>🌍 السوق <select id="${id}" data-g-mkt="skip"><option value="">كل الأسواق</option>${mk.map(m => `<option value="${escapeHtml(m)}" ${m === v ? 'selected' : ''}>${escapeHtml(m)}${a && a.markets[m] ? ' — ' + escapeHtml(a.markets[m].ccyAr) + (a.markets[m].active ? '' : ' (غير مفعّل)') : ''}</option>`).join('')}</select></label></div>`;
+}
+function gWireAdminMarket(id, onChange){
+  const el = document.getElementById(id); if (!el) return;
+  el.value = gAdminMarket();
+  el.addEventListener('change', () => { try { localStorage.setItem('gs_admin_market', el.value); } catch(e){} onChange(el.value); });
+}
+// عملة السوق (رمز ISO) - الحسابات القديمة من غير سوق = مصر
+function gMktCcy(m){ const a = window.__acct, x = a && a.markets && a.markets[m || 'مصر']; return x ? x.ccy : ({ 'مصر':'EGP', 'السعودية':'SAR', 'الإمارات':'AED', 'قطر':'QAR', 'الكويت':'KWD' })[m] || 'EGP'; }
+// إجمالي منفصل لكل عملة (مينفعش نجمع جنيه على ريال)
+function gTotalsByCcy(list, amountOf, ccyOf){
+  const t = {}; list.forEach(r => { const c = ccyOf(r) || 'EGP'; t[c] = (t[c] || 0) + (+amountOf(r) || 0); });
+  const keys = Object.keys(t); return keys.length ? keys.map(c => `${fmtMoney(t[c])} ${c}`).join(' + ') : fmtMoney(0);
+}
 function chatRenderInto(box, msgs, emptyHtml){
   const ids = msgs.map(m => String(m.id)), prev = box.__ids || [];
   if (!msgs.length) { box.innerHTML = emptyHtml || ''; box.__ids = []; return; }

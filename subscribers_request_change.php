@@ -35,7 +35,7 @@ if (isBlacklisted($conn, 'email', $email)) {
 }
 
 // الباقة والسعر والمدة بييجوا من قاعدة البيانات مباشرة - مش من الطلب
-$planStmt = $conn->prepare("SELECT id, name, amount, duration_days FROM subscription_plans WHERE id = ? AND is_active = 1 LIMIT 1");
+$planStmt = $conn->prepare("SELECT * FROM subscription_plans WHERE id = ? AND is_active = 1 LIMIT 1");
 $planStmt->bind_param("s", $planId);
 $planStmt->execute();
 $planRow = $planStmt->get_result()->fetch_assoc();
@@ -48,6 +48,10 @@ if (!$planRow) {
 
 $planName = $planRow['name'];
 $amount = (float)$planRow['amount'];
+// الإصدار 96: تغيير الباقة لباقة من نفس بورصة الحساب بس
+require_once __DIR__ . '/markets_core.php';
+$acctMarket = mc_account_market($conn, $email);
+if (isset($planRow['market']) && $planRow['market'] !== $acctMarket) { echo json_encode(["success" => false, "message" => "هذه الباقة ليست متاحة لبورصة حسابك (" . $acctMarket . ")."]); exit(); }
 $durationDays = (int)$planRow['duration_days'];
 
 // التجربة المجانية مرة واحدة بس - غير ممكن حد مشترك يرجع لها
@@ -57,7 +61,7 @@ if ($amount <= 0 && hasEverSubscribed($conn, $email)) {
 }
 
 // اشتراكات مدفوعة عن طريق تحويل لازم يكون معاها رقم عملية وصورة إثبات (حسب إعدادات الأدمن) - لا يوجد تحويل بدونهم
-if ($amount > 0 && !payment_method_allowed($conn, $paymentMethod)) {
+if ($amount > 0 && !mc_method_allowed($conn, $acctMarket, $paymentMethod)) {
     echo json_encode(["success" => false, "message" => "طريقة الدفع هذه غير متاحة الآن. اختر طريقة أخرى."]);
     exit();
 }

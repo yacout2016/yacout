@@ -12,6 +12,7 @@ session_start();
 include 'db.php';
 require_once __DIR__ . '/plans_store.php';
 require_once __DIR__ . '/trades_lib.php';
+require_once __DIR__ . '/markets_core.php';
 
 function trr_out($a){ echo json_encode($a, JSON_UNESCAPED_UNICODE); exit(); }
 if (!isset($_SESSION['user_email'])) { http_response_code(403); trr_out(["success" => false, "message" => "سجّل الدخول أولًا."]); }
@@ -46,6 +47,11 @@ try {
         if ($isStaffReport) {
             $em = trim((string)($_GET['email'] ?? ''));
             if ($em !== '') { $where[] = "account_email LIKE ?"; $types .= 's'; $args[] = '%' . mb_substr($em, 0, 100) . '%'; }
+            // فلتر السوق (سوق الحساب) - الحسابات القديمة من غير سوق = مصر
+            $mk = trim((string)($_GET['market'] ?? ''));
+            if ($mk !== '' && function_exists('mc_valid') && mc_valid($mk) && mc_ready($conn)) {
+                $where[] = "account_email IN (SELECT username FROM users WHERE COALESCE(account_market, 'مصر') = ?)"; $types .= 's'; $args[] = $mk;
+            }
         } else {
             // العميل: صفقاته هو بس - ولو جدوله فاضي وعنده خطط بيتبني أول مرة
             $c = $conn->prepare("SELECT COUNT(*) c FROM plan_trades WHERE account_email = ?"); $c->bind_param("s", $me); $c->execute();

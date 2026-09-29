@@ -701,7 +701,7 @@ function send_web_push($conn, $ownerKey, $title, $body, $url = '/index.php'){
 // بيبعت إشعار لكل الأجهزة اللي فعّلت الإشعارات على الموقع (عدا المدير نفسه) - مستخدمة لتوصيات الشراء
 // ملحوظة: النظام الحالي بيسجل الإشعار تحت مفتاح واحد لكل زائر/متصفح (مش لكل حساب عميل مسجّل تحديدًا)
 // يعني ده بيوصل لأي حد فعّل إشعارات الموقع، مش بالضرورة كل عميل مسجّل حساب
-function broadcast_web_push_to_customers($conn, $title, $body, $url = '/index.php'){
+function broadcast_web_push_to_customers($conn, $title, $body, $url = '/index.php', $market = null){
     // التوصيات محتوى مدفوع: الإشعار بتفاصيلها بيوصل بس للأجهزة المربوطة بحساب اشتراكه شغال
     $hasEmailCol = ($c = @$conn->query("SHOW COLUMNS FROM push_subscriptions LIKE 'account_email'")) && $c->num_rows > 0;
     if (!$hasEmailCol) return 0;
@@ -711,6 +711,8 @@ function broadcast_web_push_to_customers($conn, $title, $body, $url = '/index.ph
         $em = $row['account_email'];
         if (!isset($checked[$em])) $checked[$em] = hasActiveSubscription($conn, $em);
         if (!$checked[$em]) continue;
+        // توصية سوق معيّن بتوصل بس لحسابات السوق ده
+        if ($market !== null && function_exists('mc_account_market') && mc_account_market($conn, $em) !== $market) continue;
         $sent += send_web_push($conn, $row['owner_key'], $title, $body, $url);
     }
     return $sent;
