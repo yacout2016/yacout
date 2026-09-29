@@ -3,7 +3,7 @@
    (اتفصل من griffine.js - كل الملفات بتتحمّل بالترتيب في index.php وبتشارك نفس المتغيرات العامة)
    ===================================================================== */
 /* GRIFFINE — كود الواجهة الأساسي (اتفصل من index.php في الإصدار 68) */
-const GRIFFINE_LOGO_B64 = location.origin + '/griffine-logo-light.webp?v=96';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
+const GRIFFINE_LOGO_B64 = location.origin + '/griffine-logo-light.webp?v=97';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
 /* ================== حسابات مساعدة ================== */
 function daysBetween(isoStart, isoEnd){
   if(!isoStart) return null;
@@ -11,15 +11,26 @@ function daysBetween(isoStart, isoEnd){
   const end = isoEnd ? new Date(isoEnd) : new Date();
   return Math.floor((end - start) / 86400000);
 }
+/* الإصدار 97: أوقات السيرفر بتتسجّل بتوقيت جرينتش (UTC) بصيغة "YYYY-MM-DD HH:MM:SS"
+   ← بتتعرض بتوقيت الجهاز المفتوح عليه البرنامج (موبايل / كمبيوتر / تابلت).
+   التواريخ من غير وقت (YYYY-MM-DD) والتواريخ اللي فيها منطقة زمنية بتتقري زي ما هي. */
+function gServerDate(v){
+  if (v == null || v === '') return null;
+  if (v instanceof Date) return v;
+  const s = String(v).trim();
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(s)) return new Date(s.replace(' ', 'T') + 'Z');
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); }
+  return new Date(s);
+}
 function formatDateAr(iso){
   if(!iso) return '-';
-  try{ return new Date(iso).toLocaleDateString('ar-EG'); }catch(e){ return iso; }
+  try{ const d = gServerDate(iso); return isNaN(d.getTime()) ? iso : d.toLocaleDateString('ar-EG'); }catch(e){ return iso; }
 }
 /* تاريخ + وقت كامل دايمًا (من غير منطق "النهارده" النسبي) - يُستخدم في سجلات زي الصفقات المغلقة */
 function formatDateTimeAr(iso){
   if(!iso) return '-';
   try{
-    const d = new Date(iso.includes('T') ? iso : iso.replace(' ','T'));
+    const d = gServerDate(iso);
     if (isNaN(d.getTime())) return formatDateAr(iso);
     const timePart = d.toLocaleTimeString('ar-EG', { hour:'2-digit', minute:'2-digit', hour12:true });
     return `${d.toLocaleDateString('ar-EG')} ${timePart}`;
@@ -29,7 +40,7 @@ function formatDateTimeAr(iso){
 function formatChatTime(iso){
   if(!iso) return '';
   try{
-    const d = new Date(iso.replace(' ','T'));
+    const d = gServerDate(iso);
     if(isNaN(d.getTime())) return '';
     const now = new Date();
     const isToday = d.toDateString() === now.toDateString();
@@ -1194,9 +1205,9 @@ async function renderAccessExpired(sub){
 }
 
 const app = document.getElementById('app');
-const TOP7_LOGO_B64 = location.origin + '/top7-logo-light.webp?v=96';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
-const GRIFFINE_LOGO_DARK_B64 = location.origin + '/griffine-logo-dark.webp?v=96';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
-const TOP7_LOGO_DARK_B64 = location.origin + '/top7-logo-dark.webp?v=96';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
+const TOP7_LOGO_B64 = location.origin + '/top7-logo-light.webp?v=97';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
+const GRIFFINE_LOGO_DARK_B64 = location.origin + '/griffine-logo-dark.webp?v=97';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
+const TOP7_LOGO_DARK_B64 = location.origin + '/top7-logo-dark.webp?v=97';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
 /* الوضع الحالي (فاتح/ليلي) - الإصدار 71: بيتقري من الصفحة نفسها (data-theme) مش من التخزين بس،
    عشان الشعار يطلع صح حتى لو المتصفح مانع التخزين (وضع التصفح الخفي)
    (السكربت الصغير في index.php بيحط data-theme من التخزين قبل تحميل أي ملف، فالاتنين دايمًا متطابقين) */

@@ -227,6 +227,34 @@ function wireDacStockReportSection(plans, symbols){
 }
 
 /* ================== قائمة الخطط ================== */
+/* الإصدار 97: رمز السهم لازم يكون موجود في البورصة قبل إنشاء خطة
+   - بنسأل مصدر الأسعار عن الرمز؛ لو ملقاهوش بنتأكد إن المصدر نفسه شغال (سهم مرجعي) - لو المصدر واقع منمنعش المستخدم */
+async function gCheckSymbol(symbol, market){
+  const q = (s) => apiGet(`/markets_api.php?action=quote&symbol=${encodeURIComponent(s)}&market=${encodeURIComponent(market || 'مصر')}`).catch(() => null);
+  const r = await q(symbol);
+  if (r && r.success && +r.last > 0) return { ok: true, last: +r.last };
+  const REF = { 'مصر':'COMI', 'السعودية':'2222', 'الإمارات':'EMAAR', 'قطر':'QNBK', 'الكويت':'NBK' };
+  const ref = await q(REF[market] || 'COMI');
+  if (!(ref && ref.success && +ref.last > 0)) return { ok: true, unverified: true };
+  return { ok: false, msg: `الرمز ${symbol} غير موجود في بورصة ${market || 'مصر'} — اكتب رمز السهم كما يظهر في شاشة البورصة (مثل COMI).` };
+}
+
+/* الإصدار 97: آخر سعر للسهم في شاشة الخطة (DCA / Grid) - من ذاكرة الأسعار فورًا، وبعدين تحديث من السيرفر
+   وكل 5 دقائق طول ما الشاشة مفتوحة. onPrice(السعر) بتتنادى لما السعر يتغيّر */
+function gPlanLivePrice(tok, plans, grids, key, onPrice){
+  if (typeof mkEnsureLivePrices !== 'function') return;
+  let last = (window.__mkLivePx || {})[key] || null;
+  const check = () => { const v = (window.__mkLivePx || {})[key] || null; if (v !== last && !screenStale(tok)) { last = v; onPrice(v); } };
+  const run = async () => {
+    try { await mkEnsureLivePrices(plans, grids, 4000); } catch(e){}
+    check();
+    if (window.__mkLivePxPending) window.__mkLivePxPending.then(check).catch(() => {});
+  };
+  run();
+  clearInterval(window.__planPxTimer);
+  window.__planPxTimer = setInterval(() => { if (screenStale(tok)) { clearInterval(window.__planPxTimer); return; } run(); }, 5 * 60 * 1000);
+}
+
 async function renderPlansList(){
   const __tok = screenToken();   // الإصدار 88
   pushNav(() => renderPlansList());
@@ -1724,6 +1752,8 @@ async function renderGridPlanForm(){
       resultEl.innerHTML = '<div class="error u-mt10">أدخل كود السهم.</div>';
       return;
     }
+    const symChk = await gCheckSymbol(symbol, market);
+    if (!symChk.ok) { resultEl.innerHTML = `<div class="error u-mt10">${escapeHtml(symChk.msg)}</div>`; return; }
     const existingDacPlans = await getPlans(email);
     if (existingDacPlans[symbol]) {
       resultEl.innerHTML = '<div class="error u-mt10">هذا السهم لديه خطة تعزيز متوسط (DCA) بالفعل — لا يمكن أن يكون السهم نفسه في خطتين في الوقت نفسه. احذف خطة الـDCA أولًا إذا أردت بدء خطة شبكة بدلًا منها.</div>';
@@ -1823,13 +1853,17 @@ async function renderGridPlanDetail(symbol){
 
     <h2 class="u-mt20">موقف السهم على آخر سعر</h2>
     <div class="section-card">
-      <label>آخر سعر (اختياري - إدخال يدوي، وإذا تُرك فارغًا سيُستخدم آخر سعر شراء فعلي تم تنفيذه)</label>
-      <input type="number" step="any" id="gridManualLastPriceInput" value="${g.manualLastPrice??''}" placeholder="مثال: 45.20" style="font-weight:bold;color:#111;font-size:16px;">
-      <div class="summary-cards u-mt12">
-        <div class="summary-card"><div class="val" id="gridStatusLastPriceUsed">-</div><div class="lbl">السعر المستخدم في الحساب</div></div>
-        <div class="summary-card"><div class="val" id="gridStatusTotalValue">-</div><div class="lbl">إجمالي القيمة الحالية للكمية المملوكة</div></div>
-        <div class="summary-card"><div class="val" id="gridStatusDropPercent">-</div><div class="lbl">نسبة الانخفاض عن متوسط التكلفة</div></div>
+      <div class="summary-cards">
+        <div class="summary-card"><div class="val" id="gridStatusLastPriceUsed">-</div><div class="lbl" id="gridStatusLastPriceLbl">آخر سعر للسهم (متأخر 15 دقيقة)</div></div>
+        <div class="summary-card"><div class="val" id="gridStatusTotalValue">-</div><div class="lbl">القيمة الحالية للكمية المملوكة</div></div>
+        <div class="summary-card"><div class="val" id="gridStatusUnreal">-</div><div class="lbl">الربح / الخسارة على آخر سعر</div></div>
+        <div class="summary-card"><div class="val" id="gridStatusDropPercent">-</div><div class="lbl">نسبة السعر عن متوسط التكلفة</div></div>
+        <div class="summary-card"><div class="val" id="gridStatusNext">-</div><div class="lbl">أقرب حد شراء / بيع</div></div>
       </div>
+      <details class="u-mt10"><summary class="u-fs12">🧪 سعر افتراضي للتجربة (اختياري)</summary>
+        <label class="u-fs12">اكتب سعرًا لترى الحسابات عليه — لا يُحفظ، وعند مسحه يرجع الحساب على آخر سعر للسهم</label>
+        <input type="number" step="any" id="gridManualLastPriceInput" value="" placeholder="مثال: 45.20" style="font-weight:bold;font-size:16px;max-width:220px;">
+      </details>
       <div id="rangeAlertWrap" class="u-mt10"><div id="rangeAlert"></div></div>
     </div>
 
@@ -1838,8 +1872,8 @@ async function renderGridPlanDetail(symbol){
 
     <h2 class="u-mt20">مستويات الشبكة</h2>
     <div class="section-card u-ox">
-      <table>
-        <thead><tr><th>المستوى المخطط</th><th>الكمية الإرشادية</th><th>الحالة</th><th>الشراء الفعلي</th><th>هدف البيع</th><th>عمليات البيع الفعلي</th><th>دورات</th><th>الكمية المتبقية تراكمي</th><th>متوسط التكلفة تراكمي</th><th>هدف البيع تراكمي</th><th>الربح المحقق تراكمي</th></tr></thead>
+      <table id="gridLevelsTable" data-g-rows="7">
+        <thead><tr><th>المستوى المخطط</th><th>الكمية الإرشادية</th><th>الحالة</th><th>الشراء الفعلي</th><th>هدف البيع</th><th>عمليات البيع الفعلي</th><th>دورات</th><th>الكمية المتبقية تراكمي</th><th>متوسط التكلفة تراكمي</th><th>هدف البيع تراكمي</th><th>الربح المحقق تراكمي</th><th>ربح/خسارة على آخر سعر</th></tr></thead>
         <tbody id="gridLevelsBody"></tbody>
       </table>
     </div>
@@ -1993,27 +2027,36 @@ async function renderGridPlanDetail(symbol){
     renderGridPlanDetail(symbol);
   };
 
+  // الإصدار 97: الحسابات على آخر سعر للسهم (متأخر 15 دقيقة) - أو سعر التجربة لو اتكتب - ولو السعر مش متاح ← آخر تنفيذ
+  const gPxKey = String(symbol).toUpperCase() + '|' + (g.market || 'مصر');
+  let gLivePx = (window.__mkLivePx || {})[gPxKey] || null;
   document.getElementById('gridManualLastPriceInput').addEventListener('input', updateStatusCards);
-  document.getElementById('gridManualLastPriceInput').addEventListener('change', async ()=>{
-    const val = parseFloat(document.getElementById('gridManualLastPriceInput').value);
-    g.manualLastPrice = isNaN(val) ? null : val;
-    await persist();
-  });
   function updateStatusCards(){
     gsum = computeGridSummary();
-    const manualVal = parseFloat(document.getElementById('gridManualLastPriceInput').value);
-    const lastPrice = !isNaN(manualVal) && document.getElementById('gridManualLastPriceInput').value !== '' ? manualVal : (() => {
-      const executions = g.levels.flatMap(l => [l.executedPrice, ...(l.sells||[]).map(s=>s.price)]).filter(p => p != null);
-      return executions.length ? executions[executions.length-1] : null;
-    })();
+    const inp = document.getElementById('gridManualLastPriceInput'); if (!inp) return;
+    const manualVal = parseFloat(inp.value);
+    const lastExec = (() => { const ex = g.levels.flatMap(l => [l.executedPrice, ...(l.sells||[]).map(s=>s.price)]).filter(p => p != null); return ex.length ? ex[ex.length-1] : null; })();
+    const lastPrice = manualVal > 0 ? manualVal : (gLivePx || lastExec);
+    const lbl = document.getElementById('gridStatusLastPriceLbl');
+    if (lbl) lbl.textContent = manualVal > 0 ? 'سعر افتراضي للتجربة' : (gLivePx ? 'آخر سعر للسهم (متأخر 15 دقيقة)' : 'آخر تنفيذ (سعر السوق غير متاح الآن)');
     document.getElementById('gridStatusLastPriceUsed').textContent = lastPrice!=null ? fmtMoney(lastPrice) : '-';
     document.getElementById('gridStatusTotalValue').textContent = (lastPrice!=null && gsum.heldQty>0) ? fmtMoney(lastPrice*gsum.heldQty) : '-';
-    const dropEl = document.getElementById('gridStatusDropPercent');
-    if (lastPrice!=null && gsum.avgCostCurrent>0) {
-      const pct = (lastPrice-gsum.avgCostCurrent)/gsum.avgCostCurrent*100;
-      dropEl.textContent = pct.toFixed(2)+'%';
-      dropEl.className = 'val ' + (pct<0?'neg':'pos');
-    } else { dropEl.textContent = '-'; dropEl.className = 'val'; }
+    const dropEl = document.getElementById('gridStatusDropPercent'), unEl = document.getElementById('gridStatusUnreal');
+    if (lastPrice!=null && gsum.avgCostCurrent>0 && gsum.heldQty>0) {
+      const pct = (lastPrice-gsum.avgCostCurrent)/gsum.avgCostCurrent*100, pnl = (lastPrice-gsum.avgCostCurrent)*gsum.heldQty;
+      dropEl.textContent = (pct>0?'+':'') + pct.toFixed(2)+'%'; dropEl.className = 'val ' + (pct<0?'neg':'pos');
+      unEl.textContent = fmtMoney(pnl); unEl.className = 'val ' + (pnl<0?'neg':'pos');
+    } else { dropEl.textContent = '-'; dropEl.className = 'val'; unEl.textContent = '-'; unEl.className = 'val'; }
+    // أقرب حد شراء (أعلى مستوى فاضي تحت/عند السعر) وأقرب حد بيع (أقل هدف بيع لمستوى مشترى)
+    const nb = g.levels.filter(l => l.status !== 'bought' && +l.plannedPrice > 0).map(l => +l.plannedPrice).sort((a, b) => b - a)[0];
+    const ns = g.levels.filter(l => l.status === 'bought' && l.executedQty > 0 && +l.sellTargetPrice > 0).map(l => +l.sellTargetPrice).sort((a, b) => a - b)[0];
+    const nxEl = document.getElementById('gridStatusNext');
+    if (nxEl) nxEl.innerHTML = `${nb ? `شراء ${fmt2(nb)}${lastPrice!=null && lastPrice <= nb ? ' ✅' : ''}` : 'شراء -'}<br>${ns ? `بيع ${fmt2(ns)}${lastPrice!=null && lastPrice >= ns ? ' ✅' : ''}` : 'بيع -'}`;
+    document.querySelectorAll('#gridLevelsBody td.lv-unreal').forEach(td => {
+      const q = +td.dataset.q, p = +td.dataset.p;
+      if (!(q > 0) || !(p > 0) || lastPrice == null) { td.textContent = '-'; td.className = 'lv-unreal'; return; }
+      const v = (lastPrice - p) * q; td.textContent = fmt2(v); td.className = 'lv-unreal ' + (v<0 ? 'neg' : v>0 ? 'pos' : '');
+    });
 
     const alertEl = document.getElementById('rangeAlert');
     if (lastPrice == null) {
@@ -2183,12 +2226,14 @@ async function renderGridPlanDetail(symbol){
         <td>${cumAvgCost!=null?fmt2(cumAvgCost):'-'}</td>
         <td>${cumSellTarget!=null?fmt2(cumSellTarget):'-'}</td>
         <td class="${cumRealizedProfit<0?'neg':cumRealizedProfit>0?'pos':''}">${fmt2(cumRealizedProfit)}</td>
+        <td class="lv-unreal" data-q="${lv.status === 'bought' ? (+lv.executedQty || 0) : 0}" data-p="${lv.status === 'bought' ? (+lv.executedPrice || 0) : 0}">-</td>
       </tr>`;
     }).join('');
 
     updateStatusCards();
   }
   renderLevels();
+  gPlanLivePrice(__tok, {}, { [symbol]: g }, gPxKey, (v) => { gLivePx = v; updateStatusCards(); });
 
   window.__gridBuyLevel = async (idx) => {
     const qty = parseFloat(document.getElementById('gridBuyQty_'+idx).value);
@@ -2643,6 +2688,8 @@ async function renderNewPlanForm(error, formState){
 
     const plans = await getPlans(email);
     if(plans[symbol]) return renderNewPlanForm('توجد خطة بالفعل لهذا السهم — احذفها أولًا إذا أردت البدء من جديد');
+    const symChk = await gCheckSymbol(symbol, market);
+    if (!symChk.ok) return renderNewPlanForm(symChk.msg);
     const existingGrids = await getGridPlans(email);
     if(existingGrids[symbol] && !existingGrids[symbol].closed) return renderNewPlanForm('هذا السهم لديه خطة شبكة (Grid) نشطة بالفعل — لا يمكن أن يكون السهم نفسه في خطتين (تعزيز متوسط + شبكة) في الوقت نفسه. أغلق خطة الشبكة أولًا إذا أردت بدء خطة تعزيز متوسط بدلًا منها.');
 
@@ -3006,7 +3053,9 @@ async function renderPlanDetail(symbol){
   if (ensureEnoughLevels(planObj)) { await savePlans(email, plans); }
 
   const sim = simulatePlan(planObj);
-  const exitTargetPrice = (sim.avgCostCurrent!=null && planObj.exitProfitPercent) ? sim.avgCostCurrent * (1 + planObj.exitProfitPercent/100) : null;
+  // الإصدار 97: نقطة الخروج الكلي = متوسط التكلفة × (1 + نسبة ربح الخروج الكلي) - ولو مش متحددة ← نسبة ربح الخطة
+  const exitPct = (+planObj.exitProfitPercent > 0) ? +planObj.exitProfitPercent : (+planObj.profitTarget > 0 ? +planObj.profitTarget : null);
+  const exitTargetPrice = (sim.avgCostCurrent!=null && sim.heldQty > 0 && exitPct!=null) ? sim.avgCostCurrent * (1 + exitPct/100) : null;
 
   let trimmedShown = false;
   const rowsToRender = sim.rows
@@ -3106,6 +3155,7 @@ async function renderPlanDetail(symbol){
       <td>${fmt2(r.cumAvgCost)}</td>
       <td>${fmt2(r.cumSellTarget)}</td>
       <td class="${r.cumRealizedProfit<0?'neg':r.cumRealizedProfit>0?'pos':''}">${fmt2(r.cumRealizedProfit)}</td>
+      <td class="lv-unreal" data-q="${r.executed && !r.trimmed ? Math.max(0, (+r.qty || 0) - (r.sells || []).reduce((a, x) => a + (+x.qty || 0), 0)) : 0}" data-p="${r.executed ? (+r.price || 0) : 0}">-</td>
       <td>${statusTag}</td>
       <td class="date-col">${r.execDate?formatDateAr(r.execDate):'-'}</td>
       <td class="date-col">${r.daysElapsed!=null?r.daysElapsed+' يوم':'-'}</td>
@@ -3151,37 +3201,43 @@ async function renderPlanDetail(symbol){
         <button class="small" id="updateExitProfitBtn">تحديث</button>
       </div>
     </div>
-    ${exitTargetPrice!=null ? `<div class="info">🎯 لو السعر وصل <strong>${fmt2(exitTargetPrice)}</strong>، فإن بيع كل الكمية المملوكة الآن سيحقق نسبة ربح ${planObj.exitProfitPercent}% على متوسط تكلفتك — المستوى الأقرب لذلك مُبرز باللون الأخضر في الجدول أدناه.</div>` : ''}
+    ${exitTargetPrice!=null ? `<div class="info">🎯 نقطة الخروج الكلي: <strong>${fmt2(exitTargetPrice)}</strong> — لو آخر سعر للسهم وصلها أو زاد عنها، بيع كل الكمية المملوكة (${fmtQty(sim.heldQty)} سهم) يحقق ربح ${exitPct}% أو أكثر على متوسط تكلفتك (${fmt2(sim.avgCostCurrent)})${+planObj.exitProfitPercent > 0 ? '' : ' — محسوبة بنسبة ربح الخطة لأن نسبة الخروج الكلي غير محددة'}. المستوى الأقرب لها مُبرز بالأخضر في الجدول.</div>` : ''}
 
     <div class="summary-cards">
       <div class="summary-card"><div class="val">${fmtMoney(sim.avgCostCurrent)}</div><div class="lbl">متوسط التكلفة الحالي</div></div>
       <div class="summary-card"><div class="val">${fmtMoney(sim.sellTargetCurrent)}</div><div class="lbl">هدف البيع (${planObj.profitTarget}%)</div></div>
       <div class="summary-card"><div class="val">${sim.heldQty.toLocaleString('en-US')}</div><div class="lbl">الكمية المتبقية حاليًا</div></div>
       <div class="summary-card"><div class="val">${fmtMoney(sim.totalBuyAmountSpent)}</div><div class="lbl">إجمالي المبلغ المستثمر</div></div>
-      <div class="summary-card"><div class="val ${(sim.avgCostCurrent!=null && sim.sellTargetCurrent!=null)?((sim.sellTargetCurrent-sim.avgCostCurrent)*sim.heldQty>=0?'pos':'neg'):''}">${(sim.avgCostCurrent!=null && sim.sellTargetCurrent!=null)?fmtMoney((sim.sellTargetCurrent-sim.avgCostCurrent)*sim.heldQty):'-'}</div><div class="lbl">الربح المتوقع لو البيع الآن</div></div>
+      <div class="summary-card"><div class="val" id="statusSellNow">-</div><div class="lbl">الربح لو بعت كل الكمية على آخر سعر</div></div>
       <div class="summary-card"><div class="val ${sim.totalRealizedProfit>=0?'pos':'neg'}">${fmtMoney(sim.totalRealizedProfit)}</div><div class="lbl">الربح المحقق حتى الآن</div></div>
     </div>
 
     <h2 class="u-mt20">موقف السهم على آخر سعر</h2>
     <div class="section-card">
-      <label>آخر سعر (اختياري - إدخال يدوي، وإذا تُرك فارغًا سيُستخدم سعر آخر مستوى شراء تم تنفيذه)</label>
-      <input type="number" step="any" id="manualLastPriceInput" value="${planObj.manualLastPrice??''}" placeholder="مثال: 45.20" style="font-weight:bold;color:#111;font-size:16px;">
-      <div class="summary-cards u-mt12">
-        <div class="summary-card"><div class="val" id="statusLastPriceUsed">-</div><div class="lbl">السعر المستخدم في الحساب</div></div>
-        <div class="summary-card"><div class="val" id="statusTotalValue">-</div><div class="lbl">إجمالي القيمة الحالية للكمية المملوكة</div></div>
-        <div class="summary-card"><div class="val" id="statusDropPercent">-</div><div class="lbl">نسبة الانخفاض عن متوسط التكلفة</div></div>
+      <div class="summary-cards">
+        <div class="summary-card"><div class="val" id="statusLastPriceUsed">-</div><div class="lbl" id="statusLastPriceLbl">آخر سعر للسهم (متأخر 15 دقيقة)</div></div>
+        <div class="summary-card"><div class="val" id="statusTotalValue">-</div><div class="lbl">القيمة الحالية للكمية المملوكة</div></div>
+        <div class="summary-card"><div class="val" id="statusUnreal">-</div><div class="lbl">الربح / الخسارة على آخر سعر</div></div>
+        <div class="summary-card"><div class="val" id="statusDropPercent">-</div><div class="lbl">نسبة السعر عن متوسط التكلفة</div></div>
+        <div class="summary-card"><div class="val">${exitTargetPrice!=null ? fmtMoney(exitTargetPrice) : '-'}</div><div class="lbl">نقطة الخروج الكلي${exitPct!=null ? ` (+${exitPct}%)` : ''}</div></div>
+        <div class="summary-card"><div class="val" id="statusExitState">-</div><div class="lbl">حالة الخروج الكلي</div></div>
       </div>
+      <details class="u-mt10"><summary class="u-fs12">🧪 سعر افتراضي للتجربة (اختياري)</summary>
+        <label class="u-fs12">اكتب سعرًا لترى الحسابات عليه — لا يُحفظ، وعند مسحه يرجع الحساب على آخر سعر للسهم</label>
+        <input type="number" step="any" id="manualLastPriceInput" value="" placeholder="مثال: 45.20" style="font-weight:bold;font-size:16px;max-width:220px;">
+      </details>
     </div>
 
     <h2 class="u-mt20">جدول المستويات (تراكمي)</h2>
     <button class="secondary small u-wa" id="toggleDatesBtn">📅 إظهار/إخفاء أعمدة التواريخ</button>
     <div class="section-card u-ox">
-      <table id="levelsTable" class="dates-hidden">
+      <table id="levelsTable" class="dates-hidden" data-g-rows="7">
         <thead><tr>
           <th>المستوى</th><th>عدد الأسهم</th><th>سعر الشراء</th><th>قيمة الشراء</th>
           <th>الشراء الفعلي</th><th>عمليات البيع الفعلي</th>
           <th>الكمية المتبقية تراكمي</th><th>متوسط التكلفة تراكمي</th><th>هدف البيع تراكمي</th>
           <th>الربح المحقق تراكمي</th>
+          <th>ربح/خسارة على آخر سعر</th>
           <th>الحالة</th>
           <th class="date-col">تاريخ الشراء</th><th class="date-col">الأيام المنقضية</th><th class="date-col">تاريخ غلق الصفقة</th>
         </tr></thead>
@@ -3228,35 +3284,40 @@ async function renderPlanDetail(symbol){
     renderPlanDetail(symbol);
   };
 
+  // الإصدار 97: كل الحسابات على آخر سعر للسهم (متأخر 15 دقيقة) - أو سعر التجربة لو اتكتب - ولو السعر مش متاح ← آخر سعر شراء
+  const pxKey = String(symbol).toUpperCase() + '|' + (planObj.market || 'مصر');
+  let livePx = (window.__mkLivePx || {})[pxKey] || null;
   function updateStatusFields(){
-    const manualVal = parseFloat(document.getElementById('manualLastPriceInput').value);
-    const lastPriceUsed = (manualVal>0) ? manualVal : sim.lastBoughtPrice;
-    const totalValueEl = document.getElementById('statusTotalValue');
-    const lastPriceEl = document.getElementById('statusLastPriceUsed');
-    const dropEl = document.getElementById('statusDropPercent');
-    if (lastPriceUsed==null) {
-      lastPriceEl.textContent = '-'; totalValueEl.textContent = '-'; dropEl.textContent = '-';
-      return;
-    }
-    const totalValue = sim.heldQty * lastPriceUsed;
-    lastPriceEl.textContent = fmtMoney(lastPriceUsed);
-    totalValueEl.textContent = fmtMoney(totalValue);
-    if (sim.avgCostCurrent!=null && sim.avgCostCurrent>0) {
-      const dropPercent = ((lastPriceUsed - sim.avgCostCurrent) / sim.avgCostCurrent) * 100;
-      dropEl.textContent = dropPercent.toFixed(2)+'%';
-      dropEl.className = 'val ' + (dropPercent<0 ? 'neg' : 'pos');
-    } else {
-      dropEl.textContent = '-';
-    }
+    const inp = document.getElementById('manualLastPriceInput'); if (!inp) return;
+    const manualVal = parseFloat(inp.value);
+    const lastPriceUsed = (manualVal>0) ? manualVal : (livePx || sim.lastBoughtPrice);
+    const src = manualVal>0 ? 'سعر افتراضي للتجربة' : (livePx ? 'آخر سعر للسهم (متأخر 15 دقيقة)' : 'آخر سعر شراء (سعر السوق غير متاح الآن)');
+    const set = (id, txt, cls) => { const el = document.getElementById(id); if (el) { el.textContent = txt; if (cls !== undefined) el.className = 'val ' + cls; } };
+    const lbl = document.getElementById('statusLastPriceLbl'); if (lbl) lbl.textContent = src;
+    if (lastPriceUsed==null) { ['statusLastPriceUsed','statusTotalValue','statusUnreal','statusDropPercent','statusExitState','statusSellNow'].forEach(id => set(id, '-')); return; }
+    set('statusLastPriceUsed', fmtMoney(lastPriceUsed));
+    set('statusTotalValue', fmtMoney(sim.heldQty * lastPriceUsed));
+    const avg = sim.avgCostCurrent;
+    if (avg!=null && avg>0 && sim.heldQty>0) {
+      const pnl = (lastPriceUsed - avg) * sim.heldQty, pct = (lastPriceUsed - avg) / avg * 100;
+      set('statusUnreal', fmtMoney(pnl), pnl<0 ? 'neg' : 'pos');
+      set('statusSellNow', fmtMoney(pnl), pnl<0 ? 'neg' : 'pos');
+      set('statusDropPercent', (pct>0?'+':'') + pct.toFixed(2) + '%', pct<0 ? 'neg' : 'pos');
+      if (exitTargetPrice!=null) {
+        if (lastPriceUsed >= exitTargetPrice) set('statusExitState', '✅ رابحة — تقدر تبيع الكل', 'pos');
+        else set('statusExitState', `باقي ${((exitTargetPrice - lastPriceUsed) / lastPriceUsed * 100).toFixed(2)}%`, '');
+      } else set('statusExitState', '-', '');
+    } else { ['statusUnreal','statusDropPercent','statusExitState','statusSellNow'].forEach(id => set(id, '-', '')); }
+    // ربح/خسارة كل مستوى على آخر سعر = الكمية المتبقية من المستوى × (آخر سعر − سعر شرائه)
+    document.querySelectorAll('#levelsTable td.lv-unreal').forEach(td => {
+      const q = +td.dataset.q, p = +td.dataset.p;
+      if (!(q > 0) || !(p > 0)) { td.textContent = '-'; td.className = 'lv-unreal'; return; }
+      const v = (lastPriceUsed - p) * q; td.textContent = fmt2(v); td.className = 'lv-unreal ' + (v<0 ? 'neg' : v>0 ? 'pos' : '');
+    });
   }
   document.getElementById('manualLastPriceInput').addEventListener('input', updateStatusFields);
-  document.getElementById('manualLastPriceInput').addEventListener('change', async ()=>{
-    const val = parseFloat(document.getElementById('manualLastPriceInput').value) || null;
-    const plans2 = await getPlans(email);
-    plans2[symbol].manualLastPrice = val;
-    await savePlans(email, plans2);
-  });
   updateStatusFields();
+  gPlanLivePrice(__tok, { [symbol]: planObj }, {}, pxKey, (v) => { livePx = v; updateStatusFields(); });
 
   if (sim.isClosed) {
     document.getElementById('archiveBtn').onclick = async () => {

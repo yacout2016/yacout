@@ -69,14 +69,25 @@ try {
         $targets = json_decode((string)($_POST['targets'] ?? '[]'), true);
         if (!is_array($targets)) mk_out(["success" => false]);
         $keep = [];
-        $up = $conn->prepare("INSERT INTO alert_targets (account_email, symbol, market, plan_kind, side, price, label) VALUES (?, ?, ?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE triggered_at = IF(ABS(price - VALUES(price)) > 0.00001, NULL, triggered_at), price = VALUES(price), label = VALUES(label)");
+        // الإصدار 97: meta = بيانات نص الإشعار (الكمية / متوسط التكلفة / النسبة) - لو السعر اتغيّر المستوى بيتسلّح من جديد
+        $hasMeta = mk_targets_v97($conn);
+        $up = $hasMeta
+            ? $conn->prepare("INSERT INTO alert_targets (account_email, symbol, market, plan_kind, side, price, label, meta) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE rearmed = IF(ABS(price - VALUES(price)) > 0.00001, 0, rearmed), triggered_at = IF(ABS(price - VALUES(price)) > 0.00001, NULL, triggered_at), price = VALUES(price), label = VALUES(label), meta = VALUES(meta)")
+            : $conn->prepare("INSERT INTO alert_targets (account_email, symbol, market, plan_kind, side, price, label) VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE triggered_at = IF(ABS(price - VALUES(price)) > 0.00001, NULL, triggered_at), price = VALUES(price), label = VALUES(label)");
         foreach (array_slice($targets, 0, 400) as $t) {
             $sym = mk_clean_symbol($t['symbol'] ?? ''); $mkt = mk_clean_market($t['market'] ?? '');
             $kind = ($t['kind'] ?? '') === 'Grid' ? 'Grid' : 'DCA'; $side = ($t['side'] ?? '') === 'sell' ? 'sell' : 'buy';
             $price = round((float)($t['price'] ?? 0), 4); $label = mb_substr((string)($t['label'] ?? ''), 0, 150);
             if (!$sym || $price <= 0) continue;
-            $up->bind_param("sssssds", $email, $sym, $mkt, $kind, $side, $price, $label); $up->execute();
+            if ($hasMeta) {
+                $meta = [];
+                foreach ((array)($t['meta'] ?? []) as $mk => $mv) if (in_array($mk, ['held', 'avg', 'qty', 'amount', 'level', 'pct', 'buy'], true) && (is_numeric($mv) || $mv === null)) $meta[$mk] = $mv === null ? null : (float)$mv;
+                $metaJson = json_encode($meta);
+                $up->bind_param("sssssdss", $email, $sym, $mkt, $kind, $side, $price, $label, $metaJson);
+            } else $up->bind_param("sssssds", $email, $sym, $mkt, $kind, $side, $price, $label);
+            $up->execute();
             $keep[] = "$sym|$mkt|$kind|$side";
         }
         $up->close();

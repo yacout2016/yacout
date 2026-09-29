@@ -156,22 +156,31 @@ async function renderWatchlistPage(){
 /* ---------------------------------------------------------------------
    04. تنبيهات الأسعار
    --------------------------------------------------------------------- */
-// مستويات التنبيه من الخطط: DCA ← سعر الشراء التالي + هدف البيع، Grid ← الشراء التالي + أقرب هدف بيع
+/* مستويات التنبيه من الخطط (الإصدار 97):
+   DCA ← (1) سعر الشراء التالي: الكمية المطلوبة وقيمتها لتعزيز المتوسط
+         (2) الخروج الكلي: متوسط التكلفة × (1 + نسبة ربح الخروج الكلي، أو نسبة ربح الخطة) ← لما بيع كل الكمية يبقى رابح بالنسبة المطلوبة
+   Grid ← أقرب حد شراء (أعلى مستوى فاضي) + أقرب حد بيع (أقل هدف بيع لمستوى مشترى)
+   meta = بيانات الحساب اللي بتتكتب في نص الإشعار (الكمية / متوسط التكلفة / النسبة ...) */
 function mkComputeTargets(plans, grids){
-  const out = [];
+  const out = [], r4 = (v) => +(+v).toFixed(4);
   Object.keys(plans || {}).forEach(sym => {
     const p = plans[sym]; let sim = null; try { sim = simulatePlan(p); } catch(e){ return; }
     if (!sim || sim.isClosed) return;
+    const held = +sim.heldQty || 0, avg = sim.avgCostCurrent != null ? +sim.avgCostCurrent : null;
     const next = sim.rows.find(r => r.isNext && !r.trimmed);
-    if (next && next.price > 0) out.push({ symbol: sym, market: p.market || 'مصر', kind: 'DCA', side: 'buy', price: next.price, label: `المستوى ${next.level}` });
-    if (sim.heldQty > 0 && sim.sellTargetCurrent > 0) out.push({ symbol: sym, market: p.market || 'مصر', kind: 'DCA', side: 'sell', price: +sim.sellTargetCurrent.toFixed(4), label: 'هدف البيع' });
+    if (next && next.price > 0) out.push({ symbol: sym, market: p.market || 'مصر', kind: 'DCA', side: 'buy', price: r4(next.price), label: `المستوى ${next.level}`,
+      meta: { held: r4(held), avg: avg != null ? r4(avg) : null, qty: r4(next.qty || 0), amount: r4(next.amount || (next.qty || 0) * next.price), level: next.level } });
+    const pct = (+p.exitProfitPercent > 0) ? +p.exitProfitPercent : (+p.profitTarget > 0 ? +p.profitTarget : null);
+    if (held > 0 && avg > 0 && pct != null) out.push({ symbol: sym, market: p.market || 'مصر', kind: 'DCA', side: 'sell', price: r4(avg * (1 + pct / 100)), label: 'الخروج الكلي',
+      meta: { held: r4(held), avg: r4(avg), pct } });
   });
   Object.keys(grids || {}).forEach(sym => {
     const g = grids[sym], lv = g.levels || [];
-    const nb = lv.filter(l => l.status !== 'bought' && +l.plannedPrice > 0).map(l => +l.plannedPrice).sort((a, b) => b - a)[0];
-    const ns = lv.filter(l => l.status === 'bought' && +l.sellTargetPrice > 0).map(l => +l.sellTargetPrice).sort((a, b) => a - b)[0];
-    if (nb) out.push({ symbol: sym, market: g.market || 'مصر', kind: 'Grid', side: 'buy', price: nb, label: 'الشراء التالي' });
-    if (ns) out.push({ symbol: sym, market: g.market || 'مصر', kind: 'Grid', side: 'sell', price: ns, label: 'أقرب هدف بيع' });
+    if (g.closed) return;
+    const nbL = lv.filter(l => l.status !== 'bought' && +l.plannedPrice > 0).sort((a, b) => +b.plannedPrice - +a.plannedPrice)[0];
+    const nsL = lv.filter(l => l.status === 'bought' && +l.executedQty > 0 && +l.sellTargetPrice > 0).sort((a, b) => +a.sellTargetPrice - +b.sellTargetPrice)[0];
+    if (nbL) out.push({ symbol: sym, market: g.market || 'مصر', kind: 'Grid', side: 'buy', price: r4(nbL.plannedPrice), label: 'حد الشراء', meta: { qty: nbL.plannedQty != null ? r4(nbL.plannedQty) : null } });
+    if (nsL) out.push({ symbol: sym, market: g.market || 'مصر', kind: 'Grid', side: 'sell', price: r4(nsL.sellTargetPrice), label: 'حد البيع', meta: { qty: r4(nsL.executedQty), buy: r4(nsL.executedPrice) } });
   });
   return out;
 }
@@ -207,7 +216,7 @@ async function mkAlertsCard(el){
     <div class="gs-alert-list">${list.map(a => `<div class="gs-alert-row${a.is_read ? '' : ' unread'}" data-aid="${a.id}">
       <button type="button" class="gs-alert-x" data-dis="${a.id}" aria-label="إغلاق" title="إغلاق (يبقى في شاشة التنبيهات)">✕</button>
       <b>${escapeHtml(a.title)}</b><div>${escapeHtml(a.body || '')}</div>
-      <small class="u-muted">${escapeHtml(a.created_at || '')}</small>${a.symbol ? ` · <button type="button" class="gs-link" data-sym="${escapeHtml(a.symbol)}" data-mkt="${escapeHtml(a.market || 'مصر')}">صفحة السهم</button>` : ''}</div>`).join('')}</div></div>` : '';
+      <small class="u-muted">${escapeHtml(formatDateTimeAr(a.created_at))}</small>${a.symbol ? ` · <button type="button" class="gs-link" data-sym="${escapeHtml(a.symbol)}" data-mkt="${escapeHtml(a.market || 'مصر')}">صفحة السهم</button>` : ''}</div>`).join('')}</div></div>` : '';
   mkLimitList(el.querySelector('.gs-alert-list'), 5);
   const b = document.getElementById('gsAlertsAll'); if (b) b.onclick = () => renderAlertsPage();
   const ca = document.getElementById('gsAlertsCloseAll'); if (ca) ca.onclick = async () => { await MK.post({ action:'alert_dismiss', all:'1' }); mkAlertsCard(el); };
@@ -270,7 +279,7 @@ async function renderAlertsPage(){
     <div class="section-title u-mt14">سجل الإشعارات (${r.success ? r.alerts.length : 0})</div>
     <div class="info">تصلك هنا أيضًا تنبيهات مستويات خططك (سعر الشراء التالي وهدف البيع). الحذف ينقل الإشعار إلى سلة المحذوفات.</div>
     ${r.success && r.alerts.length ? `<div class="gs-notif-list">${r.alerts.map(a => `<div class="section-card gs-notif${a.is_read ? ' read' : ''}"><div class="u-row"><b>${escapeHtml(a.title)}</b>
-        <span><small class="u-muted">${escapeHtml(a.created_at)}</small> <button type="button" class="small danger u-wa" data-ndel="${a.id}" title="حذف (ينتقل إلى سلة المحذوفات)">🗑️</button></span></div>
+        <span><small class="u-muted">${escapeHtml(formatDateTimeAr(a.created_at))}</small> <button type="button" class="small danger u-wa" data-ndel="${a.id}" title="حذف (ينتقل إلى سلة المحذوفات)">🗑️</button></span></div>
       <div class="u-fs13" style="line-height:1.9;">${escapeHtml(a.body || '')}</div>${a.symbol ? `<button type="button" class="small secondary u-wa u-mt6" data-sym="${escapeHtml(a.symbol)}" data-mkt="${escapeHtml(a.market || 'مصر')}">📈 صفحة السهم</button>` : ''}</div>`).join('')}</div>`
       : '<div class="section-card u-muted">لا توجد إشعارات.</div>'}</div>`;
   const reload = () => { window.__navSilent = true; try { renderAlertsPage(); } finally { window.__navSilent = false; } };

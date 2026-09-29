@@ -36,6 +36,9 @@ if ($conn->connect_error) {
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
 $conn->set_charset("utf8mb4");
+// الإصدار 97: كل الأوقات بتتسجّل بتوقيت جرينتش (UTC) صراحةً، والواجهة بتعرضها بتوقيت جهاز المستخدم
+try { $conn->query("SET time_zone = '+00:00'"); } catch (Throwable $e) {}
+date_default_timezone_set('UTC');
 
 // إيميل المدير الأصلي — الصلاحية الكاملة بتتطلب كمان is_admin = 1 في قاعدة البيانات (التسجيل عمره ما بيدي أدمن)
 define('ADMIN_EMAIL', 'top72026@gmail.com');

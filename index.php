@@ -57,30 +57,30 @@ header("Content-Security-Policy: default-src 'self'; "
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="theme-boot.js?v=96"></script>
-<link rel="stylesheet" href="griffine.css?v=96">
-<link rel="stylesheet" href="shell.css?v=96">
+<script src="theme-boot.js?v=97"></script>
+<link rel="stylesheet" href="griffine.css?v=97">
+<link rel="stylesheet" href="shell.css?v=97">
 </head>
 <body>
 <div id="app"></div>
 
-<script src="shell.js?v=96"></script>
+<script src="shell.js?v=97"></script>
 <!-- الإصدار 72: استوديو التصميم - يطبّق الثيم وتعديلات الأدمن على كل الشاشات (شاشة التعديل نفسها studio-editor.js تُحمَّل للأدمن فقط) -->
-<script src="studio.js?v=96"></script>
+<script src="studio.js?v=97"></script>
 <!-- الإصدار 88: griffine.js قُسّم إلى ملفات حسب الأقسام (بالترتيب نفسه) - يجب أن يبقى app-init.js آخر ملف -->
-<script src="app-core.js?v=96"></script>
-<script src="app-public.js?v=96"></script>
-<script src="app-subscribe.js?v=96"></script>
-<script src="app-admin.js?v=96"></script>
-<script src="app-plans.js?v=96"></script>
-<script src="app-screener.js?v=96"></script>
-<script src="app-chat.js?v=96"></script>
-<script src="app-nav.js?v=96"></script>
-<script src="hr.js?v=96"></script>
-<script src="markets.js?v=96"></script>
-<script src="trades.js?v=96"></script>
-<script src="faq.js?v=96"></script>
-<script src="trash.js?v=96"></script>
-<script src="app-init.js?v=96"></script>
+<script src="app-core.js?v=97"></script>
+<script src="app-public.js?v=97"></script>
+<script src="app-subscribe.js?v=97"></script>
+<script src="app-admin.js?v=97"></script>
+<script src="app-plans.js?v=97"></script>
+<script src="app-screener.js?v=97"></script>
+<script src="app-chat.js?v=97"></script>
+<script src="app-nav.js?v=97"></script>
+<script src="hr.js?v=97"></script>
+<script src="markets.js?v=97"></script>
+<script src="trades.js?v=97"></script>
+<script src="faq.js?v=97"></script>
+<script src="trash.js?v=97"></script>
+<script src="app-init.js?v=97"></script>
 </body>
 </html>

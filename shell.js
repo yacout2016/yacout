@@ -50,7 +50,7 @@
      ===================================================================== */
 
   // رقم الإصدار - بيظهر في شاشة "حسابي" (غيّره مع ?v= في index.php و VERSION في sw.js)
-  const APP_VERSION = 96;
+  const APP_VERSION = 97;
 
   /* الاستعلامات المتكررة (الدردشة/التوصيات/قائمة المتابعة) - استعلام متكيّف (الإصدار 89)
      - بتقف لما التبويب يكون مخفي أو الموبايل مقفول
@@ -771,6 +771,9 @@
       lockMarkets(app);     // الإصدار 96: قوائم السوق والعملة ← سوق الحساب بس (الأدمن: الأسواق المفعّلة)
       // 10أ) الإصدار 90: شاشة المحفظة والتقارير ← كل جدول بيعرض 10 صفوف والباقي بالتمرير لفوق وتحت
       if (ROWS10_SCREENS[GS.currentScreen]) { limitTableRows(app, 10); setTimeout(relimit, 400); }
+      // 10ب) الإصدار 97: زرار إخفاء فوق كل عمود + "إظهار الأعمدة المخفية" ، وأي جدول عليه data-g-rows="7" ← 7 صفوف والباقي تمرير
+      colHide(app);
+      if (app.querySelector('table[data-g-rows]')) { limitMarkedRows(app); setTimeout(() => { const a = document.getElementById('app'); if (a) limitMarkedRows(a); }, 400); }
     } finally {
       // 11) الثيم وتعديلات استوديو التصميم (حتى لشاشات الترحيب والدخول)
       applyStudio();
@@ -803,9 +806,14 @@
   const relimit = () => { const a = document.getElementById('app'); if (a && ROWS10_SCREENS[GS.currentScreen]) limitTableRows(a, 10); };
   window.addEventListener('resize', () => { clearTimeout(relimit.t); relimit.t = setTimeout(relimit, 150); });
   try { document.fonts && document.fonts.ready.then(relimit); } catch(e){}
+  function limitMarkedRows(root){
+    root.querySelectorAll('table[data-g-rows]').forEach(t => { const w = t.closest('.gs-tscroll'); if (w) limitWrapRows(w, t, parseInt(t.dataset.gRows, 10) || 7); });
+  }
   function limitTableRows(root, n){
-    root.querySelectorAll('.gs-tscroll').forEach(w => {
-      const t = w.querySelector('table'); if (!t) return;
+    root.querySelectorAll('.gs-tscroll').forEach(w => { const t = w.querySelector('table'); if (t) limitWrapRows(w, t, n); });
+  }
+  function limitWrapRows(w, t, n){
+    {
       const rows = t.tBodies[0] ? Array.from(t.tBodies[0].rows) : [];
       const want = rows.length > n;
       let h = 0;
@@ -820,7 +828,7 @@
         if (w.style.maxHeight !== v) w.style.maxHeight = v;
         w.classList.add('gs-rows-limit');
       } else if (w.classList.contains('gs-rows-limit')) { w.classList.remove('gs-rows-limit'); w.style.maxHeight = ''; }
-    });
+    }
   }
 
   // غلاف تمرير أفقي لكل جدول (لو الأب نفسه مش بيتحرك لوحده)
@@ -880,6 +888,7 @@
       const filters = [];
       for (let c = 0; c < cols; c++) {
         const td = document.createElement('th'); const k = kinds[c];
+        if (head.cells[c].classList.contains('date-col')) td.className = 'date-col';   // أعمدة بتستخبى بزرار (التواريخ)
         if (k.type === 'ctl') { fr.appendChild(td); filters.push(null); continue; }
         let el;
         if (k.distinct.length > 1 && k.distinct.length <= 8 && k.type !== 'num' && dataRows.length > 3) {
@@ -910,6 +919,58 @@
       };
       q.addEventListener('input', apply); filters.forEach(f => f && f.addEventListener(f.tagName === 'SELECT' ? 'change' : 'input', apply));
       apply();
+    });
+  }
+
+  /* الإصدار 97: إخفاء الأعمدة في كل الجداول
+     - زرار ✕ صغير في أعلى كل عمود بيخفيه ، وزرار عام "إظهار الأعمدة المخفية (عددها)" فوق الجدول بيرجّعها (واحد واحد أو الكل)
+     - الاختيار بيتحفظ على الجهاز لكل جدول (الشاشة + عناوين الأعمدة) - وبيفضل حتى لو صفوف الجدول اترسمت تاني
+     - الإخفاء بـ CSS (table.g-hc-N) فبيشمل الصفوف الجديدة وصف الفلتر والطباعة */
+  const HC_KEY = 'gs_hidecols_v1';
+  const hcLoad = () => { try { return JSON.parse(localStorage.getItem(HC_KEY) || '{}') || {}; } catch(e){ return {}; } };
+  const hcSave = (m) => { try { localStorage.setItem(HC_KEY, JSON.stringify(m)); } catch(e){} };
+  (function hcCss(){
+    if (document.getElementById('gsHideColsCss')) return;
+    let css = ''; for (let i = 1; i <= 40; i++) css += `table.g-hc-${i} tr > :nth-child(${i}){display:none !important;}`;
+    const st = document.createElement('style'); st.id = 'gsHideColsCss'; st.textContent = css; document.head.appendChild(st);
+  })();
+  function colHide(root){
+    root.querySelectorAll('table').forEach(t => {
+      if (t.dataset.gHc || t.classList.contains('g-no-enh') || t.closest('.g-no-enh, .gs-alert-list, .chat-msg')) return;
+      const head = t.tHead && t.tHead.rows[0]; if (!head || head.cells.length < 3) return;
+      if (Array.from(head.cells).some(c => c.colSpan > 1)) return;
+      const names = Array.from(head.cells).map(c => T_NORM(c.textContent));
+      const key = (document.body.getAttribute('data-gs-screen') || '') + '|' + (t.id || '') + '|' + names.join('¦').slice(0, 300);
+      t.dataset.gHc = '1';
+      const all = hcLoad(); let hidden = (all[key] || []).filter(i => i >= 1 && i <= head.cells.length);
+      const wrap = t.closest('.gs-tscroll') || t;
+      let bar = wrap.previousElementSibling && wrap.previousElementSibling.classList.contains('g-tbar') ? wrap.previousElementSibling : null;
+      if (!bar) { bar = document.createElement('div'); bar.className = 'g-tbar g-tbar-mini'; bar.setAttribute('data-html2canvas-ignore', ''); wrap.parentNode.insertBefore(bar, wrap); }
+      const box = document.createElement('span'); box.className = 'g-hcbox';
+      box.innerHTML = `<button type="button" class="g-hcshow small secondary" aria-haspopup="true"></button><div class="g-hcmenu" hidden></div>`;
+      bar.insertBefore(box, bar.firstChild);
+      const btn = box.querySelector('.g-hcshow'), menu = box.querySelector('.g-hcmenu');
+      const paint = () => {
+        for (let i = 1; i <= 40; i++) t.classList.toggle('g-hc-' + i, hidden.includes(i));
+        btn.textContent = `👁 إظهار الأعمدة المخفية (${hidden.length})`; btn.hidden = !hidden.length;
+        menu.innerHTML = hidden.length ? hidden.slice().sort((a, b) => a - b).map(i => `<button type="button" data-hc="${i}">↩ ${esc(names[i - 1] || ('عمود ' + i))}</button>`).join('') + `<button type="button" data-hc="all"><b>إظهار الكل</b></button>` : '';
+        if (!hidden.length) menu.hidden = true;
+        const m = hcLoad(); if (hidden.length) m[key] = hidden; else delete m[key]; hcSave(m);
+      };
+      btn.addEventListener('click', (e) => { e.stopPropagation(); menu.hidden = !menu.hidden; });
+      menu.addEventListener('click', (e) => { const b = e.target.closest('[data-hc]'); if (!b) return; e.stopPropagation();
+        hidden = b.dataset.hc === 'all' ? [] : hidden.filter(i => i !== +b.dataset.hc); paint(); });
+      document.addEventListener('click', (e) => { if (!box.contains(e.target)) menu.hidden = true; });
+      Array.from(head.cells).forEach((th, i) => {
+        if (!names[i]) return;
+        const x = document.createElement('button'); x.type = 'button'; x.className = 'g-colx'; x.textContent = '✕';
+        x.title = 'إخفاء العمود'; x.setAttribute('aria-label', 'إخفاء عمود ' + names[i]); x.setAttribute('data-html2canvas-ignore', '');
+        x.addEventListener('click', (e) => { e.stopPropagation(); e.preventDefault();
+          if (hidden.length >= head.cells.length - 1) return;   // عمود واحد على الأقل يفضل ظاهر
+          hidden = [...new Set([...hidden, i + 1])]; paint(); });
+        th.appendChild(x);
+      });
+      paint();
     });
   }
 

@@ -32,7 +32,7 @@ async function renderTrashPage(all){
       ${items.map(i => `<tr data-type="${escapeHtml(i.item_type)}" data-text="${escapeHtml((i.item_label + ' ' + i.deleted_by).toLowerCase())}"><td>${escapeHtml(i.item_label)}</td>
         <td><button class="small u-wa" data-tbres="${i.id}">↩️ استرجاع</button> <button class="small danger u-wa" data-tbdel="${i.id}">حذف نهائي</button></td>
         <td>${escapeHtml(TRASH_TYPES[i.item_type] || i.item_type)}</td>
-        <td class="g-num">${escapeHtml(i.deleted_at)}</td>${all ? `<td dir="ltr" class="u-fs12">${escapeHtml(i.deleted_by)}</td>` : ''}</tr>`).join('')
+        <td class="g-num">${escapeHtml(formatDateTimeAr(i.deleted_at))}</td>${all ? `<td dir="ltr" class="u-fs12">${escapeHtml(i.deleted_by)}</td>` : ''}</tr>`).join('')
         || `<tr><td colspan="${all ? 5 : 4}" class="u-muted">السلة فارغة</td></tr>`}
     </tbody></table></div></div></div>`;
   const reload = () => { window.__navSilent = true; try { renderTrashPage(all); } finally { window.__navSilent = false; } };

@@ -930,3 +930,37 @@ details.mkt-cfg textarea{ width:100%; }
 .g-mkt-bar label{display:flex;align-items:center;gap:6px;font-weight:600;margin:0}
 .g-mkt-bar select{width:auto;min-width:170px;margin:0}
 .g-mkt-tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;background:var(--gs-soft,rgba(127,127,127,.12));margin-inline-start:6px;white-space:nowrap}
+
+/* الإصدار 97: إخفاء الأعمدة */
+body.g-shell table th button.g-colx, table th button.g-colx{ all:unset; display:inline-flex !important; align-items:center; justify-content:center; width:16px !important; height:16px !important; min-width:0 !important; min-height:0 !important; margin:0 4px 0 0 !important; padding:0 !important; border:0 !important; border-radius:50% !important; background:transparent !important; box-shadow:none !important; font-size:9px !important; line-height:1 !important; cursor:pointer; opacity:.35; vertical-align:middle; color:inherit !important; }
+body.g-shell table th:hover button.g-colx, table th button.g-colx:focus-visible{ opacity:.95; background:rgba(127,127,127,.2) !important; }
+.g-tbar-mini{ margin:4px 0; min-height:0; }
+.g-hcbox{ position:relative; display:inline-block; }
+.g-hcbox .g-hcshow{ width:auto; margin:0; padding:5px 12px; font-size:12px; border-radius:999px; }
+.g-hcmenu{ position:absolute; inset-inline-start:0; top:calc(100% + 4px); z-index:30; min-width:200px; max-height:280px; overflow:auto; background:var(--card-bg, #fff); border:1px solid var(--border, #e5e7eb); border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.18); padding:4px; }
+.g-hcmenu button{ all:unset; display:block; box-sizing:border-box; width:100%; padding:8px 10px; border-radius:8px; font-size:13px; cursor:pointer; color:var(--text, inherit); }
+.g-hcmenu button:hover{ background:rgba(127,127,127,.12); }
+@media print{ th .g-colx, .g-hcbox{ display:none !important; } }
+
+/* الإصدار 97: جدول مستويات الخطة (DCA / Grid) - على قد عرض الشاشة وكل مستوى في سطر واحد */
+#levelsTable, #gridLevelsTable{ width:100%; font-size:12.5px; }
+#levelsTable th, #levelsTable td, #gridLevelsTable th, #gridLevelsTable td{ padding:6px 7px; vertical-align:middle; }
+#levelsTable .trade-group, #gridLevelsTable .trade-group{ display:flex; flex-wrap:nowrap; align-items:center; gap:4px; margin:0; }
+#levelsTable .trade-group > div:not(.trade-fields), #gridLevelsTable .trade-group > div:not(.trade-fields){ display:none; }
+#levelsTable .trade-fields, #gridLevelsTable .trade-fields{ display:flex; gap:4px; margin:0; }
+#levelsTable .trade-fields input, #gridLevelsTable .trade-fields input{ width:78px; min-width:0; margin:0; padding:5px 6px; font-size:12px; }
+#levelsTable .trade-group button, #gridLevelsTable .trade-group button{ width:auto !important; margin:0 !important; padding:5px 10px; font-size:12px; white-space:nowrap; }
+#levelsTable .buy-cell, #gridLevelsTable .buy-cell{ white-space:nowrap; }
+#levelsTable .buy-cell br, #gridLevelsTable .buy-cell br{ display:none; }
+#levelsTable .buy-cell button, #gridLevelsTable .buy-cell button{ width:auto; margin:0 0 0 4px; padding:3px 8px; font-size:11px; }
+#levelsTable .sell-line, #gridLevelsTable .sell-line{ white-space:nowrap; font-size:11.5px; }
+#levelsTable .sell-line + .trade-group, #gridLevelsTable .sell-line + .trade-group{ margin-top:4px; }
+#levelsTable td .info, #gridLevelsTable td .info, #gridLevelsTable td .success-banner{ white-space:normal; min-width:180px; }
+
+body.g-shell:not(.gs-no-shell) #app #levelsTable th, body.g-shell:not(.gs-no-shell) #app #gridLevelsTable th{ white-space:normal !important; line-height:1.35; min-width:48px; font-size:11.5px; }
+#levelsTable .g-filter-row th, #gridLevelsTable .g-filter-row th{ padding:3px 4px; }
+table.g-enh#levelsTable .g-filter, table.g-enh#gridLevelsTable .g-filter{ min-width:0 !important; }
+#levelsTable .trade-fields input, #gridLevelsTable .trade-fields input{ width:60px !important; }
+#levelsTable .tag, #gridLevelsTable .tag{ font-size:10.5px; padding:2px 6px; }
+#levelsTable input, #gridLevelsTable input{ height:30px !important; min-height:0 !important; }
+#levelsTable td button, #gridLevelsTable td button{ min-height:0 !important; height:30px; line-height:1; }

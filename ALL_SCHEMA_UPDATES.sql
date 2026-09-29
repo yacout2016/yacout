@@ -1,5 +1,5 @@
 -- ============================================================
--- GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 96)
+-- GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 97)
 -- كل تحديثات قاعدة البيانات في ملف واحد.
 -- آمن تشغّله أي عدد من المرات: بيضيف الناقص بس ومبيمسحش أي بيانات.
 -- الاستخدام: phpMyAdmin ← اختار قاعدة البيانات ← تبويب SQL ← الصق الملف كله ← Go
@@ -38,6 +38,8 @@
 -- الإصدار 95: مفيش تغييرات في قاعدة البيانات (المساعد الذكي بيرد في كل مرة - كان بيسكت 15 دقيقة بعد رد موظف أو لو السؤال اتكرر).
 -- الإصدار 96: تصحيح النصوص (DAC ← DCA ، Top7 المصرية) + أكواد الأعضاء + أسواق الحسابات (مصر / السعودية / الإمارات / قطر / الكويت) + باقات وطرق دفع لكل سوق
 --              + ترتيب العناصر في استوديو التصميم وخط لكل ثيم (في ui_customizations - مفيش جدول جديد).
+-- الإصدار 97: alert_targets.meta + rearmed (إشعارات الخطط بالكمية ومتوسط التكلفة والربح + تكرار بعد 24 ساعة لو السعر رجع وعدّى تاني)
+--              + user_alerts.body بقى TEXT (نص الإشعار الكامل) + الأوقات بتتسجّل UTC وبتتعرض بتوقيت جهاز المستخدم.
 -- ============================================================
 
 -- الإصدار 85: ترميز الاتصال UTF-8 عشان النصوص العربي اللي بتتضاف من الملف (زي المسميات الوظيفية) تتحفظ صح
@@ -1038,4 +1040,25 @@ UPDATE subscribers SET market = 'مصر' WHERE market IS NULL OR market = '';
 
 -- ترتيب العناصر في استوديو التصميم وخط كل ثيم بيتخزّنوا في جدول ui_customizations الموجود - مفيش جدول جديد
 
-SELECT 'GRIFFINE database is up to date (v96)' AS result;
+-- الإصدار 97: إشعارات الخطط - بيانات الحساب في نص الإشعار (meta) + إعادة التسليح بعد ما السعر يرجع عكس الشرط (rearmed)
+DELIMITER $$
+DROP PROCEDURE IF EXISTS griffine_v97 $$
+CREATE PROCEDURE griffine_v97()
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='alert_targets')
+     AND NOT EXISTS (SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='alert_targets' AND COLUMN_NAME='meta') THEN
+    ALTER TABLE alert_targets ADD COLUMN meta TEXT NULL;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='alert_targets')
+     AND NOT EXISTS (SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='alert_targets' AND COLUMN_NAME='rearmed') THEN
+    ALTER TABLE alert_targets ADD COLUMN rearmed TINYINT(1) NOT NULL DEFAULT 0;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='user_alerts' AND COLUMN_NAME='body' AND DATA_TYPE='varchar') THEN
+    ALTER TABLE user_alerts MODIFY body TEXT NULL;
+  END IF;
+END $$
+DELIMITER ;
+CALL griffine_v97();
+DROP PROCEDURE griffine_v97;
+
+SELECT 'GRIFFINE database is up to date (v97)' AS result;

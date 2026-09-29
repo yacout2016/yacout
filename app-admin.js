@@ -161,7 +161,7 @@ async function renderAdminSubscribers(){
         <thead><tr><th>البريد الحالي</th><th>البريد المطلوب</th><th>تاريخ الطلب</th><th></th></tr></thead>
         <tbody>
           ${emailChangeRequests.map(r => `<tr>
-            <td>${escapeHtml(r.currentEmail)}</td><td>${escapeHtml(r.requestedEmail)}</td><td class="u-fs12">${escapeHtml(r.requestedAt)}</td>
+            <td>${escapeHtml(r.currentEmail)}</td><td>${escapeHtml(r.requestedEmail)}</td><td class="u-fs12">${escapeHtml(formatDateTimeAr(r.requestedAt))}</td>
             <td>
               <button class="secondary small u-wa" data-gcall="__reviewEmailChange" data-gargs="${gArgs([r.id, 'approved'])}">✅ موافقة</button>
               <button class="danger small u-wa" data-gcall="__reviewEmailChange" data-gargs="${gArgs([r.id, 'rejected'])}">❌ رفض</button>
@@ -1316,6 +1316,10 @@ async function renderAdminSettingsPage(){
     <div class="info">فعّل الأسواق التي يعمل بها الموقع. السوق غير المفعّل لا يظهر في التسجيل ولا عند المستخدمين، ويمكنك تجهيز باقاته وطرق دفعه مسبقًا. كل حساب له بورصة واحدة يختارها عند التسجيل (لو سوق واحد مفعّل يكون تلقائيًا). مصر: فودافون كاش وإنستاباي وPaymob من القسم أعلاه، ويمكنك إضافة تحويل بنكي. Paymob بالجنيه فقط لذلك متاح لمصر فقط.</div>
     <div class="section-card" id="marketsCfgWrap">جارٍ التحميل...</div>
 
+    ${window.__isSuperAdmin ? `<h2 class="u-mt20">🧹 مراجعة رموز الأسهم في كل الخطط</h2>
+    <div class="info">يفحص رموز الأسهم في خطط كل الحسابات (تعزيز المتوسط وخطوط الشبكة) مع البورصة. الرموز غير الموجودة تظهر في قائمة لتراجعها أولًا، ثم تُنقل الخطط المختارة إلى سلة المحذوفات (صاحب الخطة يقدر يرجّعها) — لا يوجد حذف نهائي. لو مصدر الأسعار غير متاح يتوقف الفحص تلقائيًا.</div>
+    <div class="section-card"><button class="small u-wa" id="symAuditBtn">🔎 فحص الرموز الآن</button><div id="symAuditOut" class="u-mt10"></div></div>` : ''}
+
     <h2 class="u-mt20">إخفاء شاشات عن العميل</h2>
     <div class="info">فعّل أي مفتاح هنا لإخفاء الزر المقابل من الشاشة الرئيسية للعميل، دون حذف أي بيانات أو خطط موجودة بالفعل. الافتراضي أن كل الأزرار ظاهرة.</div>
     <div class="section-card" id="visibilityListWrap"></div>
@@ -1367,6 +1371,25 @@ async function renderAdminSettingsPage(){
       if (rr && rr.success && window.GShell) GShell.loadAccountMarket(true);
     };
   })();
+  // الإصدار 97: مراجعة رموز الأسهم (مدير الموقع)
+  const sab = document.getElementById('symAuditBtn'); if (sab) sab.onclick = async () => {
+    const out = document.getElementById('symAuditOut'); sab.disabled = true; out.innerHTML = '<p class="u-muted">جارٍ الفحص... قد يستغرق دقيقة حسب عدد الأسهم.</p>';
+    const r = await apiGet('/symbols_audit.php?action=scan').catch(() => null); sab.disabled = false;
+    if (!r || !r.success) { out.innerHTML = `<div class="error">${escapeHtml((r && r.message) || 'تعذّر الفحص')}</div>`; return; }
+    if (!r.invalid.length) { out.innerHTML = `<div class="info">✅ كل الرموز صحيحة — تم فحص ${r.checkedPlans} خطة (${r.checkedSymbols} رمز).</div>`; return; }
+    out.innerHTML = `<div class="error">وُجد ${r.invalid.length} خطة برموز غير موجودة في البورصة (من ${r.checkedPlans} خطة). راجعها ثم انقل المحدد للسلة:</div>
+      <div class="table-scroll"><table class="g-table"><thead><tr><th><input type="checkbox" id="symAll" checked aria-label="تحديد الكل"></th><th>الحساب</th><th>نوع الخطة</th><th>الرمز</th><th>السوق</th></tr></thead><tbody>
+      ${r.invalid.map(x => `<tr><td><input type="checkbox" class="symChk" value="${x.id}" checked></td><td dir="ltr">${escapeHtml(x.email)}</td><td>${x.kind === 'Grid' ? 'خطوط الشبكة' : 'تعزيز المتوسط'}</td><td dir="ltr"><b>${escapeHtml(x.symbol)}</b></td><td>${escapeHtml(x.market)}</td></tr>`).join('')}
+      </tbody></table></div><button class="small danger u-wa u-mt8" id="symTrashBtn">🗑️ نقل المحدد إلى سلة المحذوفات</button>`;
+    document.getElementById('symAll').onchange = (e) => out.querySelectorAll('.symChk').forEach(c => { c.checked = e.target.checked; });
+    document.getElementById('symTrashBtn').onclick = async () => {
+      const ids = Array.from(out.querySelectorAll('.symChk:checked')).map(c => c.value);
+      if (!ids.length) return;
+      if (!await gConfirm(`نقل ${ids.length} خطة إلى سلة المحذوفات؟ (أصحابها يقدروا يرجّعوها من السلة)`, { ok: 'نقل للسلة', danger: true })) return;
+      const x = await apiPost('/symbols_audit.php', { action: 'trash', ids: ids.join(',') }).catch(() => null);
+      out.innerHTML = x && x.success ? `<div class="info">✅ تم نقل ${x.moved} خطة إلى سلة المحذوفات.</div>` : `<div class="error">${escapeHtml((x && x.message) || 'تعذّر التنفيذ')}</div>`;
+    };
+  };
   // الإصدار 96: رقم الإصدار المعروض
   siteCfgAdminApi().then(r => { const i = document.getElementById('cfgVersionLabel'); if (i && r && r.config) i.value = r.config.app_version_label || ''; });
   const vbtn = document.getElementById('cfgVersionSave'); if (vbtn) vbtn.onclick = async () => {
