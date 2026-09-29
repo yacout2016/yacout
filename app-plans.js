@@ -239,6 +239,20 @@ async function gCheckSymbol(symbol, market){
   return { ok: false, msg: `الرمز ${symbol} غير موجود في بورصة ${market || 'مصر'} — اكتب رمز السهم كما يظهر في شاشة البورصة (مثل COMI).` };
 }
 
+/* الإصدار 99: حذف خطة (DCA / Grid) ← بتنتقل لسلة المحذوفات (أي مستخدم: عميل / موظف / أدمن) ويقدر يرجّعها أو يحذفها نهائيًا من السلة */
+async function gDeletePlan(kind, symbol, after){
+  const isGrid = kind === 'grid';
+  if (!await gConfirm(`حذف ${isGrid ? 'خطة خطوط الشبكة' : 'خطة تعزيز المتوسط'} «${symbol}»؟\nهتنتقل إلى سلة المحذوفات، وتقدر ترجّعها من هناك أو تحذفها نهائيًا.`, { ok: '🗑️ نقل للسلة', danger: true })) return false;
+  const email = await getSession(); if (!email) return false;
+  const all = isGrid ? await getGridPlans(email) : await getPlans(email);
+  if (!all[symbol]) return false;
+  delete all[symbol];
+  if (isGrid) await saveGridPlans(email, all); else await savePlans(email, all);
+  if (window.GShell) GShell.toast('نُقلت الخطة إلى سلة المحذوفات — تقدر ترجّعها من «سلة المحذوفات»', 'ok');
+  if (after) after();
+  return true;
+}
+
 /* الإصدار 98: ربح الخطط المفتوحة على آخر سعر (متأخر 15 دقيقة) في قوائم الخطط
    items = [{ sym, market, held, avg, ccy }] ← بيملا .gpl-px[data-sym] في كل سطر + #gplTotal (إجمالي لكل عملة لوحدها) */
 function gFillListProfits(tok, plans, grids, items){
@@ -342,6 +356,7 @@ async function renderPlansList(){
         <div><strong>${sym}</strong><div class="u-fs11 u-muted">${doneCount}/${p.levels.length} مستويات — ${isActuallyClosed?'مقفولة ✅':'مفتوحة'} — ${p.market||''} — ${p.currency||''}${p.listed === false ? ' — <span class="tag">غير مدرج 🔕</span>' : ''}</div>${isOpenPosition ? `<div class="gpl-px u-fs12" data-sym="${escapeHtml(sym)}">جارٍ تحميل آخر سعر...</div>` : ''}</div>
         <div style="display:flex;align-items:center;gap:10px;">
           <button class="small secondary u-wa u-m0" data-gcall="__editDacPlanFromList" data-gargs="${gArgs([String(sym)])}" data-gstop="1">⚙️ تعديل الخطة</button>
+          <button class="small danger u-wa u-m0" data-gcall="__delDacPlanFromList" data-gargs="${gArgs([String(sym)])}" data-gstop="1" title="حذف (ينتقل إلى سلة المحذوفات)" aria-label="حذف الخطة">🗑️</button>
           <span>&#8250;</span>
         </div>
       </div>`;
@@ -352,6 +367,7 @@ async function renderPlansList(){
     gFillListProfits(__tok, plans, {}, symbols.map(sym => { let sm = null; try { sm = simulatePlan(plans[sym]); } catch(e){}
       return sm && sm.heldQty > 0 ? { sym, market: plans[sym].market || 'مصر', held: sm.heldQty, avg: sm.avgCostCurrent, ccy: plans[sym].currency } : null; }).filter(Boolean));
     window.__editDacPlanFromList = (sym) => renderEditPlanSettings(sym);
+    window.__delDacPlanFromList = (sym) => gDeletePlan('dca', sym, () => { window.__navSilent = true; try { renderPlansList(); } finally { window.__navSilent = false; } });
 
     // فلتر البحث + حالة الخطة (مفتوحة/مقفولة) - نفس الأسلوب اليدوي المستخدم في
     // شاشة "ملخص المحفظة" (تقرير سهم أو أكتر) لأنه مضبوط ومختبر ويشتغل صح
@@ -1633,6 +1649,7 @@ async function renderGridPlansList(){
         <div style="display:flex;align-items:center;gap:10px;">
           <div style="font-size:12px;color:#666;">مستويات مشتراة: ${bought}/${g.levels.length} — دورات مكتملة: ${totalCycles}</div>
           <button class="small secondary u-wa u-m0" data-gcall="__editGridFromList" data-gargs="${gArgs([String(sym)])}" data-gstop="1">⚙️ تعديل الخطة</button>
+          <button class="small danger u-wa u-m0" data-gcall="__delGridFromList" data-gargs="${gArgs([String(sym)])}" data-gstop="1" title="حذف (ينتقل إلى سلة المحذوفات)" aria-label="حذف الخطة">🗑️</button>
         </div>
       </div>`;
     }).join('');
@@ -1641,10 +1658,12 @@ async function renderGridPlansList(){
     document.getElementById('gridClosedListWrap').innerHTML = closedSymbols.map(sym => `
       <div class="plan-list-item" data-q="${sym.toLowerCase()}" data-gcall="__openGrid" data-gargs="${gArgs([String(sym)])}" style="opacity:.7;">
         <div><strong>${escapeHtml(sym)}</strong> <span class="tag tag-wait">مقفولة</span></div>
+        <button class="small danger u-wa u-m0" data-gcall="__delGridFromList" data-gargs="${gArgs([String(sym)])}" data-gstop="1" title="حذف (ينتقل إلى سلة المحذوفات)" aria-label="حذف الخطة">🗑️</button>
       </div>`).join('');
   }
   window.__openGrid = (sym) => renderGridPlanDetail(sym);
   window.__editGridFromList = (sym) => renderGridEditPlanSettings(sym);
+  window.__delGridFromList = (sym) => gDeletePlan('grid', sym, () => { window.__navSilent = true; try { renderGridPlansList(); } finally { window.__navSilent = false; } });
   { const act = {}; activeSymbols.forEach(sym => { act[sym] = grids[sym]; });
     gFillListProfits(__tok, {}, act, activeSymbols.map(sym => { const b = (grids[sym].levels || []).filter(l => l.status === 'bought' && l.executedQty > 0);
       const held = b.reduce((a, l) => a + (+l.executedQty || 0), 0), cost = b.reduce((a, l) => a + (+l.executedQty || 0) * (+l.executedPrice || 0), 0);
@@ -1870,7 +1889,7 @@ async function renderGridPlanDetail(symbol){
     </div>
     <div class="topbar">
       <div></div>
-      <div><button class="secondary small" id="homeBtn">🏠 الشاشة الرئيسية</button> <button class="secondary small" id="exportXlsGridBtn">⬇ تصدير Excel</button> <button class="secondary small" id="exportPdfGridBtn">🖨 تصدير PDF (طباعة)</button> <button class="secondary small" id="backBtn">🔲 كل خطط الشبكة</button></div>
+      <div><button class="secondary small" id="homeBtn">🏠 الشاشة الرئيسية</button> <button class="secondary small" id="exportXlsGridBtn">⬇ تصدير Excel</button> <button class="secondary small" id="exportPdfGridBtn">🖨 تصدير PDF (طباعة)</button> <button class="secondary small" id="gridDelBtn">🗑️ حذف الخطة</button> <button class="secondary small" id="backBtn">🔲 كل خطط الشبكة</button></div>
     </div>
 
     <div class="section-card">
@@ -1948,6 +1967,7 @@ async function renderGridPlanDetail(symbol){
   document.getElementById('homeBtn').onclick=()=>renderHome();
   document.getElementById('backBtn').onclick=()=>renderGridPlansList();
   document.getElementById('gridEditSettingsBtn').onclick=()=>renderGridEditPlanSettings(symbol);
+  document.getElementById('gridDelBtn').onclick = () => gDeletePlan('grid', symbol, () => renderGridPlansList());
 
   (function renderCurveInline(){
     const points = g.cycleHistory.map(c => ({ label: c.date, value: c.cumulative }));
@@ -3226,7 +3246,7 @@ async function renderPlanDetail(symbol){
   window.__lastPageKey='plan_detail'; if (screenStale(__tok)) return; app.innerHTML = `<div class="container wide">${logoHeader()}
     <div class="topbar">
       <div><strong>${symbol}</strong> — خطة تعزيز متوسط <span class="meta-line">(${planObj.market||''} — ${planObj.currency} — بدأت ${planObj.startDate||'-'})</span></div>
-      <div><button class="secondary small" id="homeBtn">🏠 الشاشة الرئيسية</button> <button class="secondary small" id="delBtn">حذف الخطة</button> <button class="secondary small" id="backBtn">📈 كل خطط الـ DCA</button></div>
+      <div><button class="secondary small" id="homeBtn">🏠 الشاشة الرئيسية</button> <button class="secondary small" id="delBtn">🗑️ حذف الخطة</button> <button class="secondary small" id="backBtn">📈 كل خطط الـ DCA</button></div>
     </div>
 
     ${sim.isClosed ? `<div class="success-banner">
@@ -3315,13 +3335,7 @@ async function renderPlanDetail(symbol){
   document.getElementById('toggleDatesBtn').onclick=()=>{
     document.getElementById('levelsTable').classList.toggle('dates-hidden');
   };
-  document.getElementById('delBtn').onclick=async()=>{
-    if(!await gConfirm('هل أنت متأكد من حذف خطة '+symbol+'؟')) return;
-    const plans2 = await getPlans(email);
-    delete plans2[symbol];
-    await savePlans(email, plans2);
-    renderPlansList();
-  };
+  document.getElementById('delBtn').onclick = () => gDeletePlan('dca', symbol, () => renderPlansList());
   document.getElementById('updateCapitalBtn').onclick=async()=>{
     const newCap = parseFloat(document.getElementById('capitalInput').value);
     if(!newCap || newCap<=0) return;

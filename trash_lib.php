@@ -64,6 +64,12 @@ function trash_restore($conn, $id, $email, $isSuper){
     if (!trash_can_touch($row, $email, $isSuper)) return [false, 'لا يمكنك استرجاع هذا العنصر.'];
     if ($row['scope'] === 'admin' && empty($_SESSION['is_admin'])) return [false, 'لا يمكنك استرجاع هذا العنصر.'];
     $p = json_decode($row['payload'], true);
+    // الإصدار 99: خطة اتعمل بدالها خطة جديدة لنفس السهم ← منكتبش فوقها (المستخدم يحذف الجديدة الأول أو يسيبها)
+    foreach (($p['tables']['user_plans'] ?? []) as $r) {
+        $c = $conn->prepare("SELECT 1 FROM user_plans WHERE account_email = ? AND plan_type = ? AND symbol = ? AND deleted = 0"); $c->bind_param("sss", $r['account_email'], $r['plan_type'], $r['symbol']); $c->execute();
+        $busy = (bool)$c->get_result()->fetch_assoc(); $c->close();
+        if ($busy) return [false, 'توجد خطة حالية لنفس السهم (' . $r['symbol'] . ') — احذفها أو غيّر اسمها أولًا ثم استرجع القديمة.'];
+    }
     $conn->begin_transaction();
     try {
         foreach (($p['tables'] ?? []) as $table => $rows) {
