@@ -22,4 +22,6 @@ async function page(browser, viewport){
 async function loginAdmin(p){
   await p.evaluate(async ([e, pw]) => { await apiPost('/login.php', { email: e, password: pw }); invalidateSessionCache(); await getSession(); await refreshTopNav(); }, [ADMIN, ADMIN_PASS]);
 }
+// الإصدار 100: الحذف التلقائي للرموز الغلط متوقف في قاعدة الاختبار (بيانات الاختبار فيها رموز وهمية) - اختبار 15 بيجرّبه لوحده
+try { q("REPLACE INTO site_config (config_key, config_value) VALUES ('symbols_clean_at', '9999999999')"); q("DELETE FROM symbol_checks WHERE banned = 1 AND symbol NOT LIKE 'BAD%'"); } catch(e){}
 module.exports = { BASE, ADMIN, check, summary, q, launch, page, loginAdmin };

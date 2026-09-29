@@ -17,6 +17,7 @@ async function login(ctx, a){
   q("DELETE FROM login_attempts");
   const emails = ACC.map(a => `'${a.email}'`).join(',');
   q(`DELETE FROM user_alerts WHERE account_email IN (${emails})`); q(`DELETE FROM alert_targets WHERE account_email IN (${emails})`);
+  q(`DELETE FROM user_plans WHERE plan_type='grid_plans' AND account_email IN (${emails})`); q(`DELETE FROM user_data_store WHERE data_key='grid_plans' AND account_email IN (${emails})`);   // خطط شبكة متبقية من اختبارات تانية بتضيف مستويات
   const b = await launch(); const pages = {};
   for (const a of ACC) {
     const ctx = await b.newContext({ viewport: { width: 1280, height: 1000 } });

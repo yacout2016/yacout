@@ -49,6 +49,9 @@ function plans_migrate_if_needed($conn, $email, $key){
     foreach (get_object_vars($map) as $sym => $data) {
         $sym = (string)$sym;
         if ($sym === '' || strlen($sym) > 64) continue;
+        // الإصدار 100: رمز اتمسح نهائي (مش موجود في البورصة) مبيرجعش من التخزين القديم
+        if (function_exists('sym_is_banned') && !(is_object($data) && isset($data->listed) && $data->listed === false)
+            && sym_is_banned($conn, $sym, is_object($data) && isset($data->market) ? $data->market : 'مصر')) continue;
         $json = json_encode($data, JSON_UNESCAPED_UNICODE);
         $ins->bind_param("ssss", $email, $key, $sym, $json);
         $ins->execute();
