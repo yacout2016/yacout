@@ -142,3 +142,9 @@ body.gs-studio-on #chatBubble, body.gs-studio-on #chatPanel{ display:none !impor
 #gsStudio .gst-ord-h{ color:var(--st-muted); font-size:12px; letter-spacing:-2px; }
 #gsStudio .gst-ord-t{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12.5px; }
 #gsStudio .gst-ord .gst-ic{ width:26px; height:26px; font-size:11px; }
+/* الإصدار 107: أزرار الاختيار في «ترتيب العناصر داخل الصندوق» */
+#gsStudio .gst-lbl{ font-size:12px; font-weight:700; color:var(--st-muted); margin:10px 0 6px; }
+#gsStudio .gst-seg{ display:flex; flex-wrap:wrap; gap:6px; }
+#gsStudio .gst-seg button{ flex:1 1 auto; width:auto !important; min-width:0; min-height:0 !important; margin:0 !important; padding:7px 9px !important; border-radius:10px !important; border:1px solid var(--st-border) !important; background:var(--st-bg3) !important; color:var(--st-text) !important; font:inherit; font-size:12.5px !important; font-weight:600; cursor:pointer; white-space:nowrap; box-shadow:none !important; }
+#gsStudio .gst-seg button:hover{ border-color:var(--st-accent) !important; }
+#gsStudio .gst-seg button.on{ background:var(--st-accent-t) !important; border-color:var(--st-accent) !important; color:var(--st-accent) !important; }

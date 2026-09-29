@@ -55,7 +55,12 @@
 
   // خصائص التنسيق اللي الأدمن يقدر يغيّرها لأي عنصر (نفس القائمة في ui_custom_save.php)
   ST.CSS_PROPS = ['color','background-color','font-size','font-weight','font-family','font-style','text-align',
-                  'text-decoration','letter-spacing','line-height','padding','border-radius','border-color','display','opacity'];
+                  'text-decoration','letter-spacing','line-height','padding','border-radius','border-color','display','opacity',
+                  // الإصدار 107: حجم العنصر + ترتيب العناصر جوه الصندوق (يمين / وسط / شمال / عمودين ...)
+                  'width','min-height','flex-wrap','flex-direction','justify-content','align-items','gap','grid-template-columns'];
+  // قيم مسموحة بالظبط لخصائص الترتيب (أي حاجة غيرها بتترفض)
+  ST.LAYOUT_VALUES = { display: ['none', 'flex', 'grid'], 'flex-wrap': ['wrap', 'nowrap'], 'flex-direction': ['row', 'column'],
+    'justify-content': ['flex-start', 'center', 'flex-end', 'space-between', 'stretch'], 'align-items': ['flex-start', 'center', 'flex-end', 'stretch'] };
 
   /* الثيمات الجاهزة - كل ثيم = لون رئيسي + لون الأزرار (اختياري) + خط خاص بيه (بيتطبّق على كل الشاشات) + شوية لمسات
      باقي الألوان (الخلفية / البطاقات / الحدود / النص / الوضع الليلي) بتتولد تلقائيًا في قسم 02.
@@ -290,7 +295,10 @@
   ST.safeValue = (p, v) => {
     v = String(v == null ? '' : v).trim();
     if (!v || /url\s*\(|expression|javascript/i.test(v) || !SAFE_VAL.test(v)) return false;
-    if (p === 'display') return v === 'none';
+    if (ST.LAYOUT_VALUES[p]) return ST.LAYOUT_VALUES[p].includes(v);
+    if (p === 'grid-template-columns') return /^repeat\([1-6], ?(1fr|max-content|auto)\)$/.test(v);
+    if (p === 'width') return /^(\d{1,4}px|\d{1,3}%|auto)$/.test(v);
+    if (p === 'min-height' || p === 'gap') return /^\d{1,4}px$/.test(v);
     return true;
   };
 
@@ -428,7 +436,7 @@
   ST.apply = function(){
     try {
       // .gs-st-br = نص فيه أكتر من سطر (بيغلب "الجداول في سطر واحد" كمان)
-      styleTag('gsStudioRules').textContent = '.gs-st-br{white-space:pre-line !important;}\n' + ST.stylesCss(ST.overrides) + '\n' + ST.ordersCss(ST.overrides);
+      styleTag('gsStudioRules').textContent = '.gs-st-br{white-space:pre-line !important;}\n' + ST.ordersCss(ST.overrides) + '\n' + ST.stylesCss(ST.overrides);   // الإصدار 107: التنسيق بعد الترتيب ← ترتيب الصندوق (عمودين / وسط ...) بيغلب
       applyElTexts();
       applyTexts();
     } catch(e){ console.warn('studio apply:', e); }
@@ -479,7 +487,7 @@
     if (!window.GStudioEditor) {
       await new Promise((res, rej) => {
         const s = document.createElement('script');
-        s.src = 'studio-editor.js?v=106'; s.onload = res; s.onerror = () => rej(new Error('تعذّر تحميل استوديو التصميم'));
+        s.src = 'studio-editor.js?v=107'; s.onload = res; s.onerror = () => rej(new Error('تعذّر تحميل استوديو التصميم'));
         document.head.appendChild(s);
       }).catch(e => { if (window.GShell) GShell.toast(e.message, 'err'); });
     }

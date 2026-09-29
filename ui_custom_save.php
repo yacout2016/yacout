@@ -33,7 +33,9 @@ requireCsrf();
 // ---------------------------------------------------------------------
 $ALLOWED_FONTS = ['', 'IBM Plex Sans Arabic', 'Noto Kufi Arabic', 'Cairo', 'Tajawal', 'Almarai', 'Readex Pro', 'Changa', 'El Messiri', 'Tahoma', 'Arial'];
 $ALLOWED_PROPS = ['color', 'background-color', 'font-size', 'font-weight', 'font-family', 'font-style', 'text-align',
-                  'text-decoration', 'letter-spacing', 'line-height', 'padding', 'border-radius', 'border-color', 'display', 'opacity'];
+                  'text-decoration', 'letter-spacing', 'line-height', 'padding', 'border-radius', 'border-color', 'display', 'opacity',
+                  // الإصدار 107: حجم العنصر + ترتيب العناصر جوه الصندوق
+                  'width', 'min-height', 'flex-wrap', 'flex-direction', 'justify-content', 'align-items', 'gap', 'grid-template-columns'];
 $MAX_BYTES = 400000;   // أقصى حجم للتعديلات كلها
 $MAX_ITEMS = 3000;     // أقصى عدد تعديلات في كل نوع
 
@@ -64,7 +66,12 @@ function uc_css_value($prop, $v){
     $v = trim((string)$v);
     if ($v === '' || strlen($v) > 80) return null;
     if (preg_match('/[<>{};@\\\\]|url\s*\(|expression|javascript/i', $v)) return null;
-    if ($prop === 'display') return $v === 'none' ? 'none' : null;
+    $fixed = ['display' => ['none', 'flex', 'grid'], 'flex-wrap' => ['wrap', 'nowrap'], 'flex-direction' => ['row', 'column'],
+        'justify-content' => ['flex-start', 'center', 'flex-end', 'space-between', 'stretch'], 'align-items' => ['flex-start', 'center', 'flex-end', 'stretch']];
+    if (isset($fixed[$prop])) return in_array($v, $fixed[$prop], true) ? $v : null;
+    if ($prop === 'grid-template-columns') return preg_match('/^repeat\([1-6], ?(1fr|max-content|auto)\)$/', $v) ? $v : null;
+    if ($prop === 'width') return preg_match('/^(\d{1,4}px|\d{1,3}%|auto)$/', $v) ? $v : null;
+    if ($prop === 'min-height' || $prop === 'gap') return preg_match('/^\d{1,4}px$/', $v) ? $v : null;
     if (in_array($prop, ['color', 'background-color', 'border-color'], true)) return preg_match('/^(#[0-9a-fA-F]{3,8}|transparent)$/', $v) ? $v : null;
     return preg_match('/^[#A-Za-z0-9 .,%()\'"\-]+$/u', $v) ? $v : null;
 }

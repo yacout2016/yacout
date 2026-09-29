@@ -204,7 +204,7 @@
   function buildUi(){
     if (!document.getElementById('gsStudioCss')) {
       const l = document.createElement('link');
-      l.id = 'gsStudioCss'; l.rel = 'stylesheet'; l.href = 'studio.css?v=106';
+      l.id = 'gsStudioCss'; l.rel = 'stylesheet'; l.href = 'studio.css?v=107';
       document.head.appendChild(l);
     }
     const root = document.createElement('div');
@@ -431,6 +431,32 @@
         ${grp.rule ? `<button type="button" class="gst-btn" id="gstOrdReset">${icon('refund')}<span>إرجاع ترتيب المجموعة</span></button>` : ''}</div>`;
     }
 
+    // ---- الإصدار 107: ترتيب العناصر جوه الصندوق (يمين / وسط / شمال / عمودين ...) ----
+    const kids = Array.from(el.children).filter(c => !inStudio(c));
+    const box = kids.length >= 2 ? el : (grp ? grp.p : null);
+    const boxSel = box ? cssPath(box) : '';
+    let layHtml = '';
+    if (box && boxSel) {
+      const bv = (p) => styleOf(boxSel, place, p);
+      const gtc = bv('grid-template-columns'), m = gtc.match(/repeat\((\d)/);
+      const curCols = m ? (m[1] === '1' ? 'col' : m[1]) : (bv('display') === 'flex' ? (bv('flex-direction') === 'column' ? 'col' : 'row') : '');
+      const curPlace = /1fr/.test(gtc) ? 'stretch' : bv('justify-content');
+      const seg = (attr, cur, opts) => `<div class="gst-seg">${opts.map(([v, t]) => `<button type="button" data-${attr}="${v}" class="${cur === v ? 'on' : ''}">${t}</button>`).join('')}</div>`;
+      const bd = describe(box);
+      layHtml = `<div class="gst-sec" id="gstLay"><div class="gst-sec-t">ترتيب العناصر داخل الصندوق</div>
+        <div class="gst-hint" style="margin-top:0">الصندوق: <b>${esc(bd.kind)}</b> ${esc((bd.txt || '').slice(0, 40))} (${box.children.length} عناصر)</div>
+        <div class="gst-lbl">مكان العناصر</div>
+        ${seg('lp', curPlace, [['flex-start', '⇥ يمين'], ['center', '↔ وسط'], ['flex-end', '⇤ شمال'], ['space-between', '⇹ موزّعة'], ['stretch', '▭ بعرض الصندوق']])}
+        <div class="gst-lbl">التقسيم</div>
+        ${seg('lc', curCols, [['row', 'صف واحد'], ['col', 'عمود واحد'], ['2', 'عمودين (٢ فوق ٢)'], ['3', '3 أعمدة'], ['4', '4 أعمدة']])}
+        <div class="gst-grid2">
+          <label class="gst-f">المسافة بين العناصر (px)<input type="number" min="0" max="80" id="gstLayGap" value="${esc(parseFloat(bv('gap')) || '')}" placeholder="${Math.round(parseFloat(getComputedStyle(box).columnGap)) || 0}"></label>
+          <label class="gst-f">المحاذاة الرأسية<select id="gstLayAlign">${[['', '— كما هي —'], ['flex-start', 'أعلى'], ['center', 'وسط'], ['flex-end', 'أسفل'], ['stretch', 'نفس الارتفاع']].map(([v, t]) => `<option value="${v}" ${bv('align-items') === v ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+        </div>
+        ${styleOf(boxSel, place, 'display') ? `<button type="button" class="gst-btn" id="gstLayReset">${icon('refund')}<span>إرجاع شكل الصندوق</span></button>` : ''}
+        <div class="gst-hint">مثال: اختار «عمودين» عشان الأزرار تبقى اتنين فوق اتنين، و«شمال» أو «وسط» عشان تنقلهم. ولتكبير أو تصغير زرار معيّن حدّده هو وغيّر الحجم تحت.</div></div>`;
+    }
+
     setBody('العنصر المحدد', `
       <div class="gst-el"><span class="gst-kind">${esc(d.kind)}</span><span class="gst-eltxt">${esc(d.txt || '')}</span></div>
       <div class="gst-row2">
@@ -442,6 +468,7 @@
           <label><input type="radio" name="gstPlace" value="screen" ${place !== '*' ? 'checked' : ''}> هذه الشاشة فقط (${esc(screenLabel(screenNow()))})</label>
           <label><input type="radio" name="gstPlace" value="*" ${place === '*' ? 'checked' : ''}> كل الشاشات</label>
         </div></div>
+      ${layHtml}
       ${orderHtml}
       ${textHtml}
       <div class="gst-sec"><div class="gst-sec-t">الخط</div>
@@ -468,6 +495,14 @@
         <div class="gst-grid2">
           <label class="gst-f">الاستدارة (px)<input type="number" min="0" max="60" data-p="border-radius" data-unit="px" value="${esc(parseFloat(sv('border-radius')) || '')}" placeholder="${Math.round(parseFloat(cs.borderTopLeftRadius)) || 0}"></label>
           <label class="gst-f">المسافة الداخلية (px)<input type="number" min="0" max="80" data-p="padding" data-unit="px" value="${esc(parseFloat(sv('padding')) || '')}" placeholder="${Math.round(parseFloat(cs.paddingTop)) || 0}"></label>
+        </div>
+        <div class="gst-grid2">
+          <label class="gst-f">العرض (px)<input type="number" min="20" max="2000" data-p="width" data-unit="px" value="${esc(/px$/.test(sv('width')) ? parseFloat(sv('width')) : '')}" placeholder="${Math.round(parseFloat(cs.width)) || ''}"></label>
+          <label class="gst-f">الارتفاع (px)<input type="number" min="10" max="1000" data-p="min-height" data-unit="px" value="${esc(parseFloat(sv('min-height')) || '')}" placeholder="${Math.round(parseFloat(cs.height)) || ''}"></label>
+        </div>
+        <div class="gst-checks">
+          <label><input type="checkbox" data-toggle="width" data-on="100%" ${sv('width') === '100%' ? 'checked' : ''}> بعرض المكان كله</label>
+          <label><input type="checkbox" data-toggle="width" data-on="auto" ${sv('width') === 'auto' ? 'checked' : ''}> على قد الكلام</label>
         </div>
         <div class="gst-checks"><label><input type="checkbox" data-toggle="display" data-on="none" ${sv('display') === 'none' ? 'checked' : ''}> إخفاء هذا العنصر</label></div></div>
       <button type="button" class="gst-btn gst-danger" id="gstReset">${icon('refund')}<span>إرجاع العنصر لأصله</span></button>
@@ -533,7 +568,35 @@
       inp.onchange = () => handler(place, inp.value);
     });
     body.querySelectorAll('[data-clear]').forEach(b => b.onclick = () => { setStyle(place, sel, b.dataset.clear, '', lbl); markO(); renderElement(); });
-    body.querySelectorAll('[data-toggle]').forEach(c => c.onchange = () => { setStyle(place, sel, c.dataset.toggle, c.checked ? c.dataset.on : '', lbl); markO(); });
+    body.querySelectorAll('[data-toggle]').forEach(c => c.onchange = () => { setStyle(place, sel, c.dataset.toggle, c.checked ? c.dataset.on : '', lbl); markO(); if (c.dataset.toggle === 'width') renderElement(); });
+
+    // ترتيب الصندوق (الإصدار 107)
+    if (box && boxSel) {
+      const bdd = describe(box), blbl = ('صندوق: ' + bdd.kind + (bdd.txt ? ' ' + bdd.txt : '')).slice(0, 80);
+      const bv = (p) => styleOf(boxSel, place, p);
+      const setB = (p, v) => setStyle(place, boxSel, p, v, blbl);
+      const layout = (cols, where) => {
+        const gtc = bv('grid-template-columns'), m = gtc.match(/repeat\((\d)/);
+        cols = cols || (m ? (m[1] === '1' ? 'col' : m[1]) : (bv('flex-direction') === 'column' ? 'col' : 'row'));
+        where = where != null ? where : (/1fr/.test(gtc) ? 'stretch' : bv('justify-content'));
+        const n = Math.min(6, Math.max(1, box.children.length));
+        if (cols === 'row' && where !== 'stretch') {
+          setB('display', 'flex'); setB('flex-direction', 'row'); setB('flex-wrap', 'wrap'); setB('grid-template-columns', '');
+        } else {
+          const N = cols === 'col' ? 1 : cols === 'row' ? n : +cols;
+          setB('display', 'grid'); setB('flex-direction', ''); setB('flex-wrap', '');
+          setB('grid-template-columns', `repeat(${N}, ${where === 'stretch' ? '1fr' : 'max-content'})`);
+        }
+        setB('justify-content', where && where !== 'stretch' ? where : '');
+        markO(); renderElement();
+      };
+      body.querySelectorAll('[data-lp]').forEach(b => b.onclick = () => layout('', b.dataset.lp));
+      body.querySelectorAll('[data-lc]').forEach(b => b.onclick = () => layout(b.dataset.lc, null));
+      const gap = $('#gstLayGap'); const gapLater = debounce((v) => { setB('gap', v ? v + 'px' : ''); markO(); }, 200);
+      gap.oninput = () => gapLater(String(gap.value).trim());
+      $('#gstLayAlign').onchange = (e) => { setB('align-items', e.target.value); markO(); };
+      const lr = $('#gstLayReset'); if (lr) lr.onclick = () => { ['display', 'flex-direction', 'flex-wrap', 'grid-template-columns', 'justify-content', 'align-items', 'gap'].forEach(p => setB(p, '')); markO(); renderElement(); };
+    }
 
     // الترتيب
     if (grp) {
