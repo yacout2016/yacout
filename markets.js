@@ -164,7 +164,8 @@ async function renderWatchlistPage(){
 function mkComputeTargets(plans, grids){
   const out = [], r4 = (v) => +(+v).toFixed(4);
   Object.keys(plans || {}).forEach(sym => {
-    const p = plans[sym]; let sim = null; try { sim = simulatePlan(p); } catch(e){ return; }
+    const p = plans[sym]; if (!p || p.listed === false) return;   // الإصدار 98: سهم غير مدرج ← بدون إشعارات تلقائية
+    let sim = null; try { sim = simulatePlan(p); } catch(e){ return; }
     if (!sim || sim.isClosed) return;
     const held = +sim.heldQty || 0, avg = sim.avgCostCurrent != null ? +sim.avgCostCurrent : null;
     const next = sim.rows.find(r => r.isNext && !r.trimmed);
@@ -176,7 +177,7 @@ function mkComputeTargets(plans, grids){
   });
   Object.keys(grids || {}).forEach(sym => {
     const g = grids[sym], lv = g.levels || [];
-    if (g.closed) return;
+    if (g.closed || g.listed === false) return;
     const nbL = lv.filter(l => l.status !== 'bought' && +l.plannedPrice > 0).sort((a, b) => +b.plannedPrice - +a.plannedPrice)[0];
     const nsL = lv.filter(l => l.status === 'bought' && +l.executedQty > 0 && +l.sellTargetPrice > 0).sort((a, b) => +a.sellTargetPrice - +b.sellTargetPrice)[0];
     if (nbL) out.push({ symbol: sym, market: g.market || 'مصر', kind: 'Grid', side: 'buy', price: r4(nbL.plannedPrice), label: 'حد الشراء', meta: { qty: nbL.plannedQty != null ? r4(nbL.plannedQty) : null } });
@@ -330,8 +331,10 @@ function mkPxLoad(){ try { const c = JSON.parse(localStorage.getItem(MK_PX_KEY) 
 function mkPxSave(c){ try { localStorage.setItem(MK_PX_KEY, JSON.stringify(c)); } catch(e){} }
 async function mkEnsureLivePrices(plans, grids, timeoutMs = 2500){
   const need = {};
-  Object.entries(plans || {}).forEach(([s, p]) => { if (p) need[s.toUpperCase() + '|' + (p.market || 'مصر')] = { symbol: s, market: p.market || 'مصر' }; });
-  Object.entries(grids || {}).forEach(([s, g]) => { if (g) need[s.toUpperCase() + '|' + (g.market || 'مصر')] = { symbol: s, market: g.market || 'مصر' }; });
+  // الإصدار 98: سهم غير مدرج في البورصة (listed = false) ← مبنسألش السيرفر عن سعره ، سعره = آخر سعر كتبه المستخدم بنفسه
+  const manual = (s, p) => { const k = s.toUpperCase() + '|' + (p.market || 'مصر'); if (+p.manualLastPrice > 0) window.__mkLivePx[k] = +p.manualLastPrice; else delete window.__mkLivePx[k]; };
+  Object.entries(plans || {}).forEach(([s, p]) => { if (!p) return; if (p.listed === false) return manual(s, p); need[s.toUpperCase() + '|' + (p.market || 'مصر')] = { symbol: s, market: p.market || 'مصر' }; });
+  Object.entries(grids || {}).forEach(([s, g]) => { if (!g) return; if (g.listed === false) return manual(s, g); need[s.toUpperCase() + '|' + (g.market || 'مصر')] = { symbol: s, market: g.market || 'مصر' }; });
   let cache = mkPxLoad();
   const keys = Object.keys(need);
   const missing = keys.filter(k => !(k in cache.map));

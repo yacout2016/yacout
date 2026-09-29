@@ -1,5 +1,5 @@
 -- ============================================================
--- GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 97)
+-- GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 98)
 -- كل تحديثات قاعدة البيانات في ملف واحد.
 -- آمن تشغّله أي عدد من المرات: بيضيف الناقص بس ومبيمسحش أي بيانات.
 -- الاستخدام: phpMyAdmin ← اختار قاعدة البيانات ← تبويب SQL ← الصق الملف كله ← Go
@@ -40,6 +40,7 @@
 --              + ترتيب العناصر في استوديو التصميم وخط لكل ثيم (في ui_customizations - مفيش جدول جديد).
 -- الإصدار 97: alert_targets.meta + rearmed (إشعارات الخطط بالكمية ومتوسط التكلفة والربح + تكرار بعد 24 ساعة لو السعر رجع وعدّى تاني)
 --              + user_alerts.body بقى TEXT (نص الإشعار الكامل) + الأوقات بتتسجّل UTC وبتتعرض بتوقيت جهاز المستخدم.
+-- الإصدار 98: جدول symbol_checks (الأسهم المكتوبة غلط بتتمسح نهائيًا هي وخططها، والرمز الممنوع مبيرجعش تاني).
 -- ============================================================
 
 -- الإصدار 85: ترميز الاتصال UTF-8 عشان النصوص العربي اللي بتتضاف من الملف (زي المسميات الوظيفية) تتحفظ صح
@@ -1061,4 +1062,15 @@ DELIMITER ;
 CALL griffine_v97();
 DROP PROCEDURE griffine_v97;
 
-SELECT 'GRIFFINE database is up to date (v97)' AS result;
+-- الإصدار 98: فحص رموز الأسهم - الرمز اللي مش موجود في البورصة بيتمسح نهائي هو وخططه (banned = 1 ← مبيرجعش تاني)
+CREATE TABLE IF NOT EXISTS symbol_checks (
+  symbol VARCHAR(64) NOT NULL,
+  market VARCHAR(20) NOT NULL DEFAULT 'مصر',
+  first_fail_at DATETIME NULL,
+  last_fail_at DATETIME NULL,
+  fails INT NOT NULL DEFAULT 0,
+  banned TINYINT(1) NOT NULL DEFAULT 0,
+  PRIMARY KEY (symbol, market)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+SELECT 'GRIFFINE database is up to date (v98)' AS result;

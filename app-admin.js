@@ -121,6 +121,9 @@ async function renderAdminHub(){
     <div class="info">مرحبًا <strong>${email}</strong> — اختر من الأزرار أعلاه القسم الذي يمكنك دخوله حسب صلاحياتك. إذا لم ترَ أي زر غير "الشاشة الرئيسية"، فهذا يعني أنه لا توجد لديك أي صلاحية بعد — تواصل مع مدير الموقع ليمنحك الصلاحية المناسبة.</div>
   </div>`;
   wireAdminNavButtons();
+  // الإصدار 98: حذف الأسهم المكتوبة غلط تلقائيًا (في الخلفية - كل 6 ساعات بالكتير، حتى لو الـ Cron مش متظبط)
+  if (window.__isSuperAdmin && !window.__symAutoRan) { window.__symAutoRan = true;
+    apiGet('/symbols_audit.php?action=auto').then(r => { if (r && r.success && r.deleted && r.deleted.length && window.GShell) GShell.toast(`🧹 تم حذف ${r.deleted.length} خطة/سهم برموز غير موجودة في البورصة`, 'ok'); }).catch(() => {}); }
 }
 
 // زرار "رجوع للوحة التحكم" في كل الصفحات الفرعية بيستخدم ده - يودّي لصفحة المشتركين لو عنده صلاحيتها، وإلا لواجهة الاستقبال العامة
@@ -1316,9 +1319,9 @@ async function renderAdminSettingsPage(){
     <div class="info">فعّل الأسواق التي يعمل بها الموقع. السوق غير المفعّل لا يظهر في التسجيل ولا عند المستخدمين، ويمكنك تجهيز باقاته وطرق دفعه مسبقًا. كل حساب له بورصة واحدة يختارها عند التسجيل (لو سوق واحد مفعّل يكون تلقائيًا). مصر: فودافون كاش وإنستاباي وPaymob من القسم أعلاه، ويمكنك إضافة تحويل بنكي. Paymob بالجنيه فقط لذلك متاح لمصر فقط.</div>
     <div class="section-card" id="marketsCfgWrap">جارٍ التحميل...</div>
 
-    ${window.__isSuperAdmin ? `<h2 class="u-mt20">🧹 مراجعة رموز الأسهم في كل الخطط</h2>
-    <div class="info">يفحص رموز الأسهم في خطط كل الحسابات (تعزيز المتوسط وخطوط الشبكة) مع البورصة. الرموز غير الموجودة تظهر في قائمة لتراجعها أولًا، ثم تُنقل الخطط المختارة إلى سلة المحذوفات (صاحب الخطة يقدر يرجّعها) — لا يوجد حذف نهائي. لو مصدر الأسعار غير متاح يتوقف الفحص تلقائيًا.</div>
-    <div class="section-card"><button class="small u-wa" id="symAuditBtn">🔎 فحص الرموز الآن</button><div id="symAuditOut" class="u-mt10"></div></div>` : ''}
+    ${window.__isSuperAdmin ? `<h2 class="u-mt20">🧹 حذف الأسهم المكتوبة غلط</h2>
+    <div class="info">أي رمز سهم مش موجود في البورصة (في خطط أي مستخدم أو الأدمن، أو قائمة المتابعة، أو تنبيهات الأسعار) بيتمسح <b>نهائيًا</b> هو وخطته وصفقاته وإشعاراته، ومبيرجعش تاني — ماعدا الخطط اللي صاحبها اختار إنها «سهم غير مدرج في البورصة». ده بيحصل تلقائيًا كل 6 ساعات، والزرار ده بيعمله فورًا. لو مصدر الأسعار واقع مفيش أي حذف.</div>
+    <div class="section-card"><button class="small danger u-wa" id="symAuditBtn">🧹 فحص وحذف الرموز الغلط الآن</button><div id="symAuditOut" class="u-mt10"></div></div>` : ''}
 
     <h2 class="u-mt20">إخفاء شاشات عن العميل</h2>
     <div class="info">فعّل أي مفتاح هنا لإخفاء الزر المقابل من الشاشة الرئيسية للعميل، دون حذف أي بيانات أو خطط موجودة بالفعل. الافتراضي أن كل الأزرار ظاهرة.</div>
@@ -1371,24 +1374,17 @@ async function renderAdminSettingsPage(){
       if (rr && rr.success && window.GShell) GShell.loadAccountMarket(true);
     };
   })();
-  // الإصدار 97: مراجعة رموز الأسهم (مدير الموقع)
+  // الإصدار 98: حذف الأسهم المكتوبة غلط نهائيًا (مدير الموقع)
   const sab = document.getElementById('symAuditBtn'); if (sab) sab.onclick = async () => {
-    const out = document.getElementById('symAuditOut'); sab.disabled = true; out.innerHTML = '<p class="u-muted">جارٍ الفحص... قد يستغرق دقيقة حسب عدد الأسهم.</p>';
-    const r = await apiGet('/symbols_audit.php?action=scan').catch(() => null); sab.disabled = false;
+    if (!await gConfirm('فحص كل رموز الأسهم وحذف أي رمز مش موجود في البورصة نهائيًا هو وخططه؟ (لا يمكن الاسترجاع)', { ok: 'فحص وحذف', danger: true })) return;
+    const out = document.getElementById('symAuditOut'); sab.disabled = true; out.innerHTML = '<p class="u-muted">جارٍ الفحص والحذف... قد يستغرق دقيقة حسب عدد الأسهم.</p>';
+    const r = await apiPost('/symbols_audit.php', { action: 'clean' }).catch(() => null); sab.disabled = false;
     if (!r || !r.success) { out.innerHTML = `<div class="error">${escapeHtml((r && r.message) || 'تعذّر الفحص')}</div>`; return; }
-    if (!r.invalid.length) { out.innerHTML = `<div class="info">✅ كل الرموز صحيحة — تم فحص ${r.checkedPlans} خطة (${r.checkedSymbols} رمز).</div>`; return; }
-    out.innerHTML = `<div class="error">وُجد ${r.invalid.length} خطة برموز غير موجودة في البورصة (من ${r.checkedPlans} خطة). راجعها ثم انقل المحدد للسلة:</div>
-      <div class="table-scroll"><table class="g-table"><thead><tr><th><input type="checkbox" id="symAll" checked aria-label="تحديد الكل"></th><th>الحساب</th><th>نوع الخطة</th><th>الرمز</th><th>السوق</th></tr></thead><tbody>
-      ${r.invalid.map(x => `<tr><td><input type="checkbox" class="symChk" value="${x.id}" checked></td><td dir="ltr">${escapeHtml(x.email)}</td><td>${x.kind === 'Grid' ? 'خطوط الشبكة' : 'تعزيز المتوسط'}</td><td dir="ltr"><b>${escapeHtml(x.symbol)}</b></td><td>${escapeHtml(x.market)}</td></tr>`).join('')}
-      </tbody></table></div><button class="small danger u-wa u-mt8" id="symTrashBtn">🗑️ نقل المحدد إلى سلة المحذوفات</button>`;
-    document.getElementById('symAll').onchange = (e) => out.querySelectorAll('.symChk').forEach(c => { c.checked = e.target.checked; });
-    document.getElementById('symTrashBtn').onclick = async () => {
-      const ids = Array.from(out.querySelectorAll('.symChk:checked')).map(c => c.value);
-      if (!ids.length) return;
-      if (!await gConfirm(`نقل ${ids.length} خطة إلى سلة المحذوفات؟ (أصحابها يقدروا يرجّعوها من السلة)`, { ok: 'نقل للسلة', danger: true })) return;
-      const x = await apiPost('/symbols_audit.php', { action: 'trash', ids: ids.join(',') }).catch(() => null);
-      out.innerHTML = x && x.success ? `<div class="info">✅ تم نقل ${x.moved} خطة إلى سلة المحذوفات.</div>` : `<div class="error">${escapeHtml((x && x.message) || 'تعذّر التنفيذ')}</div>`;
-    };
+    out.innerHTML = !r.deleted.length ? `<div class="info">✅ كل الرموز صحيحة — تم فحص ${r.checked} رمز، ولم يُحذف شيء.</div>` :
+      `<div class="info">🧹 تم حذف ${r.deleted.length} نهائيًا (من ${r.checked} رمز):</div>
+      <div class="table-scroll"><table class="g-table"><thead><tr><th>الحساب</th><th>النوع</th><th>الرمز</th><th>السوق</th></tr></thead><tbody>
+      ${r.deleted.map(x => `<tr><td dir="ltr">${escapeHtml(x.email || '-')}</td><td>${x.kind === 'Grid' ? 'خطوط الشبكة' : x.kind === 'DCA' ? 'تعزيز المتوسط' : escapeHtml(x.kind)}</td><td dir="ltr"><b>${escapeHtml(x.symbol)}</b></td><td>${escapeHtml(x.market)}</td></tr>`).join('')}
+      </tbody></table></div>`;
   };
   // الإصدار 96: رقم الإصدار المعروض
   siteCfgAdminApi().then(r => { const i = document.getElementById('cfgVersionLabel'); if (i && r && r.config) i.value = r.config.app_version_label || ''; });

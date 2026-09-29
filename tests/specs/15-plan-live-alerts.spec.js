@@ -102,16 +102,57 @@ const ADMIN = 'top72026@gmail.com';
   check('رمز غلط (ZZQX) مرفوض عند إنشاء خطة', !c1.ok && /غير موجود/.test(c1.msg), JSON.stringify(c1));
   check('رمز صحيح (COMI) مقبول', c2.ok && !c2.unverified);
 
-  // 10) مراجعة الرموز: القائمة الأول ثم النقل للسلة
-  q("DELETE FROM user_plans WHERE symbol='BADXQ'");
+  // 10) الإصدار 98: ربح الخطط المفتوحة على آخر سعر في قائمة الخطط
+  await setPx('COMI', 129);
+  await a.evaluate(() => { localStorage.removeItem('gs_livepx2'); renderPlansList(); }); await a.waitForTimeout(3500);
+  const lp = await a.evaluate(() => ({ row: (document.querySelector('.gpl-px[data-sym="COMI"]') || {}).textContent || '', tot: (document.getElementById('gplTotal') || {}).textContent || '' }));
+  check('قائمة خطط DCA: آخر سعر + ربح الخطة على آخر سعر (80)', /129/.test(lp.row) && /ربح 80\.00/.test(lp.row) && /80/.test(lp.tot), JSON.stringify(lp));
+  await a.evaluate(() => { localStorage.removeItem('gs_livepx2'); renderGridPlansList(); }); await a.waitForTimeout(3500);
+  const lg = await a.evaluate(() => (document.querySelector('.gpl-px[data-sym="HRHO"]') || {}).textContent || '');
+  check('قائمة خطط Grid: آخر سعر + ربح على آخر سعر', /ربح/.test(lg), lg);
+
+  // 11) الإصدار 98: الأسهم المكتوبة غلط بتتمسح نهائي هي وخطتها ومبترجعش
+  q("DELETE FROM user_plans WHERE symbol IN ('BADXQ','BADYQ')"); q("DELETE FROM symbol_checks"); q("DELETE FROM site_config WHERE config_key='symbols_clean_at'");
   q(`INSERT INTO user_plans (account_email, plan_type, symbol, data_value, version, deleted) VALUES ('paytest@example.com', 'plans', 'BADXQ', '{"symbol":"BADXQ","market":"مصر","levels":[]}', 1, 0)`);
-  const sc = await a.evaluate(() => apiGet('/symbols_audit.php?action=scan'));
-  const bad = (sc.invalid || []).find(x => x.symbol === 'BADXQ');
-  check('المراجعة: الرمز الغلط في القائمة والصحيح لأ', sc.success && bad && !(sc.invalid || []).some(x => x.symbol === 'COMI' || x.symbol === 'HRHO'), JSON.stringify(sc).slice(0, 160));
-  const tr = await a.evaluate((id) => apiPost('/symbols_audit.php', { action: 'trash', ids: String(id) }), bad ? bad.id : 0);
-  check('النقل للسلة: الخطة اتشالت واتحطت في سلة صاحبها', tr.success && tr.moved === 1 && q("SELECT deleted FROM user_plans WHERE symbol='BADXQ'") === '1' && +q("SELECT COUNT(*) FROM trash_bin WHERE owner_email='paytest@example.com' AND item_label LIKE '%BADXQ%'") >= 1);
+  q(`INSERT INTO user_alerts (account_email, title, body, symbol, market) VALUES ('paytest@example.com', 'x', 'x', 'BADXQ', 'مصر')`);
+  const cl = await a.evaluate(() => apiPost('/symbols_audit.php', { action: 'clean' }));
+  check('زرار الحذف: الرمز الغلط اتمسح نهائي (الخطة + إشعاراته) والصحيح لأ', cl.success && (cl.deleted || []).some(x => x.symbol === 'BADXQ') && !(cl.deleted || []).some(x => x.symbol === 'COMI' || x.symbol === 'HRHO')
+    && q("SELECT COUNT(*) FROM user_plans WHERE symbol='BADXQ'") === '0' && q("SELECT COUNT(*) FROM user_alerts WHERE symbol='BADXQ'") === '0' && q("SELECT COUNT(*) FROM trash_bin WHERE item_label LIKE '%BADXQ%'") === '0', JSON.stringify(cl).slice(0, 200));
+  check('خطط الأسهم الصحيحة متأثرتش', q(`SELECT COUNT(*) FROM user_plans WHERE account_email='${ADMIN}' AND symbol='COMI' AND deleted=0`) === '1');
+  const rs = await a.evaluate(async () => { const g = await apiGet('/user_data_get.php?key=plans'); const m = JSON.parse(g.value); m.BADXQ = { symbol: 'BADXQ', market: 'مصر', levels: [], closedTrades: [] };
+    await apiPost('/user_data_save.php', { key: 'plans', value: JSON.stringify(m), base: JSON.stringify(g.versions || {}) }); return 1; });
+  check('الرمز الممنوع مبيرجعش حتى لو اتحفظ تاني', q("SELECT COUNT(*) FROM user_plans WHERE symbol='BADXQ'") === '0');
+  // التلقائي: بعد أول تشغيل، الرمز لازم يفشل في فحصين بينهم 6 ساعات
+  q(`INSERT INTO user_plans (account_email, plan_type, symbol, data_value, version, deleted) VALUES ('paytest@example.com', 'plans', 'BADYQ', '{"symbol":"BADYQ","market":"مصر","levels":[]}', 1, 0)`);
+  q("UPDATE site_config SET config_value='1' WHERE config_key='symbols_clean_at'");
+  const au1 = await a.evaluate(() => apiGet('/symbols_audit.php?action=auto'));
+  check('التلقائي: أول فشل ← مستني (مش بيتمسح فورًا)', au1.success && (au1.waiting || []).some(x => x.symbol === 'BADYQ') && q("SELECT COUNT(*) FROM user_plans WHERE symbol='BADYQ'") === '1', JSON.stringify(au1).slice(0, 160));
+  q("UPDATE symbol_checks SET first_fail_at = NOW() - INTERVAL 7 HOUR WHERE symbol='BADYQ'"); q("UPDATE site_config SET config_value='1' WHERE config_key='symbols_clean_at'");
+  const au2 = await a.evaluate(() => apiGet('/symbols_audit.php?action=auto'));
+  check('التلقائي: فشل تاني بعد 6 ساعات ← اتمسح نهائي', au2.success && q("SELECT COUNT(*) FROM user_plans WHERE symbol='BADYQ'") === '0', JSON.stringify(au2).slice(0, 160));
+  // 12) الإصدار 98: سهم غير مدرج في البورصة ← أي اسم وسعر يدوي، بدون إشعارات، ومبيتمسحش
+  await a.evaluate(() => renderNewPlanForm()); await a.waitForTimeout(800);
+  check('نموذج خطة DCA: اختيار "مدرج / غير مدرج في البورصة"', await a.locator('input[name="listed"]').count() === 2);
+  await a.evaluate(() => renderGridPlanForm()); await a.waitForTimeout(800);
+  check('نموذج خطة Grid: اختيار "مدرج / غير مدرج في البورصة"', await a.locator('input[name="g_listed"]').count() === 2);
+  await a.evaluate(async () => { const g = await apiGet('/user_data_get.php?key=plans'); const m = JSON.parse(g.value);
+    m['شركة خاصة'] = { symbol: 'شركة خاصة', listed: false, manualLastPrice: 12, market: 'مصر', currency: 'جنيه مصري', currentPrice: 10, capital: 5000, seedAmount: 1000, dropPercent: 5, volumeIncrease: 0, profitTarget: 5,
+      levels: [{ level: 1, executed: true, actualQty: 100, actualPrice: 10, execDate: '2026-09-01', sells: [] }, { level: 2, executed: false, sells: [] }], closedTrades: [] };
+    await apiPost('/user_data_save.php', { key: 'plans', value: JSON.stringify(m), base: JSON.stringify(g.versions || {}) }); });
+  const ul = await a.evaluate(async () => { const m = JSON.parse((await apiGet('/user_data_get.php?key=plans')).value); await mkEnsureLivePrices(m, {}, 3000);
+    return { t: mkComputeTargets(m, {}).filter(x => x.symbol === 'شركة خاصة').length, px: window.__mkLivePx['شركة خاصة|مصر'] }; });
+  check('غير مدرج: مفيش مستويات إشعار عليه', ul.t === 0, JSON.stringify(ul));
+  check('غير مدرج: سعره = آخر سعر كتبه المستخدم (12)', ul.px === 12);
+  await a.evaluate(() => renderPlanDetail('شركة خاصة')); await a.waitForTimeout(1500);
+  const ud = await a.evaluate(() => ({ lbl: document.getElementById('statusLastPriceLbl').textContent, un: document.getElementById('statusUnreal').textContent, note: !!document.querySelector('.g-unlisted-note') }));
+  check('شاشة خطة غير مدرجة: السعر اليدوي + الربح (12 − 10) × 100 = 200 + تنبيه بدون إشعارات', /غير مدرج/.test(ud.lbl) && ud.un.replace(/[^\d.]/g, '') === '200.00' && ud.note, JSON.stringify(ud));
+  q("UPDATE site_config SET config_value='1' WHERE config_key='symbols_clean_at'");
+  await a.evaluate(() => apiPost('/symbols_audit.php', { action: 'clean' }));
+  check('غير مدرج: الحذف التلقائي للرموز الغلط مبيلمسوش', q("SELECT COUNT(*) FROM user_plans WHERE symbol='شركة خاصة' AND deleted=0") === '1');
+  q("DELETE FROM user_plans WHERE symbol='شركة خاصة'");
+
   const cust = await (await b.newContext()).newPage(); await cust.goto(BASE + '/index.php');
-  check('مراجعة الرموز لمدير الموقع بس', await cust.evaluate(() => fetch('/symbols_audit.php?action=scan').then(r => r.status)) === 403);
+  check('حذف الرموز لمدير الموقع بس', await cust.evaluate(() => fetch('/symbols_audit.php?action=auto').then(r => r.status)) === 403);
   check('بدون أخطاء JavaScript', !a.__errors.length, a.__errors[0]);
 
   // تنظيف
@@ -119,7 +160,7 @@ const ADMIN = 'top72026@gmail.com';
     const x = await apiGet('/user_data_get.php?key=plans'); await apiPost('/user_data_save.php', { key: 'plans', value: p, base: JSON.stringify(x.versions || {}) });
     const y = await apiGet('/user_data_get.php?key=grid_plans'); await apiPost('/user_data_save.php', { key: 'grid_plans', value: g, base: JSON.stringify(y.versions || {}) });
   }, [old, oldG]);
-  q("DELETE FROM user_plans WHERE symbol='BADXQ'"); q("DELETE FROM trash_bin WHERE item_label LIKE '%BADXQ%'");
+  q("DELETE FROM user_plans WHERE symbol IN ('BADXQ','BADYQ')"); q("DELETE FROM symbol_checks"); q("DELETE FROM site_config WHERE config_key='symbols_clean_at'");
   q(`DELETE FROM user_alerts WHERE account_email='${ADMIN}'`); q(`DELETE FROM alert_targets WHERE account_email='${ADMIN}'`); q("DELETE FROM trash_bin WHERE item_type='plan'");
   await setPx('COMI', 80); await setPx('HRHO', 20);
   await b.close();

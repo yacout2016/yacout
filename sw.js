@@ -2,14 +2,14 @@
 // 1) إشعارات Push حقيقية (زي ما كانت)
 // 2) تشغيل كتطبيق: تخزين ملفات الواجهة الثابتة + صفحة "غير متصل" لما الإنترنت يقطع
 // ملحوظة: طلبات الـ API (ملفات .php) مش بتتخزن أبدًا - البيانات المالية لازم تيجي من السيرفر دايمًا
-const VERSION = 'griffine-v97';
+const VERSION = 'griffine-v98';
 const STATIC_ASSETS = [
   '/offline.html',
-  '/shell.css?v=97',
-  '/shell.js?v=97',
-  '/studio.js?v=97',
-  '/griffine-logo-light.webp?v=97',
-  '/griffine-logo-dark.webp?v=97',
+  '/shell.css?v=98',
+  '/shell.js?v=98',
+  '/studio.js?v=98',
+  '/griffine-logo-light.webp?v=98',
+  '/griffine-logo-dark.webp?v=98',
   '/icon-192.png',
   '/icon-512.png',
   '/manifest.json'

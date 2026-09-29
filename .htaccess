@@ -12,7 +12,7 @@ Options -Indexes
 </FilesMatch>
 
 # 3) ملفات مساعدة PHP مبتتفتحش لوحدها (بيستخدمها الكود من جوه بس)
-<FilesMatch "^(db|mailer|uploads|session_boot|chat_read_state|chat_notify_lib|plans_store|otp_lib|paymob_lib|security_lib|quote_lib|markets_lib|trades_lib|chat_faq_lib|trash_lib|codes_lib|markets_core)\.php$">
+<FilesMatch "^(db|mailer|uploads|session_boot|chat_read_state|chat_notify_lib|plans_store|otp_lib|paymob_lib|security_lib|quote_lib|markets_lib|trades_lib|chat_faq_lib|trash_lib|codes_lib|markets_core|symbols_lib)\.php$">
     Require all denied
 </FilesMatch>
 

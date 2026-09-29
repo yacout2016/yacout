@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/symbols_lib.php';
 /* =====================================================================
    تخزين خطط العملاء (DCA / Grid) - كل سهم في صف مستقل في جدول user_plans
    - كل صف ليه رقم نسخة (version) بيزيد مع كل تعديل
@@ -111,6 +112,9 @@ function plans_save($conn, $email, $key, $map, $base){
         foreach ($incoming as $sym => $data) {
             $sym = (string)$sym;
             if ($sym === '' || strlen($sym) > 64) continue;
+            // الإصدار 98: رمز اتمسح لأنه مش موجود في البورصة ← مبيرجعش تاني حتى لو جهاز قديم بعته
+            if (function_exists('sym_is_banned') && !(is_object($data) && isset($data->listed) && $data->listed === false)
+                && sym_is_banned($conn, $sym, is_object($data) && isset($data->market) ? $data->market : 'مصر')) continue;
             $json = json_encode($data, JSON_UNESCAPED_UNICODE);
             if (!isset($rows[$sym])) {
                 $ins->bind_param("ssss", $email, $key, $sym, $json);

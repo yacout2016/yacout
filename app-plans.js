@@ -239,6 +239,41 @@ async function gCheckSymbol(symbol, market){
   return { ok: false, msg: `الرمز ${symbol} غير موجود في بورصة ${market || 'مصر'} — اكتب رمز السهم كما يظهر في شاشة البورصة (مثل COMI).` };
 }
 
+/* الإصدار 98: ربح الخطط المفتوحة على آخر سعر (متأخر 15 دقيقة) في قوائم الخطط
+   items = [{ sym, market, held, avg, ccy }] ← بيملا .gpl-px[data-sym] في كل سطر + #gplTotal (إجمالي لكل عملة لوحدها) */
+function gFillListProfits(tok, plans, grids, items){
+  if (typeof mkEnsureLivePrices !== 'function' || !items.length) return;
+  const paint = () => {
+    if (screenStale(tok)) return;
+    const px = window.__mkLivePx || {}, tot = {};
+    items.forEach(it => {
+      const el = document.querySelector(`.gpl-px[data-sym="${CSS.escape(it.sym)}"]`); if (!el) return;
+      const last = px[String(it.sym).toUpperCase() + '|' + (it.market || 'مصر')];
+      if (!(last > 0)) { el.innerHTML = '<span class="u-muted">آخر سعر غير متاح</span>'; return; }
+      if (!(it.held > 0) || !(it.avg > 0)) { el.innerHTML = `آخر سعر <b>${fmt2(last)}</b> — لا توجد كمية مملوكة`; return; }
+      const pnl = (last - it.avg) * it.held, pct = (last - it.avg) / it.avg * 100, c = it.ccy || 'جنيه مصري';
+      tot[c] = tot[c] || { pnl: 0, cost: 0, value: 0 }; tot[c].pnl += pnl; tot[c].cost += it.avg * it.held; tot[c].value += last * it.held;
+      el.innerHTML = `آخر سعر <b>${fmt2(last)}</b> — ${fmtQty(it.held)} سهم بمتوسط ${fmt2(it.avg)} — <b class="${pnl < 0 ? 'neg' : 'pos'}">${pnl < 0 ? 'خسارة' : 'ربح'} ${fmt2(Math.abs(pnl))} (${pct > 0 ? '+' : ''}${pct.toFixed(2)}%)</b>`;
+    });
+    const t = document.getElementById('gplTotal');
+    if (t) { const k = Object.keys(tot); t.hidden = !k.length;
+      t.innerHTML = k.map(c => `<div class="summary-card"><div class="val ${tot[c].pnl < 0 ? 'neg' : 'pos'}">${fmtMoney(tot[c].pnl)} <small>${escapeHtml(c)}</small></div><div class="lbl">ربح/خسارة الخطط المفتوحة على آخر سعر — التكلفة ${fmtMoney(tot[c].cost)} والقيمة الآن ${fmtMoney(tot[c].value)}</div></div>`).join(''); }
+  };
+  paint();
+  mkEnsureLivePrices(plans, grids, 4000).then(() => { paint(); if (window.__mkLivePxPending) window.__mkLivePxPending.then(paint).catch(() => {}); }).catch(() => {});
+}
+
+/* الإصدار 98: سهم غير مدرج في البورصة ← خانة "آخر سعر" بتبقى يدوية وبتتحفظ ، ومعاها تنبيه إن مفيش إشعارات تلقائية */
+function gUnlistedPriceBox(inputId, plan, onSave){
+  const inp = document.getElementById(inputId); if (!inp) return;
+  const det = inp.closest('details');
+  if (det) { det.open = true; const sm = det.querySelector('summary'); if (sm) sm.textContent = '✍️ آخر سعر للسهم (سهم غير مدرج — تكتبه بنفسك ويُحفظ)'; const lb = det.querySelector('label'); if (lb) lb.textContent = 'السهم غير مدرج في البورصة، فالسعر مش بيتحدّث تلقائيًا ومفيش إشعارات تلقائية عليه — اكتب آخر سعر وهيتحفظ.'; }
+  inp.value = +plan.manualLastPrice > 0 ? plan.manualLastPrice : '';
+  inp.addEventListener('change', () => { const v = parseFloat(inp.value); onSave(v > 0 ? v : null); });
+  const card = det ? det.closest('.section-card') : null;
+  if (card && !card.querySelector('.g-unlisted-note')) { const n = document.createElement('div'); n.className = 'info g-unlisted-note'; n.textContent = '🔕 سهم غير مدرج في البورصة — لا يتم التحقق من الكود ولا تصل عليه إشعارات تلقائية.'; card.insertBefore(n, card.firstChild); }
+}
+
 /* الإصدار 97: آخر سعر للسهم في شاشة الخطة (DCA / Grid) - من ذاكرة الأسعار فورًا، وبعدين تحديث من السيرفر
    وكل 5 دقائق طول ما الشاشة مفتوحة. onPrice(السعر) بتتنادى لما السعر يتغيّر */
 function gPlanLivePrice(tok, plans, grids, key, onPrice){
@@ -278,6 +313,7 @@ async function renderPlansList(){
         <button type="button" class="small secondary dacListFilterBtn std-filter-tab" data-status="مقفولة">مقفولة فقط</button>
       </div>
     </div>` : ''}
+    <div class="summary-cards" id="gplTotal" hidden></div>
     <div id="plansListArea" class="plans-list-scroll"></div>
     <div class="std-filter-empty" id="dacListEmpty" style="display:none;">لا توجد خطط مطابقة للبحث/الفلتر</div>
     ${symbols.length>0 ? renderDacStockReportSectionHtml(plans, symbols) : ''}
@@ -303,7 +339,7 @@ async function renderPlansList(){
       const isActuallyClosed = !isOpenPosition && p.closedTrades.length > 0;
       const statusKey = isActuallyClosed ? 'مقفولة' : 'مفتوحة';
       return `<div class="plan-list-item" data-sym="${sym}" data-q="${sym.toLowerCase()}" data-status="${statusKey}">
-        <div><strong>${sym}</strong><div class="u-fs11 u-muted">${doneCount}/${p.levels.length} مستويات — ${isActuallyClosed?'مقفولة ✅':'مفتوحة'} — ${p.market||''} — ${p.currency||''}</div></div>
+        <div><strong>${sym}</strong><div class="u-fs11 u-muted">${doneCount}/${p.levels.length} مستويات — ${isActuallyClosed?'مقفولة ✅':'مفتوحة'} — ${p.market||''} — ${p.currency||''}${p.listed === false ? ' — <span class="tag">غير مدرج 🔕</span>' : ''}</div>${isOpenPosition ? `<div class="gpl-px u-fs12" data-sym="${escapeHtml(sym)}">جارٍ تحميل آخر سعر...</div>` : ''}</div>
         <div style="display:flex;align-items:center;gap:10px;">
           <button class="small secondary u-wa u-m0" data-gcall="__editDacPlanFromList" data-gargs="${gArgs([String(sym)])}" data-gstop="1">⚙️ تعديل الخطة</button>
           <span>&#8250;</span>
@@ -313,6 +349,8 @@ async function renderPlansList(){
     listArea.querySelectorAll('.plan-list-item').forEach(el=>{
       el.onclick=()=>renderPlanDetail(el.dataset.sym);
     });
+    gFillListProfits(__tok, plans, {}, symbols.map(sym => { let sm = null; try { sm = simulatePlan(plans[sym]); } catch(e){}
+      return sm && sm.heldQty > 0 ? { sym, market: plans[sym].market || 'مصر', held: sm.heldQty, avg: sm.avgCostCurrent, ccy: plans[sym].currency } : null; }).filter(Boolean));
     window.__editDacPlanFromList = (sym) => renderEditPlanSettings(sym);
 
     // فلتر البحث + حالة الخطة (مفتوحة/مقفولة) - نفس الأسلوب اليدوي المستخدم في
@@ -1572,6 +1610,7 @@ async function renderGridPlansList(){
       <div class="std-filter-search"><input type="text" id="gridListSearch" placeholder="🔍 ابحث باسم السهم..."></div>
     </div>` : ''}
 
+    <div class="summary-cards" id="gplTotal" hidden></div>
     <h2 class="u-mt20" id="gridActiveHeading">خططك النشطة</h2>
     <div id="gridListWrap"></div>
 
@@ -1590,7 +1629,7 @@ async function renderGridPlansList(){
       const bought = g.levels.filter(l=>l.status==='bought').length;
       const totalCycles = g.levels.reduce((s,l)=>s+(l.cycles||0),0);
       return `<div class="plan-list-item" data-q="${sym.toLowerCase()}" data-gcall="__openGrid" data-gargs="${gArgs([String(sym)])}">
-        <div><strong>${escapeHtml(sym)}</strong> <span class="u-fs11 u-muted">(${escapeHtml(g.market||'')})</span></div>
+        <div><strong>${escapeHtml(sym)}</strong> <span class="u-fs11 u-muted">(${escapeHtml(g.market||'')})</span>${g.listed === false ? ' <span class="tag">غير مدرج 🔕</span>' : ''}${g.levels.some(l => l.status==='bought' && l.executedQty > 0) ? `<div class="gpl-px u-fs12" data-sym="${escapeHtml(sym)}">جارٍ تحميل آخر سعر...</div>` : ''}</div>
         <div style="display:flex;align-items:center;gap:10px;">
           <div style="font-size:12px;color:#666;">مستويات مشتراة: ${bought}/${g.levels.length} — دورات مكتملة: ${totalCycles}</div>
           <button class="small secondary u-wa u-m0" data-gcall="__editGridFromList" data-gargs="${gArgs([String(sym)])}" data-gstop="1">⚙️ تعديل الخطة</button>
@@ -1606,6 +1645,10 @@ async function renderGridPlansList(){
   }
   window.__openGrid = (sym) => renderGridPlanDetail(sym);
   window.__editGridFromList = (sym) => renderGridEditPlanSettings(sym);
+  { const act = {}; activeSymbols.forEach(sym => { act[sym] = grids[sym]; });
+    gFillListProfits(__tok, {}, act, activeSymbols.map(sym => { const b = (grids[sym].levels || []).filter(l => l.status === 'bought' && l.executedQty > 0);
+      const held = b.reduce((a, l) => a + (+l.executedQty || 0), 0), cost = b.reduce((a, l) => a + (+l.executedQty || 0) * (+l.executedPrice || 0), 0);
+      return held > 0 ? { sym, market: grids[sym].market || 'مصر', held, avg: cost / held, ccy: grids[sym].currency || ({ 'مصر':'جنيه مصري', 'السعودية':'ريال سعودي', 'الإمارات':'درهم إماراتي', 'قطر':'ريال قطري', 'الكويت':'دينار كويتي' })[grids[sym].market || 'مصر'] } : null; }).filter(Boolean)); }
 
   if (hasAnyGrid) {
     wireStdFilterBar({
@@ -1633,6 +1676,10 @@ async function renderGridPlanForm(){
   if (screenStale(__tok)) return; app.innerHTML = `<div class="container">${logoHeader()}
     <div class="topbar"><div>${pageTitle('grid_plan_new','+ خطة شبكة جديدة')}</div><button class="secondary small" id="backBtn">🔲 كل خطط الشبكة</button></div>
     <form id="gridForm">
+<div class="radio-row g-listed" role="radiogroup" aria-label="نوع السهم">
+        <label><input type="radio" name="g_listed" value="1" checked> سهم مدرج في البورصة (يتم التحقق من الكود + آخر سعر + إشعارات تلقائية)</label>
+        <label><input type="radio" name="g_listed" value="0"> سهم غير مدرج في البورصة (أي اسم وسعر تكتبه بنفسك — بدون إشعارات تلقائية)</label>
+      </div>
       <label>كود السهم</label>
       <input type="text" id="g_symbol" required placeholder="مثال: COMI">
       <label>السوق</label>
@@ -1752,8 +1799,8 @@ async function renderGridPlanForm(){
       resultEl.innerHTML = '<div class="error u-mt10">أدخل كود السهم.</div>';
       return;
     }
-    const symChk = await gCheckSymbol(symbol, market);
-    if (!symChk.ok) { resultEl.innerHTML = `<div class="error u-mt10">${escapeHtml(symChk.msg)}</div>`; return; }
+    const gListed = (document.querySelector('input[name="g_listed"]:checked') || {}).value !== '0';
+    if (gListed) { const symChk = await gCheckSymbol(symbol, market); if (!symChk.ok) { resultEl.innerHTML = `<div class="error u-mt10">${escapeHtml(symChk.msg)} لو السهم غير مدرج في البورصة اختر «سهم غير مدرج في البورصة».</div>`; return; } }
     const existingDacPlans = await getPlans(email);
     if (existingDacPlans[symbol]) {
       resultEl.innerHTML = '<div class="error u-mt10">هذا السهم لديه خطة تعزيز متوسط (DCA) بالفعل — لا يمكن أن يكون السهم نفسه في خطتين في الوقت نفسه. احذف خطة الـDCA أولًا إذا أردت بدء خطة شبكة بدلًا منها.</div>';
@@ -1777,6 +1824,7 @@ async function renderGridPlanForm(){
     const grids = await getGridPlans(email);
     const exitProfitPercent = parseFloat(document.getElementById('g_exitProfitPercent').value);
     grids[symbol] = { symbol, market, currentPrice, capital, risk, tradeSize, rangeHigh: high, rangeLow: low, step, levels, manualExits: [], cycleHistory: [], closedTrades: [], closed: false, exitProfitPercent: (!isNaN(exitProfitPercent) && exitProfitPercent>0) ? exitProfitPercent : null, createdAt: new Date().toISOString() };
+    if (!gListed) { grids[symbol].listed = false; grids[symbol].manualLastPrice = currentPrice || null; }
     await saveGridPlans(email, grids);
     renderGridPlanDetail(symbol);
   };
@@ -2038,7 +2086,7 @@ async function renderGridPlanDetail(symbol){
     const lastExec = (() => { const ex = g.levels.flatMap(l => [l.executedPrice, ...(l.sells||[]).map(s=>s.price)]).filter(p => p != null); return ex.length ? ex[ex.length-1] : null; })();
     const lastPrice = manualVal > 0 ? manualVal : (gLivePx || lastExec);
     const lbl = document.getElementById('gridStatusLastPriceLbl');
-    if (lbl) lbl.textContent = manualVal > 0 ? 'سعر افتراضي للتجربة' : (gLivePx ? 'آخر سعر للسهم (متأخر 15 دقيقة)' : 'آخر تنفيذ (سعر السوق غير متاح الآن)');
+    if (lbl) lbl.textContent = g.listed === false ? 'آخر سعر (يدوي — سهم غير مدرج)' : manualVal > 0 ? 'سعر افتراضي للتجربة' : (gLivePx ? 'آخر سعر للسهم (متأخر 15 دقيقة)' : 'آخر تنفيذ (سعر السوق غير متاح الآن)');
     document.getElementById('gridStatusLastPriceUsed').textContent = lastPrice!=null ? fmtMoney(lastPrice) : '-';
     document.getElementById('gridStatusTotalValue').textContent = (lastPrice!=null && gsum.heldQty>0) ? fmtMoney(lastPrice*gsum.heldQty) : '-';
     const dropEl = document.getElementById('gridStatusDropPercent'), unEl = document.getElementById('gridStatusUnreal');
@@ -2233,7 +2281,8 @@ async function renderGridPlanDetail(symbol){
     updateStatusCards();
   }
   renderLevels();
-  gPlanLivePrice(__tok, {}, { [symbol]: g }, gPxKey, (v) => { gLivePx = v; updateStatusCards(); });
+  if (g.listed === false) { gLivePx = +g.manualLastPrice > 0 ? +g.manualLastPrice : null; gUnlistedPriceBox('gridManualLastPriceInput', g, async (v) => { g.manualLastPrice = v; await persist(); gLivePx = v; updateStatusCards(); }); updateStatusCards(); }
+  else gPlanLivePrice(__tok, {}, { [symbol]: g }, gPxKey, (v) => { gLivePx = v; updateStatusCards(); });
 
   window.__gridBuyLevel = async (idx) => {
     const qty = parseFloat(document.getElementById('gridBuyQty_'+idx).value);
@@ -2554,6 +2603,10 @@ async function renderNewPlanForm(error, formState){
     <h2>خطة تعزيز متوسط جديدة</h2>
     ${error?`<div class="error">${error}</div>`:''}
     <form id="planForm">
+<div class="radio-row g-listed" role="radiogroup" aria-label="نوع السهم">
+        <label><input type="radio" name="listed" value="1" checked> سهم مدرج في البورصة (يتم التحقق من الكود + آخر سعر + إشعارات تلقائية)</label>
+        <label><input type="radio" name="listed" value="0"> سهم غير مدرج في البورصة (أي اسم وسعر تكتبه بنفسك — بدون إشعارات تلقائية)</label>
+      </div>
       <label>اسم السهم</label><input type="text" id="symbol" required placeholder="مثال: ABUK" value="${fs.symbol??prefill.symbol??''}">
       <div class="grid2">
         <div><label>الدولة / البورصة</label>
@@ -2688,8 +2741,9 @@ async function renderNewPlanForm(error, formState){
 
     const plans = await getPlans(email);
     if(plans[symbol]) return renderNewPlanForm('توجد خطة بالفعل لهذا السهم — احذفها أولًا إذا أردت البدء من جديد');
-    const symChk = await gCheckSymbol(symbol, market);
-    if (!symChk.ok) return renderNewPlanForm(symChk.msg);
+    // الإصدار 98: سهم مدرج ← لازم الكود يكون موجود في البورصة ، غير مدرج ← أي اسم وسعر ومفيش إشعارات تلقائية
+    const listed = (document.querySelector('input[name="listed"]:checked') || {}).value !== '0';
+    if (listed) { const symChk = await gCheckSymbol(symbol, market); if (!symChk.ok) return renderNewPlanForm(symChk.msg + ' لو السهم غير مدرج في البورصة اختر «سهم غير مدرج في البورصة».'); }
     const existingGrids = await getGridPlans(email);
     if(existingGrids[symbol] && !existingGrids[symbol].closed) return renderNewPlanForm('هذا السهم لديه خطة شبكة (Grid) نشطة بالفعل — لا يمكن أن يكون السهم نفسه في خطتين (تعزيز متوسط + شبكة) في الوقت نفسه. أغلق خطة الشبكة أولًا إذا أردت بدء خطة تعزيز متوسط بدلًا منها.');
 
@@ -2746,6 +2800,7 @@ async function renderNewPlanForm(error, formState){
 
     const exitProfitPercent = parseFloat(document.getElementById('exitProfitPercent').value);
     plans[symbol] = { symbol, currentPrice, capital, riskMode, riskPercent, profitTarget, dropPercent, volumeIncrease, seedAmount, currency, market, startDate, levelMode, levels, closedTrades: [], exitProfitPercent: (!isNaN(exitProfitPercent) && exitProfitPercent>0) ? exitProfitPercent : null };
+    if (!listed) { plans[symbol].listed = false; plans[symbol].manualLastPrice = currentPrice; }
     await savePlans(email, plans);
     renderPlanDetail(symbol);
   };
@@ -3291,7 +3346,7 @@ async function renderPlanDetail(symbol){
     const inp = document.getElementById('manualLastPriceInput'); if (!inp) return;
     const manualVal = parseFloat(inp.value);
     const lastPriceUsed = (manualVal>0) ? manualVal : (livePx || sim.lastBoughtPrice);
-    const src = manualVal>0 ? 'سعر افتراضي للتجربة' : (livePx ? 'آخر سعر للسهم (متأخر 15 دقيقة)' : 'آخر سعر شراء (سعر السوق غير متاح الآن)');
+    const src = planObj.listed === false ? 'آخر سعر (يدوي — سهم غير مدرج)' : manualVal>0 ? 'سعر افتراضي للتجربة' : (livePx ? 'آخر سعر للسهم (متأخر 15 دقيقة)' : 'آخر سعر شراء (سعر السوق غير متاح الآن)');
     const set = (id, txt, cls) => { const el = document.getElementById(id); if (el) { el.textContent = txt; if (cls !== undefined) el.className = 'val ' + cls; } };
     const lbl = document.getElementById('statusLastPriceLbl'); if (lbl) lbl.textContent = src;
     if (lastPriceUsed==null) { ['statusLastPriceUsed','statusTotalValue','statusUnreal','statusDropPercent','statusExitState','statusSellNow'].forEach(id => set(id, '-')); return; }
@@ -3316,8 +3371,9 @@ async function renderPlanDetail(symbol){
     });
   }
   document.getElementById('manualLastPriceInput').addEventListener('input', updateStatusFields);
+  if (planObj.listed === false) gUnlistedPriceBox('manualLastPriceInput', planObj, async (v) => { const p2 = await getPlans(email); if (p2[symbol]) { p2[symbol].manualLastPrice = v; await savePlans(email, p2); } planObj.manualLastPrice = v; livePx = v; updateStatusFields(); });
   updateStatusFields();
-  gPlanLivePrice(__tok, { [symbol]: planObj }, {}, pxKey, (v) => { livePx = v; updateStatusFields(); });
+  if (planObj.listed !== false) gPlanLivePrice(__tok, { [symbol]: planObj }, {}, pxKey, (v) => { livePx = v; updateStatusFields(); });
 
   if (sim.isClosed) {
     document.getElementById('archiveBtn').onclick = async () => {
