@@ -3,7 +3,7 @@
    (اتفصل من griffine.js - كل الملفات بتتحمّل بالترتيب في index.php وبتشارك نفس المتغيرات العامة)
    ===================================================================== */
 /* GRIFFINE — كود الواجهة الأساسي (اتفصل من index.php في الإصدار 68) */
-const GRIFFINE_LOGO_B64 = location.origin + '/griffine-logo-light.webp?v=105';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
+const GRIFFINE_LOGO_B64 = location.origin + '/griffine-logo-light.webp?v=106';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
 /* ================== حسابات مساعدة ================== */
 function daysBetween(isoStart, isoEnd){
   if(!isoStart) return null;
@@ -390,7 +390,19 @@ async function gReportPdf(w, share, btn){
     let css = '';
     [...d.styleSheets].forEach(sh => { try { [...sh.cssRules].forEach(r => { if (r.selectorText) css += r.selectorText.split(',').map(x => '#gRepHost ' + x.trim().replace(/^body\b/, '')).join(',') + '{' + r.style.cssText + '}'; }); } catch(e){} });
     const clone = d.body.cloneNode(true); const cb = clone.querySelector('#gReportBar'); if (cb) cb.remove();
-    host.innerHTML = '<style>' + css + '</style>' + clone.innerHTML;
+    /* الإصدار 106: النسخة دي جوه صفحة الموقع ← ألوان الثيم الداكن (نص فاتح للجداول وخلفيات غامقة) كانت بتدخل عليها
+       فالأرقام بتطلع رصاصي في الـ PDF رغم إن المعاينة سليمة. هنا بنرجّع ألوان الورق: نص أسود وخلفية بيضا دايمًا
+       (أي لون مكتوب جوه التقرير نفسه style="color:..." أو ربح/خسارة بيفضل زي ما هو) */
+    const paper = '#gRepHost{color:#111 !important;background:#fff !important;color-scheme:light}'
+      + '#gRepHost :is(div,p,span,b,strong,small,h1,h2,h3,h4,li,label,table,thead,tbody,tr,td,th,a,bdi):not([style*="color"]){color:#111 !important;text-shadow:none !important;opacity:1 !important;filter:none !important}'
+      + '#gRepHost :is(table,thead,tbody,tr,td):not([style*="background"]){background:#fff !important}'
+      + '#gRepHost :is(td,th){border-color:#ddd !important}'
+      + '#gRepHost th:not([style*="background"]){background:#f3f4f6 !important}'
+      + '#gRepHost .tot td:not([style*="background"]){background:#fafafa !important}'
+      + '#gRepHost :is(.meta,.u-muted,.kv b):not([style*="color"]){color:#555 !important}'
+      + '#gRepHost :is(.u-pos,.pos,.u-ok):not([style*="color"]){color:#15803d !important}'
+      + '#gRepHost :is(.u-neg,.neg,.u-danger):not([style*="color"]){color:#b91c1c !important}';
+    host.innerHTML = '<style>' + css + paper + '</style>' + clone.innerHTML;
     document.body.appendChild(host);
     let canvas;
     try { canvas = await window.html2canvas(host, { scale: 2, backgroundColor: '#ffffff', useCORS: true }); } finally { host.remove(); }
@@ -1207,9 +1219,9 @@ async function renderAccessExpired(sub){
 }
 
 const app = document.getElementById('app');
-const TOP7_LOGO_B64 = location.origin + '/top7-logo-light.webp?v=105';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
-const GRIFFINE_LOGO_DARK_B64 = location.origin + '/griffine-logo-dark.webp?v=105';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
-const TOP7_LOGO_DARK_B64 = location.origin + '/top7-logo-dark.webp?v=105';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
+const TOP7_LOGO_B64 = location.origin + '/top7-logo-light.webp?v=106';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
+const GRIFFINE_LOGO_DARK_B64 = location.origin + '/griffine-logo-dark.webp?v=106';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
+const TOP7_LOGO_DARK_B64 = location.origin + '/top7-logo-dark.webp?v=106';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
 /* الوضع الحالي (فاتح/ليلي) - الإصدار 71: بيتقري من الصفحة نفسها (data-theme) مش من التخزين بس،
    عشان الشعار يطلع صح حتى لو المتصفح مانع التخزين (وضع التصفح الخفي)
    (السكربت الصغير في index.php بيحط data-theme من التخزين قبل تحميل أي ملف، فالاتنين دايمًا متطابقين) */
