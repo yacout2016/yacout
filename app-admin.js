@@ -273,7 +273,7 @@ async function renderAdminSubscribers(){
   }
 
   function renderTable(list){
-    document.getElementById('subscribersTableWrap').innerHTML = list.length ? `<table data-g-rows="5">
+    document.getElementById('subscribersTableWrap').innerHTML = list.length ? `<table data-g-rows="5" class="g-one-line">
       <thead><tr>
         <th>الكود</th><th>الاسم</th><th>الهاتف</th><th>الإيميل</th><th>الخطة</th><th>بداية الخطة</th><th>تاريخ الانتهاء</th><th>قيمة السداد</th><th>طريقة السداد</th><th>الحالة</th><th>التذكيرات</th><th>صلاحيات خاصة</th><th>🔔 الإشعارات</th><th></th>
       </tr></thead>
@@ -282,23 +282,23 @@ async function renderAdminSubscribers(){
           const isActive = r.active !== false;
           const remEnabled = r.reminderEnabled !== false;
           return `<tr>
-          <td dir="ltr"><b>${escapeHtml(r.memberCode || '')}</b>${r.staffCode ? `<div class="u-fs11 u-muted">${escapeHtml(r.staffCode)}</div>` : ''}</td><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.phone)}</td><td dir="ltr">${escapeHtml(r.contactEmail || r.accountEmail)}</td><td>${escapeHtml(r.planName)}${r.isComp?' <span class="tag" style="background:#e6f4ea;color:var(--green);">هدية</span>':''}</td>
+          <td dir="ltr"><b>${escapeHtml(r.memberCode || '')}</b>${r.staffCode ? ` <span class="u-fs11 u-muted">${escapeHtml(r.staffCode)}</span>` : ''}</td><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.phone)}</td><td dir="ltr">${escapeHtml(r.contactEmail || r.accountEmail)}</td><td>${escapeHtml(r.planName)}${r.isComp?' <span class="tag" style="background:#e6f4ea;color:var(--green);">هدية</span>':''}</td>
           <td>${formatDateAr(r.startDate)}</td><td>${formatDateAr(r.endDate)}</td>
           <td>${r.amount===0?'مجانًا':fmtMoney(r.amount)+' '+r.currency}</td>
           <td>${r.paymentMethod ? escapeHtml(payMethodLabel(r.paymentMethod)) : '-'}
-            ${r.paymentProof?`<br><button class="small secondary u-wa u-mt4" data-gcall="__viewProof" data-gargs="${gArgs([String(r.id)])}">📎 عرض الإثبات</button>`:''}
+            ${r.paymentProof?` <button class="small secondary u-wa u-mt4" data-gcall="__viewProof" data-gargs="${gArgs([String(r.id)])}">📎 عرض الإثبات</button>`:''}
           </td>
           <td>
-            <span class="tag ${isActive?'tag-done':'tag-wait'}">${isActive?'مفعّل':'موقوف'}</span><br>
+            <span class="tag ${isActive?'tag-done':'tag-wait'}">${isActive?'مفعّل':'موقوف'}</span>
             <button class="small ${isActive?'danger':'secondary'} u-wa u-mt4" data-gcall="__toggleSubActive" data-gargs="${gArgs([String(r.id)])}">${isActive?'إيقاف':'تفعيل'}</button>
           </td>
           <td>
-            ${remEnabled ? `كل ${r.reminderIntervalDays||2} يوم` : '<span style="color:#c0392b;">موقوف</span>'}<br>
+            ${remEnabled ? `كل ${r.reminderIntervalDays||2} يوم` : '<span style="color:#c0392b;">موقوف</span>'}
             <button class="small secondary u-wa u-mt4" data-gcall="__editReminder" data-gargs="${gArgs([String(r.id)])}">تعديل</button>
           </td>
           <td>
-            <button class="small secondary" style="width:auto;margin-bottom:4px;" data-gcall="__extendDays" data-gargs="${gArgs([String(r.id)])}">+ أيام مجانية</button><br>
-            ${r.planId==='trial' ? `<button class="small btn-lightgreen" style="width:auto;margin-bottom:4px;" data-gcall="__convertFree" data-gargs="${gArgs([String(r.id)])}">تحويل لباقة مدفوعة مجانًا</button><br>` : ''}
+            <button class="small secondary" style="width:auto;margin-bottom:4px;" data-gcall="__extendDays" data-gargs="${gArgs([String(r.id)])}">+ أيام مجانية</button>
+            ${r.planId==='trial' ? `<button class="small btn-lightgreen" style="width:auto;margin-bottom:4px;" data-gcall="__convertFree" data-gargs="${gArgs([String(r.id)])}">تحويل لباقة مدفوعة مجانًا</button>` : ''}
           </td>
           <td>${gNpCellHtml(r.accountEmail)}</td>
           <td><button class="small danger u-wa" data-gcall="__deleteSubRow" data-gargs="${gArgs([String(r.id)])}">🗄️ أرشفة</button></td>

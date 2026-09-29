@@ -6,3 +6,4 @@ griffine_uploads/
 # الإصدار 89: الاختبارات التلقائية - مكتبات ونتائج محلية
 tests/node_modules/
 tests/out/
+griffine_sessions/

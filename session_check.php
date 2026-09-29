@@ -1,5 +1,6 @@
 <?php
 header('Content-Type: application/json');
+header('Cache-Control: no-store, no-cache, must-revalidate, private');   // الإصدار 105: حالة الدخول متتخزنش أبدًا (لا في المتصفح ولا في كاش السيرفر)
 require_once __DIR__ . '/session_boot.php';
 session_start();
 include 'db.php';

@@ -1,6 +1,7 @@
 <?php
 /* =====================================================================
-   GRIFFINE — trades_report.php (الإصدار 89) — تقارير الصفقات للإدارة
+   GRIFFINE — trades_report.php (الإصدار 89 ← 105) — تقارير الصفقات للإدارة
+   GET  action=live&market=  ← الإصدار 105: كل المشتركين + خططهم مباشرة من user_plans (الحساب في المتصفح بنفس دالة الرئيسية)
    الصلاحية: view_reports
    GET  action=report&from=YYYY-MM-DD&to=YYYY-MM-DD&kind=DCA|Grid|&symbol=&email=
         ← الإجماليات + ملخص حسب السهم + ملخص حسب العميل + آخر 300 عملية
@@ -34,6 +35,52 @@ try {
         $accounts = 0; $rows = 0;
         while ($r = $res->fetch_assoc()) { $rows += trades_rebuild($conn, $r['account_email'], $r['plan_type']); $accounts++; }
         trr_out(["success" => true, "accounts" => $accounts, "rows" => $rows]);
+    }
+    /* الإصدار 105: التقرير المباشر - من الخطط نفسها (user_plans) لحظة الطلب = نفس مصدر الشاشة الرئيسية والمحفظة بالظبط
+       الإدارة: كل المشتركين (حتى اللي مالوش صفقات) + بيانات اشتراك كل واحد + خططه
+       العميل: خططه هو بس */
+    if ($action === 'live') {
+        $accounts = [];
+        if ($isStaffReport) {
+            require_once __DIR__ . '/codes_lib.php';
+            $hasCodes = codes_ready($conn);
+            $mk = trim((string)($_GET['market'] ?? ''));
+            $mkOk = $mk !== '' && function_exists('mc_valid') && mc_valid($mk) && mc_ready($conn);
+            // كل المشتركين (غير المؤرشفين) + أي حساب عنده خطط - آخر اشتراك لكل حساب
+            $sql = "SELECT a.email, u.inv_code, COALESCE(u.account_market, 'مصر') account_market, u.is_admin,
+                       s.name, s.phone, s.plan_name, s.start_date, s.end_date, s.active, s.is_comp
+                FROM (SELECT account_email email FROM subscribers WHERE archived = 0
+                      UNION SELECT account_email FROM user_plans WHERE deleted = 0 AND plan_type IN ('plans','grid_plans')) a
+                LEFT JOIN users u ON u.username = a.email
+                LEFT JOIN subscribers s ON s.id = (SELECT s2.id FROM subscribers s2 WHERE s2.account_email = a.email AND s2.archived = 0 ORDER BY s2.end_date DESC, s2.id DESC LIMIT 1)";
+            if (!$hasCodes) $sql = str_replace(['u.inv_code', "COALESCE(u.account_market, 'مصر')"], ["''", "'مصر'"], $sql);
+            $res = $conn->query($sql);
+            $today = gmdate('Y-m-d');
+            while ($r = $res->fetch_assoc()) {
+                if ($mkOk && $r['account_market'] !== $mk) continue;
+                $sub = $r['end_date'] === null ? 'none' : (!$r['active'] ? 'stopped' : ($r['end_date'] < $today ? 'expired' : 'active'));
+                $accounts[$r['email']] = ["email" => $r['email'], "code" => (string)($r['inv_code'] ?? ''), "name" => (string)($r['name'] ?? ''),
+                    "phone" => (string)($r['phone'] ?? ''), "market" => $r['account_market'], "plan" => (string)($r['plan_name'] ?? ''),
+                    "start" => $r['start_date'], "end" => $r['end_date'], "sub" => $sub, "comp" => !empty($r['is_comp'])];
+            }
+        } else {
+            $accounts[$me] = ["email" => $me, "code" => '', "name" => '', "phone" => '', "market" => '', "plan" => '', "start" => null, "end" => null, "sub" => '', "comp" => false];
+        }
+        $plans = [];
+        if ($accounts && plans_table_ready($conn)) {
+            $emails = array_keys($accounts);
+            foreach (array_chunk($emails, 500) as $chunk) {
+                $in = implode(',', array_fill(0, count($chunk), '?'));
+                $st = $conn->prepare("SELECT account_email, plan_type, symbol, data_value FROM user_plans WHERE deleted = 0 AND plan_type IN ('plans','grid_plans') AND account_email IN ($in)");
+                $st->bind_param(str_repeat('s', count($chunk)), ...$chunk); $st->execute(); $res = $st->get_result();
+                while ($r = $res->fetch_assoc()) {
+                    $v = json_decode((string)$r['data_value'], true); if (!is_array($v)) continue;
+                    $plans[] = ["e" => $r['account_email'], "k" => $r['plan_type'] === 'grid_plans' ? 'Grid' : 'DCA', "s" => $r['symbol'], "p" => $v];
+                }
+                $st->close();
+            }
+        }
+        trr_out(["success" => true, "mine" => !$isStaffReport, "at" => gmdate('Y-m-d H:i:s'), "accounts" => array_values($accounts), "plans" => $plans]);
     }
     if ($action === 'report') {
         $where = []; $types = ''; $args = [];

@@ -18,6 +18,7 @@ Options -Indexes
 
 # 4) فولدر المرفوعات لو اتعمل جوه الموقع (الملفات بتتعرض عن طريق file_get.php بس)
 RedirectMatch 403 ^/griffine_uploads/
+RedirectMatch 403 ^/griffine_sessions/
 
 # 5) رؤوس أمان لكل الصفحات
 <IfModule mod_headers.c>

@@ -18,8 +18,27 @@ if (session_status() === PHP_SESSION_NONE) {
     $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
         || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
 
+    /* الإصدار 105: الريفريش مبيخرجش من الحساب - الخروج بس لما المستخدم يدوس «تسجيل الخروج» بنفسه
+       - ملفات الجلسات في فولدر خاص بالموقع برا public_html (زي griffine_uploads) بدل فولدر السيرفر المشترك
+         اللي ممكن يتمسح أو ميكونش قابل للكتابة ← الجلسة كانت بتضيع مع أول ريفريش
+       - الجلسة والكوكي بيفضلوا 30 يوم (قبل كده الكوكي كان بيتمسح مع قفل المتصفح والملف بعد 24 دقيقة من غير نشاط) */
+    $gsLife = 30 * 24 * 3600;
+    $gsDir = dirname(__DIR__) . '/griffine_sessions';
+    if (!((is_dir($gsDir) || @mkdir($gsDir, 0700, true)) && is_writable($gsDir))) {
+        $gsDir = __DIR__ . '/griffine_sessions';
+        if (!is_dir($gsDir)) @mkdir($gsDir, 0700, true);
+        if (is_dir($gsDir) && !file_exists($gsDir . '/.htaccess')) @file_put_contents($gsDir . '/.htaccess', "Require all denied\nDeny from all\n");
+        if (is_dir($gsDir) && !file_exists($gsDir . '/index.html')) @file_put_contents($gsDir . '/index.html', '');
+    }
+    if (is_dir($gsDir) && is_writable($gsDir)) {
+        session_save_path($gsDir);
+        @ini_set('session.gc_probability', '1');     // فولدرنا الخاص مبيتنضّفش لوحده ← PHP بينضّف الجلسات الأقدم من 30 يوم
+        @ini_set('session.gc_divisor', '1000');
+    }
+    @ini_set('session.gc_maxlifetime', (string)$gsLife);
+
     session_set_cookie_params([
-        'lifetime' => 0,
+        'lifetime' => $gsLife,
         'path' => '/',
         'domain' => $cookieDomain,
         'secure' => $secure,

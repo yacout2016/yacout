@@ -78,11 +78,12 @@ const loginAs = (p, a) => p.evaluate(async ([e, pw]) => { window.alert = () => {
   q("INSERT INTO subscribers (account_email,name,phone,contact_email,plan_id,plan_name,start_date,end_date) SELECT CONCAT('rowtest',n,'@x.com'),CONCAT('Row Test ',n),'0100000000',CONCAT('rowtest',n,'@x.com'),'monthly','الخطة الشهرية',CURDATE(),CURDATE()+INTERVAL 30 DAY FROM (SELECT 1 n UNION SELECT 2 UNION SELECT 3 UNION SELECT 4 UNION SELECT 5) t");
   await a.evaluate(() => renderAdminSubscribers()); await a.waitForTimeout(3000);
   const sub = await a.evaluate(() => { const t = document.querySelector('#subscribersTableWrap table'); const w = t && t.closest('.gs-tscroll'); if (!w) return null; const wb = w.getBoundingClientRect().bottom + 1;
-    const rs = [...t.tBodies[0].rows]; return { rows: rs.length, vis: rs.filter(r => r.getBoundingClientRect().bottom <= wb).length, ov: getComputedStyle(w).overflowY }; });
+    const rs = [...t.tBodies[0].rows]; const hs = rs.slice(0, -1).map(r => Math.round(r.getBoundingClientRect().height)); return { rows: rs.length, vis: rs.filter(r => r.getBoundingClientRect().bottom <= wb).length, ov: getComputedStyle(w).overflowY, maxH: Math.max(...hs) }; });
   await a.locator('#subscribersTableWrap').scrollIntoViewIfNeeded(); await a.waitForTimeout(300); const sw = await a.locator('#subscribersTableWrap').boundingBox();
   await a.mouse.move(sw.x + sw.width / 2, sw.y + sw.height / 2); await a.mouse.wheel(0, 300); await a.waitForTimeout(400);
   const subTop = await a.evaluate(() => document.querySelector('#subscribersTableWrap table').closest('.gs-tscroll').scrollTop);
   check('جدول المشتركين: 5 صفوف ظاهرين والباقي تمرير لفوق وتحت بالماوس', sub && sub.rows > 5 && sub.vis === 5 && sub.ov === 'auto' && subTop > 0, JSON.stringify(sub) + ' top=' + subTop);
+  check('جدول المشتركين: كل مشترك في سطر واحد (ارتفاع الصف سطر واحد)', sub && sub.maxH < 66, sub && sub.maxH);
   q("DELETE FROM subscribers WHERE account_email LIKE 'rowtest%@x.com'");
   q("REPLACE INTO site_config (config_key, config_value) VALUES ('wa_notify_on', '1')");
   await a.evaluate(() => { window.__npAll = null; renderAdminSubscribers(); }); await a.waitForTimeout(2500);
