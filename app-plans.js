@@ -239,13 +239,78 @@ async function gCheckSymbol(symbol, market){
   return { ok: false, msg: `الرمز ${symbol} غير موجود في بورصة ${market || 'مصر'} — اكتب رمز السهم كما يظهر في شاشة البورصة (مثل COMI).` };
 }
 
+/* الإصدار 100: البحث عن رمز السهم وقت الكتابة في نموذج الخطة (DCA / Grid) - للسهم المدرج في البورصة
+   - تحت خانة الاسم: ✅ موجود (الاسم + آخر سعر متأخر 15 دقيقة) أو ❌ غير موجود
+   - جنب خانة السعر: «استخدم آخر سعر في الخطة» (بيتملي تلقائي) أو «اكتب السعر يدوي»
+   - السهم غير المدرج: مفيش بحث والسعر يدوي */
+function gWireSymbolLookup(o){
+  const sym = document.getElementById(o.symId), mkt = document.getElementById(o.mktId), px = document.getElementById(o.priceId);
+  if (!sym || !mkt || !px) return;
+  const st = document.createElement('div'); st.className = 'g-symchk u-fs12'; st.setAttribute('aria-live', 'polite'); sym.insertAdjacentElement('afterend', st);
+  const pm = document.createElement('div'); pm.className = 'radio-row g-pxmode u-fs12';
+  pm.innerHTML = `<label><input type="radio" name="${o.priceId}_mode" value="auto" checked> استخدم آخر سعر للسهم في الخطة <b class="g-pxlast"></b></label><label><input type="radio" name="${o.priceId}_mode" value="manual"> اكتب السعر يدوي</label>`;
+  px.insertAdjacentElement('afterend', pm);
+  const listed = () => (document.querySelector(`input[name="${o.listedName}"]:checked`) || {}).value !== '0';
+  const mode = () => (pm.querySelector('input:checked') || {}).value || 'auto';
+  let last = null, seq = 0, t = null;
+  const apply = () => {
+    const L = listed();
+    pm.hidden = !L; if (!L) { st.innerHTML = '<span class="u-muted">🔕 سهم غير مدرج — اكتب أي اسم وسعر، بدون إشعارات تلقائية.</span>'; px.readOnly = false; return; }
+    const auto = mode() === 'auto';
+    pm.querySelector('.g-pxlast').textContent = last ? `(${fmt2(last)})` : '';
+    px.readOnly = auto && !!last; px.classList.toggle('g-px-auto', auto && !!last);
+    if (auto && last) px.value = last;
+  };
+  const check = async () => {
+    const v = sym.value.trim().toUpperCase(); last = null; apply();
+    if (!listed()) return;
+    if (!v) { st.innerHTML = ''; return; }
+    const my = ++seq; st.innerHTML = '<span class="u-muted">🔎 جارٍ البحث في البورصة...</span>';
+    const r = await apiGet(`/markets_api.php?action=quote&symbol=${encodeURIComponent(v)}&market=${encodeURIComponent(mkt.value || 'مصر')}`).catch(() => null);
+    if (my !== seq) return;
+    if (r && r.success && +r.last > 0) {
+      last = +r.last;
+      st.innerHTML = `<span class="pos">✅ موجود في بورصة ${escapeHtml(mkt.value || 'مصر')}${r.name ? ' — ' + escapeHtml(r.name) : ''} — آخر سعر <b>${fmt2(last)}</b> (متأخر 15 دقيقة)</span>`;
+    } else {
+      st.innerHTML = `<span class="neg">❌ الرمز ${escapeHtml(v)} غير موجود في بورصة ${escapeHtml(mkt.value || 'مصر')} — اكتب الرمز كما يظهر في شاشة البورصة، أو اختر «سهم غير مدرج في البورصة».</span>`;
+    }
+    apply();
+  };
+  sym.addEventListener('input', () => { clearTimeout(t); t = setTimeout(check, 600); });
+  mkt.addEventListener('change', check);
+  pm.addEventListener('change', apply);
+  document.querySelectorAll(`input[name="${o.listedName}"]`).forEach(r => r.addEventListener('change', check));
+  if (sym.value.trim()) check(); else apply();
+}
+
 /* الإصدار 99: حذف خطة (DCA / Grid) ← بتنتقل لسلة المحذوفات (أي مستخدم: عميل / موظف / أدمن) ويقدر يرجّعها أو يحذفها نهائيًا من السلة */
 async function gDeletePlan(kind, symbol, after){
   const isGrid = kind === 'grid';
-  if (!await gConfirm(`حذف ${isGrid ? 'خطة خطوط الشبكة' : 'خطة تعزيز المتوسط'} «${symbol}»؟\nهتنتقل إلى سلة المحذوفات، وتقدر ترجّعها من هناك أو تحذفها نهائيًا.`, { ok: '🗑️ نقل للسلة', danger: true })) return false;
   const email = await getSession(); if (!email) return false;
   const all = isGrid ? await getGridPlans(email) : await getPlans(email);
-  if (!all[symbol]) return false;
+  const plan = all[symbol]; if (!plan) return false;
+  /* الإصدار 100: مينفعش تحذف خطة فيها صفقات مفتوحة (كمية مشتراة لسه متباعتش) ← لازم تقفلها الأول
+     الخطة اللي ليها نتائج مالية (صفقات مقفولة / ربح محقق) بتتحفظ بحساباتها كاملة في السلة، والحذف النهائي من السلة بيشيلها من النظام نهائي */
+  let held = 0, realized = 0, closed = 0;
+  if (isGrid) {
+    held = (plan.levels || []).filter(l => l.status === 'bought').reduce((a, l) => a + (+l.executedQty || 0), 0);
+    realized = (plan.cycleHistory || []).length ? +(plan.cycleHistory[plan.cycleHistory.length - 1].cumulative || 0) : 0;
+    closed = (plan.closedTrades || []).length;
+  } else {
+    let sm = null; try { sm = simulatePlan(plan); } catch(e){}
+    held = sm ? +sm.heldQty || 0 : 0;
+    realized = (sm ? +sm.totalRealizedProfit || 0 : 0) + (plan.closedTrades || []).reduce((a, t) => a + (+t.profit || 0), 0);
+    closed = (plan.closedTrades || []).length;
+  }
+  if (held > 1e-9) {
+    await gAlert(`مينفعش تحذف خطة «${symbol}» وفيها صفقات مفتوحة: ${fmtQty(held)} سهم لسه متباعتش.\nاقفل الصفقات الأول (سجّل بيع الكمية المتبقية)، وبعدين احذف الخطة.`);
+    return false;
+  }
+  const hasResults = closed > 0 || Math.abs(realized) > 1e-9;
+  const msg = `حذف ${isGrid ? 'خطة خطوط الشبكة' : 'خطة تعزيز المتوسط'} «${symbol}»؟\n`
+    + (hasResults ? `للخطة نتائج مالية: ${realized < 0 ? 'خسارة' : 'ربح'} محقق ${fmt2(Math.abs(realized))}${closed ? ` على ${closed} صفقة مقفولة` : ''} — هتتحفظ بحساباتها كاملة في سلة المحذوفات وتقدر ترجّعها.\nلو حذفتها نهائيًا من السلة، هتتشال كل حساباتها من النظام نهائيًا.`
+      : 'هتنتقل إلى سلة المحذوفات، وتقدر ترجّعها من هناك أو تحذفها نهائيًا.');
+  if (!await gConfirm(msg, { ok: '🗑️ نقل للسلة', danger: true })) return false;
   delete all[symbol];
   if (isGrid) await saveGridPlans(email, all); else await savePlans(email, all);
   if (window.GShell) GShell.toast('نُقلت الخطة إلى سلة المحذوفات — تقدر ترجّعها من «سلة المحذوفات»', 'ok');
@@ -362,7 +427,7 @@ async function renderPlansList(){
       </div>`;
     }).join('');
     listArea.querySelectorAll('.plan-list-item').forEach(el=>{
-      el.onclick=()=>renderPlanDetail(el.dataset.sym);
+      el.onclick=(e)=>{ if (e.target.closest('button')) return; renderPlanDetail(el.dataset.sym); };   // أزرار التعديل والحذف مبتفتحش الخطة
     });
     gFillListProfits(__tok, plans, {}, symbols.map(sym => { let sm = null; try { sm = simulatePlan(plans[sym]); } catch(e){}
       return sm && sm.heldQty > 0 ? { sym, market: plans[sym].market || 'مصر', held: sm.heldQty, avg: sm.avgCostCurrent, ccy: plans[sym].currency } : null; }).filter(Boolean));
@@ -1749,6 +1814,7 @@ async function renderGridPlanForm(){
     </div>
     <div id="gridFormResult"></div>
   </div>`;
+  gWireSymbolLookup({ symId: 'g_symbol', mktId: 'g_market', priceId: 'g_currentPrice', listedName: 'g_listed' });   // الإصدار 100
   document.getElementById('backBtn').onclick=()=>renderGridPlansList();
   if (prefill.symbol) document.getElementById('g_symbol').value = prefill.symbol;
   if (prefill.market) document.getElementById('g_market').value = prefill.market;
@@ -2748,6 +2814,7 @@ async function renderNewPlanForm(error, formState){
   document.getElementById('plansBtnNewPlan').onclick=()=>renderPlansList();
   document.getElementById('backBtn').onclick=()=>renderPlansList();
 
+  gWireSymbolLookup({ symId: 'symbol', mktId: 'market', priceId: 'currentPrice', listedName: 'listed' });   // الإصدار 100
   document.getElementById('planForm').onsubmit=async(e)=>{
     e.preventDefault();
     const email = await getSession();

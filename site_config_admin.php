@@ -22,6 +22,38 @@ if (!isset($_SESSION['user_email']) || empty($_SESSION['is_admin'])) {
 }
 requirePermission($conn, 'manage_admin_settings');
 
+function emg_txt($v, $n){ return mb_substr(trim(preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F<>]/u', '', (string)$v)), 0, $n); }
+function emg_clean($d){
+    $out = [];
+    foreach (['maint', 'offline', 'down', 'slow'] as $k) {
+        $x = is_array($d[$k] ?? null) ? $d[$k] : [];
+        $o = ['on' => !isset($x['on']) || !empty($x['on']), 'title' => emg_txt($x['title'] ?? '', 80), 'body' => emg_txt($x['body'] ?? '', 400)];
+        if ($k === 'slow') { $o['after'] = max(1, min(30, (int)($x['after'] ?? 4))); $o['count'] = max(3, min(120, (int)($x['count'] ?? 10))); $o['logo'] = !isset($x['logo']) || !empty($x['logo']); }
+        if ($o['title'] === '') unset($o['title']); if ($o['body'] === '') unset($o['body']);
+        $out[$k] = $o;
+    }
+    return $out;
+}
+function ads_clean($d){
+    $list = [];
+    foreach (array_slice(is_array($d['items'] ?? null) ? $d['items'] : [], 0, 30) as $x) {
+        if (!is_array($x)) continue;
+        $type = in_array($x['type'] ?? '', ['banner', 'popup', 'marquee'], true) ? $x['type'] : 'banner';
+        $aud = in_array($x['audience'] ?? '', ['all', 'visitors', 'no_sub', 'subscribers', 'upsell', 'downsell', 'expiring'], true) ? $x['audience'] : 'all';
+        $cta = in_array($x['cta'] ?? '', ['none', 'plans', 'plan', 'url', 'register'], true) ? $x['cta'] : 'none';
+        $url = trim((string)($x['url'] ?? '')); if ($cta === 'url' && !preg_match('#^https://#i', $url)) $url = '';
+        $list[] = [
+            'id' => preg_match('/^[a-z0-9]{4,20}$/', $x['id'] ?? '') ? $x['id'] : substr(md5(uniqid('', true)), 0, 10),
+            'on' => !empty($x['on']), 'type' => $type, 'audience' => $aud,
+            'title' => emg_txt($x['title'] ?? '', 90), 'body' => emg_txt($x['body'] ?? '', 300),
+            'ctaLabel' => emg_txt($x['ctaLabel'] ?? '', 40), 'cta' => $cta, 'plan' => preg_match('/^[a-zA-Z0-9_]{0,40}$/', $x['plan'] ?? '') ? ($x['plan'] ?? '') : '', 'url' => mb_substr($url, 0, 300),
+            'every' => max(0, min(10080, (int)($x['every'] ?? 0))),          // الإعلان المنبثق: يظهر مرة كل كام دقيقة (0 = مرة واحدة بس)
+            'from' => preg_match('/^\d{4}-\d{2}-\d{2}$/', $x['from'] ?? '') ? $x['from'] : '', 'to' => preg_match('/^\d{4}-\d{2}-\d{2}$/', $x['to'] ?? '') ? $x['to'] : '',
+            'color' => preg_match('/^#[0-9a-fA-F]{6}$/', $x['color'] ?? '') ? $x['color'] : '',
+        ];
+    }
+    return ['items' => $list];
+}
 function cfg_out($conn){
     $all = site_config_all($conn, true);
     foreach (site_config_secret_keys() as $k) { $all[$k . '_set'] = $all[$k] !== ''; $all[$k] = ''; }
@@ -53,7 +85,13 @@ try {
         echo json_encode(["success" => $r['ok'], "message" => $r['ok'] ? 'تم إرسال الرسالة ✓ (رد المزود: ' . ($r['response'] ?? '') . ')' : $r['error']], JSON_UNESCAPED_UNICODE);
         exit();
     } else {
-        $bools = ['pay_vodafone', 'pay_instapay', 'pay_paymob', 'admin_otp', 'otp_login'];
+        $bools = ['pay_vodafone', 'pay_instapay', 'pay_paymob', 'admin_otp', 'otp_login', 'maint_on'];
+        // الإصدار 100: الشاشات الطارئة والدعاية (JSON منضّف)
+        foreach (['emergency_cfg' => 'emg_clean', 'ads_cfg' => 'ads_clean'] as $jk => $fn) if (isset($_POST[$jk])) {
+            $d = json_decode((string)$_POST[$jk], true);
+            if (!is_array($d)) { echo json_encode(["success" => false, "message" => "بيانات غير صحيحة."]); exit(); }
+            site_config_set($conn, $jk, json_encode($fn($d), JSON_UNESCAPED_UNICODE), $by);
+        }
         // الإصدار 96: طرق الدفع لكل سوق
         foreach (['eg', 'sa', 'ae', 'qa', 'kw'] as $mc) { $bools[] = "bank_on_$mc"; $bools[] = "extra_on_$mc"; }
         $texts = ['service_phone', 'instapay_address', 'paymob_integration', 'paymob_iframe', 'otp_channel', 'sms_method', 'wa_phone_id', 'wa_template', 'wa_lang', 'paymob_moto_integration', 'app_version_label', 'active_markets'];

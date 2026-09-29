@@ -29,6 +29,7 @@ function adminNavButtonsHtml(){
     ]},
     { title: 'الإدارة والصلاحيات', items: [
       { id:'goSettingsBtn', perm:'manage_admin_settings', icon:'⚙️', label:'الصلاحيات والإعدادات الإلزامية' },
+      { id:'goEmergencyBtn', perm:'manage_admin_settings', icon:'🚨', label:'الشاشات الطارئة (الصيانة / انقطاع النت / السيرفر / التحميل)' },
       { id:'goEmailCenterBtn', perm:'manage_admin_settings', icon:'📧', label:'مركز الإيميلات (اختبار وسجل الإرسال)' },
       { id:'goBlacklistBtn', perm:'manage_blacklist', icon:'🚫', label:'القائمة السوداء' },
     ]},
@@ -36,6 +37,9 @@ function adminNavButtonsHtml(){
       { id:'goStudioBtn', perm:'edit_site_design', icon:'🖌️', label:'استوديو التصميم (الثيمات وتعديل أي شاشة)' },
       { id:'goSiteDesignBtn', perm:'edit_site_design', icon:'🎨', label:'تنسيق الموقع' },
       { id:'goSiteTextsBtn', perm:'manage_site_content', icon:'📝', label:'نصوص شاشات الموقع' },
+    ]},
+    { title: 'الدعاية والتسويق', items: [
+      { id:'goAdsBtn', perm:['manage_plans', 'manage_admin_settings'], icon:'📣', label:'الدعاية والعروض (Upsell / Downsell / بانر / شريط متحرك)' },
     ]},
     { title: 'التصدير والطباعة', items: [
       { id:'goExportScreensBtn', perm:'view_reports', icon:'🖨️', label:'طباعة صور كل الشاشات (PDF)' },
@@ -67,6 +71,8 @@ function wireAdminNavButtons(){
     goPlansMgmtBtn: renderPlansManagementPage,
     goChatAdminBtn: renderChatAdminPage,
     goSettingsBtn: renderAdminSettingsPage,
+    goEmergencyBtn: () => renderEmergencyAdminPage(),   // الإصدار 100 (promo.js)
+    goAdsBtn: () => renderAdsAdminPage(),               // الإصدار 100 (promo.js)
     goBlacklistBtn: renderBlacklist,
     goArchiveBtn: renderArchivedCustomers,
     goStaffBtn: renderStaffManagementPage,

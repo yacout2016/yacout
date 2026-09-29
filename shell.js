@@ -50,7 +50,7 @@
      ===================================================================== */
 
   // رقم الإصدار - بيظهر في شاشة "حسابي" (غيّره مع ?v= في index.php و VERSION في sw.js)
-  const APP_VERSION = 99;
+  const APP_VERSION = 100;
 
   /* الاستعلامات المتكررة (الدردشة/التوصيات/قائمة المتابعة) - استعلام متكيّف (الإصدار 89)
      - بتقف لما التبويب يكون مخفي أو الموبايل مقفول
@@ -700,7 +700,7 @@
   // أيقونات بطاقات لوحة التحكم (كانت إيموجي)
   const ADMIN_IC = {
     goChatAdminBtn:'chat', goContentBtn:'star', goSuggestionsAdminBtn:'bulb', goPlansMgmtBtn:'card', goReportsBtn:'report',
-    goRecommendationsBtn:'megaphone', goStaffBtn:'user', goSettingsBtn:'settings', goBlacklistBtn:'shield', goSiteDesignBtn:'grid',
+    goRecommendationsBtn:'megaphone', goStaffBtn:'user', goSettingsBtn:'settings', goEmergencyBtn:'shield', goAdsBtn:'megaphone', goBlacklistBtn:'shield', goSiteDesignBtn:'grid',
     goSiteTextsBtn:'news', goArchiveBtn:'receipt', goSubscribersBtn:'user', goExportScreensBtn:'report', goExportExcelBtn:'download',
     goStudioBtn:'brush', goEmailCenterBtn:'mail', goTradesBtn:'trend', goHrBtn:'users', goJobTitlesBtn:'tag', goFaqBtn:'bulb'
   };
@@ -777,6 +777,8 @@
     } finally {
       // 11) الثيم وتعديلات استوديو التصميم (حتى لشاشات الترحيب والدخول)
       applyStudio();
+      // 12) الإصدار 100: الدعاية والعروض (promo.js) حسب الجمهور
+      if (window.gAdsAfterScreen) setTimeout(() => { try { window.gAdsAfterScreen(); } catch(e){} }, 0);
       // نسيب المراقب يتجاهل التعديلات اللي عملناها إحنا
       setTimeout(() => { processing = false; }, 0);
     }
@@ -1217,7 +1219,9 @@
       const f = holdFilter;
       const filtered = rows.filter(r => f === 'all' ? true : f === 'closed' ? r.status === 'مغلقة' : r.status === 'مفتوحة');
       const allBtn = $('#gsAllHold');
-      if (allBtn) { allBtn.hidden = filtered.length <= 5; allBtn.textContent = showAll ? 'إغلاق' : `عرض الكل (${filtered.length})`; }
+      // الإصدار 100: كل الأسهم في القائمة - 5 ظاهرين والباقي تمرير لفوق وتحت (من غير زرار عرض الكل)
+      if (allBtn) { allBtn.hidden = true; }
+      showAll = true;
       if (!filtered.length) { el.innerHTML = `<div class="gs-empty-mini u-muted">${f === 'closed' ? 'لا توجد صفقات مغلقة.' : f === 'open' ? 'لا توجد صفقات مفتوحة الآن.' : 'لا توجد خطط.'}</div>`; return; }
       const list = showAll ? filtered : filtered.slice(0, 5);
       el.innerHTML = `<div class="gs-list gs-hold-list">${list.map(holdingRow).join('')}</div>`;
@@ -1616,6 +1620,8 @@
     ['المساعد الذكي في الشات', 'renderFaqAdminPage'],
     ['سلة المحذوفات', 'renderTrashPage'],
     ['الإعدادات الإلزامية', 'renderAdminSettingsPage'],
+    ['الشاشات الطارئة', 'renderEmergencyAdminPage'],
+    ['الدعاية والعروض', 'renderAdsAdminPage'],
     ['الفريق والصلاحيات', 'renderStaffManagementPage'],
     ['شؤون الموظفين (HR)', 'renderHrPage'],
     ['المسميات الوظيفية', 'renderJobTitlesPage'],

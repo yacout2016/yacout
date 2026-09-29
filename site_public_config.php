@@ -18,5 +18,9 @@ echo json_encode(["success" => true, "config" => [
     "payInstapay"     => site_config_on($conn, 'pay_instapay'),
     "payPaymob"       => site_config_on($conn, 'pay_paymob') && paymob_ready($conn),
     "versionLabel"    => site_config_get($conn, 'app_version_label'),   // الإصدار 96
+    // الإصدار 100: الشاشات الطارئة + وضع الصيانة + الدعاية (العروض والبانرات)
+    "emergency"       => json_decode(site_config_get($conn, 'emergency_cfg') ?: 'null', true),
+    "maintenance"     => site_config_on($conn, 'maint_on'),
+    "ads"             => json_decode(site_config_get($conn, 'ads_cfg') ?: 'null', true),
 ]], JSON_UNESCAPED_UNICODE);
 ?>

@@ -6,7 +6,8 @@ const ACC = [
   { who: 'الأدمن', email: 'top72026@gmail.com', pass: process.env.GT_ADMIN_PASS || 'Test12345' },
 ];
 const dca = { symbol: 'COMI', market: 'مصر', currency: 'جنيه مصري', currentPrice: 80, capital: 10000, seedAmount: 1000, dropPercent: 5, volumeIncrease: 0, profitTarget: 5,
-  levels: [{ level: 1, executed: true, actualQty: 10, actualPrice: 80, execDate: '2026-09-01', sells: [] }, { level: 2, executed: false, sells: [] }], closedTrades: [] };
+  levels: [{ level: 1, executed: true, actualQty: 10, actualPrice: 80, execDate: '2026-09-01', sells: [{ qty: 10, price: 90, date: '2026-09-10' }] }, { level: 2, executed: false, sells: [] }], closedTrades: [] };
+const dcaOpen = Object.assign({}, dca, { symbol: 'TMGH', levels: [{ level: 1, executed: true, actualQty: 5, actualPrice: 50, execDate: '2026-09-01', sells: [] }, { level: 2, executed: false, sells: [] }] });
 const grid = { symbol: 'HRHO', market: 'مصر', capital: 5000, tradeSize: 500, rangeLow: 15, rangeHigh: 25, createdAt: '2026-09-01', cycleHistory: [], closedTrades: [], closed: false,
   levels: [{ plannedPrice: 20, plannedQty: 25, status: 'empty', sells: [], cycles: 0 }, { plannedPrice: 18, plannedQty: 27, status: 'empty', sells: [], cycles: 0 }] };
 (async () => {
@@ -18,16 +19,20 @@ const grid = { symbol: 'HRHO', market: 'مصر', capital: 5000, tradeSize: 500, 
     const lg = await p.evaluate(async ([e, pw]) => { window.alert = () => {}; const x = await apiPost('/login.php', { email: e, password: pw }); invalidateSessionCache(); await getSession(); await refreshTopNav(); return x; }, [acc.email, acc.pass]);
     check(`${acc.who}: تسجيل الدخول`, lg && lg.success);
     q(`DELETE FROM trash_bin WHERE owner_email='${acc.email}' OR deleted_by='${acc.email}'`);
-    const old = await p.evaluate(async ([d, g]) => {
+    const old = await p.evaluate(async ([d, g, o]) => {
       const a = await apiGet('/user_data_get.php?key=plans'), c = await apiGet('/user_data_get.php?key=grid_plans');
-      await apiPost('/user_data_save.php', { key: 'plans', value: JSON.stringify({ COMI: d }), base: JSON.stringify(a.versions || {}) });
+      await apiPost('/user_data_save.php', { key: 'plans', value: JSON.stringify({ COMI: d, TMGH: o }), base: JSON.stringify(a.versions || {}) });
       await apiPost('/user_data_save.php', { key: 'grid_plans', value: JSON.stringify({ HRHO: g }), base: JSON.stringify(c.versions || {}) });
       return [a.value || '{}', c.value || '{}'];
-    }, [dca, grid]);
-    await p.evaluate(() => { window.gConfirm = async () => true; });
-    // حذف خطة DCA من القائمة
+    }, [dca, grid, dcaOpen]);
+    // خطة فيها صفقات مفتوحة ← الحذف مرفوض ولازم تقفلها الأول
+    await p.evaluate(() => { window.__lastAlert = ''; window.gAlert = async (m) => { window.__lastAlert = m; return true; }; window.gConfirm = async (m) => { window.__lastConfirm = m; return true; }; });
     await p.evaluate(() => renderPlansList()); await p.waitForTimeout(1500);
-    await p.click('[data-gcall="__delDacPlanFromList"]'); await p.waitForTimeout(1500);
+    await p.click('.plan-list-item[data-sym="TMGH"] [data-gcall="__delDacPlanFromList"]'); await p.waitForTimeout(1200);
+    check(`${acc.who}: خطة فيها صفقات مفتوحة ← الحذف مرفوض مع طلب قفل الصفقات`, /صفقات مفتوحة/.test(await p.evaluate(() => window.__lastAlert)) && q(`SELECT deleted FROM user_plans WHERE account_email='${acc.email}' AND plan_type='plans' AND symbol='TMGH'`) === '0');
+    // حذف خطة DCA مقفولة من القائمة (ليها ربح محقق 100 ← رسالة إنها هتتحفظ بحساباتها في السلة)
+    await p.click('.plan-list-item[data-sym="COMI"] [data-gcall="__delDacPlanFromList"]'); await p.waitForTimeout(1500);
+    check(`${acc.who}: رسالة الحذف بتوضح النتائج المالية (ربح 100) وإنها بتتحفظ في السلة`, /ربح محقق 100/.test(await p.evaluate(() => window.__lastConfirm || '')));
     check(`${acc.who}: حذف خطة DCA من القائمة ← اتشالت`, q(`SELECT deleted FROM user_plans WHERE account_email='${acc.email}' AND plan_type='plans' AND symbol='COMI'`) === '1');
     // حذف خطة Grid من شاشة الخطة
     await p.evaluate(() => { window.gConfirm = async () => true; renderGridPlanDetail('HRHO'); }); await p.waitForTimeout(1800);
@@ -41,7 +46,7 @@ const grid = { symbol: 'HRHO', market: 'مصر', capital: 5000, tradeSize: 500, 
     const resBtn = await p.$('#tbRows tr[data-type="plan"]:has-text("COMI") [data-tbres]'); await resBtn.click(); await p.waitForTimeout(1500);
     check(`${acc.who}: استرجاع خطة DCA ← رجعت مكانها`, q(`SELECT deleted FROM user_plans WHERE account_email='${acc.email}' AND plan_type='plans' AND symbol='COMI'`) === '0');
     const back = await p.evaluate(async () => JSON.parse((await apiGet('/user_data_get.php?key=plans')).value || '{}').COMI);
-    check(`${acc.who}: الخطة المسترجعة بنفس بياناتها`, back && back.levels[0].actualQty === 10 && back.capital === 10000);
+    check(`${acc.who}: الخطة المسترجعة بنفس بياناتها وحساباتها`, back && back.levels[0].actualQty === 10 && back.levels[0].sells.length === 1 && back.capital === 10000);
     // حذف نهائي لـ Grid من السلة
     await p.evaluate(() => { window.gConfirm = async () => true; }); const delBtn = await p.$('#tbRows tr[data-type="plan"]:has-text("HRHO") [data-tbdel]'); await delBtn.click(); await p.waitForTimeout(1500);
     check(`${acc.who}: حذف نهائي من السلة`, +q(`SELECT COUNT(*) FROM trash_bin WHERE owner_email='${acc.email}' AND item_label LIKE '%HRHO%' AND restored_at IS NULL`) === 0);

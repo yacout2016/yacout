@@ -27,15 +27,14 @@ const num = (t) => { const m = String(t || '').replace(/[⁦⁩]/g, '').match(/-
   check('المنحنى: آخر نقطة = البطاقة (القيمة والتكلفة)', Math.abs(curveV - heroV) < 0.01 && Math.abs(curveCost - heroCost) < 0.01, `${curveV} / ${curveCost}`);
   // استثماراتي
   const rows = () => p.locator('#gsHoldings .gs-row').count();
-  check('استثماراتي: الافتراضي «المفتوحة» (5 من 8)', await p.inputValue('#gsHoldFilter') === 'open' && await rows() === 5);
-  await p.click('#gsAllHold'); await p.waitForTimeout(500);
-  const vis = await p.evaluate(() => { const box = document.querySelector('.gs-hold-list'); const bb = box.getBoundingClientRect().bottom + 1; return [...box.querySelectorAll('.gs-row')].filter(r => r.getBoundingClientRect().bottom <= bb).length; });
-  check('عرض الكل: 8 صفوف، 5 ظاهرين والباقي تمرير', await rows() === 8 && vis === 5, vis);
-  check('زرار «إغلاق» يرجّعها 5', (await p.textContent('#gsAllHold')).includes('إغلاق') && (await p.click('#gsAllHold'), await p.waitForTimeout(300), await rows()) === 5);
+  // الإصدار 100: كل الصفوف في القائمة - 5 ظاهرين والباقي تمرير (من غير زرار عرض الكل)
+  const vis = () => p.evaluate(() => { const box = document.querySelector('.gs-hold-list'); const bb = box.getBoundingClientRect().bottom + 1; return [...box.querySelectorAll('.gs-row')].filter(r => r.getBoundingClientRect().bottom <= bb).length; });
+  await p.waitForTimeout(500);
+  check('استثماراتي: الافتراضي «المفتوحة» (8 صفوف: 5 ظاهرين والباقي تمرير)', await p.inputValue('#gsHoldFilter') === 'open' && await rows() === 8 && await vis() === 5, await vis());
   await p.selectOption('#gsHoldFilter', 'closed'); await p.waitForTimeout(300);
   check('فلتر «المغلقة»', await rows() === 2);
-  await p.selectOption('#gsHoldFilter', 'all'); await p.waitForTimeout(300);
-  check('فلتر «الكل» (10 خطط)', (await p.textContent('#gsAllHold')).includes('10'));
+  await p.selectOption('#gsHoldFilter', 'all'); await p.waitForTimeout(600);
+  check('فلتر «الكل» (10 خطط، 5 ظاهرين والباقي تمرير)', await rows() === 10 && await vis() === 5);
   // شاشة المحفظة والتقارير
   await p.evaluate(() => renderPortfolio()); await p.waitForTimeout(4000);
   const cards = await p.$$eval('#topSummaryCards .summary-card', d => d.map(x => x.textContent.replace(/\s+/g, ' ')));

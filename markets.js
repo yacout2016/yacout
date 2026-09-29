@@ -458,8 +458,13 @@ async function mkPortfolioCurve(el, ccys, sel, plans, grids, rangeKey){
   let pts = all.filter(p => p.d >= cut); if (pts.length < 2) pts = all.slice(-2);
   const missing = positions.filter(p => { const h = el.__hist[p.sym.toUpperCase() + '|' + p.market]; return !(h && h.rows && h.rows.length); }).map(p => p.sym);
   const W = 600, H = 180, P = 8;
-  const vals = pts.flatMap(p => [p.v, p.c]), min = Math.min(...vals), max = Math.max(...vals), span = (max - min) || 1;
+  /* الإصدار 100: مقياس متوازن - قبل كده المحور كان من أقل قيمة لأعلى قيمة بالظبط فالفرق بين الخطين كان بيبان مبالغ فيه.
+     دلوقتي فيه هامش تحت وفوق (بيتناسب مع حجم المحفظة) فالفرق بيبان واضح بحجمه الحقيقي تقريبًا، ومعاه خطوط مرجعية بالقيم */
+  const vals = pts.flatMap(p => [p.v, p.c]), vMin = Math.min(...vals), vMax = Math.max(...vals);
+  const vSpan = Math.max(vMax - vMin, vMax * 0.02, 1);
+  const min = Math.max(0, vMin - Math.max(vSpan * 1.2, vMax * 0.08)), max = vMax + vSpan * 0.25, span = (max - min) || 1;
   const x = (i) => P + i * (W - 2 * P) / Math.max(1, pts.length - 1), y = (v) => H - P - (v - min) / span * (H - 2 * P);
+  const grid = [0.25, 0.5, 0.75].map(f => min + span * f);
   const path = (k) => pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p[k]).toFixed(1)}`).join(' ');
   const last = pts[pts.length - 1], firstP = pts[0];
   const pl = last.v - last.c, plPct = last.c ? pl / last.c * 100 : 0, up = pl >= 0;
@@ -474,11 +479,13 @@ async function mkPortfolioCurve(el, ccys, sel, plans, grids, rangeKey){
     <div class="gs-curve-box">
       <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" class="gs-curve-svg" role="img" aria-label="منحنى قيمة المحفظة">
         <path d="${path('v')} L${x(pts.length - 1).toFixed(1)},${H} L${x(0).toFixed(1)},${H} Z" fill="${color}" opacity=".12"></path>
+        ${grid.map(g => `<line x1="0" x2="${W}" y1="${y(g).toFixed(1)}" y2="${y(g).toFixed(1)}" stroke="var(--border, #e5e7eb)" stroke-width="1" vector-effect="non-scaling-stroke" opacity=".7"></line>`).join('')}
         <path d="${path('c')}" fill="none" stroke="var(--text-muted, #888)" stroke-width="1.6" stroke-dasharray="5 4" vector-effect="non-scaling-stroke"></path>
         <path d="${path('v')}" fill="none" stroke="${color}" stroke-width="2.5" vector-effect="non-scaling-stroke" stroke-linejoin="round"></path>
         <line class="gs-curve-cursor" x1="0" x2="0" y1="0" y2="${H}" stroke="var(--text-muted, #999)" stroke-width="1" vector-effect="non-scaling-stroke" style="display:none"></line>
       </svg>
       <div class="gs-curve-tip" hidden></div>
+      ${grid.map(g => `<span class="gs-curve-ylab" style="top:${(y(g) / H * 100).toFixed(2)}%">${MK.n(Math.round(g))}</span>`).join('')}
     </div>
     <div class="gs-curve-legend"><span><i style="background:${color}"></i>القيمة السوقية</span><span><i class="dash"></i>المبلغ المستثمر</span><span class="u-muted">من ${escapeHtml(firstP.d)} · التغير في الفترة <b class="g-num" style="color:${chg >= 0 ? 'var(--gs-pos,#0E9F6E)' : 'var(--gs-neg,#E02424)'}">${chg >= 0 ? '+' : '−'}${MK.n(Math.abs(chg))}</b></span></div>
     <div class="u-hint u-mt4">القيمة في كل يوم = الكمية التي كانت لديك × سعر إغلاق السهم في ذلك اليوم (الأسعار متأخرة).${missing.length ? ` لا توجد أسعار تاريخية لـ ${missing.map(x => `<bdi>${escapeHtml(x)}</bdi>`).join('، ')} — حُسبت بآخر سعر تنفيذ.` : ''} آخر نقطة = قيمة المحفظة الحالية بسعر السوق (نفس البطاقة).</div>

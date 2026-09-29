@@ -964,3 +964,62 @@ table.g-enh#levelsTable .g-filter, table.g-enh#gridLevelsTable .g-filter{ min-wi
 #levelsTable .tag, #gridLevelsTable .tag{ font-size:10.5px; padding:2px 6px; }
 #levelsTable input, #gridLevelsTable input{ height:30px !important; min-height:0 !important; }
 #levelsTable td button, #gridLevelsTable td button{ min-height:0 !important; height:30px; line-height:1; }
+
+/* الإصدار 100: قيم المحور في منحنى المحفظة */
+.gs-curve-box{ position:relative; }
+.gs-curve-ylab{ position:absolute; inset-inline-start:4px; transform:translateY(-100%); font-size:10.5px; line-height:1; padding:1px 4px; border-radius:4px; color:var(--text-muted, #888); background:var(--card-bg, rgba(255,255,255,.7)); pointer-events:none; font-variant-numeric:tabular-nums; }
+
+/* الإصدار 100: البحث عن رمز السهم في نموذج الخطة */
+.g-symchk{ margin:-4px 0 8px; min-height:18px; line-height:1.6; }
+.g-pxmode{ margin:-4px 0 10px; gap:14px; flex-wrap:wrap; }
+.g-pxmode label{ display:inline-flex; align-items:center; gap:6px; margin:0; font-weight:500; }
+input.g-px-auto{ background:rgba(16,185,129,.08) !important; }
+
+/* الإصدار 100: الشاشات الطارئة (صيانة / انقطاع النت / السيرفر / التحميل البطيء) */
+#gsEmg{ position:fixed; inset:0; z-index:2147483600; display:flex; align-items:center; justify-content:center; padding:24px 16px; background:rgba(243,244,246,.94); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); animation:gsEmgIn .25s ease; font-family:var(--font, 'IBM Plex Sans Arabic', Tahoma, sans-serif); direction:rtl; }
+#gsEmg[hidden]{ display:none !important; }
+html[data-theme="dark"] #gsEmg{ background:rgba(10,15,22,.94); }
+@keyframes gsEmgIn{ from{ opacity:0; } to{ opacity:1; } }
+.gs-emg-card{ width:100%; max-width:420px; text-align:center; background:var(--card-bg, #fff); color:var(--text, #0F172A); border:1px solid var(--border, #e5e7eb); border-radius:22px; padding:30px 24px 26px; box-shadow:0 20px 50px rgba(15,23,42,.14); }
+html[data-theme="dark"] .gs-emg-card{ background:#111923; color:#EEF2F7; border-color:#223043; }
+.gs-emg-ic{ font-size:44px; line-height:1; margin-bottom:10px; }
+.gs-emg-logo{ height:54px; width:auto; margin:0 auto 14px; display:block; animation:gsEmgPulse 1.6s ease-in-out infinite; }
+@keyframes gsEmgPulse{ 50%{ opacity:.55; transform:scale(.97); } }
+.gs-emg-t{ font-size:20px; margin:0 0 8px; font-weight:700; }
+.gs-emg-b{ font-size:14.5px; line-height:1.9; margin:0; opacity:.8; }
+.gs-emg-spin{ width:34px; height:34px; margin:18px auto 6px; border-radius:50%; border:3px solid rgba(201,162,39,.25); border-top-color:var(--gs-brand, #C9A227); animation:gsEmgSpin .9s linear infinite; }
+@keyframes gsEmgSpin{ to{ transform:rotate(360deg); } }
+.gs-emg-cd{ margin-top:10px; font-size:13px; opacity:.7; font-variant-numeric:tabular-nums; min-height:18px; }
+.gs-emg-slow .gs-emg-cd{ font-size:26px; font-weight:700; opacity:.9; color:var(--gs-brand, #C9A227); }
+.gs-emg-btn{ margin-top:16px; width:auto !important; padding:10px 22px !important; border-radius:999px !important; }
+.gs-emg-link{ all:unset; margin-top:18px; display:inline-block; font-size:12px; opacity:.55; text-decoration:underline; cursor:pointer; }
+.gs-emg-dots{ display:flex; justify-content:center; gap:6px; margin-top:16px; }
+.gs-emg-dots i{ width:8px; height:8px; border-radius:50%; background:var(--gs-brand, #C9A227); animation:gsEmgDot 1.2s ease-in-out infinite; }
+.gs-emg-dots i:nth-child(2){ animation-delay:.2s; } .gs-emg-dots i:nth-child(3){ animation-delay:.4s; }
+@keyframes gsEmgDot{ 50%{ opacity:.25; transform:translateY(-4px); } }
+html.gs-emg-open, html.gs-emg-open body{ overflow:hidden; }
+@media (prefers-reduced-motion: reduce){ #gsEmg, .gs-emg-logo, .gs-emg-spin, .gs-emg-dots i{ animation:none !important; } }
+
+/* الإصدار 100: الدعاية والعروض */
+.gs-ad{ position:relative; border-radius:16px; padding:14px 16px; margin:0 0 14px; background:linear-gradient(135deg, color-mix(in srgb, var(--ad) 18%, transparent), color-mix(in srgb, var(--ad) 6%, transparent)); border:1px solid color-mix(in srgb, var(--ad) 40%, transparent); }
+.gs-ad-t{ font-weight:700; font-size:15px; margin-inline-end:26px; }
+.gs-ad-b{ font-size:13.5px; line-height:1.8; opacity:.85; margin-top:4px; }
+.gs-ad .gs-ad-cta{ margin-top:10px; background:var(--ad) !important; border-color:var(--ad) !important; color:#111 !important; }
+body.g-shell button.gs-ad-x, button.gs-ad-x{ all:unset; position:absolute !important; top:8px; inset-inline-end:10px; width:22px !important; height:22px !important; min-height:0 !important; padding:0 !important; margin:0 !important; border:0 !important; background:transparent !important; box-shadow:none !important; color:inherit !important; display:flex !important; align-items:center; justify-content:center; border-radius:50% !important; font-size:12px !important; cursor:pointer; opacity:.6; }
+button.gs-ad-x:hover{ opacity:1; background:rgba(127,127,127,.15); }
+.gs-ad-ov{ position:fixed; inset:0; z-index:2147483000; background:rgba(15,23,42,.45); display:flex; align-items:center; justify-content:center; padding:16px; animation:gsEmgIn .2s ease; }
+.gs-ad-popup{ width:100%; max-width:400px; margin:0; background:var(--card-bg, #fff); padding:26px 20px 20px; text-align:center; box-shadow:0 20px 50px rgba(0,0,0,.25); }
+html[data-theme="dark"] .gs-ad-popup{ background:#111923; }
+.gs-ad-popup .gs-ad-t{ font-size:18px; margin:0 20px; }
+.gs-ad-marquee{ position:fixed; inset-inline:0; bottom:0; z-index:900; display:flex; align-items:center; gap:10px; padding:6px 38px 6px 10px; background:var(--ad); color:#111; font-size:13.5px; box-shadow:0 -4px 14px rgba(0,0,0,.12); padding-bottom:calc(6px + env(safe-area-inset-bottom)); }
+.gs-ad-marquee .gs-ad-track{ flex:1; overflow:hidden; white-space:nowrap; display:flex; gap:60px; }
+.gs-ad-marquee .gs-ad-track span{ display:inline-block; padding-inline-end:100%; animation:gsAdRun 22s linear infinite; }
+.gs-ad-marquee .gs-ad-track span + span{ display:none; }
+.gs-ad-marquee .gs-ad-cta{ width:auto !important; margin:0 !important; padding:4px 12px !important; background:#111 !important; color:#fff !important; border-radius:999px !important; font-size:12px; }
+.gs-ad-marquee button.gs-ad-x{ top:50%; transform:translateY(-50%); color:#111 !important; }
+@keyframes gsAdRun{ from{ transform:translateX(0); } to{ transform:translateX(100%); } }
+@media (prefers-reduced-motion: reduce){ .gs-ad-marquee .gs-ad-track span{ animation:none; padding:0; } }
+html.gs-has-marquee body{ padding-bottom:44px; }
+@media (max-width: 900px){ .gs-ad-marquee{ bottom:calc(64px + env(safe-area-inset-bottom)); } }
+.emg-maint.on{ border:2px solid #E02424; }
+.emg-card textarea{ min-height:60px; }

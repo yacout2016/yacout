@@ -1,5 +1,5 @@
 -- ============================================================
--- GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 99)
+-- GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 100)
 -- كل تحديثات قاعدة البيانات في ملف واحد.
 -- آمن تشغّله أي عدد من المرات: بيضيف الناقص بس ومبيمسحش أي بيانات.
 -- الاستخدام: phpMyAdmin ← اختار قاعدة البيانات ← تبويب SQL ← الصق الملف كله ← Go
@@ -42,6 +42,7 @@
 --              + user_alerts.body بقى TEXT (نص الإشعار الكامل) + الأوقات بتتسجّل UTC وبتتعرض بتوقيت جهاز المستخدم.
 -- الإصدار 98: جدول symbol_checks (الأسهم المكتوبة غلط بتتمسح نهائيًا هي وخططها، والرمز الممنوع مبيرجعش تاني).
 -- الإصدار 99: مفيش تغييرات في قاعدة البيانات (حذف خطط الشبكة والخطط من القوائم ← سلة المحذوفات، والاسترجاع مبيكتبش فوق خطة جديدة لنفس السهم).
+-- الإصدار 100: فهارس (Indexes) إضافية للسرعة مع عدد كبير من المستخدمين (10,000+) + إعدادات الشاشات الطارئة ووضع الصيانة والدعاية (في site_config - مفيش جداول جديدة).
 -- ============================================================
 
 -- الإصدار 85: ترميز الاتصال UTF-8 عشان النصوص العربي اللي بتتضاف من الملف (زي المسميات الوظيفية) تتحفظ صح
@@ -1074,4 +1075,30 @@ CREATE TABLE IF NOT EXISTS symbol_checks (
   PRIMARY KEY (symbol, market)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-SELECT 'GRIFFINE database is up to date (v99)' AS result;
+-- الإصدار 100: فهارس للسرعة مع عدد كبير من المستخدمين - كل فهرس بيتضاف بس لو الجدول موجود والفهرس مش موجود
+DELIMITER $$
+DROP PROCEDURE IF EXISTS griffine_idx $$
+CREATE PROCEDURE griffine_idx(IN t VARCHAR(64), IN n VARCHAR(64), IN cols VARCHAR(255))
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=t)
+     AND NOT EXISTS (SELECT 1 FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=t AND INDEX_NAME=n) THEN
+    SET @s = CONCAT('ALTER TABLE `', t, '` ADD INDEX `', n, '` (', cols, ')');
+    PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
+  END IF;
+END $$
+DELIMITER ;
+CALL griffine_idx('user_alerts', 'idx_alerts_owner_id', 'account_email, id');
+CALL griffine_idx('password_resets', 'idx_reset_token', 'token');
+CALL griffine_idx('email_verifications', 'idx_verify_token', 'token');
+CALL griffine_idx('email_change_requests', 'idx_ecr_email', 'current_email, status');
+CALL griffine_idx('referrals', 'idx_ref_referrer', 'referrer_email');
+CALL griffine_idx('subscription_events', 'idx_events_owner_date', 'account_email, event_date');
+CALL griffine_idx('subscribers', 'idx_subs_end', 'active, end_date');
+CALL griffine_idx('recommendations', 'idx_rec_archived_created', 'archived, created_at');
+CALL griffine_idx('trash_bin', 'idx_trash_clean', 'restored_at, deleted_at');
+CALL griffine_idx('users', 'idx_users_market', 'account_market');
+CALL griffine_idx('chat_messages', 'idx_chat_created', 'created_at');
+CALL griffine_idx('custom_alerts', 'idx_custom_sym_mkt', 'symbol, market, active');
+DROP PROCEDURE griffine_idx;
+
+SELECT 'GRIFFINE database is up to date (v100)' AS result;
