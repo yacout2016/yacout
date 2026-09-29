@@ -11,7 +11,12 @@ if (!isset($_SESSION['user_email']) || empty($_SESSION['is_admin'])) {
 }
 requirePermission($conn, 'manage_staff');
 
-$result = $conn->query("SELECT * FROM staff_members ORDER BY created_at DESC");
+// الإصدار 96: كود الموظف (GM / C / S / AC / N) + كوده كمستثمر (INV-n-E)
+require_once __DIR__ . '/codes_lib.php';
+codes_ensure_all($conn);
+$result = $conn->query(codes_ready($conn)
+    ? "SELECT s.*, u.inv_code FROM staff_members s LEFT JOIN users u ON u.username = s.email ORDER BY s.created_at DESC"
+    : "SELECT * FROM staff_members ORDER BY created_at DESC");
 $staff = [];
 $ids = [];
 while ($r = $result->fetch_assoc()) {
@@ -19,6 +24,8 @@ while ($r = $result->fetch_assoc()) {
         "id" => (string)$r['id'],
         "email" => $r['email'],
         "jobTitle" => $r['job_title'],
+        "staffCode" => $r['staff_code'] ?? null,
+        "memberCode" => isset($r['inv_code']) ? codes_display($r['inv_code'], $r['staff_code'] ?? '', !empty($r['active'])) : null,
         "active" => (bool)$r['active'],
         "createdAt" => $r['created_at'],
         "permissions" => [],

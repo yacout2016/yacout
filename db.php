@@ -116,6 +116,13 @@ function getAllAdminSettings($conn){
         'hide_testimonials_screen' => false,
         'hide_articles_screen' => false,
         'hide_suggestions_screen' => false,
+        // الإصدار 96: كل الشاشات قابلة للإخفاء من لوحة التحكم
+        'hide_watchlist_screen' => false,
+        'hide_alerts_screen' => false,
+        'hide_stock_screen' => false,
+        'hide_curve_home' => false,
+        'hide_trash_screen' => false,
+        'hide_trades_screen' => true,     // تقرير صفقاتي للعميل - مخفي لحد ما الأدمن يظهره
     ];
     $result = @$conn->query("SELECT setting_key, setting_value FROM admin_settings");
     if ($result) {

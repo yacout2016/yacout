@@ -56,7 +56,7 @@ header("Content-Security-Policy: default-src 'self'; "
 <title>GRIFFINE — خطة تعزيز المتوسط</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@500;700;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="theme-boot.js?v=95"></script>
 <link rel="stylesheet" href="griffine.css?v=95">
 <link rel="stylesheet" href="shell.css?v=95">

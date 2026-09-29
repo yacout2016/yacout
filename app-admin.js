@@ -263,14 +263,14 @@ async function renderAdminSubscribers(){
   function renderTable(list){
     document.getElementById('subscribersTableWrap').innerHTML = list.length ? `<table>
       <thead><tr>
-        <th>الاسم</th><th>الهاتف</th><th>الإيميل</th><th>الخطة</th><th>بداية الخطة</th><th>تاريخ الانتهاء</th><th>قيمة السداد</th><th>طريقة السداد</th><th>الحالة</th><th>التذكيرات</th><th>صلاحيات خاصة</th><th></th>
+        <th>الكود</th><th>الاسم</th><th>الهاتف</th><th>الإيميل</th><th>الخطة</th><th>بداية الخطة</th><th>تاريخ الانتهاء</th><th>قيمة السداد</th><th>طريقة السداد</th><th>الحالة</th><th>التذكيرات</th><th>صلاحيات خاصة</th><th></th>
       </tr></thead>
       <tbody>
         ${list.map(r=>{
           const isActive = r.active !== false;
           const remEnabled = r.reminderEnabled !== false;
           return `<tr>
-          <td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.phone)}</td><td>${escapeHtml(r.contactEmail)}</td><td>${escapeHtml(r.planName)}${r.isComp?' <span class="tag" style="background:#e6f4ea;color:var(--green);">هدية</span>':''}</td>
+          <td dir="ltr"><b>${escapeHtml(r.memberCode || '')}</b>${r.staffCode ? `<div class="u-fs11 u-muted">${escapeHtml(r.staffCode)}</div>` : ''}</td><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.phone)}</td><td dir="ltr">${escapeHtml(r.contactEmail || r.accountEmail)}</td><td>${escapeHtml(r.planName)}${r.isComp?' <span class="tag" style="background:#e6f4ea;color:var(--green);">هدية</span>':''}</td>
           <td>${formatDateAr(r.startDate)}</td><td>${formatDateAr(r.endDate)}</td>
           <td>${r.amount===0?'مجانًا':fmtMoney(r.amount)+' '+r.currency}</td>
           <td>${r.paymentMethod ? escapeHtml(payMethodLabel(r.paymentMethod)) : '-'}
@@ -291,7 +291,7 @@ async function renderAdminSubscribers(){
           <td><button class="small danger u-wa" data-gcall="__deleteSubRow" data-gargs="${gArgs([String(r.id)])}">🗄️ أرشفة</button></td>
         </tr>`}).join('')}
         <tr style="font-weight:bold;background:#f0f4f2;">
-          <td colspan="6">الإجمالي</td><td>${fmtMoney(computeTotals(list))}</td><td colspan="5"></td>
+          <td colspan="7">الإجمالي</td><td>${fmtMoney(computeTotals(list))}</td><td colspan="5"></td>
         </tr>
       </tbody>
     </table>` : '<p class="u-note">لا يوجد مشتركين في هذه الفترة.</p>';
@@ -393,7 +393,7 @@ async function renderAdminSubscribers(){
 
   function renderMsChecks(list){
     document.getElementById('admSubChecks').innerHTML = list.map(r=>`
-      <label class="ms-item"><input type="checkbox" class="admSubCheck" value="${r.id}"> ${escapeHtml(r.name)} — ${escapeHtml(r.planName)}</label>`).join('') ||
+      <label class="ms-item"><input type="checkbox" class="admSubCheck" value="${r.id}"> <b dir="ltr">${escapeHtml(r.memberCode || '')}</b> ${escapeHtml(r.name)} — <span dir="ltr">${escapeHtml(r.accountEmail || r.contactEmail || '')}</span> — ${escapeHtml(r.planName)}</label>`).join('') ||
       '<div style="font-size:12px;color:#888;padding:6px;">لا يوجد مشتركين</div>';
   }
 
@@ -505,20 +505,20 @@ async function renderAdminSubscribers(){
     const total = computeTotals(list);
     const periodLabel = (currentFrom && currentTo) ? `${formatDateAr(currentFrom)} إلى ${formatDateAr(currentTo)}` : 'كل الفترة';
     const rowsHtml = list.map(r=>`<tr>
-      <td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.phone)}</td><td>${escapeHtml(r.contactEmail)}</td><td>${escapeHtml(r.planName)}</td>
+      <td dir="ltr">${escapeHtml(r.memberCode || '')}</td><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.phone)}</td><td dir="ltr">${escapeHtml(r.contactEmail || r.accountEmail)}</td><td>${escapeHtml(r.planName)}</td>
       <td>${formatDateAr(r.startDate)}</td><td>${formatDateAr(r.endDate)}</td>
       <td>${r.amount===0?'مجانًا':fmt2(r.amount)+' '+r.currency}</td>
     </tr>`).join('');
     const w = window.open('', '_blank');
     w.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>بيان المشتركين</title>
-      <style>body{font-family:Tahoma,sans-serif;padding:24px;} table{width:100%;border-collapse:collapse;margin-top:14px;}
+      <style>body{font-family:IBM Plex Sans Arabic,Tahoma,sans-serif;padding:24px;} table{width:100%;border-collapse:collapse;margin-top:14px;}
       th,td{border:1px solid #ccc;padding:7px;text-align:center;font-size:12px;} th{background:#14532d;color:#fff;}
       h1{color:#14532d;} .agg{margin-top:16px;font-size:14px;background:#f0f4f2;padding:10px;border-radius:8px;}</style></head>
       <body>
       ${reportLogoHeaderHtml()}
       <h1>GRIFFINE — بيان المشتركين</h1>
       <p>الفترة: ${periodLabel} | عدد المشتركين: ${list.length} | تاريخ الطباعة: ${new Date().toLocaleDateString('ar-EG')}</p>
-      <table><thead><tr><th>الاسم</th><th>الهاتف</th><th>الإيميل</th><th>الخطة</th><th>بداية الخطة</th><th>تاريخ الانتهاء</th><th>قيمة السداد</th></tr></thead>
+      <table><thead><tr><th>الكود</th><th>الاسم</th><th>الهاتف</th><th>الإيميل</th><th>الخطة</th><th>بداية الخطة</th><th>تاريخ الانتهاء</th><th>قيمة السداد</th></tr></thead>
       <tbody>${rowsHtml}</tbody></table>
       <div class="agg"><strong>إجمالي السداد لكل العملاء:</strong> ${fmt2(total)}</div>
       
@@ -538,7 +538,7 @@ async function renderAdminSubscribers(){
     const titleTd = "background:#14532D;color:#ffffff;font-weight:bold;font-size:16px;padding:10px;text-align:center;";
 
     const rowsHtml = list.map(r=>`<tr>
-      <td style="${td}">${escapeHtml(r.name)}</td><td style="${td}">${escapeHtml(r.phone)}</td><td style="${td}">${escapeHtml(r.contactEmail)}</td>
+      <td style="${td}">${escapeHtml(r.memberCode || '')}</td><td style="${td}">${escapeHtml(r.name)}</td><td style="${td}">${escapeHtml(r.phone)}</td><td style="${td}">${escapeHtml(r.contactEmail || r.accountEmail)}</td>
       <td style="${td}">${escapeHtml(r.planName)}</td><td style="${td}">${formatDateAr(r.startDate)}</td><td style="${td}">${formatDateAr(r.endDate)}</td>
       <td style="${td}">${r.amount.toFixed(2)}</td>
     </tr>`).join('');
@@ -547,16 +547,16 @@ async function renderAdminSubscribers(){
       <head><meta charset="UTF-8"><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
       <x:Name>المشتركين</x:Name><x:WorksheetOptions><x:RTL/><x:DisplayGridlines/></x:WorksheetOptions>
       </x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml></head><body dir="rtl">
-      <table style="border-collapse:collapse;font-family:Tahoma,Arial;direction:rtl;" dir="rtl">
-        <tr><td colspan="7" style="${titleTd}">GRIFFINE — بيان المشتركين</td></tr>
-        <tr><td colspan="7" style="border:none;padding:6px;">الفترة: ${periodLabel} | عدد المشتركين: ${list.length}</td></tr>
+      <table style="border-collapse:collapse;font-family:IBM Plex Sans Arabic,Tahoma,Arial;direction:rtl;" dir="rtl">
+        <tr><td colspan="8" style="${titleTd}">GRIFFINE — بيان المشتركين</td></tr>
+        <tr><td colspan="8" style="border:none;padding:6px;">الفترة: ${periodLabel} | عدد المشتركين: ${list.length}</td></tr>
         <tr><td colspan="7" class="u-bn"></td></tr>
         <tr>
-          <td style="${th}">الاسم</td><td style="${th}">الهاتف</td><td style="${th}">الإيميل</td><td style="${th}">الخطة</td>
+          <td style="${th}">الكود</td><td style="${th}">الاسم</td><td style="${th}">الهاتف</td><td style="${th}">الإيميل</td><td style="${th}">الخطة</td>
           <td style="${th}">بداية الخطة</td><td style="${th}">تاريخ الانتهاء</td><td style="${th}">قيمة السداد</td>
         </tr>
         ${rowsHtml}
-        <tr><td colspan="6" style="${totalTd}">الإجمالي</td><td style="${totalTd}">${total.toFixed(2)}</td></tr>
+        <tr><td colspan="7" style="${totalTd}">الإجمالي</td><td style="${totalTd}">${total.toFixed(2)}</td></tr>
       </table>
       </body></html>`;
     const blob = new Blob(['\ufeff'+html], { type: 'application/vnd.ms-excel' });
@@ -999,7 +999,7 @@ async function renderChatAdminPage(){
       if (lastCount !== -1 && msgs.length > lastCount && currentView === 'active' && !document.hidden && document.hasFocus()) markChatRead(visitorId).then(refreshChatUnreadIndicators);
       lastCount = msgs.length;
       const wasNearBottom = (msgsWrap.scrollHeight - msgsWrap.scrollTop - msgsWrap.clientHeight) < 40;
-      msgsWrap.innerHTML = msgs.length ? msgs.map(m => chatMsgHtml(m)).join('') : '<p class="u-fs12 u-muted">لا يوجد رسائل.</p>';
+      chatRenderInto(msgsWrap, msgs, '<p class="u-fs12 u-muted">لا يوجد رسائل.</p>');   // الإصدار 96: الجديدة بس
       if (wasNearBottom) msgsWrap.scrollTop = msgsWrap.scrollHeight;
     }
     await refreshMsgs();
@@ -1268,6 +1268,13 @@ async function renderAdminSettingsPage(){
     { key:'hide_testimonials_screen', label:'إخفاء زرار آراء العملاء', desc:'' },
     { key:'hide_articles_screen', label:'إخفاء زرار المقالات', desc:'' },
     { key:'hide_suggestions_screen', label:'إخفاء زرار شاركنا مقترحاتك', desc:'' },
+    // الإصدار 96: كل الشاشات
+    { key:'hide_watchlist_screen', label:'إخفاء قائمة المتابعة', desc:'' },
+    { key:'hide_alerts_screen', label:'إخفاء تنبيهات الأسعار', desc:'يخفي الشاشة وكارت التنبيهات في الرئيسية.' },
+    { key:'hide_stock_screen', label:'إخفاء صفحة السهم (السعر والشارت)', desc:'' },
+    { key:'hide_curve_home', label:'إخفاء منحنى أداء المحفظة في الرئيسية', desc:'' },
+    { key:'hide_trash_screen', label:'إخفاء سلة المحذوفات عن العملاء', desc:'الحذف يفضل ينتقل للسلة، ويقدر الأدمن يسترجع من سلته.' },
+    { key:'hide_trades_screen', label:'إخفاء «تقرير صفقاتي» عن العملاء', desc:'لو أظهرته: كل عميل يشوف صفقاته هو بس (الشراء والبيع والصفقات المقفولة والأرباح).' },
   ];
 
   if (screenStale(__tok)) return; app.innerHTML = `<div class="container wide">${logoHeader()}
@@ -1286,6 +1293,10 @@ async function renderAdminSettingsPage(){
     <div class="info">رقم الخدمة هو رقم استقبال تحويلات فودافون كاش، ويظهر في صفحة الدفع وبيانات التواصل ورسائل كود الدخول. شغّل أو أوقف أي طريقة دفع، واكتب بيانات Paymob ليتفعّل الدفع بالكارت تلقائيًا.</div>
     <div class="section-card" id="paymentCfgWrap">جارٍ التحميل...</div>
 
+    <h2 class="u-mt20">🏷️ رقم الإصدار المعروض</h2>
+    <div class="info">يظهر لكل المستخدمين في صفحة «حسابي» (مثلًا V.5.09). لو تركته فارغًا يظهر الرقم التلقائي للإصدار. رقم البناء الداخلي يظهر بجانبه صغيرًا للتأكد أن الجهاز على آخر نسخة.</div>
+    <div class="section-card"><div class="u-row"><input id="cfgVersionLabel" maxlength="30" dir="ltr" placeholder="الرقم التلقائي" class="u-m0"><button class="small u-wa" id="cfgVersionSave">💾 حفظ</button></div><div id="cfgVersionMsg" class="u-note u-mt6"></div></div>
+
     <h2 class="u-mt20">إخفاء شاشات عن العميل</h2>
     <div class="info">فعّل أي مفتاح هنا لإخفاء الزر المقابل من الشاشة الرئيسية للعميل، دون حذف أي بيانات أو خطط موجودة بالفعل. الافتراضي أن كل الأزرار ظاهرة.</div>
     <div class="section-card" id="visibilityListWrap"></div>
@@ -1302,6 +1313,13 @@ async function renderAdminSettingsPage(){
     </div>` : ''}
   </div>`;
 
+  // الإصدار 96: رقم الإصدار المعروض
+  siteCfgAdminApi().then(r => { const i = document.getElementById('cfgVersionLabel'); if (i && r && r.config) i.value = r.config.app_version_label || ''; });
+  const vbtn = document.getElementById('cfgVersionSave'); if (vbtn) vbtn.onclick = async () => {
+    const r = await siteCfgAdminApi({ action:'save', app_version_label: document.getElementById('cfgVersionLabel').value.trim() });
+    document.getElementById('cfgVersionMsg').textContent = r && r.success ? 'تم الحفظ ✓ — يظهر لكل المستخدمين.' : ((r && r.message) || 'تعذّر الحفظ');
+    if (window.GShell) GShell.__verP = null;
+  };
   document.getElementById('backToAdminFromSettingsBtn').onclick=()=>goAdminHome();
   renderSiteConfigAdmin();   // الإصدار 84
 
@@ -1559,7 +1577,7 @@ async function renderStaffManagementPage(){
       : (visible.length ? visible.map(s=>`
       <div class="section-card" style="margin-bottom:14px;">
         <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;align-items:center;">
-          <div><strong>${escapeHtml(s.email)}</strong> — ${escapeHtml(jobTitles[s.jobTitle] || s.jobTitle || "")} ${s.active ? '' : '<span class="tag tag-wait">موقوف</span>'}</div>
+          <div>${s.staffCode ? `<b class="tag" dir="ltr">${escapeHtml(s.staffCode)}</b> ` : ''}<strong>${escapeHtml(s.email)}</strong>${s.memberCode ? ` <span class="u-fs11 u-muted" dir="ltr">(${escapeHtml(s.memberCode)})</span>` : ''} — ${escapeHtml(jobTitles[s.jobTitle] || s.jobTitle || "")} ${s.active ? '' : '<span class="tag tag-wait">موقوف</span>'}</div>
           <span style="display:flex;gap:6px;flex-wrap:wrap;">${s.active
             ? `<button class="small danger u-wa" data-gcall="__removeStaff" data-gargs="${gArgs([String(s.id)])}">إيقاف (إزالة من الفريق)</button>`
             : `<button class="small btn-lightgreen u-wa" data-gcall="__staffMode" data-gargs="${gArgs([String(s.id), 'restore'])}">↩️ إرجاع للفريق</button>`}

@@ -17,5 +17,6 @@ echo json_encode(["success" => true, "config" => [
     "payVodafone"     => site_config_on($conn, 'pay_vodafone'),
     "payInstapay"     => site_config_on($conn, 'pay_instapay'),
     "payPaymob"       => site_config_on($conn, 'pay_paymob') && paymob_ready($conn),
+    "versionLabel"    => site_config_get($conn, 'app_version_label'),   // الإصدار 96
 ]], JSON_UNESCAPED_UNICODE);
 ?>

@@ -175,11 +175,12 @@ async function initChatWidget(sessionEmail){
     document.getElementById('chatCloseBtn').onclick = closeChat;
     document.getElementById('chatPrefsBtn').onclick = () => { if (window.__chatPollInterval) { clearInterval(window.__chatPollInterval); window.__chatPollInterval = null; } renderChatPrefsPanel(panel, renderChatConversation, closeChat); };
 
-    let lastSig = '';
+    let lastSig = '', renderedIds = [], refreshing = false;
     async function refreshMessages(){
       const body = document.getElementById('chatBody');
       if (!body) return; // البانل اتقفل
-      const res = await getChatHistory(visitorId);
+      if (refreshing) return; refreshing = true;   // الإصدار 96: طلب واحد في نفس الوقت
+      let res; try { res = await getChatHistory(visitorId); } finally { refreshing = false; }
       if (handleNotOwner(res)) return;
       if (!res || !res.success) return;
       const msgs = res.messages || [];
@@ -198,12 +199,21 @@ async function initChatWidget(sessionEmail){
       const wasNearBottom = (body.scrollHeight - body.scrollTop - body.clientHeight) < 60;
       if (msgs.length){
         const lastMine = [...msgs].reverse().find(m => m.sender === 'visitor');
-        body.innerHTML = msgs.map(m => {
-          let receipt = '';
-          if (lastMine && m.id === lastMine.id) receipt = (adminReadAt && adminReadAt >= m.createdAt) ? ' <span class="chat-receipt seen">✓✓ تمت القراءة</span>' : ' <span class="chat-receipt">✓ أُرسلت</span>';
-          return chatMsgHtml(m, receipt);
-        }).join('');
+        const receiptOf = (m) => (lastMine && m.id === lastMine.id) ? ((adminReadAt && adminReadAt >= m.createdAt) ? ' <span class="chat-receipt seen">✓✓ تمت القراءة</span>' : ' <span class="chat-receipt">✓ أُرسلت</span>') : '';
+        const ids = msgs.map(m => String(m.id));
+        const same = renderedIds.length && renderedIds.length <= ids.length && renderedIds.every((id, i) => id === ids[i]) && body.querySelector('.chat-msg');
+        if (same) {
+          // الإصدار 96: الرسائل الجديدة بس بتتضاف (قبل كده كل الرسائل كانت بتترسم من الأول ← نتشة في التمرير والصور بتتحمّل تاني)
+          const fresh = msgs.slice(renderedIds.length);
+          if (fresh.length) body.insertAdjacentHTML('beforeend', fresh.map(m => chatMsgHtml(m, receiptOf(m))).join(''));
+          body.querySelectorAll('.chat-receipt').forEach(x => x.remove());
+          if (lastMine) { const el = body.querySelector(`.chat-msg[data-mid="${CSS.escape(String(lastMine.id))}"] .chat-msg-time`); if (el) el.insertAdjacentHTML('beforeend', receiptOf(lastMine)); }
+        } else {
+          body.innerHTML = msgs.map(m => chatMsgHtml(m, receiptOf(m))).join('');
+        }
+        renderedIds = ids;
       } else {
+        renderedIds = [];
         body.innerHTML = `<div style="text-align:center;font-size:12.5px;color:#888;line-height:1.8;">${isGuest ? 'اسألنا عن أي شيء: الباقات، طريقة الاشتراك، أو كيفية استخدام GRIFFINE 👋' : 'اكتب أول رسالة وابدأ المحادثة 👋'}</div>`;
       }
       if (wasNearBottom) body.scrollTop = body.scrollHeight;
@@ -422,7 +432,7 @@ function initAdminBubble(bubble, panel){
         if (sig === body.dataset.sig) return;   // لا يوجد جديد ← منعيدش الرسم
         body.dataset.sig = sig;
         const wasNearBottom = (body.scrollHeight - body.scrollTop - body.clientHeight) < 60;
-        body.innerHTML = msgs.length ? msgs.map(m => chatMsgHtml(m)).join('') : '<p style="font-size:12px;color:#888;text-align:center;">لا يوجد رسائل.</p>';
+        chatRenderInto(body, msgs, '<p class="u-fs12 u-muted u-tc">لا يوجد رسائل.</p>');   // الإصدار 96: الجديدة بس
         if (wasNearBottom) body.scrollTop = body.scrollHeight;
       }catch(e){ console.error('renderQuickThread refresh crashed:', e); }
     }

@@ -29,6 +29,7 @@ function mkChgHtml(last, prev){
    02. صفحة السهم الموحّدة
    --------------------------------------------------------------------- */
 async function renderStockPage(symbol, market){
+  if (!window.__isAdmin && window.GShell && GShell.settings && GShell.settings.hide_stock_screen === true) return renderHome();   // الإصدار 96: الشاشة مخفية من لوحة التحكم
   const __tok = screenToken();   // الإصدار 88
   pushNav(() => renderStockPage(symbol, market));
   const email = await getSession();
@@ -106,6 +107,7 @@ async function renderStockPage(symbol, market){
    03. قائمة المتابعة
    --------------------------------------------------------------------- */
 async function renderWatchlistPage(){
+  if (!window.__isAdmin && window.GShell && GShell.settings && GShell.settings.hide_watchlist_screen === true) return renderHome();   // الإصدار 96: الشاشة مخفية من لوحة التحكم
   const __tok = screenToken();   // الإصدار 88
   pushNav(() => renderWatchlistPage());
   const email = await getSession();
@@ -223,6 +225,7 @@ const MK_CCY = { 'مصر':'EGP', 'السعودية':'SAR', 'الإمارات':'A
 const MK_INTERVALS = [[15,'15 دقيقة'],[30,'30 دقيقة'],[60,'ساعة'],[120,'ساعتان'],[180,'3 ساعات'],[360,'6 ساعات'],[720,'12 ساعة'],[1440,'24 ساعة']];
 function mkIntervalLabel(m){ const x = MK_INTERVALS.find(i => i[0] === +m); return x ? x[1] : m + ' دقيقة'; }
 async function renderAlertsPage(){
+  if (!window.__isAdmin && window.GShell && GShell.settings && GShell.settings.hide_alerts_screen === true) return renderHome();   // الإصدار 96: الشاشة مخفية من لوحة التحكم
   const __tok = screenToken();   // الإصدار 88
   pushNav(() => renderAlertsPage());
   const email = await getSession();
@@ -309,27 +312,41 @@ async function renderAlertsPage(){
 /* الإصدار 91: أسعار السوق الحالية لأسهم الخطط (متأخرة 15 دقيقة) - بطاقة المحفظة + المحفظة والتقارير + المنحنى
    window.__mkLivePx['SYM|السوق'] = السعر. تخزين مؤقت 5 دقائق في الجلسة. لو السعر مش متاح ← آخر سعر أدخلته / آخر سعر شراء */
 window.__mkLivePx = window.__mkLivePx || {};
-async function mkEnsureLivePrices(plans, grids, timeoutMs = 1500){
+/* الإصدار 96 (سلاسة): الأسعار بتتحفظ على الجهاز (localStorage) فأي فتح بعد أول مرة بيطلع بالأرقام الصح فورًا.
+   - كل الأسعار المطلوبة موجودة (حتى لو قديمة) ← الشاشة بتترسم على طول، والتحديث في الخلفية لو عدّى 5 دقائق
+   - فيه أسهم مالهاش سعر محفوظ ← استنى لحد timeoutMs
+   window.__mkLivePxReady = كل الأسعار موجودة ، window.__mkLivePxPending = Promise بترجع true لو الأسعار اتغيّرت */
+const MK_PX_KEY = 'gs_livepx2';
+function mkPxLoad(){ try { const c = JSON.parse(localStorage.getItem(MK_PX_KEY) || 'null'); if (c && c.map) return c; } catch(e){} return { at: 0, map: {} }; }
+function mkPxSave(c){ try { localStorage.setItem(MK_PX_KEY, JSON.stringify(c)); } catch(e){} }
+async function mkEnsureLivePrices(plans, grids, timeoutMs = 2500){
   const need = {};
   Object.entries(plans || {}).forEach(([s, p]) => { if (p) need[s.toUpperCase() + '|' + (p.market || 'مصر')] = { symbol: s, market: p.market || 'مصر' }; });
   Object.entries(grids || {}).forEach(([s, g]) => { if (g) need[s.toUpperCase() + '|' + (g.market || 'مصر')] = { symbol: s, market: g.market || 'مصر' }; });
-  let cache = { at: 0, map: {} }; try { cache = JSON.parse(sessionStorage.getItem('gs_livepx') || '') || cache; } catch(e){}
-  const fresh = Date.now() - (cache.at || 0) < 5 * 60 * 1000;
-  const missing = Object.keys(need).filter(k => !fresh || !(k in cache.map));
-  // الشاشة بتترسم فورًا (بآخر أسعار متاحة) - ولو الأسعار وصلت بعد كده window.__mkLivePxPending بيرجّع true والشاشة بتتحدّث
-  const apply = () => { let changed = false; Object.keys(need).forEach(k => { const v = cache.map[k] > 0 ? cache.map[k] : undefined; if (window.__mkLivePx[k] !== v) changed = true; if (v) window.__mkLivePx[k] = v; else delete window.__mkLivePx[k]; }); return changed; };
-  window.__mkLivePxPending = null;
-  if (missing.length) {
-    let done = false;
-    const req = MK.post({ action: 'prices', items: JSON.stringify(missing.map(k => need[k])) }).then(r => {
-      if (r && r.success) { const map = fresh ? cache.map : {}; Object.entries(r.prices || {}).forEach(([k, v]) => { map[k] = v ? v.last : null; });
-        cache = { at: fresh ? cache.at : Date.now(), map }; try { sessionStorage.setItem('gs_livepx', JSON.stringify(cache)); } catch(e){} }
-      done = true;
-    }).catch(() => { done = true; });
-    await Promise.race([req, new Promise(res => setTimeout(res, timeoutMs))]);
-    if (!done) window.__mkLivePxPending = req.then(() => apply());
-  }
+  let cache = mkPxLoad();
+  const keys = Object.keys(need);
+  const missing = keys.filter(k => !(k in cache.map));
+  const stale = Date.now() - (cache.at || 0) > 5 * 60 * 1000;
+  const toFetch = stale ? keys : missing;
+  const apply = () => { let changed = false; keys.forEach(k => { const v = cache.map[k] > 0 ? cache.map[k] : undefined; if (window.__mkLivePx[k] !== v) changed = true; if (v) window.__mkLivePx[k] = v; else delete window.__mkLivePx[k]; }); return changed; };
   apply();
+  window.__mkLivePxPending = null;
+  window.__mkLivePxReady = !missing.length;
+  if (!toFetch.length) return window.__mkLivePx;
+  // طلب واحد بس في نفس الوقت لنفس المجموعة (لو الشاشة اتفتحت مرتين ورا بعض)
+  const reqKey = toFetch.slice().sort().join(',');
+  if (!window.__mkPxReq || window.__mkPxReq.key !== reqKey) {
+    window.__mkPxReq = { key: reqKey, p: MK.post({ action: 'prices', items: JSON.stringify(toFetch.map(k => need[k])) }).then(r => {
+      if (r && r.success) { const c = mkPxLoad(); Object.entries(r.prices || {}).forEach(([k, v]) => { c.map[k] = v ? v.last : null; }); c.at = Date.now(); mkPxSave(c); }
+    }).catch(() => {}).finally(() => { setTimeout(() => { if (window.__mkPxReq && window.__mkPxReq.key === reqKey) window.__mkPxReq = null; }, 0); }) };
+  }
+  const req = window.__mkPxReq.p;
+  if (missing.length) {   // أسهم جديدة مالهاش سعر ← استنى شوية
+    let done = false; req.then(() => { done = true; });
+    await Promise.race([req, new Promise(res => setTimeout(res, timeoutMs))]);
+    if (done) { cache = mkPxLoad(); apply(); window.__mkLivePxReady = true; return window.__mkLivePx; }
+  }
+  window.__mkLivePxPending = req.then(() => { cache = mkPxLoad(); window.__mkLivePxReady = true; return apply(); });
   return window.__mkLivePx;
 }
 /* الإصدار 89: المنحنى بيظهر فورًا - النقاط القديمة بتتحسب من عمليات الشراء والبيع في الخطط
@@ -468,8 +485,13 @@ async function mkPortfolioCurve(el, ccys, sel, plans, grids, rangeKey){
   svg.addEventListener('mouseleave', () => { tip.hidden = true; cur.style.display = 'none'; });
 }
 // بتتنادى من الرئيسية (shell.js) بعد الرسم
-async function mkAfterHome(plans, grids, ccys, sel, email){
-  try { await mkSyncTargets(plans, grids, email); } catch(e){}
-  mkAlertsCard(document.getElementById('gsAlertsCard'));
-  mkPortfolioCurve(document.getElementById('gsCurve'), ccys, sel, plans, grids);
+async function mkAfterHome(plans, grids, ccys, sel, email, opt){
+  opt = opt || {};
+  mkSyncTargets(plans, grids, email).catch(() => {});   // في الخلفية - مبيأخرش الرسم
+  if (!opt.noAlerts) mkAlertsCard(document.getElementById('gsAlertsCard'));
+  const cv = document.getElementById('gsCurve');
+  if (opt.noCurve) { if (cv) cv.innerHTML = ''; return; }   // الإصدار 96: الأدمن مخفي المنحنى
+  // الإصدار 96: المنحنى ميترسمش بأرقام ناقصة (كان بيطلع أحمر وبعدين أخضر) - لو الأسعار لسه جاية بيظهر تحميل والرئيسية بترسمه لما توصل
+  if (window.__mkLivePxReady === false) { if (cv) cv.innerHTML = '<div class="section-card gs-curve"><div class="section-title">📈 أداء إجمالي المحفظة</div><div class="gs-skel" style="height:180px"></div></div>'; return; }
+  mkPortfolioCurve(cv, ccys, sel, plans, grids);
 }

@@ -131,7 +131,7 @@ function wireDacStockReportSection(plans, symbols){
 
     const w = window.open('', '_blank');
     w.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>تقرير أسهم</title>
-      <style>body{font-family:Tahoma,sans-serif;padding:24px;} table{width:100%;border-collapse:collapse;margin-top:8px;}
+      <style>body{font-family:IBM Plex Sans Arabic,Tahoma,sans-serif;padding:24px;} table{width:100%;border-collapse:collapse;margin-top:8px;}
       th,td{border:1px solid #ccc;padding:6px;text-align:center;font-size:12px;} th{background:#14532d;color:#fff;}
       h1{color:#14532d;} .agg{margin-top:16px;font-size:14px;background:#f0f4f2;padding:12px;border-radius:8px;}
       .indicators{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;}
@@ -813,7 +813,7 @@ async function renderPortfolio(){
       <x:Name>المحفظة</x:Name><x:WorksheetOptions><x:RTL/><x:DisplayGridlines/></x:WorksheetOptions>
       </x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml>
       </head><body dir="rtl">
-      <table style="border-collapse:collapse;font-family:Tahoma,Arial;direction:rtl;" dir="rtl">
+      <table style="border-collapse:collapse;font-family:IBM Plex Sans Arabic,Tahoma,Arial;direction:rtl;" dir="rtl">
         <tr><td colspan="10" style="${titleTd}">GRIFFINE — ملخص المحفظة</td></tr>
         <tr><td colspan="10" style="border:none;padding:6px;">تاريخ الطباعة: ${new Date().toLocaleDateString('ar-EG')}</td></tr>
         <tr><td colspan="10" class="u-bn"></td></tr>
@@ -851,7 +851,7 @@ async function renderPortfolio(){
         <td>${fmt2(r.realized)}</td><td>${r.closedCount}</td><td>${fmt2(r.closedProfit)}</td>
       </tr>`).join('');
       w.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>ملخص المحفظة</title>
-        <style>body{font-family:Tahoma,sans-serif;padding:24px;} table{width:100%;border-collapse:collapse;margin-top:14px;}
+        <style>body{font-family:IBM Plex Sans Arabic,Tahoma,sans-serif;padding:24px;} table{width:100%;border-collapse:collapse;margin-top:14px;}
         th,td{border:1px solid #ccc;padding:7px;text-align:center;font-size:12px;} th{background:#14532d;color:#fff;}
         h1{color:#14532d;} .agg{margin-top:16px;font-size:14px;background:#f0f4f2;padding:10px;border-radius:8px;}
         img{max-width:100%;margin-top:16px;}</style></head>
@@ -915,7 +915,7 @@ async function renderPortfolio(){
 
     const w = window.open('', '_blank');
     w.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>كشف حساب المحفظة</title>
-      <style>body{font-family:Tahoma,sans-serif;padding:24px;} table{width:100%;border-collapse:collapse;margin-top:8px;}
+      <style>body{font-family:IBM Plex Sans Arabic,Tahoma,sans-serif;padding:24px;} table{width:100%;border-collapse:collapse;margin-top:8px;}
       th,td{border:1px solid #ccc;padding:6px;text-align:center;font-size:12px;} th{background:#14532d;color:#fff;}
       h1{color:#14532d;} h2{color:#14532d;} .agg{margin-top:20px;font-size:15px;background:#f0f4f2;padding:12px;border-radius:8px;}
       .indicators{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;}
@@ -982,7 +982,7 @@ async function renderPortfolio(){
       <td style="${td}">${r.closedCount}</td><td style="${td}">${r.closedProfit.toFixed(2)}</td>
     </tr>`).join('');
 
-    let body = `<table style="border-collapse:collapse;font-family:Tahoma,Arial;direction:rtl;" dir="rtl">
+    let body = `<table style="border-collapse:collapse;font-family:IBM Plex Sans Arabic,Tahoma,Arial;direction:rtl;" dir="rtl">
       <tr><td colspan="10" style="${titleTd}">GRIFFINE — كشف حساب شامل للمحفظة</td></tr>
       <tr><td colspan="10" style="border:none;padding:6px;">الفترة من ${periodLabel} | تاريخ الطباعة: ${new Date().toLocaleDateString('ar-EG')}</td></tr>
       <tr><td colspan="10" class="u-bn"></td></tr>
@@ -1106,7 +1106,7 @@ async function renderPortfolio(){
 
     const w = window.open('', '_blank');
     w.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>تقرير أسهم</title>
-      <style>body{font-family:Tahoma,sans-serif;padding:24px;} table{width:100%;border-collapse:collapse;margin-top:8px;}
+      <style>body{font-family:IBM Plex Sans Arabic,Tahoma,sans-serif;padding:24px;} table{width:100%;border-collapse:collapse;margin-top:8px;}
       th,td{border:1px solid #ccc;padding:6px;text-align:center;font-size:12px;} th{background:#14532d;color:#fff;}
       h1{color:#14532d;} .agg{margin-top:16px;font-size:14px;background:#f0f4f2;padding:12px;border-radius:8px;}
       .indicators{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;}
@@ -1192,7 +1192,7 @@ async function renderPortfolio(){
       <x:Name>تقرير</x:Name><x:WorksheetOptions><x:RTL/><x:DisplayGridlines/></x:WorksheetOptions>
       </x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml>
       </head><body dir="rtl">
-      <table style="border-collapse:collapse;font-family:Tahoma,Arial;direction:rtl;" dir="rtl">
+      <table style="border-collapse:collapse;font-family:IBM Plex Sans Arabic,Tahoma,Arial;direction:rtl;" dir="rtl">
         <tr><td colspan="10" style="${titleTd}">GRIFFINE — تقرير مجمّع: ${groupLabel}</td></tr>
         <tr><td colspan="10" style="border:none;padding:6px;">الفترة: ${periodLabel} | تاريخ الطباعة: ${new Date().toLocaleDateString('ar-EG')}</td></tr>
         <tr><td colspan="10" class="u-bn"></td></tr>
@@ -1908,7 +1908,7 @@ async function renderGridPlanDetail(symbol){
       <td>${(lv.sells||[]).map(s=>`${s.qty}@${s.price}`).join(', ') || '-'}</td><td>${lv.cycles||0}</td>
     </tr>`).join('');
     w.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>تقرير خطة شبكة ${symbol}</title>
-      <style>body{font-family:Tahoma,sans-serif;padding:24px;} table{width:100%;border-collapse:collapse;margin-top:14px;}
+      <style>body{font-family:IBM Plex Sans Arabic,Tahoma,sans-serif;padding:24px;} table{width:100%;border-collapse:collapse;margin-top:14px;}
       th,td{border:1px solid #ccc;padding:8px;text-align:center;font-size:13px;} th{background:#14532d;color:#fff;}
       h1{color:#14532d;} .agg{margin-top:16px;font-size:14px;background:#f0f4f2;padding:10px;border-radius:8px;}</style></head>
       <body>
@@ -1956,7 +1956,7 @@ async function renderGridPlanDetail(symbol){
         <td>${fmt2(ct.avgExit)}</td><td>${fmt2(ct.profit)}</td><td>${ct.profitPercent.toFixed(2)}%</td><td>${fmt2(ct.capitalUsed)}</td>
       </tr>`).join('');
       w.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>سجل صفقات مغلقة ${symbol}</title>
-        <style>body{font-family:Tahoma,sans-serif;padding:24px;} table{width:100%;border-collapse:collapse;margin-top:14px;}
+        <style>body{font-family:IBM Plex Sans Arabic,Tahoma,sans-serif;padding:24px;} table{width:100%;border-collapse:collapse;margin-top:14px;}
         th,td{border:1px solid #ccc;padding:8px;text-align:center;font-size:13px;} th{background:#14532d;color:#fff;}
         h1{color:#14532d;} .agg{margin-top:16px;font-size:14px;background:#f0f4f2;padding:10px;border-radius:8px;}</style></head>
         <body>
@@ -3296,7 +3296,7 @@ async function renderPlanDetail(symbol){
         <x:Name>${symbol}</x:Name><x:WorksheetOptions><x:RTL/><x:DisplayGridlines/></x:WorksheetOptions>
         </x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml>
         </head><body dir="rtl">
-        <table style="border-collapse:collapse;font-family:Tahoma,Arial;direction:rtl;" dir="rtl">
+        <table style="border-collapse:collapse;font-family:IBM Plex Sans Arabic,Tahoma,Arial;direction:rtl;" dir="rtl">
           <tr><td colspan="7" style="${titleTd}">GRIFFINE — بيان الصفقات المغلقة</td></tr>
           <tr><td style="${tdLabel}">اسم السهم</td><td colspan="6" style="${td}">${symbol}</td></tr>
           <tr><td style="${tdLabel}">الدولة / البورصة</td><td colspan="6" style="${td}">${planObj.market||''}</td></tr>
@@ -3346,7 +3346,7 @@ async function renderPlanDetail(symbol){
         <td>${fmt2(ct.avgExit)}</td><td>${ct.profit.toFixed(2)}</td><td>${ct.profitPercent.toFixed(2)}%</td><td>${fmt2(ct.capitalUsed)}</td>
       </tr>`).join('');
       w.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>بيان صفقات ${symbol}</title>
-        <style>body{font-family:Tahoma,sans-serif;padding:24px;} table{width:100%;border-collapse:collapse;margin-top:14px;}
+        <style>body{font-family:IBM Plex Sans Arabic,Tahoma,sans-serif;padding:24px;} table{width:100%;border-collapse:collapse;margin-top:14px;}
         th,td{border:1px solid #ccc;padding:8px;text-align:center;font-size:13px;} th{background:#14532d;color:#fff;}
         h1{color:#14532d;} .agg{margin-top:16px;font-size:14px;background:#f0f4f2;padding:10px;border-radius:8px;}</style></head>
         <body>

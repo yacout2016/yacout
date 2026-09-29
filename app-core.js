@@ -349,9 +349,11 @@ function gReportReady(w){
     const d = w.document;
     const bar = d.createElement('div');
     bar.id = 'gReportBar';
-    bar.setAttribute('style', 'position:sticky;top:0;z-index:9;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-start;padding:10px;margin:-10px -10px 14px;background:#fff;border-bottom:1px solid #e5e7eb;font-family:Tahoma,Arial,sans-serif;direction:rtl');
+    bar.setAttribute('style', 'position:sticky;top:0;z-index:9;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-start;padding:10px;margin:-10px -10px 14px;background:#fff;border-bottom:1px solid #e5e7eb;font-family:IBM Plex Sans Arabic,Tahoma,sans-serif;direction:rtl');
     const mk = (label, fn) => { const b = d.createElement('button'); b.type = 'button'; b.textContent = label; b.setAttribute('style', 'padding:8px 16px;border-radius:10px;border:1px solid #d1d5db;background:#111827;color:#fff;font-weight:700;cursor:pointer;font-size:14px'); b.addEventListener('click', fn); bar.appendChild(b); return b; };
-    const st = d.createElement('style'); st.textContent = '@media print{#gReportBar{display:none !important}} ' + G_UTIL_CSS; d.head.appendChild(st);   // الإصدار 89: أدوات التنسيق (u-*) جوه نافذة التقرير
+    // الإصدار 96: نفس خط الموقع في نوافذ التقارير
+    const fl = d.createElement('link'); fl.rel = 'stylesheet'; fl.href = 'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap'; d.head.appendChild(fl);
+    const st = d.createElement('style'); st.textContent = '@media print{#gReportBar{display:none !important}} body,table,td,th,button{font-family:IBM Plex Sans Arabic,Tahoma,sans-serif !important} ' + G_UTIL_CSS; d.head.appendChild(st);   // الإصدار 89: أدوات التنسيق (u-*) جوه نافذة التقرير
     mk('🖨️ طباعة', () => w.print());
     const pdfBtn = mk('⬇️ تحميل PDF', () => gReportPdf(w, false, pdfBtn));
     const shBtn = mk('📤 مشاركة', () => gReportPdf(w, true, shBtn));
@@ -373,7 +375,7 @@ async function gReportPdf(w, share, btn){
     // والتنسيقات بتاعة التقرير متقصورة على النسخة دي بس (مبتأثرش على شكل الموقع)
     const host = document.createElement('div');
     host.id = 'gRepHost';
-    host.setAttribute('style', 'position:fixed;left:-12000px;top:0;width:900px;padding:24px;background:#fff;color:#111;direction:rtl;font-family:Tahoma,Arial,sans-serif;z-index:-1');
+    host.setAttribute('style', 'position:fixed;left:-12000px;top:0;width:900px;padding:24px;background:#fff;color:#111;direction:rtl;font-family:IBM Plex Sans Arabic,Tahoma,sans-serif;z-index:-1');
     let css = '';
     [...d.styleSheets].forEach(sh => { try { [...sh.cssRules].forEach(r => { if (r.selectorText) css += r.selectorText.split(',').map(x => '#gRepHost ' + x.trim().replace(/^body\b/, '')).join(',') + '{' + r.style.cssText + '}'; }); } catch(e){} });
     const clone = d.body.cloneNode(true); const cb = clone.querySelector('#gReportBar'); if (cb) cb.remove();
@@ -776,9 +778,19 @@ function chatAttachmentHtml(m){
   if (isDoc) return `<a class="chat-file" href="${url}" target="_blank" rel="noopener">🗂️ ${name}</a>`;
   return `<a href="${url}" target="_blank" rel="noopener"><img src="${url}" alt="${name}"></a>`;
 }
+// الإصدار 96: رسم الرسائل بالتدريج - لو الرسائل القديمة زي ما هي بتتضاف الجديدة بس (من غير إعادة رسم ولا تحميل الصور تاني)
+function chatRenderInto(box, msgs, emptyHtml){
+  const ids = msgs.map(m => String(m.id)), prev = box.__ids || [];
+  if (!msgs.length) { box.innerHTML = emptyHtml || ''; box.__ids = []; return; }
+  if (prev.length && prev.length <= ids.length && prev.every((id, i) => id === ids[i]) && box.querySelector('.chat-msg')) {
+    const fresh = msgs.slice(prev.length);
+    if (fresh.length) box.insertAdjacentHTML('beforeend', fresh.map(m => chatMsgHtml(m)).join(''));
+  } else box.innerHTML = msgs.map(m => chatMsgHtml(m)).join('');
+  box.__ids = ids;
+}
 function chatMsgHtml(m, extra){
   const bot = m.sender === 'admin' && typeof m.message === 'string' && (m.message.indexOf('🤖 مساعد') === 0 || m.message.indexOf('🔔 تنبيه سعر') === 0);   // الإصدار 89: رد المساعد الذكي
-  return `<div class="chat-msg ${escapeHtml(m.sender)}${bot ? ' bot' : ''}">${m.message ? escapeHtml(m.message).replace(/\n/g, '<br>') : ''}${chatAttachmentHtml(m)}<span class="chat-msg-time">${formatChatTime(m.createdAt)}${extra || ''}</span></div>`;
+  return `<div class="chat-msg ${escapeHtml(m.sender)}${bot ? ' bot' : ''}" data-mid="${escapeHtml(String(m.id))}">${m.message ? escapeHtml(m.message).replace(/\n/g, '<br>') : ''}${chatAttachmentHtml(m)}<span class="chat-msg-time">${formatChatTime(m.createdAt)}${extra || ''}</span></div>`;
 }
 /* =====================================================================
    الإصدار 82 + 83: التحكم في رفع الملفات للعميل (نفس الشكل في صفحة الدردشة والرد السريع)

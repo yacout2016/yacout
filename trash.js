@@ -9,6 +9,7 @@ const TRASH_TYPES = {
   subscription_plan:'باقة', suggestion:'مقترح', chat:'محادثة شات', customer:'عميل', notification:'إشعار'
 };
 async function renderTrashPage(all){
+  if (!window.__isAdmin && window.GShell && GShell.settings && GShell.settings.hide_trash_screen === true) return renderHome();   // الإصدار 96: الشاشة مخفية من لوحة التحكم
   const __tok = screenToken();
   pushNav(() => renderTrashPage(all));
   const email = await getSession();

@@ -683,7 +683,7 @@ async function renderAboutPage(){
   const custom = (pc && pc.success && pc.content) ? pc.content : null;
   const defaultHtml = `
       <p style="font-size:13.5px;line-height:1.8;margin:0 0 12px;">GRIFFINE أداة لمتابعة خطط تعزيز متوسط الأسهم (DCA) وخطط الشبكة (Grid)، مع كشاف لفرص الشراء وملخص شامل لمحفظتك في مكان واحد.</p>
-      <p style="font-size:13.5px;line-height:1.8;margin:0 0 12px;">التطبيق تابع لشركة Top7، ويهدف لتبسيط تخطيط ومتابعة استراتيجيات الشراء التدريجي للأسهم في الأسواق المصرية والخليجية.</p>
+      <p style="font-size:13.5px;line-height:1.8;margin:0 0 12px;">التطبيق تابع لشركة Top7 المصرية، ويهدف لتبسيط تخطيط ومتابعة استراتيجيات الشراء التدريجي للأسهم.</p>
       <p style="font-size:12px;color:var(--text-faint);margin:0;">الأرقام والتقارير داخل GRIFFINE مبنية على بيانات تسجّلها بنفسك، ولا تُعد توصية استثمارية بأي شكل.</p>`;
   if (screenStale(__tok)) return; app.innerHTML = `<div class="container">
     <div class="logo-header"><img src="${griffineLogoSrc()}" alt="GRIFFINE" class="brand-logo-img"><h1>GRIFFINE</h1></div>

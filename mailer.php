@@ -83,7 +83,7 @@ function gm_template($title, $paragraphs, $button = null){
     foreach ($paragraphs as $p) $ps .= '<p style="margin:0 0 14px;line-height:1.9;font-size:15px;color:#1F2937;">' . nl2br($esc($p)) . '</p>';
     $btn = $button ? '<p style="margin:22px 0 6px;"><a href="' . $esc($button['url']) . '" style="display:inline-block;background:#0F172A;color:#ffffff;text-decoration:none;font-weight:700;padding:12px 26px;border-radius:12px;font-size:15px;">' . $esc($button['label']) . '</a></p>' : '';
     $html = '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>'
-        . '<body style="margin:0;padding:0;background:#F3F4F6;font-family:Tahoma,Arial,sans-serif;direction:rtl;text-align:right;">'
+        . '<body style="margin:0;padding:0;background:#F3F4F6;font-family:IBM Plex Sans Arabic,Tahoma,Arial,sans-serif;direction:rtl;text-align:right;">'
         . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F3F4F6;padding:24px 12px;"><tr><td align="center">'
         . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #E5E7EB;">'
         . '<tr><td style="background:#0F172A;padding:18px 24px;border-bottom:3px solid #C9A227;"><span style="color:#C9A227;font-weight:800;letter-spacing:3px;font-size:18px;font-family:Arial,sans-serif;">GRIFFINE</span></td></tr>'

@@ -23,6 +23,7 @@ $allowedKeys = [
     'hide_referral_screen', 'hide_contact_screen', 'hide_testimonials_screen',
     'hide_articles_screen',
     'hide_suggestions_screen',
+    'hide_watchlist_screen', 'hide_alerts_screen', 'hide_stock_screen', 'hide_curve_home', 'hide_trash_screen', 'hide_trades_screen',   // الإصدار 96
 ];
 
 $key = trim($_POST['key'] ?? '');

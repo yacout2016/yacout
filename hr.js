@@ -33,16 +33,16 @@ function hrDownloadCsv(filename, header, rows){
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
 }
 // تقرير للطباعة / الحفظ PDF (نفس أسلوب تقارير المشتركين)
-function hrPrint(title, bodyHtml){
+function hrPrint(title, bodyHtml, section){
   const w = window.open('', '_blank');
   if (!w) { alert('المتصفح منع فتح نافذة التقرير - اسمح بالنوافذ المنبثقة للموقع.'); return; }
   w.document.write(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title>
-    <style>body{font-family:Tahoma,Arial,sans-serif;padding:24px;color:#111}h1{font-size:20px;margin:0 0 4px}.meta{color:#666;font-size:12px;margin-bottom:16px}
+    <style>body{font-family:IBM Plex Sans Arabic,Tahoma,sans-serif;padding:24px;color:#111}h1{font-size:20px;margin:0 0 4px}.meta{color:#666;font-size:12px;margin-bottom:16px}
     table{width:100%;border-collapse:collapse;font-size:12.5px;margin:10px 0}th,td{border:1px solid #ddd;padding:6px 8px;text-align:right}th{background:#f3f4f6}
     .tot td{font-weight:bold;background:#fafafa}.kv{display:grid;grid-template-columns:160px 1fr;gap:6px 12px;font-size:13px;margin:10px 0}.kv b{color:#555}
     .logo{height:48px}@media print{button{display:none}}</style></head><body>
     <img class="logo" src="${griffineLogoSrc()}" alt="GRIFFINE"><h1>${escapeHtml(title)}</h1>
-    <div class="meta">GRIFFINE · شؤون الموظفين · ${new Date().toLocaleString('ar-EG')}</div>${bodyHtml}
+    <div class="meta">GRIFFINE · ${escapeHtml(section || 'شؤون الموظفين')} · ${new Date().toLocaleString('ar-EG')}</div>${bodyHtml}
 </body></html>`);
   w.document.close(); gReportReady(w);   // الإصدار 88: شريط طباعة / PDF / مشاركة
 }

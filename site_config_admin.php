@@ -54,7 +54,7 @@ try {
         exit();
     } else {
         $bools = ['pay_vodafone', 'pay_instapay', 'pay_paymob', 'admin_otp', 'otp_login'];
-        $texts = ['service_phone', 'instapay_address', 'paymob_integration', 'paymob_iframe', 'otp_channel', 'sms_method', 'wa_phone_id', 'wa_template', 'wa_lang', 'paymob_moto_integration'];
+        $texts = ['service_phone', 'instapay_address', 'paymob_integration', 'paymob_iframe', 'otp_channel', 'sms_method', 'wa_phone_id', 'wa_template', 'wa_lang', 'paymob_moto_integration', 'app_version_label'];
         $secrets = site_config_secret_keys();
         foreach ($bools as $k) if (isset($_POST[$k])) site_config_set($conn, $k, $_POST[$k] === '1' ? '1' : '0', $by);
         foreach ($texts as $k) if (isset($_POST[$k])) {
@@ -65,6 +65,7 @@ try {
             if ($k === 'wa_template' && $v !== '' && !preg_match('/^[a-z0-9_]{1,64}$/', $v)) { echo json_encode(["success" => false, "message" => "اسم القالب حروف إنجليزي صغيرة وأرقام و _ فقط."]); exit(); }
             if ($k === 'wa_lang' && !preg_match('/^[a-z]{2}(_[A-Z]{2})?$/', $v)) continue;
             if ($k === 'sms_method' && !in_array($v, ['GET', 'POST'], true)) continue;
+            if ($k === 'app_version_label') $v = mb_substr(preg_replace('/[<>"\']/u', '', $v), 0, 30);
             if (in_array($k, ['paymob_integration', 'paymob_iframe', 'paymob_moto_integration'], true) && $v !== '' && !ctype_digit($v)) { echo json_encode(["success" => false, "message" => "Integration ID و Iframe ID أرقام فقط."]); exit(); }
             site_config_set($conn, $k, mb_substr($v, 0, 120), $by);
         }

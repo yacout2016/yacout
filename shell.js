@@ -185,6 +185,7 @@
   };
   const icon = (n) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n] || P.info}</svg>`;
   GS.icon = icon;
+  GS.versionLabel = () => { if (!GS.__verP) GS.__verP = apiGet('/site_public_config.php').then(r => (r && r.config && r.config.versionLabel) || '').catch(() => ''); return GS.__verP; };
 
 
   /* =====================================================================
@@ -476,13 +477,14 @@
       !hidden('hide_screener_screen') && { tab:'screener', label:'كشاف الأسهم', ic:'radar', go:() => renderScreener() },
       !hidden('hide_recommendations_screen') && { tab:'rec', label:'التوصيات', ic:'megaphone', go:() => renderRecommendationsCustomerPage() },
       // الإصدار 88: قائمة المتابعة + تنبيهات الأسعار
-      { screen:'renderWatchlistPage', label:'قائمة المتابعة', ic:'star', go:() => renderWatchlistPage() },
-      { screen:'renderAlertsPage', label:'تنبيهات الأسعار', ic:'alert', badge:'alerts', go:() => renderAlertsPage() },
+      !hidden('hide_watchlist_screen') && { screen:'renderWatchlistPage', label:'قائمة المتابعة', ic:'star', go:() => renderWatchlistPage() },
+      !hidden('hide_alerts_screen') && { screen:'renderAlertsPage', label:'تنبيهات الأسعار', ic:'alert', badge:'alerts', go:() => renderAlertsPage() },
+      !window.__isAdmin && !hidden('hide_trades_screen') && { screen:'renderTradesReportPage', label:'تقرير صفقاتي', ic:'trend', go:() => renderTradesReportPage() },
       { sec:'حسابي' },
       { tab:'account', label:'حسابي والإعدادات', ic:'settings', go:() => GS.renderAccount() },
       { screen:'renderSubscriptionPlans', label:'الاشتراك والباقات', ic:'card', go:() => renderSubscriptionPlans() },
       !hidden('hide_referral_screen') && { screen:'renderReferralPage', label:'ادعُ صديقك', ic:'gift', go:() => renderReferralPage() },
-      { screen:'renderTrashPage', label:'سلة المحذوفات', ic:'trash', go:() => renderTrashPage() },
+      !hidden('hide_trash_screen') && { screen:'renderTrashPage', label:'سلة المحذوفات', ic:'trash', go:() => renderTrashPage() },
     ].filter(Boolean);
     // لوحة التحكم بتفتح شاشة الأزرار (renderAdminHub) - الشاشات الفرعية مبقتش بتكرر الأزرار دي (الإصدار 72)
     // + اختصارات مباشرة لأهم شاشات الإدارة حسب صلاحيات كل موظف (الإصدار 73)
@@ -753,6 +755,7 @@
 
       // 10) الجداول: كل جدول جوه غلاف بيتحرك يمين وشمال، والبيانات في سطر واحد (shell.css)
       wrapTables(app);
+      enhanceTables(app);   // الإصدار 96: ترتيب + فلتر لكل عمود + بحث في كل الجداول
       // 10أ) الإصدار 90: شاشة المحفظة والتقارير ← كل جدول بيعرض 10 صفوف والباقي بالتمرير لفوق وتحت
       if (ROWS10_SCREENS[GS.currentScreen]) { limitTableRows(app, 10); setTimeout(relimit, 400); }
     } finally {
@@ -782,7 +785,7 @@
   }
 
   // الإصدار 90: أقصى 10 صفوف ظاهرة في جداول شاشة المحفظة والتقارير (الباقي تمرير رأسي + رأس الجدول ثابت)
-  const ROWS10_SCREENS = { renderPortfolio:1, renderDiversificationReport:1 };
+  const ROWS10_SCREENS = { renderPortfolio:1, renderDiversificationReport:1, renderTradesReportPage:1 };
   // إعادة الحساب بعد تحميل الخطوط وتغيير حجم الشاشة (ارتفاع الصفوف بيتغير)
   const relimit = () => { const a = document.getElementById('app'); if (a && ROWS10_SCREENS[GS.currentScreen]) limitTableRows(a, 10); };
   window.addEventListener('resize', () => { clearTimeout(relimit.t); relimit.t = setTimeout(relimit, 150); });
@@ -808,6 +811,95 @@
   }
 
   // غلاف تمرير أفقي لكل جدول (لو الأب نفسه مش بيتحرك لوحده)
+  /* الإصدار 96: كل جدول فيه عناوين أعمدة (th) وأكتر من صف ← خانة بحث فوقه + سطر فلتر تحت العناوين + ترتيب بالضغط على العنوان
+     - أرقام بتترتب كأرقام (حتى لو فيها فواصل أو % أو عملة) ، تواريخ بالتاريخ ، نص أبجدي عربي
+     - عمود قيمه قليلة (الحالة / النوع) ← قائمة منسدلة ، غير كده ← خانة كتابة
+     - سطر "الإجمالي" بيفضل في الآخر ومبيدخلش في الترتيب ولا الفلتر
+     - جدول عليه class="g-no-enh" ← مبيتلمسش */
+  const T_NORM = (t) => String(t || '').replace(/[⁦-⁩‎‏]/g, '').replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/\s+/g, ' ').trim();
+  const T_NUM = (t) => { const x = T_NORM(t).replace(/[−–]/g, '-').replace(/[,\s%+]|EGP|SAR|AED|QAR|KWD|USD|جنيه|ريال|درهم|دينار|ج\.م/g, ''); return /^-?\d+(\.\d+)?$/.test(x) ? parseFloat(x) : null; };
+  const T_DATE = (t) => { const m = T_NORM(t).match(/^(\d{4}-\d{2}-\d{2})/); return m ? m[1] : null; };
+  function tableParts(t){
+    let head = t.tHead ? t.tHead.rows[0] : null;
+    let body = t.tBodies[0] ? Array.from(t.tBodies[0].rows) : [];
+    if (!head && body.length && body[0].cells.length && Array.from(body[0].cells).every(c => c.tagName === 'TH')) { head = body[0]; body = body.slice(1); }
+    return { head, body };
+  }
+  const isTotalRow = (r) => /^(الإجمالي|الاجمالي|المجموع|الإجمالى)/.test(T_NORM(r.cells[0] && r.cells[0].textContent)) || r.classList.contains('g-total');
+  function enhanceTables(root){
+    root.querySelectorAll('table').forEach(t => {
+      if (t.dataset.gEnh || t.classList.contains('g-no-enh') || t.closest('.g-no-enh, .gs-alert-list, .chat-msg')) return;
+      const { head, body } = tableParts(t);
+      if (!head || head.cells.length < 2) return;
+      const dataRows = body.filter(r => !isTotalRow(r) && r.cells.length >= head.cells.length - 1);
+      if (dataRows.length < 2) return;
+      t.dataset.gEnh = '1'; t.classList.add('g-enh');
+      const rowsNow = () => tableParts(t).body.filter(r => !r.classList.contains('g-filter-row') && !isTotalRow(r));
+      const cols = head.cells.length;
+      // ---- أنواع الأعمدة
+      const kinds = [];
+      for (let c = 0; c < cols; c++) {
+        const vals = dataRows.map(r => r.cells[c] ? T_NORM(r.cells[c].textContent) : '').filter(v => v && v !== '-' && v !== '—');
+        const nums = vals.filter(v => T_NUM(v) !== null).length, dates = vals.filter(v => T_DATE(v)).length;
+        const hasCtl = dataRows.some(r => r.cells[c] && r.cells[c].querySelector('button, input, select'));
+        const distinct = [...new Set(vals)];
+        kinds.push({ type: hasCtl ? 'ctl' : (dates && dates >= vals.length * 0.7 ? 'date' : (nums && nums >= vals.length * 0.7 ? 'num' : 'text')), distinct });
+      }
+      // ---- الترتيب بالضغط على العنوان
+      let sortCol = -1, sortDir = 1;
+      Array.from(head.cells).forEach((th, c) => {
+        if (kinds[c].type === 'ctl' || !T_NORM(th.textContent)) return;
+        th.classList.add('g-sortable'); th.title = 'اضغط للترتيب';
+        th.addEventListener('click', () => {
+          sortDir = sortCol === c ? -sortDir : (kinds[c].type === 'text' ? 1 : -1); sortCol = c;
+          head.querySelectorAll('.g-sortable').forEach(x => x.removeAttribute('data-sort')); th.dataset.sort = sortDir > 0 ? 'asc' : 'desc';
+          const rows = rowsNow(); if (!rows.length) return;
+          const k = kinds[c].type, tb = rows[0].parentNode, totals = Array.from(tb.rows).filter(isTotalRow);
+          const key = (r) => { const tx = r.cells[c] ? r.cells[c].textContent : ''; return k === 'num' ? T_NUM(tx) : k === 'date' ? T_DATE(tx) : T_NORM(tx); };
+          rows.sort((a, b) => { const x = key(a), y = key(b);
+            if (x === null || x === '' ) return 1; if (y === null || y === '') return -1;
+            return (k === 'num' ? x - y : String(x).localeCompare(String(y), 'ar')) * sortDir; });
+          rows.forEach(r => tb.appendChild(r)); totals.forEach(r => tb.appendChild(r));
+        });
+      });
+      // ---- سطر الفلتر + خانة البحث
+      const fr = document.createElement('tr'); fr.className = 'g-filter-row'; fr.setAttribute('data-html2canvas-ignore', '');
+      const filters = [];
+      for (let c = 0; c < cols; c++) {
+        const td = document.createElement('th'); const k = kinds[c];
+        if (k.type === 'ctl') { fr.appendChild(td); filters.push(null); continue; }
+        let el;
+        if (k.distinct.length > 1 && k.distinct.length <= 8 && k.type !== 'num' && dataRows.length > 3) {
+          el = document.createElement('select'); el.innerHTML = '<option value="">الكل</option>' + k.distinct.sort((a, b) => a.localeCompare(b, 'ar')).map(v => `<option>${esc(v)}</option>`).join('');
+        } else { el = document.createElement('input'); el.type = 'search'; el.placeholder = 'فلتر'; }
+        el.className = 'g-filter'; el.setAttribute('aria-label', 'فلتر ' + T_NORM(head.cells[c].textContent));
+        td.appendChild(el); fr.appendChild(td); filters.push(el);
+      }
+      head.parentNode.insertBefore(fr, head.nextSibling);
+      const bar = document.createElement('div'); bar.className = 'g-tbar'; bar.setAttribute('data-html2canvas-ignore', '');
+      bar.innerHTML = `<input type="search" class="g-tsearch" placeholder="بحث في الجدول..." aria-label="بحث في الجدول"><span class="g-tcount"></span>`;
+      const wrap = t.closest('.gs-tscroll') || t;
+      const old = wrap.previousElementSibling; if (old && old.classList.contains('g-tbar')) old.remove();   // شريط جدول قديم اتبدّل
+      wrap.parentNode.insertBefore(bar, wrap);
+      const q = bar.querySelector('.g-tsearch'), cnt = bar.querySelector('.g-tcount');
+      const apply = () => {
+        const qs = T_NORM(q.value).toLowerCase(); let shown = 0; const rows = rowsNow();
+        rows.forEach(r => {
+          let ok = !qs || T_NORM(r.textContent).toLowerCase().includes(qs);
+          for (let c = 0; ok && c < cols; c++) {
+            const f = filters[c]; if (!f || !f.value) continue;
+            const v = r.cells[c] ? T_NORM(r.cells[c].textContent) : '';
+            ok = f.tagName === 'SELECT' ? v === f.value : v.toLowerCase().includes(T_NORM(f.value).toLowerCase());
+          }
+          r.style.display = ok ? '' : 'none'; if (ok) shown++;
+        });
+        cnt.textContent = (qs || filters.some(f => f && f.value)) ? `${shown} من ${rows.length}` : `${rows.length} صف`;
+      };
+      q.addEventListener('input', apply); filters.forEach(f => f && f.addEventListener(f.tagName === 'SELECT' ? 'change' : 'input', apply));
+      apply();
+    });
+  }
+
   function wrapTables(root){
     root.querySelectorAll('table').forEach(t => {
       if (t.closest('.gs-tscroll')) return;
@@ -878,13 +970,9 @@
     ]);
     if (GS.seq !== my) return;
     // الإصدار 91: أسعار السوق الحالية لأسهم الخطط (قيمة المحفظة بسعر السوق - نفس المنحنى)
-    if (typeof mkEnsureLivePrices === 'function') {
-      try { await mkEnsureLivePrices(plans, grids); } catch(e){}
-      if (GS.seq !== my) return;
-      if (window.__mkLivePxPending) window.__mkLivePxPending.then(changed => {
-        if (changed && GS.seq === my && GS.currentScreen === 'renderHome') { window.__navSilent = true; try { renderHome(); } finally { window.__navSilent = false; } }
-      });
-    }
+    // الإصدار 96: الأسعار المحفوظة على الجهاز بتترسم فورًا - والتحديث في الخلفية بيحدّث الأرقام بس (مش الشاشة كلها)
+    if (typeof mkEnsureLivePrices === 'function') { try { await mkEnsureLivePrices(plans, grids); } catch(e){} if (GS.seq !== my) return; }
+    const pxPending = window.__mkLivePxPending, pxReady = window.__mkLivePxReady !== false;
     GS.settings = window.__isAdmin ? {} : (settings || {});
     const sub = subRes && subRes.success ? subRes.subscription : null;
     const displayName = (sub && sub.name) ? String(sub.name).split(/\s+/)[0] : email.split('@')[0];
@@ -898,17 +986,25 @@
       ? (plans[e.sym].currency || MARKET_TO_CURRENCY_MAP[plans[e.sym].market] || '')
       : (MARKET_TO_CURRENCY_MAP[grids[e.sym].market] || '');
 
-    let all = { stockRows: [] };
-    try { all = computeAggregates(plans, grids, entries, null, null); } catch(e){ console.error(e); }
     const rowCcy = {}; entries.forEach(e => { rowCcy[`${e.sym}::${e.type}`] = ccyOf(e); });
-
     // المحفظة مقسّمة حسب العملة (غير ممكن نجمع جنيه على ريال)
     const byCcy = {};
     entries.forEach(e => { const c = ccyOf(e) || '—'; (byCcy[c] = byCcy[c] || []).push(e.key); });
-    const ccys = Object.keys(byCcy).map(c => {
-      let a; try { a = computeAggregates(plans, grids, entries, null, null, byCcy[c]); } catch(err){ a = null; }
-      return { c, a };
-    }).filter(x => x.a).sort((x, y) => (y.a.totalCurrentValue + y.a.totalInvested) - (x.a.totalCurrentValue + x.a.totalInvested));
+    // الإصدار 96: الحسابات في دالة واحدة بتتنادى تاني لما أسعار أحدث توصل (من غير إعادة رسم الشاشة)
+    let all = { stockRows: [] }, ccys = [], rows = [];
+    const computeHome = () => {
+      try { all = computeAggregates(plans, grids, entries, null, null); } catch(e){ console.error(e); all = { stockRows: [] }; }
+      ccys = Object.keys(byCcy).map(c => {
+        let a; try { a = computeAggregates(plans, grids, entries, null, null, byCcy[c]); } catch(err){ a = null; }
+        return { c, a };
+      }).filter(x => x.a).sort((x, y) => (y.a.totalCurrentValue + y.a.totalInvested) - (x.a.totalCurrentValue + x.a.totalInvested));
+      // ترتيب الاستثمارات: المفتوحة ← الجديدة ← المغلقة، وبعدين الأكبر قيمة
+      rows = (all.stockRows || []).slice().sort((a, b) => {
+        const o = (r) => r.status === 'مفتوحة' ? 0 : r.status === 'جديدة' ? 1 : 2;
+        return o(a) - o(b) || (b.currentValue - a.currentValue);
+      });
+    };
+    computeHome();
     let sel = store.get('gs_ccy', '');
     if (!ccys.find(x => x.c === sel)) sel = ccys.length ? ccys[0].c : '';
 
@@ -920,12 +1016,6 @@
       { k:'scr', label:'الكشاف', ic:'radar', go:() => renderScreener(), show: !hidden('hide_screener_screen') },
       { k:'rep', label:'التقارير', ic:'report', go:() => renderPortfolio(), show: !hidden('hide_portfolio_screen') },
     ].filter(q => q.show);
-
-    // ترتيب الاستثمارات: المفتوحة ← الجديدة ← المغلقة، وبعدين الأكبر قيمة
-    const rows = (all.stockRows || []).slice().sort((a, b) => {
-      const o = (r) => r.status === 'مفتوحة' ? 0 : r.status === 'جديدة' ? 1 : 2;
-      return o(a) - o(b) || (b.currentValue - a.currentValue);
-    });
 
     const installCard = GS.installCardHtml();
 
@@ -954,7 +1044,7 @@
 
     $('#gsHomeAvatar').onclick = () => GS.renderAccount();
     wireAccessGateCard(acc);   // الإصدار 85
-    if (typeof mkAfterHome === 'function') mkAfterHome(plans, grids, ccys, sel, email);   // منحنى الأداء + تنبيهات الأسعار (الإصدار 89: للأدمن والموظفين كمان)
+    if (typeof mkAfterHome === 'function') mkAfterHome(plans, grids, ccys, sel, email, { noCurve: hidden('hide_curve_home'), noAlerts: hidden('hide_alerts_screen') });   // منحنى الأداء + تنبيهات الأسعار (الإصدار 89: للأدمن والموظفين كمان)
     document.querySelectorAll('.gs-quick button').forEach(b => b.onclick = () => quick[+b.dataset.i].go());
     GS.wireInstallCard();
 
@@ -996,7 +1086,7 @@
           <div>مراكز مفتوحة<b>${a.totalOpenPositionsCount || 0} / ${a.stockRows.length}</b></div>
         </div>
       </div>`;
-      hero.querySelectorAll('.gs-ccy button').forEach(b => b.onclick = () => { sel = b.dataset.c; store.set('gs_ccy', sel); drawHero(); if (typeof mkPortfolioCurve === 'function') mkPortfolioCurve(document.getElementById('gsCurve'), ccys, sel, plans, grids); });
+      hero.querySelectorAll('.gs-ccy button').forEach(b => b.onclick = () => { sel = b.dataset.c; store.set('gs_ccy', sel); drawHero(); if (typeof mkPortfolioCurve === 'function' && !hidden('hide_curve_home')) mkPortfolioCurve(document.getElementById('gsCurve'), ccys, sel, plans, grids); });
       $('#gsEye').onclick = () => { store.set('gs_hide_values', valuesHidden() ? '0' : '1'); drawHero(); drawHoldings(holdAll); };
     }
 
@@ -1041,7 +1131,16 @@
 
     let holdFilter = store.get('gs_hold_filter', 'open'); if (!['open', 'closed', 'all'].includes(holdFilter)) holdFilter = 'open';
     let holdAll = false;
-    drawHero(); drawHoldings(false);
+    // أول فتح خالص (مفيش أسعار محفوظة): تحميل مكان الأرقام بدل أرقام غلط
+    if (pxReady) { drawHero(); drawHoldings(false); }
+    else { const h = $('#gsHero'); if (h) h.innerHTML = '<div class="gs-skel" style="height:220px;border-radius:24px"></div>'; const hd = $('#gsHoldings'); if (hd) hd.innerHTML = '<div class="gs-skel" style="height:220px"></div>'; }
+    // أسعار أحدث وصلت ← الأرقام بس بتتحدّث (البطاقة + استثماراتي + المنحنى)
+    if (pxPending) pxPending.then(changed => {
+      if (GS.seq !== my || GS.currentScreen !== 'renderHome' || !document.getElementById('gsHero')) return;
+      if (!changed && pxReady) return;
+      computeHome(); drawHero(); drawHoldings(holdAll);
+      if (typeof mkPortfolioCurve === 'function' && !hidden('hide_curve_home')) mkPortfolioCurve(document.getElementById('gsCurve'), ccys, sel, plans, grids);
+    });
     const hf = $('#gsHoldFilter'); if (hf) { hf.value = holdFilter; hf.onchange = () => { holdFilter = hf.value; store.set('gs_hold_filter', holdFilter); holdAll = false; drawHoldings(false); }; }
     const allBtn = $('#gsAllHold'); if (allBtn) allBtn.onclick = () => { holdAll = !holdAll; drawHoldings(holdAll); };
 
@@ -1112,7 +1211,8 @@
         ${R('gsAccSub','card','الباقات وتجديد الاشتراك')}
         ${!hidden('hide_sub_history_screen') ? R('gsAccHist','receipt','سجل اشتراكي') : ''}
         ${!hidden('hide_referral_screen') ? R('gsAccRef','gift','ادعُ صديقك واكسب أيامًا مجانية') : ''}
-        ${R('gsAccTrash','trash','سلة المحذوفات (استرجاع ما حذفته)')}
+        ${!hidden('hide_trash_screen') ? R('gsAccTrash','trash','سلة المحذوفات (استرجاع ما حذفته)') : ''}
+        ${!window.__isAdmin && !hidden('hide_trades_screen') ? R('gsAccTrades','trend','تقرير صفقاتي') : ''}
       </div>
 
       <div class="gs-list-title">الأدوات</div>
@@ -1145,7 +1245,7 @@
 
       <div class="gs-list" style="margin-top:22px">${R('gsAccLogout','logout','تسجيل الخروج','danger')}</div>
       ${window.__isSuperAdmin ? '' : `<div class="gs-list" style="margin-top:12px">${R('gsAccDelete','x','حذف الحساب نهائيًا','danger')}</div>`}
-      <div class="gs-version">GRIFFINE · الإصدار ${APP_VERSION}</div>
+      <div class="gs-version" id="gsVersion">GRIFFINE · الإصدار ${APP_VERSION}</div>
     </div>`;
 
     // ربط الأزرار (on = لو العنصر موجود)
@@ -1155,6 +1255,9 @@
     on('gsAccHist', () => renderMySubscriptionHistory());
     on('gsAccRef', () => renderReferralPage());
     on('gsAccTrash', () => renderTrashPage());
+    // الإصدار 96: رقم الإصدار اللي الأدمن كتبه (لو فاضي ← الرقم التلقائي) + رقم البناء الداخلي للتأكد إن الجهاز على آخر نسخة
+    GS.versionLabel().then(v => { const el = $('#gsVersion'); if (el) el.innerHTML = `GRIFFINE · الإصدار <bdi>${esc(v || String(APP_VERSION))}</bdi>${v ? ` <small class="gs-build">(بناء ${APP_VERSION})</small>` : ''}`; });
+    on('gsAccTrades', () => renderTradesReportPage());
     on('gsAccRec', () => { GS.markRecsSeen(); renderRecommendationsCustomerPage(); });
     on('gsAccGrid', () => renderGridPlansList());
     on('gsAccDiv', () => renderDiversificationReport());

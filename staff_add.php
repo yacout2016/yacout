@@ -66,6 +66,9 @@ try {
     $del->execute();
     $del->close();
 
+    // الإصدار 96: كود الموظف حسب مسماه (GM / C / S / AC / N) - لو المسمى اتغيّر لحرف تاني ← كود جديد
+    try { require_once __DIR__ . '/codes_lib.php'; codes_assign_user($conn, $email); codes_assign_staff($conn, $staffId); } catch (Throwable $e) {}
+
     $defaults = getDefaultPermissionsForJobTitle($jobTitle);
     $ins = $conn->prepare("INSERT INTO staff_permissions (staff_id, permission_key) VALUES (?, ?)");
     foreach ($defaults as $key) {

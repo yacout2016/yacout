@@ -892,3 +892,23 @@ body.g-shell #chatPanel .chat-faq.chat-faq-dd{ background:var(--gs-surface, #fff
 #chatPanel .chat-faq.chat-faq-dd[hidden]{ display:none; }
 #chatPanel .chat-faq-dd .chat-faq-list{ flex-direction:column !important; flex-wrap:nowrap !important; overflow-y:auto !important; overflow-x:hidden !important; max-height:min(320px, 55vh); overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
 #chatPanel .chat-faq-dd .chat-faq-chip{ flex:0 0 auto !important; white-space:normal !important; overflow-wrap:anywhere; max-width:100% !important; line-height:1.5 !important; }
+
+/* الإصدار 96: خط واحد في كل حاجة (العناصر اللي المتصفح بيديها خط افتراضي تاني) */
+button, input, select, textarea, table, .chat-msg, .gs-toast, .g-sheet{ font-family:inherit; }
+
+/* الإصدار 96: اللي بيفضّل تقليل الحركة من إعدادات الجهاز ← من غير أنيميشن */
+@media (prefers-reduced-motion: reduce){ .container, .wl-screen, .gl-screen{ animation:none !important; } }
+
+/* الإصدار 96: أدوات الجداول (بحث + فلتر لكل عمود + ترتيب) */
+.g-tbar{ display:flex; align-items:center; gap:10px; margin:8px 0 6px; }
+.g-tbar .g-tsearch{ flex:1; max-width:320px; margin:0 !important; padding:7px 12px !important; font-size:13px !important; border-radius:999px !important; }
+.g-tcount{ font-size:11.5px; color:var(--text-muted, #888); white-space:nowrap; }
+table.g-enh th.g-sortable{ cursor:pointer; user-select:none; white-space:nowrap; }
+table.g-enh th.g-sortable::after{ content:'⇅'; opacity:.35; font-size:10px; margin-inline-start:4px; }
+table.g-enh th.g-sortable[data-sort="asc"]::after{ content:'▲'; opacity:.9; }
+table.g-enh th.g-sortable[data-sort="desc"]::after{ content:'▼'; opacity:.9; }
+table.g-enh tr.g-filter-row th{ padding:4px 6px !important; background:var(--bg, #f5f6f8); }
+table.g-enh .g-filter{ width:100% !important; min-width:70px; margin:0 !important; padding:3px 6px !important; font-size:12px !important; border-radius:6px !important; height:28px !important; min-height:0 !important; box-shadow:none !important; }
+.gs-tscroll.gs-rows-limit table.g-enh thead{ position:sticky; top:0; z-index:3; }
+.gs-tscroll.gs-rows-limit table.g-enh thead th{ position:static !important; }
+@media print{ .g-tbar, .g-filter-row{ display:none !important; } }

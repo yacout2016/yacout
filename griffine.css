@@ -9,8 +9,8 @@
     --shadow-sm:0 1px 3px rgba(15,23,42,.06);
     --shadow-md:0 8px 24px rgba(15,23,42,.10);
     --font: 'IBM Plex Sans Arabic', Tahoma, 'Segoe UI', sans-serif;
-    --font-head: 'Noto Kufi Arabic', 'IBM Plex Sans Arabic', sans-serif;
-    --font-num: 'IBM Plex Mono', monospace;
+    --font-head: var(--font);   /* الإصدار 96: خط واحد (IBM Plex Sans Arabic) في كل الشاشات */
+    --font-num: var(--font);
   }
   html[data-theme="dark"]{
     --green-dark:#16212D; --green:#8D96A6; --green-light:#1B2733;
@@ -198,7 +198,7 @@
   html[data-theme="dark"] .gbottomnav-sheet button:hover{ background:#172420; }
 
   /* الحاوية الأساسية - Edge-to-edge على الموبايل زي تطبيق، وكارت مركزي مرتاح على التابلت والديسك توب */
-  .container { width:100%; max-width:560px; margin:0 auto; background:var(--card-bg); padding:16px 14px 24px; --cpad-x:14px; --cpad-t:16px; border-radius:0; box-shadow:none; min-height:100vh; animation:containerFadeIn .28s ease-out; transition:background .25s; }
+  .container { width:100%; max-width:560px; margin:0 auto; background:var(--card-bg); padding:16px 14px 24px; --cpad-x:14px; --cpad-t:16px; border-radius:0; box-shadow:none; min-height:100vh; animation:containerFadeIn .15s ease-out; transition:background .25s; }
   .container.wide { max-width:1240px; }
   /* بطاقة تسجيل دخول/تسجيل مضغوطة في المنتصف - على طراز أمازون */
   .container.auth-card{ max-width:380px; margin:32px auto; padding:22px 26px 24px; border:1px solid var(--border); border-radius:var(--radius); box-shadow:0 1px 3px rgba(15,17,17,.15); }
@@ -454,7 +454,7 @@
   body:has(.wl-screen, .gl-screen) .gtopnav-backdrop,
   body:has(.wl-screen, .gl-screen) #siteAnnouncementBar,
   body:has(.gl-screen) #siteFooter{ display:none !important; }
-  .wl-screen, .gl-screen{ position:relative; width:100%; max-width:440px; min-height:100vh; min-height:100dvh; margin:0 auto; background:#fff; overflow:hidden; color:var(--text); font-family:var(--font); animation:containerFadeIn .28s ease-out; }
+  .wl-screen, .gl-screen{ position:relative; width:100%; max-width:440px; min-height:100vh; min-height:100dvh; margin:0 auto; background:#fff; overflow:hidden; color:var(--text); font-family:var(--font); animation:containerFadeIn .15s ease-out; }
   html[data-theme="dark"] .wl-screen, html[data-theme="dark"] .gl-screen{ background:var(--card-bg); }
   .wl-screen{ display:flex; flex-direction:column; }
 

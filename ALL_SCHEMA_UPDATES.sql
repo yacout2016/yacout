@@ -1,5 +1,5 @@
 -- ============================================================
--- GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 95)
+-- GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 96)
 -- كل تحديثات قاعدة البيانات في ملف واحد.
 -- آمن تشغّله أي عدد من المرات: بيضيف الناقص بس ومبيمسحش أي بيانات.
 -- الاستخدام: phpMyAdmin ← اختار قاعدة البيانات ← تبويب SQL ← الصق الملف كله ← Go
@@ -36,6 +36,7 @@
 -- الإصدار 93: مفيش تغييرات في قاعدة البيانات (أسئلة المساعد الذكي في قائمة منسدلة من زرار ❓ جنب الترس).
 -- الإصدار 94: مفيش تغييرات في قاعدة البيانات (كل حساب بيشوف إشعاراته بس + حماية عند تبديل الحساب + كل أسئلة المساعد في قائمة عمودية بتتمرر لفوق وتحت).
 -- الإصدار 95: مفيش تغييرات في قاعدة البيانات (المساعد الذكي بيرد في كل مرة - كان بيسكت 15 دقيقة بعد رد موظف أو لو السؤال اتكرر).
+-- الإصدار 96: تصحيح النصوص (DAC ← DCA ، Top7 المصرية) + أكواد الأعضاء + أسواق الحسابات (مصر / السعودية / الإمارات / قطر / الكويت) + باقات وطرق دفع لكل سوق.
 -- ============================================================
 
 -- الإصدار 85: ترميز الاتصال UTF-8 عشان النصوص العربي اللي بتتضاف من الملف (زي المسميات الوظيفية) تتحفظ صح
@@ -978,4 +979,41 @@ DROP PROCEDURE griffine_v91;
 UPDATE user_alerts SET body = REPLACE(REPLACE(body, 'في خطتك (DCA)', 'في خطة تعزيز المتوسط'), 'في خطتك (Grid)', 'في خطة خطوط الشبكة')
  WHERE body LIKE '%(DCA)%' OR body LIKE '%(Grid)%';
 
-SELECT 'GRIFFINE database is up to date (v95)' AS result;
+-- الإصدار 96: تصحيح النصوص المتخزّنة (صفحة عن GRIFFINE والعناوين وتعديلات الاستوديو)
+UPDATE page_contents SET content = REPLACE(content, 'DAC', 'DCA') WHERE content LIKE BINARY '%DAC%';
+UPDATE page_contents SET content = REPLACE(REPLACE(content, 'لشركة Top7،', 'لشركة Top7 المصرية،'), ' في الأسواق المصرية والخليجية', '')
+ WHERE content LIKE '%Top7%' AND content NOT LIKE '%Top7 المصرية%';
+UPDATE ui_customizations SET data_value = REPLACE(data_value, 'DAC', 'DCA') WHERE data_value LIKE BINARY '%DAC%';
+
+-- الإصدار 96: أكواد الأعضاء (رقم تسلسل عام + INV / Top-7 + أكواد الموظفين GM / C / S / AC / N)
+CREATE TABLE IF NOT EXISTS code_counters (
+  prefix VARCHAR(10) NOT NULL PRIMARY KEY,
+  last_no INT NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS member_code_history (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  account_email VARCHAR(190) NOT NULL,
+  code VARCHAR(20) NOT NULL,
+  kind VARCHAR(10) NOT NULL DEFAULT 'member',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_code_hist (account_email)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+DELIMITER $$
+DROP PROCEDURE IF EXISTS griffine_v96 $$
+CREATE PROCEDURE griffine_v96()
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='users' AND COLUMN_NAME='member_no') THEN
+    ALTER TABLE users ADD COLUMN member_no INT NULL, ADD COLUMN inv_code VARCHAR(20) NULL, ADD UNIQUE KEY uq_inv_code (inv_code);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='staff_members' AND COLUMN_NAME='staff_code') THEN
+    ALTER TABLE staff_members ADD COLUMN staff_code VARCHAR(20) NULL, ADD UNIQUE KEY uq_staff_code (staff_code);
+  END IF;
+END $$
+DELIMITER ;
+CALL griffine_v96();
+DROP PROCEDURE griffine_v96;
+-- الحسابات الحالية بتاخد أكوادها تلقائيًا بترتيب تاريخ التسجيل أول ما الإدارة تفتح شاشة المشتركين (codes_lib.php)
+
+-- @@V96_MORE@@
+
+SELECT 'GRIFFINE database is up to date (v96)' AS result;
