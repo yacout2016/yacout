@@ -842,7 +842,7 @@ html[data-theme="dark"] .chat-sound-opt{ background:rgba(255,255,255,.06); }
 html[data-theme="dark"] .chat-msg.admin.bot{ background:#2E2A1C !important; border-color:#5A4E25; }
 
 /* الإصدار 90: جداول المحفظة والتقارير - 10 صفوف ظاهرة والباقي تمرير رأسي، ورأس الجدول ثابت */
-.gs-tscroll.gs-rows-limit{ overflow-y:auto; overscroll-behavior:contain; border-bottom:1px solid var(--border-soft, #eee); }
+.gs-tscroll.gs-rows-limit{ overflow-y:auto !important; overscroll-behavior:contain; border-bottom:1px solid var(--border-soft, #eee); }
 .gs-tscroll.gs-rows-limit thead th, .gs-tscroll.gs-rows-limit tr:first-child > th{ position:sticky; top:0; z-index:2; background:var(--card-bg, #fff); box-shadow:0 1px 0 var(--border, #e5e7eb); }
 
 /* الإصدار 91: تنبيهات الرئيسية (تفضل لحد ما تتقفل) - 5 ظاهرين والباقي تمرير / سجل الإشعارات 5 ظاهرين والباقي تمرير */

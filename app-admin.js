@@ -273,7 +273,7 @@ async function renderAdminSubscribers(){
   }
 
   function renderTable(list){
-    document.getElementById('subscribersTableWrap').innerHTML = list.length ? `<table>
+    document.getElementById('subscribersTableWrap').innerHTML = list.length ? `<table data-g-rows="5">
       <thead><tr>
         <th>الكود</th><th>الاسم</th><th>الهاتف</th><th>الإيميل</th><th>الخطة</th><th>بداية الخطة</th><th>تاريخ الانتهاء</th><th>قيمة السداد</th><th>طريقة السداد</th><th>الحالة</th><th>التذكيرات</th><th>صلاحيات خاصة</th><th>🔔 الإشعارات</th><th></th>
       </tr></thead>

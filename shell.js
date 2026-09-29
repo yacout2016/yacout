@@ -50,7 +50,7 @@
      ===================================================================== */
 
   // رقم الإصدار - بيظهر في شاشة "حسابي" (غيّره مع ?v= في index.php و VERSION في sw.js)
-  const APP_VERSION = 103;
+  const APP_VERSION = 104;
 
   /* الاستعلامات المتكررة (الدردشة/التوصيات/قائمة المتابعة) - استعلام متكيّف (الإصدار 89)
      - بتقف لما التبويب يكون مخفي أو الموبايل مقفول
@@ -805,7 +805,7 @@
   // الإصدار 90: أقصى 10 صفوف ظاهرة في جداول شاشة المحفظة والتقارير (الباقي تمرير رأسي + رأس الجدول ثابت)
   const ROWS10_SCREENS = { renderPortfolio:1, renderDiversificationReport:1, renderTradesReportPage:1 };
   // إعادة الحساب بعد تحميل الخطوط وتغيير حجم الشاشة (ارتفاع الصفوف بيتغير)
-  const relimit = () => { const a = document.getElementById('app'); if (a && ROWS10_SCREENS[GS.currentScreen]) limitTableRows(a, 10); };
+  const relimit = () => { const a = document.getElementById('app'); if (a && ROWS10_SCREENS[GS.currentScreen]) limitTableRows(a, 10); if (a && a.querySelector('table[data-g-rows]')) limitMarkedRows(a); };
   window.addEventListener('resize', () => { clearTimeout(relimit.t); relimit.t = setTimeout(relimit, 150); });
   try { document.fonts && document.fonts.ready.then(relimit); } catch(e){}
   function limitMarkedRows(root){
