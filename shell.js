@@ -50,7 +50,7 @@
      ===================================================================== */
 
   // رقم الإصدار - بيظهر في شاشة "حسابي" (غيّره مع ?v= في index.php و VERSION في sw.js)
-  const APP_VERSION = 101;
+  const APP_VERSION = 102;
 
   /* الاستعلامات المتكررة (الدردشة/التوصيات/قائمة المتابعة) - استعلام متكيّف (الإصدار 89)
      - بتقف لما التبويب يكون مخفي أو الموبايل مقفول
@@ -1359,7 +1359,7 @@
     on('gsAccTrash', () => renderTrashPage());
     if (typeof gNpMineCard === 'function') gNpMineCard(document.getElementById('gsNpMineHost'));   // الإصدار 101: قنوات الإشعارات (لو الأدمن أظهرها)
     // الإصدار 96: رقم الإصدار اللي الأدمن كتبه (لو فاضي ← الرقم التلقائي) + رقم البناء الداخلي للتأكد إن الجهاز على آخر نسخة
-    GS.versionLabel().then(v => { const el = $('#gsVersion'); if (el) el.innerHTML = `GRIFFINE · الإصدار <bdi>${esc(v || String(APP_VERSION))}</bdi>${v ? ` <small class="gs-build">(بناء ${APP_VERSION})</small>` : ''}`; });
+    GS.versionLabel().then(v => { const el = $('#gsVersion'); if (el) el.innerHTML = `GRIFFINE · الإصدار <bdi>${esc(v || String(APP_VERSION))}</bdi>${v && v !== String(APP_VERSION) ? ` <small class="gs-build">(بناء ${APP_VERSION})</small>` : ''}`; });
     on('gsAccTrades', () => renderTradesReportPage());
     on('gsAccRec', () => { GS.markRecsSeen(); renderRecommendationsCustomerPage(); });
     on('gsAccGrid', () => renderGridPlansList());

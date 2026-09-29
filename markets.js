@@ -198,7 +198,7 @@ async function mkSyncTargets(plans, grids, email){
 function mkLimitList(box, n){
   if (!box) return;
   const fit = () => {
-    const kids = box.children; if (kids.length <= n) { box.style.maxHeight = ''; return; }
+    const kids = box.children; if (kids.length <= n) { box.style.maxHeight = 'none'; return; }
     const top = box.getBoundingClientRect().top - box.scrollTop, last = kids[n - 1].getBoundingClientRect();
     const mb = parseFloat(getComputedStyle(kids[n - 1]).marginBottom) || 0;
     const h = Math.ceil(last.bottom + mb - top); if (h > 0) box.style.maxHeight = h + 'px';

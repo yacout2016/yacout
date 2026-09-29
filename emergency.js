@@ -35,7 +35,7 @@
     (document.body || document.documentElement).appendChild(box);
     return box;
   }
-  const logo = () => { const dark = document.documentElement.getAttribute('data-theme') === 'dark'; return `<img class="gs-emg-logo" src="${dark ? 'griffine-logo-dark.webp' : 'griffine-logo-light.webp'}?v=101" alt="GRIFFINE">`; };
+  const logo = () => { const dark = document.documentElement.getAttribute('data-theme') === 'dark'; return `<img class="gs-emg-logo" src="${dark ? 'griffine-logo-dark.webp' : 'griffine-logo-light.webp'}?v=102" alt="GRIFFINE">`; };
   const ICON = { maint: '🛠️', offline: '📡', down: '☁️', slow: '' };
   function paint(kind, extra){
     const c = cfg[kind] || {}; const b = ensure();
@@ -81,8 +81,21 @@
     const admin = !!window.__isAdmin;
     if (maintOn && !admin && !staffBypass) show('maint'); else hide('maint');
   }
+  // الإصدار 102: لو السيرفر عليه نسخة أحدث من اللي شغالة على الجهاز (كاش قديم) ← مسح الكاش وإعادة تحميل مرة واحدة
+  const BUILD = 102;
+  function checkBuild(b){
+    b = parseInt(b, 10) || 0; if (b <= BUILD) return;
+    let done = null; try { done = sessionStorage.getItem('gs_build_reload'); } catch(e){}
+    if (done === String(b)) return;
+    try { sessionStorage.setItem('gs_build_reload', String(b)); } catch(e){}
+    const jobs = [];
+    try { if (navigator.serviceWorker) jobs.push(navigator.serviceWorker.getRegistrations().then(rs => Promise.all(rs.map(r => r.update().catch(() => {}))))); } catch(e){}
+    try { if (window.caches) jobs.push(caches.keys().then(ks => Promise.all(ks.map(k => caches.delete(k))))); } catch(e){}
+    Promise.all(jobs).catch(() => {}).then(() => location.reload());
+  }
   function applyConfig(j){
     if (!j || !j.config) return;
+    checkBuild(j.config.build);
     if (j.config.emergency) { cfg = merge(j.config.emergency); W(KEY, JSON.stringify(j.config.emergency)); }
     maintOn = !!j.config.maintenance; W(KEY + '_m', maintOn ? '1' : '0');
     applyMaint();

@@ -875,7 +875,7 @@ html[data-theme="dark"] .chat-msg.admin.bot{ background:#2E2A1C !important; bord
 .gs-hold-head{ align-items:center; gap:8px; }
 .gs-hold-ctl{ display:flex; align-items:center; gap:10px; }
 .gs-hold-ctl select{ width:auto !important; margin:0 !important; padding:5px 28px 5px 10px !important; font-size:12.5px !important; border-radius:999px !important; }
-.gs-hold-list{ overflow-y:auto; overscroll-behavior:contain; }
+.gs-hold-list{ overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; max-height:calc(5 * 69px); }  /* الإصدار 102: 5 صفوف ظاهرين حتى لو الحساب بالجافاسكريبت اتأخر */
 .gs-empty-mini{ padding:18px; text-align:center; font-size:13px; }
 
 /* الإصدار 92: أسئلة المساعد = قائمة منسدلة من زرار ❓ (فوق الرسائل، مش بتاخد من مساحة الشات) */
