@@ -94,7 +94,7 @@ function uc_clean_theme($t, $fonts){
 // ---------------------------------------------------------------------
 function uc_clean_overrides($o, $props, $fonts, $maxItems){
     if (!is_array($o)) return null;
-    $out = ["v" => 1, "texts" => [], "elTexts" => [], "styles" => []];
+    $out = ["v" => 1, "texts" => [], "elTexts" => [], "styles" => [], "orders" => []];
 
     // أ) قاموس النصوص: كلمة ← كلمة (في شاشة أو في كل الموقع)
     foreach (array_slice((array)($o['texts'] ?? []), 0, $maxItems) as $r) {
@@ -123,6 +123,16 @@ function uc_clean_overrides($o, $props, $fonts, $maxItems){
             if ($clean !== null) $css[$p] = $clean;
         }
         if ($css) $out['styles'][] = ["screen" => $screen, "sel" => $sel, "css" => $css, "label" => uc_text($r['label'] ?? '', 80)];
+    }
+    // د) الإصدار 96: ترتيب عناصر مجموعة (نفس الأب) - seq = ترتيب العناصر الأصلي (1..n) بالشكل الجديد
+    foreach (array_slice((array)($o['orders'] ?? []), 0, 500) as $r) {
+        if (!is_array($r) || !is_array($r['seq'] ?? null)) continue;
+        $screen = uc_screen($r['screen'] ?? '*'); $sel = uc_selector($r['psel'] ?? '');
+        if ($screen === null || $sel === null) continue;
+        $seq = []; foreach (array_slice($r['seq'], 0, 60) as $n) { $n = intval($n); if ($n >= 1 && $n <= 200 && !in_array($n, $seq, true)) $seq[] = $n; }
+        if (count($seq) < 2) continue;
+        $mode = in_array($r['mode'] ?? '', ['col', 'row'], true) ? $r['mode'] : '';
+        $out['orders'][] = ["screen" => $screen, "psel" => $sel, "seq" => $seq, "mode" => $mode, "label" => uc_text($r['label'] ?? '', 80)];
     }
     return $out;
 }

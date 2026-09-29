@@ -166,6 +166,36 @@
     return r && r.css[prop] != null ? r.css[prop] : '';
   }
 
+  /* الإصدار 96: ترتيب العناصر داخل نفس المجموعة (نفس الأب)
+     بيرجّع { p, psel, n, seq, mode, rule } أو null لو المجموعة مينفعش تترتب (جداول / قوائم منسدلة / أب متغيّر) */
+  function groupOf(el, place){
+    const p = el && el.parentElement;
+    if (!p || p === document.body || p === document.documentElement || inStudio(p)) return null;
+    if (/^(TABLE|TBODY|THEAD|TFOOT|TR|SELECT|OPTGROUP|COLGROUP|DATALIST)$/.test(p.tagName) || /^(TD|TH|OPTION)$/.test(el.tagName)) return null;
+    const psel = cssPath(p); if (!psel) return null;
+    const n = p.children.length; if (n < 2 || n > 60) return null;
+    const rule = state.draft.orders.find(r => r.screen === place && r.psel === psel);
+    let seq = rule ? rule.seq.filter(k => k >= 1 && k <= n) : [];
+    for (let k = 1; k <= n; k++) if (!seq.includes(k)) seq.push(k);
+    let mode = rule ? rule.mode : '';
+    if (!rule) {
+      const d = getComputedStyle(p).display;
+      if (!/flex|grid/.test(d)) {
+        const blocky = Array.from(p.children).every(c => { const cd = getComputedStyle(c).display; return cd === 'none' || /^(block|flex|grid|table|list-item|flow-root)$/.test(cd); });
+        mode = blocky ? 'col' : 'row';
+      }
+    }
+    return { p, psel, n, seq, mode, rule };
+  }
+  function setOrder(place, g, seq, label){
+    const list = state.draft.orders;
+    const i = list.findIndex(r => r.screen === place && r.psel === g.psel);
+    const identity = seq.every((k, j) => k === j + 1);
+    if (identity) { if (i >= 0) list.splice(i, 1); return; }
+    const r = { screen: place, psel: g.psel, seq: seq.slice(), mode: g.mode, label: label || '' };
+    if (i >= 0) list[i] = r; else list.push(r);
+  }
+
 
   /* =====================================================================
      03. بناء الواجهة
@@ -174,7 +204,7 @@
   function buildUi(){
     if (!document.getElementById('gsStudioCss')) {
       const l = document.createElement('link');
-      l.id = 'gsStudioCss'; l.rel = 'stylesheet'; l.href = 'studio.css?v=95';
+      l.id = 'gsStudioCss'; l.rel = 'stylesheet'; l.href = 'studio.css?v=96';
       document.head.appendChild(l);
     }
     const root = document.createElement('div');
@@ -237,7 +267,7 @@
 
   function updateCounters(){
     const d = state.draft || {};
-    const n = (d.texts || []).length + (d.elTexts || []).length + (d.styles || []).length;
+    const n = (d.texts || []).length + (d.elTexts || []).length + (d.styles || []).length + (d.orders || []).length;
     const c = $('#gstCount'); if (c) c.textContent = n;
     const s = $('#gstSave'); if (s) s.classList.toggle('pulse', state.dirtyO || state.dirtyT);
   }
@@ -315,6 +345,8 @@
     showPanel('element');
   }
 
+  E.select = (el) => { if (state.isOpen) select(el); };   // تحديد عنصر برمجيًا (للاختبارات)
+
   function showPanel(name){
     state.panel = name;
     $('#gstPanel').classList.remove('collapsed');
@@ -384,6 +416,21 @@
         ${Array.from(el.options).map((o, i) => { const t = o.firstChild; return t ? `<input type="text" class="gst-opt" data-i="${i}" value="${esc(o.text)}">` : ''; }).join('')}</div>`;
     }
 
+    // ---- الترتيب داخل المجموعة (الإصدار 96) ----
+    const grp = groupOf(el, place);
+    const myIdx = grp ? Array.prototype.indexOf.call(grp.p.children, el) + 1 : 0;
+    let orderHtml = '';
+    if (grp) {
+      const rows = grp.seq.map(k => { const c = grp.p.children[k - 1], dd = describe(c), hidden = getComputedStyle(c).display === 'none';
+        return `<div class="gst-ord ${k === myIdx ? 'on' : ''}" draggable="true" data-k="${k}"><span class="gst-ord-h" aria-hidden="true">⋮⋮</span><span class="gst-ord-t"><b>${esc(dd.kind)}</b> ${esc(dd.txt || '')}${hidden ? ' <small>(مخفي)</small>' : ''}</span>
+          <button type="button" class="gst-ic" data-mv="-1" aria-label="لأعلى">▲</button><button type="button" class="gst-ic" data-mv="1" aria-label="لأسفل">▼</button></div>`; }).join('');
+      orderHtml = `<div class="gst-sec"><div class="gst-sec-t">الترتيب داخل المجموعة</div>
+        <div class="gst-row2"><button type="button" class="gst-btn" id="gstUp">▲<span>تحريك لأعلى</span></button><button type="button" class="gst-btn" id="gstDown">▼<span>تحريك لأسفل</span></button></div>
+        <div class="gst-ordlist" id="gstOrdList">${rows}</div>
+        <div class="gst-hint">اسحب أي عنصر أو استخدم الأسهم لتغيير مكانه بين عناصر نفس المجموعة.</div>
+        ${grp.rule ? `<button type="button" class="gst-btn" id="gstOrdReset">${icon('refund')}<span>إرجاع ترتيب المجموعة</span></button>` : ''}</div>`;
+    }
+
     setBody('العنصر المحدد', `
       <div class="gst-el"><span class="gst-kind">${esc(d.kind)}</span><span class="gst-eltxt">${esc(d.txt || '')}</span></div>
       <div class="gst-row2">
@@ -395,6 +442,7 @@
           <label><input type="radio" name="gstPlace" value="screen" ${place !== '*' ? 'checked' : ''}> هذه الشاشة فقط (${esc(screenLabel(screenNow()))})</label>
           <label><input type="radio" name="gstPlace" value="*" ${place === '*' ? 'checked' : ''}> كل الشاشات</label>
         </div></div>
+      ${orderHtml}
       ${textHtml}
       <div class="gst-sec"><div class="gst-sec-t">الخط</div>
         <label class="gst-f">نوع الخط<select data-p="font-family">${fontOpts}</select></label>
@@ -487,6 +535,38 @@
     body.querySelectorAll('[data-clear]').forEach(b => b.onclick = () => { setStyle(place, sel, b.dataset.clear, '', lbl); markO(); renderElement(); });
     body.querySelectorAll('[data-toggle]').forEach(c => c.onchange = () => { setStyle(place, sel, c.dataset.toggle, c.checked ? c.dataset.on : '', lbl); markO(); });
 
+    // الترتيب
+    if (grp) {
+      const glbl = describe(grp.p); const gl = `${glbl.kind}${glbl.txt ? ': ' + glbl.txt : ''}`.slice(0, 80);
+      const commit = (seq) => { setOrder(place, grp, seq, gl); markO(); renderElement(); };
+      // التحريك بيعدّي العناصر المخفية (عشان كل ضغطة تبان على الشاشة)
+      const shown = (k) => getComputedStyle(grp.p.children[k - 1]).display !== 'none';
+      const move = (k, dir) => {
+        const seq = grp.seq.slice(), i = seq.indexOf(k); if (i < 0) return;
+        let j = i + dir; while (j >= 0 && j < seq.length && !shown(seq[j])) j += dir;
+        if (j < 0 || j >= seq.length) return;
+        seq.splice(i, 1); seq.splice(j, 0, k); commit(seq);
+      };
+      $('#gstUp').onclick = () => move(myIdx, -1);
+      $('#gstDown').onclick = () => move(myIdx, 1);
+      const listEl = $('#gstOrdList');
+      listEl.querySelectorAll('[data-mv]').forEach(b => b.onclick = () => move(+b.closest('.gst-ord').dataset.k, +b.dataset.mv));
+      let dragK = 0;
+      listEl.querySelectorAll('.gst-ord').forEach(row => {
+        row.addEventListener('dragstart', e => { dragK = +row.dataset.k; row.classList.add('drag'); try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(dragK)); } catch(x){} });
+        row.addEventListener('dragend', () => row.classList.remove('drag'));
+        row.addEventListener('dragover', e => { e.preventDefault(); row.classList.add('over'); });
+        row.addEventListener('dragleave', () => row.classList.remove('over'));
+        row.addEventListener('drop', e => {
+          e.preventDefault(); row.classList.remove('over');
+          const to = +row.dataset.k; if (!dragK || dragK === to) return;
+          const seq = grp.seq.filter(k => k !== dragK), at = seq.indexOf(to), from = grp.seq.indexOf(dragK), toI = grp.seq.indexOf(to);
+          seq.splice(from < toI ? at + 1 : at, 0, dragK); commit(seq);
+        });
+      });
+      const orr = $('#gstOrdReset'); if (orr) orr.onclick = () => commit(Array.from({ length: grp.n }, (_, i) => i + 1));
+    }
+
     // إرجاع للأصل
     $('#gstReset').onclick = () => {
       const r = rulesFor(sel);
@@ -508,7 +588,7 @@
       const on = t && t.preset === p.id;
       return `<button type="button" class="gst-theme ${on ? 'on' : ''}" data-preset="${p.id}">
         <span class="gst-sw"><i style="background:${pal['--gs-brand']}"></i><i style="background:${pal['--gs-ink']}"></i><i style="background:${pal['--gs-bg']}"></i><i style="background:${ST.buildPalette(ST.themeFromPreset(p.id)).dark['--gs-surface']}"></i></span>
-        <b>${esc(p.name)}</b><small>${esc(p.note)}</small></button>`;
+        <b>${esc(p.name)}</b><small>${esc(p.note)}${p.font ? ' — الخط: ' + esc(((ST.FONTS.find(f => f.name === p.font) || {}).label) || p.font) : ''}</small></button>`;
     }).join('');
 
     const color = (key, lbl, auto) => {
@@ -584,6 +664,8 @@
         ${d.elTexts.map((r, i) => row('elTexts', i, esc(r.text), esc(screenLabel(r.screen)))).join('') || '<div class="gst-hint">لا يوجد</div>'}</div>
       <div class="gst-sec"><div class="gst-sec-t">تنسيقات (${d.styles.length})</div>
         ${d.styles.map((r, i) => row('styles', i, esc(r.label || r.sel.split(' > ').slice(-1)[0]), `${esc(screenLabel(r.screen))} · ${Object.keys(r.css).map(p => propNames[p] || p).join('، ')}`)).join('') || '<div class="gst-hint">لا يوجد</div>'}</div>
+      <div class="gst-sec"><div class="gst-sec-t">ترتيب عناصر (${d.orders.length})</div>
+        ${d.orders.map((r, i) => row('orders', i, esc(r.label || r.psel.split(' > ').slice(-1)[0]), esc(screenLabel(r.screen)) + ' · ترتيب جديد')).join('') || '<div class="gst-hint">لا يوجد</div>'}</div>
       <button type="button" class="gst-btn gst-danger" id="gstClearAll">${icon('x')}<span>مسح كل تعديلات الشاشات</span></button>
       <div class="gst-hint">الحذف هنا معاينة فقط حتى تضغط «حفظ».</div>`);
 
@@ -594,8 +676,8 @@
       markO(); renderList();
     });
     $('#gstClearAll').onclick = async () => {
-      if (!await gConfirm('مسح كل تعديلات النصوص والتنسيق في كل الشاشات؟ (لن يتأثر الثيم)')) return;
-      state.draft = { v:1, texts:[], elTexts:[], styles:[] };
+      if (!await gConfirm('مسح كل تعديلات النصوص والتنسيق والترتيب في كل الشاشات؟ (لن يتأثر الثيم)')) return;
+      state.draft = { v:1, texts:[], elTexts:[], styles:[], orders:[] };
       markO(); renderList();
     };
   }
@@ -620,7 +702,7 @@
   async function exit(){
     if ((state.dirtyO || state.dirtyT) && !await gConfirm('توجد تعديلات لم تُحفظ. هل تريد الخروج وإلغاءها؟')) return;
     // رجوع لآخر نسخة محفوظة
-    ST.overrides = clone(state.savedO) || { v:1, texts:[], elTexts:[], styles:[] };
+    ST.overrides = clone(state.savedO) || { v:1, texts:[], elTexts:[], styles:[], orders:[] };
     ST.theme = clone(state.savedT);
     ST.applyTheme(ST.theme); ST.apply();
     setPicking(false);
@@ -643,8 +725,8 @@
     state.isOpen = true;
     state.savedO = clone(ST.overrides);
     state.savedT = clone(ST.theme);
-    state.draft = clone(ST.overrides) || { v:1, texts:[], elTexts:[], styles:[] };
-    ['texts', 'elTexts', 'styles'].forEach(k => { if (!Array.isArray(state.draft[k])) state.draft[k] = []; });
+    state.draft = clone(ST.overrides) || { v:1, texts:[], elTexts:[], styles:[], orders:[] };
+    ['texts', 'elTexts', 'styles', 'orders'].forEach(k => { if (!Array.isArray(state.draft[k])) state.draft[k] = []; });
     state.themeDraft = clone(ST.theme);
     state.dirtyO = state.dirtyT = false;
     buildUi();

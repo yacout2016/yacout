@@ -131,3 +131,14 @@ body.gs-studio-on #chatBubble, body.gs-studio-on #chatPanel{ display:none !impor
   #gsStudio .gst-primary span, #gsStudio .gst-panel .gst-btn span{ display:inline; }
   #gsStudio .gst-bar select{ min-width:130px; }
 }
+
+/* الإصدار 96: ترتيب العناصر داخل المجموعة */
+#gsStudio .gst-ordlist{ margin-top:8px; border:1px solid var(--st-border); border-radius:10px; max-height:260px; overflow:auto; }
+#gsStudio .gst-ord{ display:flex; align-items:center; gap:6px; padding:4px 6px; border-top:1px solid var(--st-border); cursor:grab; user-select:none; }
+#gsStudio .gst-ord:first-child{ border-top:0; }
+#gsStudio .gst-ord.on{ background:rgba(201,162,39,.16); }
+#gsStudio .gst-ord.drag{ opacity:.45; }
+#gsStudio .gst-ord.over{ box-shadow:inset 0 2px 0 var(--st-accent, #C9A227); }
+#gsStudio .gst-ord-h{ color:var(--st-muted); font-size:12px; letter-spacing:-2px; }
+#gsStudio .gst-ord-t{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12.5px; }
+#gsStudio .gst-ord .gst-ic{ width:26px; height:26px; font-size:11px; }

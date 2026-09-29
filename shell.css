@@ -635,7 +635,7 @@ body.g-shell:not(.gs-no-shell) .plan-list-item.chat-unread strong{ font-weight:8
 body.g-shell:not(.gs-no-shell) .plan-list-item.chat-unread{ border-color:var(--gs-neg) !important; }
 
 /* =====================================================================
-   نظام التنقل بالمستويات (الإصدار 72 - على طريقة ثاندر)
+   نظام التنقل بالمستويات (الإصدار 72)
    body.gs-sub = شاشة داخلية (مستوى تاني أو أعمق) - من shell.js ← applyNavMode
    ===================================================================== */
 /* الشريط العلوي: ثابت ومصمت، سهم رجوع + اسم الصفحة جنبه */

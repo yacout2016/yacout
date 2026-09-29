@@ -29,7 +29,7 @@
 
   const ST = window.GStudio = {
     theme: null,                                           // الثيم المحفوظ (null = الشكل الأصلي)
-    overrides: { v:1, texts:[], elTexts:[], styles:[] },  // تعديلات الشاشات المحفوظة
+    overrides: { v:1, texts:[], elTexts:[], styles:[], orders:[] },  // تعديلات الشاشات المحفوظة
     loaded: false
   };
   const CACHE_KEY = 'gs_studio_cache_v1';                   // نسخة محلية عشان الشكل يظهر فورًا من غير وميض
@@ -57,18 +57,18 @@
   ST.CSS_PROPS = ['color','background-color','font-size','font-weight','font-family','font-style','text-align',
                   'text-decoration','letter-spacing','line-height','padding','border-radius','border-color','display','opacity'];
 
-  /* الثيمات الجاهزة - كل ثيم = لون رئيسي + لون الأزرار (اختياري) + شوية لمسات
+  /* الثيمات الجاهزة - كل ثيم = لون رئيسي + لون الأزرار (اختياري) + خط خاص بيه (بيتطبّق على كل الشاشات) + شوية لمسات
      باقي الألوان (الخلفية / البطاقات / الحدود / النص / الوضع الليلي) بتتولد تلقائيًا في قسم 02.
      لإضافة ثيم جديد: سطر جديد هنا فقط. */
   ST.PRESETS = [
-    { id:'griffine', name:'ذهبي GRIFFINE',        note:'الهوية الأصلية: ذهبي مع كحلي غامق',        primary:'#C9A227', ink:'#0F172A', native:true },
-    { id:'yellow',   name:'أصفر مشرق',            note:'أصفر قوي مع أسود - طابع تطبيق ثاندر',      primary:'#FFD200', ink:'#111111', bg:'#F6F6F1', buttons:'filled', radius:14 },
-    { id:'green',    name:'أخضر نعناعي',          note:'أخضر هادي مع درجات النعناع - طابع منثم',   primary:'#10B981', ink:'#064E3B', radius:16 },
-    { id:'blue',     name:'أزرق بنكي',            note:'أزرق واثق مع أبيض نظيف - طابع راية',       primary:'#1D4ED8', ink:'#1E3A8A', radius:12 },
-    { id:'purple',   name:'بنفسجي عصري',          note:'بنفسجي مع لمسة وردي',                       primary:'#7C3AED', ink:'#2E1065', radius:18 },
-    { id:'orange',   name:'برتقالي دافي',         note:'برتقالي حيوي مع رمادي فحمي',                primary:'#F97316', ink:'#1C1917', radius:14 },
-    { id:'teal',     name:'فيروزي',               note:'فيروزي بحري مع كحلي',                        primary:'#0D9488', ink:'#134E4A', radius:16 },
-    { id:'red',      name:'أحمر ملكي',            note:'أحمر عميق مع أسود',                          primary:'#DC2626', ink:'#1F1111', radius:12 },
+    { id:'griffine', name:'ذهبي GRIFFINE',        note:'الهوية الأصلية: ذهبي مع كحلي غامق',        primary:'#C9A227', ink:'#0F172A', font:'IBM Plex Sans Arabic', native:true },
+    { id:'yellow',   name:'أصفر مشرق',            note:'أصفر قوي مع أسود - تباين عالي وواضح',     primary:'#FFD200', ink:'#111111', bg:'#F6F6F1', buttons:'filled', radius:14, font:'Readex Pro' },
+    { id:'green',    name:'أخضر نعناعي',          note:'أخضر هادي مع درجات النعناع',               primary:'#10B981', ink:'#064E3B', radius:16, font:'Tajawal' },
+    { id:'blue',     name:'أزرق بنكي',            note:'أزرق واثق مع أبيض نظيف',                   primary:'#1D4ED8', ink:'#1E3A8A', radius:12, font:'Noto Kufi Arabic' },
+    { id:'purple',   name:'بنفسجي عصري',          note:'بنفسجي مع لمسة وردي',                       primary:'#7C3AED', ink:'#2E1065', radius:18, font:'Changa' },
+    { id:'orange',   name:'برتقالي دافي',         note:'برتقالي حيوي مع رمادي فحمي',                primary:'#F97316', ink:'#1C1917', radius:14, font:'Cairo' },
+    { id:'teal',     name:'فيروزي',               note:'فيروزي بحري مع كحلي',                        primary:'#0D9488', ink:'#134E4A', radius:16, font:'Almarai' },
+    { id:'red',      name:'أحمر ملكي',            note:'أحمر عميق مع أسود',                          primary:'#DC2626', ink:'#1F1111', radius:12, font:'El Messiri' },
   ];
 
   // القيم الافتراضية لأي ثيم
@@ -77,7 +77,7 @@
   // ثيم كامل من ثيم جاهز
   ST.themeFromPreset = function(id){
     const p = ST.PRESETS.find(x => x.id === id) || ST.PRESETS[0];
-    return Object.assign({}, ST.THEME_DEFAULTS, { preset:p.id, primary:p.primary, ink:p.ink || '', bg:p.bg || '', buttons:p.buttons || 'filled', radius:p.radius != null ? p.radius : 18 });
+    return Object.assign({}, ST.THEME_DEFAULTS, { preset:p.id, primary:p.primary, ink:p.ink || '', bg:p.bg || '', buttons:p.buttons || 'filled', radius:p.radius != null ? p.radius : 18, font:p.font || '' });
   };
 
 
@@ -249,7 +249,7 @@
     if (t.font) {
       loadFont(t.font);
       const fam = `'${t.font}','IBM Plex Sans Arabic',Tahoma,sans-serif`;
-      css += `body.g-shell{--font-head:${fam};}`;
+      css += `body.g-shell{--font:${fam};--font-head:${fam};--font-num:${fam};}`;
       css += `body.g-shell, body.g-shell input, body.g-shell select, body.g-shell textarea, body.g-shell button, body.g-shell h1, body.g-shell h2, body.g-shell h3, body.g-shell h4{font-family:${fam} !important;}`;
     }
 
@@ -304,6 +304,24 @@
       // لو اتغيّر الخط بنحمّله
       if (r.css['font-family']) loadFont(r.css['font-family']);
       return `${scope}${r.sel}{${decl}}`;
+    }).join('\n');
+  };
+
+
+  /* الإصدار 96: ترتيب العناصر داخل نفس المجموعة (نفس الأب) بـ CSS order
+     - مبنحرّكش العناصر في الصفحة نفسها (عشان محددات التنسيق والنصوص تفضل شغالة) ← بنغيّر ترتيب ظهورها بس
+     - mode: col = الأب بيتحوّل لعمود مرن ، row = صف مرن بيلف ، '' = الأب أصلًا flex/grid
+     - أي عنصر مش في الترتيب المحفوظ (زي عنصر جديد) بيظهر في الآخر */
+  ST.ordersCss = function(ovr){
+    return ((ovr && ovr.orders) || []).map(r => {
+      if (!ST.safeSelector(r.psel) || !Array.isArray(r.seq) || r.seq.length < 2) return '';
+      const scope = r.screen && r.screen !== '*' ? `body[data-gs-screen="${String(r.screen).replace(/[^A-Za-z0-9_]/g, '')}"] ` : '';
+      const P = scope + r.psel;
+      let css = r.mode === 'col' ? `${P}{display:flex !important;flex-direction:column !important;}`
+              : r.mode === 'row' ? `${P}{display:flex !important;flex-direction:row !important;flex-wrap:wrap !important;align-items:center !important;column-gap:6px;}` : '';
+      css += `${P} > *{order:1000;}`;
+      r.seq.forEach((n, i) => { n = parseInt(n, 10); if (n >= 1 && n <= 200) css += `${P} > :nth-child(${n}){order:${i + 1} !important;}`; });
+      return css;
     }).join('\n');
   };
 
@@ -410,7 +428,7 @@
   ST.apply = function(){
     try {
       // .gs-st-br = نص فيه أكتر من سطر (بيغلب "الجداول في سطر واحد" كمان)
-      styleTag('gsStudioRules').textContent = '.gs-st-br{white-space:pre-line !important;}\n' + ST.stylesCss(ST.overrides);
+      styleTag('gsStudioRules').textContent = '.gs-st-br{white-space:pre-line !important;}\n' + ST.stylesCss(ST.overrides) + '\n' + ST.ordersCss(ST.overrides);
       applyElTexts();
       applyTexts();
     } catch(e){ console.warn('studio apply:', e); }
@@ -422,7 +440,7 @@
      ===================================================================== */
   function readCache(){ try { return JSON.parse(localStorage.getItem(CACHE_KEY) || 'null'); } catch(e){ return null; } }
   function writeCache(){ try { localStorage.setItem(CACHE_KEY, JSON.stringify({ theme: ST.theme, overrides: ST.overrides })); } catch(e){} }
-  const emptyOverrides = () => ({ v:1, texts:[], elTexts:[], styles:[] });
+  const emptyOverrides = () => ({ v:1, texts:[], elTexts:[], styles:[], orders:[] });
   const normalizeOverrides = (o) => Object.assign(emptyOverrides(), o || {});
 
   ST.load = async function(){
@@ -461,7 +479,7 @@
     if (!window.GStudioEditor) {
       await new Promise((res, rej) => {
         const s = document.createElement('script');
-        s.src = 'studio-editor.js?v=95'; s.onload = res; s.onerror = () => rej(new Error('تعذّر تحميل استوديو التصميم'));
+        s.src = 'studio-editor.js?v=96'; s.onload = res; s.onerror = () => rej(new Error('تعذّر تحميل استوديو التصميم'));
         document.head.appendChild(s);
       }).catch(e => { if (window.GShell) GShell.toast(e.message, 'err'); });
     }
