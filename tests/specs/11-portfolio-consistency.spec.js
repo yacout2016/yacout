@@ -35,6 +35,12 @@ const num = (t) => { const m = String(t || '').replace(/[⁦⁩]/g, '').match(/-
   check('فلتر «المغلقة»', await rows() === 2);
   await p.selectOption('#gsHoldFilter', 'all'); await p.waitForTimeout(600);
   check('فلتر «الكل» (10 خطط، 5 ظاهرين والباقي تمرير)', await rows() === 10 && await vis() === 5);
+  // نفس الكلام على شاشة موبايل (الفلتر «الكل» محفوظ)
+  await p.setViewportSize({ width: 390, height: 844 }); await p.evaluate(() => renderHome()); await p.waitForTimeout(3500);
+  const mob = await p.evaluate(() => { const box = document.querySelector('.gs-hold-list'); const bb = box.getBoundingClientRect().bottom + 1; const rs = [...box.querySelectorAll('.gs-row')];
+    box.scrollTop = 9999; const scrolled = box.scrollTop > 0; box.scrollTop = 0; return { rows: rs.length, vis: rs.filter(r => r.getBoundingClientRect().bottom <= bb).length, scrolled }; });
+  check('موبايل + «الكل»: 10 صفوف، 5 ظاهرين والباقي تمرير لفوق وتحت', mob.rows === 10 && mob.vis === 5 && mob.scrolled, JSON.stringify(mob));
+  await p.setViewportSize({ width: 1366, height: 900 });
   // شاشة المحفظة والتقارير
   await p.evaluate(() => renderPortfolio()); await p.waitForTimeout(4000);
   const cards = await p.$$eval('#topSummaryCards .summary-card', d => d.map(x => x.textContent.replace(/\s+/g, ' ')));

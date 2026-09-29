@@ -35,7 +35,7 @@
     (document.body || document.documentElement).appendChild(box);
     return box;
   }
-  const logo = () => { const dark = document.documentElement.getAttribute('data-theme') === 'dark'; return `<img class="gs-emg-logo" src="${dark ? 'griffine-logo-dark.webp' : 'griffine-logo-light.webp'}?v=100" alt="GRIFFINE">`; };
+  const logo = () => { const dark = document.documentElement.getAttribute('data-theme') === 'dark'; return `<img class="gs-emg-logo" src="${dark ? 'griffine-logo-dark.webp' : 'griffine-logo-light.webp'}?v=101" alt="GRIFFINE">`; };
   const ICON = { maint: '🛠️', offline: '📡', down: '☁️', slow: '' };
   function paint(kind, extra){
     const c = cfg[kind] || {}; const b = ensure();

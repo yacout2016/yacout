@@ -208,7 +208,11 @@ async function renderScreener(){
       <a id="screenerDisclaimerLink" style="color:#7a5c00;text-decoration:underline;cursor:pointer;">التفاصيل الكاملة</a>
     </div>
 
-    <div class="info">📊 اكتب رمز السهم واختر السوق والفترة، وستُجلب الأسعار (أعلى / أقل / آخر سعر) تلقائيًا متأخرة 15 دقيقة، ويمكنك تعديلها يدويًا. البحث في السوق كله دفعة واحدة مؤجل حتى نفعّل اشتراك بيانات مباشر. الشارت أدناه للعرض والقراءة فقط (مباشرة من TradingView) — الحساب يعتمد على الأرقام الموجودة في الخانات أدناه (التلقائية أو التي عدّلتها أنت).</div>
+    ${(window.__isAdmin || !(window.GShell && GShell.settings && GShell.settings.hide_opps_screen === true)) ? `<div class="section-card opp-entry">
+      <div><b>🎯 البحث عن فرص حسب المؤشرات</b><div class="u-fs12 u-muted">اختار شراء أو بيع ومن 1 لـ 5 مؤشرات بإعداداتها، والموقع يدوّر في كل أسهم البورصة ويبعتلك إشعار وإيميل بالأسهم اللي انطبقت عليها الشروط. <b>ليست توصية استثمارية</b> — مجرد استخدام للمؤشرات المتاحة.</div></div>
+      <button class="u-wa" id="goOppsBtn">🎯 البحث عن فرص</button>
+    </div>` : ''}
+    <div class="info">📊 اكتب رمز السهم واختر السوق والفترة، وستُجلب الأسعار (أعلى / أقل / آخر سعر) تلقائيًا متأخرة 15 دقيقة، ويمكنك تعديلها يدويًا. الشارت أدناه للعرض والقراءة فقط (مباشرة من TradingView) — الحساب يعتمد على الأرقام الموجودة في الخانات أدناه (التلقائية أو التي عدّلتها أنت).</div>
 
     <h2>شارت مباشر (للقراءة والمرجعية)</h2>
     <div class="section-card">
@@ -255,6 +259,7 @@ async function renderScreener(){
     <div id="ta_resultsArea"></div>
   </div>`;
 
+  { const gb = document.getElementById('goOppsBtn'); if (gb) gb.onclick = () => renderOpportunities(); }   // الإصدار 101
   document.getElementById('homeBtn').onclick=()=>{ email ? renderHome() : renderPublicHome(); };
   document.getElementById('screenerDisclaimerLink').onclick=()=>renderDisclaimerPage({ backTo: () => renderScreener() });
 

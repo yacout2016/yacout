@@ -1,5 +1,5 @@
 -- ============================================================
--- GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 100)
+-- GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 101)
 -- كل تحديثات قاعدة البيانات في ملف واحد.
 -- آمن تشغّله أي عدد من المرات: بيضيف الناقص بس ومبيمسحش أي بيانات.
 -- الاستخدام: phpMyAdmin ← اختار قاعدة البيانات ← تبويب SQL ← الصق الملف كله ← Go
@@ -43,6 +43,7 @@
 -- الإصدار 98: جدول symbol_checks (الأسهم المكتوبة غلط بتتمسح نهائيًا هي وخططها، والرمز الممنوع مبيرجعش تاني).
 -- الإصدار 99: مفيش تغييرات في قاعدة البيانات (حذف خطط الشبكة والخطط من القوائم ← سلة المحذوفات، والاسترجاع مبيكتبش فوق خطة جديدة لنفس السهم).
 -- الإصدار 100: فهارس (Indexes) إضافية للسرعة مع عدد كبير من المستخدمين (10,000+) + إعدادات الشاشات الطارئة ووضع الصيانة والدعاية (في site_config - مفيش جداول جديدة).
+-- الإصدار 101: جداول opportunities + opportunity_hits (البحث عن فرص حسب المؤشرات) + notify_prefs (قنوات الإشعارات لكل مشترك: الموقع / الإيميل / الواتساب).
 -- ============================================================
 
 -- الإصدار 85: ترميز الاتصال UTF-8 عشان النصوص العربي اللي بتتضاف من الملف (زي المسميات الوظيفية) تتحفظ صح
@@ -1101,4 +1102,56 @@ CALL griffine_idx('chat_messages', 'idx_chat_created', 'created_at');
 CALL griffine_idx('custom_alerts', 'idx_custom_sym_mkt', 'symbol, market, active');
 DROP PROCEDURE griffine_idx;
 
-SELECT 'GRIFFINE database is up to date (v100)' AS result;
+-- الإصدار 101: البحث عن فرص حسب المؤشرات الفنية (لحد 4 فرص مفتوحة لكل مستخدم)
+CREATE TABLE IF NOT EXISTS opportunities (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  account_email VARCHAR(190) NOT NULL,
+  opp_no INT NOT NULL DEFAULT 1,
+  side VARCHAR(4) NOT NULL DEFAULT 'buy',
+  timeframe VARCHAR(4) NOT NULL DEFAULT '1d',
+  indicators TEXT NOT NULL,
+  days TINYINT NOT NULL DEFAULT 1,
+  ch_app TINYINT(1) NOT NULL DEFAULT 1,
+  ch_email TINYINT(1) NOT NULL DEFAULT 1,
+  max_sends TINYINT NOT NULL DEFAULT 1,
+  send_gap INT NOT NULL DEFAULT 60,
+  status VARCHAR(8) NOT NULL DEFAULT 'active',
+  market VARCHAR(20) NOT NULL DEFAULT 'مصر',
+  started_at DATETIME NULL,
+  ends_at DATETIME NULL,
+  sends_count TINYINT NOT NULL DEFAULT 0,
+  last_sent_at DATETIME NULL,
+  last_run_at DATETIME NULL,
+  last_pass_at DATETIME NULL,
+  scan_pos INT NOT NULL DEFAULT 0,
+  pass_no INT NOT NULL DEFAULT 0,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_opp_owner (account_email, status),
+  KEY idx_opp_run (status, last_pass_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS opportunity_hits (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  opp_id INT NOT NULL,
+  account_email VARCHAR(190) NOT NULL,
+  symbol VARCHAR(20) NOT NULL,
+  name VARCHAR(190) NULL,
+  price DECIMAL(16,4) NOT NULL DEFAULT 0,
+  pass_no INT NOT NULL DEFAULT 0,
+  hit_at DATETIME NULL,
+  notified TINYINT(1) NOT NULL DEFAULT 0,
+  sent_no TINYINT NOT NULL DEFAULT 0,
+  UNIQUE KEY uq_opp_sym (opp_id, symbol),
+  KEY idx_hit_notify (opp_id, notified)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+-- الإصدار 101: قنوات الإشعارات لكل مشترك / موظف (الافتراضي: الموقع + الإيميل ، الواتساب مقفول)
+CREATE TABLE IF NOT EXISTS notify_prefs (
+  account_email VARCHAR(190) NOT NULL PRIMARY KEY,
+  app TINYINT(1) NOT NULL DEFAULT 1,
+  email TINYINT(1) NOT NULL DEFAULT 1,
+  wa TINYINT(1) NOT NULL DEFAULT 0,
+  wa_phone VARCHAR(30) NULL,
+  user_visible TINYINT(1) NULL,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+SELECT 'GRIFFINE database is up to date (v101)' AS result;

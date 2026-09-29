@@ -49,6 +49,10 @@ function site_config_defaults(){
         'emergency_cfg'      => '',
         'maint_on'           => '0',
         'ads_cfg'            => '',
+        // الإصدار 101: إشعارات الواتساب (مقفولة لحد ربط الخط البزنس) + إظهار إعدادات القنوات للمشتركين + البحث عن فرص
+        'wa_notify_on'         => '0',
+        'wa_notify_template'   => '',
+        'notify_prefs_visible' => '0',
         'bank_on_eg' => '0', 'bank_name_eg' => '', 'bank_holder_eg' => '', 'bank_iban_eg' => '', 'bank_note_eg' => '', 'extra_on_eg' => '0', 'extra_label_eg' => '', 'extra_details_eg' => '', 'paymob_on_eg' => '0',
         'bank_on_sa' => '0', 'bank_name_sa' => '', 'bank_holder_sa' => '', 'bank_iban_sa' => '', 'bank_note_sa' => '', 'extra_on_sa' => '0', 'extra_label_sa' => '', 'extra_details_sa' => '', 'paymob_on_sa' => '0',
         'bank_on_ae' => '0', 'bank_name_ae' => '', 'bank_holder_ae' => '', 'bank_iban_ae' => '', 'bank_note_ae' => '', 'extra_on_ae' => '0', 'extra_label_ae' => '', 'extra_details_ae' => '', 'paymob_on_ae' => '0',

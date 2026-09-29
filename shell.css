@@ -1023,3 +1023,36 @@ html.gs-has-marquee body{ padding-bottom:44px; }
 @media (max-width: 900px){ .gs-ad-marquee{ bottom:calc(64px + env(safe-area-inset-bottom)); } }
 .emg-maint.on{ border:2px solid #E02424; }
 .emg-card textarea{ min-height:60px; }
+
+/* الإصدار 101: قنوات الإشعارات */
+.g-np{ display:flex; flex-wrap:wrap; gap:4px 10px; align-items:center; min-width:220px; white-space:normal; }
+.g-np .g-np-cb{ margin:0; font-size:12px; white-space:nowrap; }
+.g-np .g-np-phone{ width:130px !important; margin:0 !important; padding:4px 8px !important; font-size:12px !important; height:28px !important; min-height:0 !important; }
+.g-np .g-np-vis{ width:auto !important; margin:0 !important; padding:2px 6px !important; font-size:11.5px !important; height:28px !important; min-height:0 !important; }
+.g-np-mine{ margin-bottom:12px; }
+.g-np-mine .u-check{ display:flex; margin:6px 0; }
+
+/* الإصدار 101: البحث عن فرص */
+.opp-entry{ display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; border:1px solid color-mix(in srgb, var(--gs-brand, #C9A227) 45%, transparent); }
+.opp-disc{ background:#fff8e1; border:1px solid #ffe082; color:#7a5c00; border-radius:10px; padding:8px 12px; font-size:13px; margin-bottom:10px; }
+html[data-theme="dark"] .opp-disc{ background:rgba(255,224,130,.12); color:#ffe082; border-color:rgba(255,224,130,.35); }
+.opp-side{ display:flex; gap:10px; }
+.opp-side button{ flex:1; max-width:200px; border-radius:12px !important; opacity:.55; background:transparent !important; border:2px solid currentColor !important; font-weight:700; }
+.opp-side .opp-buy{ color:#0E9F6E !important; } .opp-side .opp-sell{ color:#E02424 !important; }
+.opp-side button.on{ opacity:1; color:#fff !important; }
+.opp-side .opp-buy.on{ background:#0E9F6E !important; border-color:#0E9F6E !important; } .opp-side .opp-sell.on{ background:#E02424 !important; border-color:#E02424 !important; }
+.opp-ind{ display:flex; flex-wrap:wrap; gap:8px 10px; align-items:flex-end; padding:10px; margin-top:10px; border:1px dashed var(--border, #ddd); border-radius:12px; }
+.opp-ind label{ margin:0; font-size:12px; }
+.opp-ind .opp-ind-t{ min-width:200px; } .opp-ind .opp-p input{ width:90px; }
+.opp-warn{ margin-top:10px; padding:10px 12px; border-radius:10px; background:rgba(224,36,36,.08); border:1px solid rgba(224,36,36,.35); color:#b91c1c; font-size:13px; line-height:1.8; }
+.opp-card{ border-inline-start:4px solid #0E9F6E; } .opp-card.sell{ border-inline-start-color:#E02424; }
+.opp-no{ font-size:16px; } .opp-tag{ font-size:12px; font-weight:700; padding:2px 8px; border-radius:999px; }
+.opp-tag.buy{ background:rgba(14,159,110,.12); color:#0E9F6E; } .opp-tag.sell{ background:rgba(224,36,36,.12); color:#E02424; }
+.opp-inds{ margin:8px 0; padding-inline-start:18px; line-height:1.8; }
+.opp-hits{ margin-top:10px; overflow-y:auto; overscroll-behavior:contain; }
+.opp-hit{ display:grid; grid-template-columns:1.4fr .7fr 1.2fr auto; gap:8px; align-items:center; padding:8px 4px; border-top:1px solid var(--border-soft, #eee); }
+.opp-hit:first-child{ border-top:0; }
+.opp-hit-s small{ display:block; font-size:11px; opacity:.7; }
+.opp-hit-b{ display:flex; gap:4px; flex-wrap:wrap; }
+.opp-hit-b button{ padding:4px 8px !important; font-size:11.5px; margin:0 !important; }
+@media (max-width: 640px){ .opp-hit{ grid-template-columns:1fr auto; } .opp-hit-b{ grid-column:1 / -1; } }

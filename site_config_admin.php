@@ -85,7 +85,7 @@ try {
         echo json_encode(["success" => $r['ok'], "message" => $r['ok'] ? 'تم إرسال الرسالة ✓ (رد المزود: ' . ($r['response'] ?? '') . ')' : $r['error']], JSON_UNESCAPED_UNICODE);
         exit();
     } else {
-        $bools = ['pay_vodafone', 'pay_instapay', 'pay_paymob', 'admin_otp', 'otp_login', 'maint_on'];
+        $bools = ['pay_vodafone', 'pay_instapay', 'pay_paymob', 'admin_otp', 'otp_login', 'maint_on', 'wa_notify_on', 'notify_prefs_visible'];
         // الإصدار 100: الشاشات الطارئة والدعاية (JSON منضّف)
         foreach (['emergency_cfg' => 'emg_clean', 'ads_cfg' => 'ads_clean'] as $jk => $fn) if (isset($_POST[$jk])) {
             $d = json_decode((string)$_POST[$jk], true);
@@ -94,7 +94,7 @@ try {
         }
         // الإصدار 96: طرق الدفع لكل سوق
         foreach (['eg', 'sa', 'ae', 'qa', 'kw'] as $mc) { $bools[] = "bank_on_$mc"; $bools[] = "extra_on_$mc"; }
-        $texts = ['service_phone', 'instapay_address', 'paymob_integration', 'paymob_iframe', 'otp_channel', 'sms_method', 'wa_phone_id', 'wa_template', 'wa_lang', 'paymob_moto_integration', 'app_version_label', 'active_markets'];
+        $texts = ['service_phone', 'instapay_address', 'paymob_integration', 'paymob_iframe', 'otp_channel', 'sms_method', 'wa_phone_id', 'wa_template', 'wa_lang', 'paymob_moto_integration', 'app_version_label', 'active_markets', 'wa_notify_template'];
         foreach (['eg', 'sa', 'ae', 'qa', 'kw'] as $mc) foreach (['bank_name', 'bank_holder', 'bank_iban', 'bank_note', 'extra_label', 'extra_details'] as $f) $texts[] = "{$f}_$mc";
         $secrets = site_config_secret_keys();
         foreach ($bools as $k) if (isset($_POST[$k])) site_config_set($conn, $k, $_POST[$k] === '1' ? '1' : '0', $by);
@@ -103,7 +103,7 @@ try {
             if ($k === 'service_phone' && !preg_match('/^\+?[0-9 ]{8,16}$/', $v)) { echo json_encode(["success" => false, "message" => "رقم الخدمة غير صالح (أرقام بس، مثال 01012345678)."]); exit(); }
             if ($k === 'otp_channel' && !in_array($v, ['email', 'sms', 'whatsapp'], true)) continue;
             if ($k === 'wa_phone_id' && $v !== '' && !ctype_digit($v)) { echo json_encode(["success" => false, "message" => "Phone Number ID أرقام فقط."]); exit(); }
-            if ($k === 'wa_template' && $v !== '' && !preg_match('/^[a-z0-9_]{1,64}$/', $v)) { echo json_encode(["success" => false, "message" => "اسم القالب حروف إنجليزي صغيرة وأرقام و _ فقط."]); exit(); }
+            if (($k === 'wa_template' || $k === 'wa_notify_template') && $v !== '' && !preg_match('/^[a-z0-9_]{1,64}$/', $v)) { echo json_encode(["success" => false, "message" => "اسم القالب حروف إنجليزي صغيرة وأرقام و _ فقط."]); exit(); }
             if ($k === 'wa_lang' && !preg_match('/^[a-z]{2}(_[A-Z]{2})?$/', $v)) continue;
             if ($k === 'sms_method' && !in_array($v, ['GET', 'POST'], true)) continue;
             if ($k === 'active_markets') { require_once __DIR__ . '/markets_core.php'; $l = array_values(array_filter(array_map('trim', explode(',', $v)), 'mc_valid')); if (!$l) $l = ['مصر']; $v = implode(',', $l); }

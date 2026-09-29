@@ -146,6 +146,7 @@ async function renderAdminSubscribers(){
   if(!window.__isAdmin) return renderHome();
   if(!hasPermission('manage_subscribers')) return renderAdminHub();
   let subscribers = await getAllSubscribers();
+  await gNpLoad(true);   // الإصدار 101: قنوات الإشعارات لكل مشترك
   let emailChangeRequests = [];
   try {
     const ecRes = await apiGet('/admin_list_email_change_requests.php');
@@ -274,7 +275,7 @@ async function renderAdminSubscribers(){
   function renderTable(list){
     document.getElementById('subscribersTableWrap').innerHTML = list.length ? `<table>
       <thead><tr>
-        <th>الكود</th><th>الاسم</th><th>الهاتف</th><th>الإيميل</th><th>الخطة</th><th>بداية الخطة</th><th>تاريخ الانتهاء</th><th>قيمة السداد</th><th>طريقة السداد</th><th>الحالة</th><th>التذكيرات</th><th>صلاحيات خاصة</th><th></th>
+        <th>الكود</th><th>الاسم</th><th>الهاتف</th><th>الإيميل</th><th>الخطة</th><th>بداية الخطة</th><th>تاريخ الانتهاء</th><th>قيمة السداد</th><th>طريقة السداد</th><th>الحالة</th><th>التذكيرات</th><th>صلاحيات خاصة</th><th>🔔 الإشعارات</th><th></th>
       </tr></thead>
       <tbody>
         ${list.map(r=>{
@@ -299,13 +300,15 @@ async function renderAdminSubscribers(){
             <button class="small secondary" style="width:auto;margin-bottom:4px;" data-gcall="__extendDays" data-gargs="${gArgs([String(r.id)])}">+ أيام مجانية</button><br>
             ${r.planId==='trial' ? `<button class="small btn-lightgreen" style="width:auto;margin-bottom:4px;" data-gcall="__convertFree" data-gargs="${gArgs([String(r.id)])}">تحويل لباقة مدفوعة مجانًا</button><br>` : ''}
           </td>
+          <td>${gNpCellHtml(r.accountEmail)}</td>
           <td><button class="small danger u-wa" data-gcall="__deleteSubRow" data-gargs="${gArgs([String(r.id)])}">🗄️ أرشفة</button></td>
         </tr>`}).join('')}
         <tr style="font-weight:bold;background:#f0f4f2;">
-          <td colspan="7">الإجمالي</td><td>${fmtMoney(computeTotals(list))}</td><td colspan="5"></td>
+          <td colspan="7">الإجمالي</td><td>${fmtMoney(computeTotals(list))}</td><td colspan="6"></td>
         </tr>
       </tbody>
     </table>` : '<p class="u-note">لا يوجد مشتركين في هذه الفترة.</p>';
+    gNpWire(document.getElementById('subscribersTableWrap'));
 
     window.__viewProof = (id) => {
       const rec = list.find(x=>x.id===id) || subscribers.find(x=>x.id===id);
@@ -1298,6 +1301,7 @@ async function renderAdminSettingsPage(){
     { key:'hide_stock_screen', label:'إخفاء صفحة السهم (السعر والشارت)', desc:'' },
     { key:'hide_curve_home', label:'إخفاء منحنى أداء المحفظة في الرئيسية', desc:'' },
     { key:'hide_trash_screen', label:'إخفاء سلة المحذوفات عن العملاء', desc:'الحذف يفضل ينتقل للسلة، ويقدر الأدمن يسترجع من سلته.' },
+    { key:'hide_opps_screen', label:'إخفاء «البحث عن فرص» في كشاف الأسهم عن العملاء', desc:'البحث عن فرص حسب المؤشرات الفنية مع إشعارات (لحد 4 فرص لكل مشترك).' },
     { key:'hide_trades_screen', label:'إخفاء «تقرير صفقاتي» عن العملاء', desc:'لو أظهرته: كل عميل يشوف صفقاته هو بس (الشراء والبيع والصفقات المقفولة والأرباح).' },
   ];
 
@@ -1328,6 +1332,8 @@ async function renderAdminSettingsPage(){
     ${window.__isSuperAdmin ? `<h2 class="u-mt20">🧹 حذف الأسهم المكتوبة غلط</h2>
     <div class="info">أي رمز سهم مش موجود في البورصة (في خطط أي مستخدم أو الأدمن، أو قائمة المتابعة، أو تنبيهات الأسعار) بيتمسح <b>نهائيًا</b> هو وخطته وصفقاته وإشعاراته، ومبيرجعش تاني — ماعدا الخطط اللي صاحبها اختار إنها «سهم غير مدرج في البورصة». ده بيحصل تلقائيًا كل 6 ساعات، والزرار ده بيعمله فورًا. لو مصدر الأسعار واقع مفيش أي حذف.</div>
     <div class="section-card"><button class="small danger u-wa" id="symAuditBtn">🧹 فحص وحذف الرموز الغلط الآن</button><div id="symAuditOut" class="u-mt10"></div></div>` : ''}
+
+    ${gNpSettingsHtml()}
 
     <h2 class="u-mt20">إخفاء شاشات عن العميل</h2>
     <div class="info">فعّل أي مفتاح هنا لإخفاء الزر المقابل من الشاشة الرئيسية للعميل، دون حذف أي بيانات أو خطط موجودة بالفعل. الافتراضي أن كل الأزرار ظاهرة.</div>
@@ -1392,6 +1398,7 @@ async function renderAdminSettingsPage(){
       ${r.deleted.map(x => `<tr><td dir="ltr">${escapeHtml(x.email || '-')}</td><td>${x.kind === 'Grid' ? 'خطوط الشبكة' : x.kind === 'DCA' ? 'تعزيز المتوسط' : escapeHtml(x.kind)}</td><td dir="ltr"><b>${escapeHtml(x.symbol)}</b></td><td>${escapeHtml(x.market)}</td></tr>`).join('')}
       </tbody></table></div>`;
   };
+  gNpSettingsWire();   // الإصدار 101
   // الإصدار 96: رقم الإصدار المعروض
   siteCfgAdminApi().then(r => { const i = document.getElementById('cfgVersionLabel'); if (i && r && r.config) i.value = r.config.app_version_label || ''; });
   const vbtn = document.getElementById('cfgVersionSave'); if (vbtn) vbtn.onclick = async () => {
@@ -1662,11 +1669,14 @@ async function renderStaffManagementPage(){
             : `<button class="small btn-lightgreen u-wa" data-gcall="__staffMode" data-gargs="${gArgs([String(s.id), 'restore'])}">↩️ إرجاع للفريق</button>`}
           <button class="small danger u-wa" data-gcall="__staffMode" data-gargs="${gArgs([String(s.id), 'purge'])}">🗑️ حذف من الفريق نهائيًا</button></span>
         </div>
+        <div class="u-mt8 u-fs12"><b>🔔 قنوات الإشعارات:</b> ${gNpCellHtml(s.email)}</div>
         <div class="u-mt10">${permCheckboxesHtml(s.id, s.permissions)}</div>
         <button class="small secondary u-wa u-mt8" data-gcall="__saveStaffPerms" data-gargs="${gArgs([String(s.id)])}">حفظ الصلاحيات</button>
       </div>
     `).join('') : '<p class="std-filter-empty">لا توجد نتائج مطابقة للبحث</p>');
+    gNpWire(document.getElementById('staffTableWrap'));
   }
+  await gNpLoad(true);
   renderStaffTable();
   const staffSearchEl = document.getElementById('staffSearch');
   if (staffSearchEl) staffSearchEl.addEventListener('input', renderStaffTable);
