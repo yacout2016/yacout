@@ -29,6 +29,9 @@
   // الإصدار 114: رابط تحليل «بصيرة» متشارك (للقراءة بس - من غير تسجيل دخول)
   const bsTok = params.get('basira');
   if (bsTok && typeof renderBasiraShared === 'function') { renderBasiraShared(bsTok); return; }
+  // الإصدار 122: رابط دراسة «ميزان GRIFFINE AI» متشاركة (للقراءة بس)
+  const mzTok = params.get('mizan');
+  if (mzTok && typeof renderMizanAiShared === 'function') { renderMizanAiShared(mzTok); return; }
   // رابط مباشر لسياسة الخصوصية: /index.php?page=privacy
   if (params.get('page') === 'privacy') { renderPrivacyPolicyPage(); return; }
   if (params.get('page') === 'delete-account') { window.__afterLoginTarget = 'deleteAccount'; if (email) { GShell.renderDeleteAccount(); } else { renderLogin(); } return; }

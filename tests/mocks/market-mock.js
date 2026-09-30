@@ -12,6 +12,8 @@ http.createServer((req, res) => { let body = ''; req.on('data', c => body += c);
     if (req.headers['x-api-key'] === 'sk-bad-key-000000000000000') return send({ type: 'error', error: { type: 'authentication_error', message: 'invalid x-api-key' } }, 401);
     // الإصدار 115: «ميزان محفظتك AI» (مخطط فيه candidates)
     const sch = (((j.output_config || {}).format || {}).schema || {}).properties || {};
+    // الإصدار 122: «ميزان GRIFFINE AI» (مخطط فيه steps)
+    if (sch.steps) return send({ id: 'msg_test', type: 'message', role: 'assistant', model: j.model, stop_reason: 'end_turn', content: [{ type: 'text', text: JSON.stringify({ summary: 'رأي تجريبي من الذكاء الاصطناعي على دراسة ميزان: التوزيع متوازن.', strengths: ['تنويع جيد'], risks: ['تقلبات السوق'], steps: ['الدخول على مراحل'] }) }], usage: { input_tokens: 10, output_tokens: 10 } });
     if (sch.candidates) { let firstSym = 'ZZZZ'; try { const c = String(j.messages[0].content); const d = JSON.parse(c.slice(c.indexOf('\n') + 1)); global.__mzIn = d; firstSym = (d.candidate_pool[0] || {}).symbol || 'ZZZZ'; } catch(e){}
       const mz = { summary: 'تحليل تجريبي من الذكاء الاصطناعي: المحفظة متركزة في قطاع المالية.', strengths: ['كل خطة ليها مبلغ مرصود'], risks: ['تركّز في قطاع واحد', 'ارتباط عالي'],
         moves: [{ symbol: 'COMI', action: 'reduce', text: 'تقليل المبلغ المرصود لخطة COMI تدريجيًا' }, { symbol: 'FAKE1', action: 'add', text: 'رمز مش موجود لازم يتشال' }],

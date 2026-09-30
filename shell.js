@@ -50,7 +50,7 @@
      ===================================================================== */
 
   // رقم الإصدار - بيظهر في شاشة "حسابي" (غيّره مع ?v= في index.php و VERSION في sw.js)
-  const APP_VERSION = 121;
+  const APP_VERSION = 122;
 
   /* الاستعلامات المتكررة (الدردشة/التوصيات/قائمة المتابعة) - استعلام متكيّف (الإصدار 89)
      - بتقف لما التبويب يكون مخفي أو الموبايل مقفول
@@ -312,7 +312,7 @@
     renderPlanTypeChooser:'plans', renderNewPlanForm:'plans', renderGridPlanForm:'plans', renderEditPlanSettings:'plans', renderGridEditPlanSettings:'plans',
     renderPortfolio:'portfolio', renderDiversificationReport:'mizan',
     renderScreener:'screener',
-    renderBasira:'basira',
+    renderBasira:'basira', renderMizanAi:'mizanai',
     renderRecommendationsCustomerPage:'rec',
     renderAccount:'account', renderProfilePage:'account', renderSubscriptionPlans:'account', renderMySubscriptionHistory:'account',
     renderReferralPage:'account', renderAboutPage:'account', renderContactInfo:'account', renderRefundPolicyPage:'account',
@@ -486,6 +486,7 @@
       !hidden('hide_dac_screen') && { tab:'plans', sub:'dca', label:'خطط تعزيز المتوسط (DCA)', ic:'layers', go:() => renderPlansList() },
       !hidden('hide_grid_screen') && { tab:'plans', sub:'grid', label:'خطط الشبكة (Grid)', ic:'grid', go:() => renderGridPlansList() },
       !hidden('hide_portfolio_screen') && { tab:'portfolio', label:'المحفظة والتقارير', ic:'pie', go:() => renderPortfolio() },
+      (window.__isAdmin || !hidden('hide_mizanai_screen')) && { tab:'mizanai', since:'122', label:'ميزان GRIFFINE AI', ic:'balance', go:() => renderMizanAi() },   // الإصدار 122: مخطِّط التوزيع (قبل كشاف الأسهم)
       !hidden('hide_screener_screen') && { tab:'screener', label:'كشاف الأسهم', ic:'radar', go:() => renderScreener() },
       (window.__isAdmin || !hidden('hide_mizan_screen')) && { tab:'mizan', since:'116', label:'ميزان محفظتك AI', ic:'balance', go:() => renderDiversificationReport() },   // الإصدار 116
       (window.__isAdmin || !hidden('hide_basira_screen')) && { tab:'basira', since:'114', label:'بصيرة AI — تحليل الأسهم', ic:'bulb', go:() => renderBasira() },   // الإصدار 114
@@ -1620,6 +1621,7 @@
     ['خطة Grid جديدة', 'renderGridPlanForm'],
     ['ملخص المحفظة', 'renderPortfolio'],
     ['ميزان محفظتك AI (توزيع التنوع)', 'renderDiversificationReport'],
+    ['ميزان GRIFFINE AI — توزيع الاستثمار', 'renderMizanAi'],
     ['كشاف الأسهم', 'renderScreener'],
     ['التوصيات', 'renderRecommendationsCustomerPage'],
     ['حسابي', 'GS:renderAccount'],
@@ -1650,6 +1652,7 @@
     ['البحث عن فرص', 'renderOpportunities'],
     ['بصيرة AI — تحليل سهم', 'renderBasira'],
     ['تحليلات بصيرة AI (الإعدادات)', 'renderAdminBasira'],
+    ['ميزان GRIFFINE AI (الإعدادات)', 'renderAdminMizanAi'],
     ['الدعاية والعروض', 'renderAdsAdminPage'],
     ['الفريق والصلاحيات', 'renderStaffManagementPage'],
     ['شؤون الموظفين (HR)', 'renderHrPage'],
@@ -1923,7 +1926,7 @@
      بيتخفي من لوحة التحكم (hide_site_search). الشاشات المخفية عن العميل مبتظهرش في البحث.
      ===================================================================== */
   const SEARCH_HIDE = { renderPlansList:'hide_dac_screen', renderNewPlanForm:'hide_dac_screen', renderGridPlansList:'hide_grid_screen', renderGridPlanForm:'hide_grid_screen',
-    renderPortfolio:'hide_portfolio_screen', renderDiversificationReport:'hide_mizan_screen', renderScreener:'hide_screener_screen', renderBasira:'hide_basira_screen',
+    renderPortfolio:'hide_portfolio_screen', renderDiversificationReport:'hide_mizan_screen', renderMizanAi:'hide_mizanai_screen', renderScreener:'hide_screener_screen', renderBasira:'hide_basira_screen',
     renderRecommendationsCustomerPage:'hide_recommendations_screen', renderReferralPage:'hide_referral_screen', renderTrashPage:'hide_trash_screen', renderWatchlistPage:'hide_watchlist_screen',
     renderAlertsPage:'hide_alerts_screen', renderTradesReportPage:'hide_trades_screen', renderMySubscriptionHistory:'hide_sub_history_screen', renderContactInfo:'hide_contact_screen',
     renderTestimonialsPage:'hide_testimonials_screen', renderArticlesListPage:'hide_articles_screen', renderSuggestionsPage:'hide_suggestions_screen', renderOpportunities:'hide_opps_screen' };
@@ -1932,7 +1935,9 @@
     renderHome:'رئيسية بداية قيمة المحفظة', renderPlansList:'dca داك تعزيز متوسط خطط شراء', renderNewPlanForm:'dca خطة جديدة داك إضافة سهم',
     renderGridPlansList:'grid جريد شبكة خطط', renderGridPlanForm:'grid شبكة جريد خطة جديدة نطاق', renderPlanTypeChooser:'خطة جديدة إنشاء',
     renderPortfolio:'محفظة تقارير أرباح ملخص', renderDiversificationReport:'ميزان تنويع توزيع مخاطرة hhi قطاعات ذكاء اصطناعي ai',
-    renderScreener:'كشاف مؤشرات تحليل فني فلترة أسهم', renderBasira:'بصيرة تحليل سهم ذكاء اصطناعي ai أخبار توقع', renderOpportunities:'فرص مؤشرات إشعارات rsi',
+    renderScreener:'كشاف مؤشرات تحليل فني فلترة أسهم',
+    renderMizanAi:'ميزان توزيع استثمار قطاعات أصول عقار شهادات ذهب ادخار مبلغ شهري فحص توزيعة مخطط',
+    renderAdminMizanAi:'ميزان إعدادات عوائد نسب أصول مخاطرة', renderBasira:'بصيرة تحليل سهم ذكاء اصطناعي ai أخبار توقع', renderOpportunities:'فرص مؤشرات إشعارات rsi',
     renderRecommendationsCustomerPage:'توصيات شراء', renderWatchlistPage:'متابعة مفضلة نجمة', renderAlertsPage:'تنبيه سعر إشعار', renderTradesReportPage:'صفقات تقرير بيع شراء',
     renderSubscriptionPlans:'اشتراك باقة دفع تجديد سعر', renderMySubscriptionHistory:'سجل اشتراك فواتير', renderProfilePage:'ملف شخصي اسم صورة موبايل كلمة سر',
     renderReferralPage:'إحالة دعوة صديق كود', renderTrashPage:'سلة محذوفات استرجاع حذف', renderContactInfo:'تواصل واتساب تليفون إيميل', renderAboutPage:'عن الموقع الإصدار',

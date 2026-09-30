@@ -128,6 +128,7 @@ function getAllAdminSettings($conn){
         'hide_trades_screen' => true,     // تقرير صفقاتي للعميل - مخفي لحد ما الأدمن يظهره
         'hide_opps_screen' => false,      // الإصدار 101: البحث عن فرص في كشاف الأسهم
         'hide_basira_screen' => false,    // الإصدار 114: تحليلات بصيرة AI
+        'hide_mizanai_screen' => false,   // الإصدار 122: ميزان GRIFFINE AI (مخطِّط التوزيع)
         'hide_mizan_screen' => false,     // الإصدار 116: ميزان محفظتك AI
         'hide_install_icon' => false,     // الإصدار 116: أيقونة تثبيت التطبيق
         'hide_site_search' => false,      // الإصدار 116: البحث العام

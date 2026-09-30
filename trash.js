@@ -6,7 +6,7 @@
 const TRASH_TYPES = {
   plan:'خطة', watchlist:'قائمة المتابعة', price_alert:'تنبيه سعر', staff:'موظف', hr_employee:'موظف (HR)', hr_document:'مستند',
   job_title:'مسمى وظيفي', faq:'المساعد الذكي', article:'مقال', testimonial:'رأي عميل', blacklist:'القائمة السوداء',
-  subscription_plan:'باقة', suggestion:'مقترح', chat:'محادثة شات', customer:'عميل', notification:'إشعار', opportunity:'فرصة (كشاف الأسهم)', basira:'تحليل بصيرة AI'
+  subscription_plan:'باقة', suggestion:'مقترح', chat:'محادثة شات', customer:'عميل', notification:'إشعار', opportunity:'فرصة (كشاف الأسهم)', basira:'تحليل بصيرة AI', mizan:'دراسة ميزان GRIFFINE AI'
 };
 async function renderTrashPage(all){
   if (!window.__isAdmin && window.GShell && GShell.settings && GShell.settings.hide_trash_screen === true) return renderHome();   // الإصدار 96: الشاشة مخفية من لوحة التحكم

@@ -1,5 +1,5 @@
 -- ============================================================
--- GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 121)
+-- GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 122)
 -- كل تحديثات قاعدة البيانات في ملف واحد.
 -- آمن تشغّله أي عدد من المرات: بيضيف الناقص بس ومبيمسحش أي بيانات.
 -- الاستخدام: phpMyAdmin ← اختار قاعدة البيانات ← تبويب SQL ← الصق الملف كله ← Go
@@ -64,6 +64,7 @@
 -- الإصدار 119: مفيش تغييرات في قاعدة البيانات («متابعة خططك على آخر سعر» اتنقلت من الرئيسية لشاشات الخطط + إعداد الإخفاء hide_plan_watch).
 -- الإصدار 120: مفيش تغييرات في قاعدة البيانات (جدول مسح السوق في بصيرة جوه حدود الصفحة + إظهار/إخفاء الأعمدة + ألوان الزراير).
 -- الإصدار 121: مفيش تغييرات في قاعدة البيانات (زرار «↗ تحليل» في قائمة المتابعة يفتح بصيرة + الجدول جوه عرض الصفحة).
+-- الإصدار 122: جدول mizan_studies («ميزان GRIFFINE AI» - الدراسات المحفوظة) + إعدادات ميزان (mizanai_cfg) + إعداد الإخفاء hide_mizanai_screen.
 -- ============================================================
 
 -- الإصدار 85: ترميز الاتصال UTF-8 عشان النصوص العربي اللي بتتضاف من الملف (زي المسميات الوظيفية) تتحفظ صح
@@ -1189,4 +1190,17 @@ CREATE TABLE IF NOT EXISTS basira_reports (
   UNIQUE KEY uq_bs_share (share_token)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-SELECT 'GRIFFINE database is up to date (v121)' AS result;
+-- الإصدار 122: «ميزان GRIFFINE AI» - الدراسات المحفوظة لكل مستخدم (توزيع قطاعات / توزيع أصول / فحص توزيعة) + رابط مشاركة للقراءة بس
+CREATE TABLE IF NOT EXISTS mizan_studies (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  account_email VARCHAR(190) NOT NULL,
+  mode VARCHAR(10) NOT NULL DEFAULT 'stocks',
+  title VARCHAR(200) NOT NULL DEFAULT '',
+  data MEDIUMTEXT NOT NULL,
+  share_token VARCHAR(40) NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_mz_owner (account_email, id),
+  UNIQUE KEY uq_mz_share (share_token)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+SELECT 'GRIFFINE database is up to date (v122)' AS result;

@@ -36,6 +36,7 @@ function adminNavButtonsHtml(){
     { title: 'المحتوى والتنسيق', items: [
       { id:'goLandingBtn', perm:'edit_site_design', icon:'🏁', label:'صفحة اللاندينج (واجهة الموقع قبل الدخول)' },
       { id:'goBasiraBtn', perm:'edit_site_design', icon:'🔮', label:'تحليلات بصيرة AI' },
+      { id:'goMizanAiBtn', perm:'edit_site_design', icon:'⚖️', label:'ميزان GRIFFINE AI' },
       { id:'goStudioBtn', perm:'edit_site_design', icon:'🖌️', label:'استوديو التصميم (الثيمات وتعديل أي شاشة)' },
       { id:'goSiteDesignBtn', perm:'edit_site_design', icon:'🎨', label:'تنسيق الموقع' },
       { id:'goSiteTextsBtn', perm:'manage_site_content', icon:'📝', label:'نصوص شاشات الموقع' },
@@ -77,6 +78,7 @@ function wireAdminNavButtons(){
     goAdsBtn: () => renderAdsAdminPage(),               // الإصدار 100 (promo.js)
     goLandingBtn: () => renderAdminLandingPage(),       // الإصدار 108 (landing-admin.js)
     goBasiraBtn: () => renderAdminBasira(),             // الإصدار 114 (basira.js)
+    goMizanAiBtn: () => renderAdminMizanAi(),           // الإصدار 122 (mizanai.js)
     goBlacklistBtn: renderBlacklist,
     goArchiveBtn: renderArchivedCustomers,
     goStaffBtn: renderStaffManagementPage,
@@ -1306,6 +1308,7 @@ async function renderAdminSettingsPage(){
     { key:'hide_curve_home', label:'إخفاء منحنى أداء المحفظة في الرئيسية', desc:'' },
     { key:'hide_trash_screen', label:'إخفاء سلة المحذوفات عن العملاء', desc:'الحذف يفضل ينتقل للسلة، ويقدر الأدمن يسترجع من سلته.' },
     { key:'hide_mizan_screen', label:'إخفاء «ميزان محفظتك AI» عن العملاء', desc:'الشاشة بتختفي من القائمة الجانبية ومن المحفظة والتقارير، والأدمن بيفضل يشوفها. رأي الذكاء الاصطناعي بيستخدم إعدادات ومفتاح «تحليلات بصيرة AI».' },
+    { key:'hide_mizanai_screen', label:'إخفاء «ميزان GRIFFINE AI» (مخطِّط توزيع الاستثمار) عن العملاء', desc:'الشاشة بتختفي من القائمة والبحث، والأدمن بيفضل يشوفها. إعداداتها من زرار «ميزان GRIFFINE AI» في لوحة التحكم.' },
     { key:'hide_basira_screen', label:'إخفاء «بصيرة AI — تحليل الأسهم» عن العملاء', desc:'الشاشة بتختفي من القائمة والكشاف، والأدمن بيفضل يشوفها. إعداداتها من «تحليلات بصيرة AI» في لوحة التحكم.' },
     { key:'hide_opps_screen', label:'إخفاء «البحث عن فرص» في كشاف الأسهم عن العملاء', desc:'البحث عن فرص حسب المؤشرات الفنية مع إشعارات (لحد 4 فرص لكل مشترك).' },
     { key:'hide_trades_screen', label:'إخفاء «تقرير صفقاتي» عن العملاء', desc:'لو أظهرته: كل عميل يشوف صفقاته هو بس (الشراء والبيع والصفقات المقفولة والأرباح).' },
