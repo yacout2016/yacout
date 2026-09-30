@@ -15,7 +15,7 @@ http.createServer((req, res) => { let body = ''; req.on('data', c => body += c);
     if (sch.candidates) { let firstSym = 'ZZZZ'; try { const c = String(j.messages[0].content); const d = JSON.parse(c.slice(c.indexOf('\n') + 1)); global.__mzIn = d; firstSym = (d.candidate_pool[0] || {}).symbol || 'ZZZZ'; } catch(e){}
       const mz = { summary: 'تحليل تجريبي من الذكاء الاصطناعي: المحفظة متركزة في قطاع المالية.', strengths: ['كل خطة ليها مبلغ مرصود'], risks: ['تركّز في قطاع واحد', 'ارتباط عالي'],
         moves: [{ symbol: 'COMI', action: 'reduce', text: 'تقليل المبلغ المرصود لخطة COMI تدريجيًا' }, { symbol: 'FAKE1', action: 'add', text: 'رمز مش موجود لازم يتشال' }],
-        market_view: 'السوق في اتجاه صاعد متوسط.', candidates: [{ symbol: firstSym, reason: 'قطاع مختلف' }, { symbol: 'NOPE9', reason: 'مش في القائمة' }] };
+        market_view: 'السوق في اتجاه صاعد متوسط.', targets: [{ symbol: 'COMI', max_weight: 30, reason: 'قطاع البنوك مسيطر على المحفظة' }, { symbol: 'FAKE1', max_weight: 50, reason: 'مش في المحفظة' }, { symbol: 'TMGH', max_weight: 99, reason: 'رقم مبالغ فيه لازم يتقص' }], candidates: [{ symbol: firstSym, reason: 'قطاع مختلف' }, { symbol: 'NOPE9', reason: 'مش في القائمة' }] };
       return send({ id: 'msg_test', type: 'message', role: 'assistant', model: j.model, stop_reason: 'end_turn', content: [{ type: 'text', text: JSON.stringify(mz) }], usage: { input_tokens: 10, output_tokens: 10 } }); }
     const out = { opinion: 'رأي تجريبي من الذكاء الاصطناعي: الصورة العامة متوازنة مع ميل إيجابي.', positives: ['نمو الأرباح', 'سيولة داخلة', 'فوق المتوسط 50'], negatives: ['تذبذب السوق', 'مقاومة قريبة'],
       bull: { prob: 40, text: 'اختراق المقاومة' }, base: { prob: 40, text: 'تداول عرضي' }, bear: { prob: 20, text: 'كسر الدعم' },
@@ -24,7 +24,9 @@ http.createServer((req, res) => { let body = ''; req.on('data', c => body += c);
   if (u.pathname === '/set') { prices[u.searchParams.get('sym')] = +u.searchParams.get('price'); return send({ ok: true, prices }); }
   if (/\/scan$/.test(u.pathname)) { const j = JSON.parse(body || '{}');
     // الإصدار 101: قائمة كل أسهم البورصة (من غير tickers)
-    if (!j.symbols || !j.symbols.tickers) return send({ totalCount: Object.keys(prices).length, data: Object.keys(prices).sort().map(sym => ({ s: 'EGX:' + sym, d: [sym, sym + ' Co', prices[sym]] })) });
+    const SECT0 = { COMI: 'Finance', HRHO: 'Finance', TMGH: 'Industrial Services', CRVX: 'Health Technology', DROPX: 'Retail Trade' };
+    if (!j.symbols || !j.symbols.tickers) { const cols = j.columns || ['name', 'description', 'close'];   // الإصدار 118: الأعمدة حسب الطلب (القطاع + القيمة السوقية)
+      return send({ totalCount: Object.keys(prices).length, data: Object.keys(prices).sort().map(sym => ({ s: 'EGX:' + sym, d: cols.map(c => ({ name: sym, description: sym + ' Co', close: prices[sym], sector: SECT0[sym] || 'Miscellaneous', market_cap_basic: prices[sym] * 1e6 })[c] ?? null) })) }); }
     const t = j.symbols.tickers[0]; const sym = t.split(':')[1]; const p = prices[sym];
     if (!p) return send({ data: [] });
     const SECT = { COMI: 'Finance', HRHO: 'Finance', TMGH: 'Industrial Services', CRVX: 'Health Technology', DROPX: 'Retail Trade' };

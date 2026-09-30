@@ -131,13 +131,14 @@ function mzPaint(body, R){
     </div>
 
     <h2 class="mz-sec-title"><span class="ic">📋</span> أسهم المحفظة</h2>
-    <div class="bs-card u-ox"><table class="mz-table"><thead><tr><th>السهم</th><th>القطاع</th><th>الخطة</th><th>الوزن</th><th>القيمة</th><th>الربح/الخسارة</th><th>التذبذب</th><th>عائد سنة</th><th>أقصى تراجع</th><th></th></tr></thead><tbody>
+    <div class="bs-card u-ox"><table class="mz-table"><thead><tr><th>السهم</th><th>القطاع</th><th>الخطة</th><th>الوزن</th><th>النسبة المقترحة</th><th>القيمة</th><th>الربح/الخسارة</th><th>التذبذب</th><th>عائد سنة</th><th>أقصى تراجع</th><th></th></tr></thead><tbody>
       ${H.map((h, i) => `<tr><td><b class="n" title="${mzE(h.name || '')}">${mzE(h.s)}</b>${h.name ? `<br><small class="u-muted">${mzE(h.name)}</small>` : ''}</td><td>${mzE(h.sector)}</td><td><span class="bs-chip bs-c-neu">${mzE(h.t)}</span></td>
-        <td><div class="mz-wcell"><div class="mz-bar"><i style="width:${Math.min(100, h.w)}%;background:${h.w > R.cap ? 'var(--gs-neg,#DC2626)' : MZ_COLORS[i % MZ_COLORS.length]}"></i></div><b class="n">${mzN(h.w, 1)}%</b></div></td>
+        <td><div class="mz-wcell"><div class="mz-bar"><i style="width:${Math.min(100, h.w)}%;background:${h.target != null && h.w > h.target + 5 ? 'var(--gs-neg,#DC2626)' : MZ_COLORS[i % MZ_COLORS.length]}"></i></div><b class="n">${mzN(h.w, 1)}%</b></div></td>
+        <td class="mz-tgt" title="${mzE(h.tReason || '')}"><b class="n ${h.target != null && h.w > h.target + 5 ? 'neg' : 'pos'}">${h.target != null ? h.target + '%' : '—'}</b> <span class="bs-chip ${h.tSrc === 'ai' ? 'bs-c-gold' : 'bs-c-neu'}">${h.tSrc === 'ai' ? '🤖 AI' : 'قواعد'}</span>${h.tReason ? `<br><small class="u-muted mz-why">${mzE(h.tReason)}</small>` : ''}</td>
         <td class="mz-num">${mzN(h.value)}</td><td class="mz-num ${h.pnl >= 0 ? 'pos' : 'neg'}">${mzP(h.pnlPct)}</td><td class="mz-num">${h.vol == null ? '—' : mzN(h.vol) + '%'}</td>
         <td class="mz-num ${h.y1 == null ? '' : h.y1 >= 0 ? 'pos' : 'neg'}">${mzP(h.y1)}</td><td class="mz-num neg">${h.mdd == null ? '—' : mzN(h.mdd) + '%'}</td>
         <td><button type="button" class="secondary small mz-bs" data-s="${mzE(h.s)}" data-m="${mzE(h.m)}">بصيرة ↗</button></td></tr>`).join('')}
-    </tbody></table><small class="u-muted">الحد المقترح لوزن السهم الواحد مع ${M.n} ${M.n === 1 ? 'سهم' : 'أسهم'}: ${R.cap}% (الأعلى منه باللون الأحمر).</small></div>
+    </tbody></table><small class="u-muted">النسبة المقترحة لكل سهم بتتحدد حسب قطاعه ونوعه وتذبذبه وارتباطه ووضع السوق (بالذكاء الاصطناعي، أو بالقواعد المتعارف عليها لتوازن المحافظ لو مش شغال) — مفيش رقم ثابت لكل الأسهم. الوزن الأعلى من المقترح بأكتر من 5 نقط باللون الأحمر.</small></div>
 
     ${R.alerts && R.alerts.length ? `<h2 class="mz-sec-title"><span class="ic">🚦</span> التنبيهات</h2><div class="bs-card mz-alerts">${R.alerts.map(a => `<div class="mz-al k-${a.k}"><span class="d">${a.k === 'pos' ? '✅' : a.k === 'neg' ? '⛔' : '⚠️'}</span><div><b>${mzE(a.t)}</b><small>${mzE(a.d)}</small></div></div>`).join('')}</div>` : ''}
 
@@ -172,15 +173,15 @@ function mzPrint(R){
   const lvl = M.risk >= 65 ? 'خطورة عالية' : M.risk >= 45 ? 'خطورة متوسطة' : 'خطورة منخفضة';
   w.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>ميزان محفظتك GRIFFINE AI</title>
     <style>body{font-family:IBM Plex Sans Arabic,Tahoma,sans-serif;padding:24px;color:#111;background:#fff}h1{margin:0 0 4px;font-size:22px}h2{font-size:16px;margin:20px 0 8px;border-bottom:2px solid #eee;padding-bottom:6px}
-    table{width:100%;border-collapse:collapse;font-size:12.5px}th,td{border:1px solid #ddd;padding:6px 8px;text-align:right}th{background:#f3f4f6}.n{direction:ltr;unicode-bidi:plaintext;font-variant-numeric:tabular-nums}
+    table{width:100%;border-collapse:collapse;font-size:12.5px}th,td{border:1px solid #ddd;padding:6px 8px;text-align:right}th{background:#f3f4f6}.n,.mz-num{direction:ltr;unicode-bidi:plaintext;font-variant-numeric:tabular-nums}
     .pos{color:#15803d}.neg{color:#b91c1c}.kv{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.kv div{background:#f8fafc;border:1px solid #eee;border-radius:8px;padding:8px;text-align:center}.kv span{display:block;font-size:11px;color:#666}
     .disc{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 12px;font-size:12px;margin:10px 0}p{line-height:1.8;font-size:13.5px}li{font-size:13px;margin-bottom:3px}</style></head><body>
     <h1>ميزان محفظتك GRIFFINE AI — تحليل التنويع</h1><div style="color:#555;font-size:13px">${e(R.ccy)} — ${e(new Date(R.at).toLocaleString('ar-EG'))}</div>
     <div class="disc">⚠️ تحليل آلي تعليمي — مش نصيحة استثمارية.</div>
     <h2>درجة الخطورة: ${M.risk} من 100 (${lvl})</h2>
     <div class="kv">${[['قيمة المحفظة', mzN(M.total)], ['الربح/الخسارة', mzN(M.pnl) + ' (' + mzP(M.pnlPct) + ')'], ['HHI', mzN(M.hhi)], ['عدد الأسهم الفعلي', mzN(M.effN)], ['أكبر سهم', mzN(M.top1, 1) + '%'], ['التذبذب السنوي', M.volP == null ? '—' : mzN(M.volP) + '%'], ['أقصى تراجع', M.mddP == null ? '—' : mzN(M.mddP) + '%'], ['متوسط الارتباط', M.avgCorr == null ? '—' : mzN(M.avgCorr)]].map(([l, v]) => `<div><span>${l}</span><b class="n">${v}</b></div>`).join('')}</div>
-    <h2>أسهم المحفظة</h2><table><thead><tr><th>السهم</th><th>القطاع</th><th>الوزن</th><th>القيمة</th><th>الربح/الخسارة</th><th>التذبذب</th><th>عائد سنة</th></tr></thead><tbody>
-    ${M.holdings.map(h => `<tr><td><b>${e(h.s)}</b> ${e(h.name || '')}</td><td>${e(h.sector)}</td><td class="mz-num">${mzN(h.w, 1)}%</td><td class="mz-num">${mzN(h.value)}</td><td class="mz-num ${h.pnl >= 0 ? 'pos' : 'neg'}">${mzP(h.pnlPct)}</td><td class="mz-num">${h.vol == null ? '—' : mzN(h.vol) + '%'}</td><td class="mz-num">${mzP(h.y1)}</td></tr>`).join('')}</tbody></table>
+    <h2>أسهم المحفظة</h2><table><thead><tr><th>السهم</th><th>القطاع</th><th>الوزن</th><th>النسبة المقترحة</th><th>القيمة</th><th>الربح/الخسارة</th><th>التذبذب</th><th>عائد سنة</th></tr></thead><tbody>
+    ${M.holdings.map(h => `<tr><td><b>${e(h.s)}</b> ${e(h.name || '')}</td><td>${e(h.sector)}</td><td class="mz-num">${mzN(h.w, 1)}%</td><td class="mz-num">${h.target != null ? h.target + '%' : '—'}</td><td class="mz-num">${mzN(h.value)}</td><td class="mz-num ${h.pnl >= 0 ? 'pos' : 'neg'}">${mzP(h.pnlPct)}</td><td class="mz-num">${h.vol == null ? '—' : mzN(h.vol) + '%'}</td><td class="mz-num">${mzP(h.y1)}</td></tr>`).join('')}</tbody></table>
     <h2>التوزيع حسب القطاع</h2><table><tbody>${Object.entries(M.sectors).map(([s, v]) => `<tr><td>${e(s)}</td><td class="mz-num">${mzN(v, 1)}%</td></tr>`).join('')}</tbody></table>
     ${R.alerts.length ? `<h2>التنبيهات</h2><ul>${R.alerts.map(a => `<li class="${a.k === 'pos' ? 'pos' : a.k === 'neg' ? 'neg' : ''}"><b>${e(a.t)}:</b> ${e(a.d)}</li>`).join('')}</ul>` : ''}
     <h2>${ai.auto ? 'الرأي الآلي' : 'رأي الذكاء الاصطناعي'}</h2><p>${e(ai.summary)}</p>

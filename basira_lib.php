@@ -36,7 +36,7 @@ function bs_defaults(){
         'name' => 'بصيرة', 'tagline' => 'تحليل آلي شامل لأي سهم: مؤشرات فنية + ذكاء اصطناعي + أخبار',
         'disclaimer' => 'ده تحليل آلي معتمد على المؤشرات الفنية والذكاء الاصطناعي والأخبار المنشورة، ومش نصيحة استثمارية ولا توصية بالشراء أو البيع. القرار قرارك، وممكن السوق يتحرك عكس أي توقع.',
         'ai_on' => true, 'model' => 'claude-opus-5-5', 'effort' => 'medium', 'ai_daily_max' => 150,
-        'cache_min' => 60, 'news_on' => true, 'news_max' => 8, 'watch_max' => 12, 'save_max' => 50, 'share_on' => true, 'plans_on' => true,
+        'cache_min' => 60, 'scan_on' => true, 'scan_max' => 300, 'news_on' => true, 'news_max' => 8, 'watch_max' => 12, 'save_max' => 50, 'share_on' => true, 'plans_on' => true,
         'horizons' => ['week' => true, 'month' => true, '3m' => true, '6m' => true, 'year' => true],
         'ar_names' => '',   // سطر لكل سهم: SYMBOL=الاسم بالعربي (بيكمّل/بيغيّر القائمة الجاهزة)
     ];
@@ -48,6 +48,7 @@ function bs_cfg($conn){
     $d['cache_min'] = max(5, min(1440, (int)$d['cache_min'])); $d['news_max'] = max(0, min(20, (int)$d['news_max']));
     $d['watch_max'] = max(1, min(30, (int)$d['watch_max'])); $d['save_max'] = max(5, min(200, (int)$d['save_max']));
     $d['ai_daily_max'] = max(0, min(5000, (int)$d['ai_daily_max']));
+    $d['scan_max'] = max(20, min(800, (int)$d['scan_max']));   // الإصدار 118: أقصى عدد أسهم في مسح السوق
     if (!isset(BS_MODELS[$d['model']])) $d['model'] = 'claude-opus-5-5';
     if (!in_array($d['effort'], ['low', 'medium', 'high'], true)) $d['effort'] = 'medium';
     return $d;
@@ -375,4 +376,55 @@ function bs_quick($conn, $sym, $market){
     $A = bs_compute($sym, $market); if (empty($A['ok'])) return ['ok' => false];
     return ['ok' => true, 'score' => $A['score'], 'verdict' => $A['score'] >= 58 ? 'صاعد — إيجابي' : ($A['score'] <= 42 ? 'هابط — سلبي' : 'محايد — عرضي'), 'last' => $A['last'], 'chg' => $A['chg'], 'week' => $A['horizons'][0]['verdict']];
 }
-?>
+
+/* =====================================================================
+   الإصدار 118: «مسح السوق» في بصيرة — كل أسهم البورصة (أو قطاع) مترتبة حسب احتمال الصعود في الفترة المختارة
+   ===================================================================== */
+const BS_SECTORS = [
+    'Finance' => 'المالية والبنوك', 'Consumer Non-Durables' => 'سلع استهلاكية', 'Producer Manufacturing' => 'التصنيع',
+    'Non-Energy Minerals' => 'مواد البناء والمعادن', 'Process Industries' => 'الكيماويات والأسمدة', 'Utilities' => 'المرافق',
+    'Communications' => 'الاتصالات', 'Technology Services' => 'خدمات التكنولوجيا', 'Electronic Technology' => 'التكنولوجيا الإلكترونية',
+    'Health Technology' => 'الأدوية والرعاية الصحية', 'Health Services' => 'الخدمات الصحية', 'Retail Trade' => 'تجارة التجزئة',
+    'Distribution Services' => 'التوزيع', 'Transportation' => 'النقل', 'Industrial Services' => 'الخدمات الصناعية والمقاولات',
+    'Energy Minerals' => 'الطاقة والبترول', 'Consumer Services' => 'الخدمات الاستهلاكية والسياحة', 'Consumer Durables' => 'السلع المعمرة',
+    'Commercial Services' => 'الخدمات التجارية', 'Miscellaneous' => 'متنوع', 'Government' => 'حكومي',
+];
+
+/* قائمة أسهم البورصة بالقطاع (طلب واحد لـ TradingView ومتخزنة 12 ساعة) - مترتبة بالقيمة السوقية (الكبار الأول) */
+function bs_universe($conn, $market){
+    $c = opp_mkt($market);
+    $f = opp_cache_dir() . '/' . md5('bsuni118|' . $market) . '.json';
+    if (is_file($f) && time() - filemtime($f) < 12 * 3600 && ($j = json_decode((string)@file_get_contents($f), true))) return $j;
+    $out = [];
+    $r = mq_http(TV_SCAN_BASE . $c['screener'] . '/scan', ['filter' => [], 'columns' => ['name', 'description', 'close', 'sector', 'market_cap_basic'], 'range' => [0, 800], 'sort' => ['sortBy' => 'market_cap_basic', 'sortOrder' => 'desc']]);
+    foreach (($r['data'] ?? []) as $row) {
+        $d = $row['d'] ?? []; $sym = strtoupper((string)($d[0] ?? '')); if (!preg_match('/^[A-Z0-9.\-]{1,20}$/', $sym)) continue;
+        $sec = is_string($d[3] ?? null) && $d[3] !== '' ? (BS_SECTORS[$d[3]] ?? $d[3]) : 'غير محدد';
+        $out[] = ['s' => $sym, 'n' => (string)($d[1] ?? $sym), 'sec' => $sec, 'cap' => is_numeric($d[4] ?? null) ? (float)$d[4] : 0];
+    }
+    if (!$out) { foreach (opp_universe($conn, $market) as $u) $out[] = ['s' => $u['s'], 'n' => $u['n'], 'sec' => 'غير محدد', 'cap' => 0]; return $out; }
+    usort($out, fn($a, $b) => $b['cap'] <=> $a['cap']);
+    @file_put_contents($f, json_encode($out, JSON_UNESCAPED_UNICODE));
+    return $out;
+}
+/* تحليل مختصر لسهم واحد للمسح: نفس محرك «بصيرة» (المؤشرات + احتمال الصعود لكل فترة) من غير أخبار ولا ذكاء اصطناعي
+   لو السهم اتحلّل كامل قريب (فيه تعديل الذكاء الاصطناعي) ← بناخد احتمالاته من التحليل الكامل */
+function bs_scan_item($conn, $sym, $market){
+    $cfg = bs_cfg($conn);
+    $full = bs_cache_file($conn, $sym, $market);
+    if (is_file($full) && time() - filemtime($full) < $cfg['cache_min'] * 60 && ($j = json_decode((string)@file_get_contents($full), true)) && !empty($j['ok'])) $A = $j + ['src' => ($j['ai']['source'] ?? '') === 'ai' ? 'ai' : 'rules'];
+    else {
+        $f = opp_cache_dir() . '/' . md5("bsscan118|$sym|$market") . '.json';
+        if (is_file($f) && time() - filemtime($f) < max(60, $cfg['cache_min']) * 60 && ($j = json_decode((string)@file_get_contents($f), true))) return $j;
+        $A = bs_compute($sym, $market);
+        if (empty($A['ok'])) { $o = ['ok' => false]; @file_put_contents($f, json_encode($o)); return $o; }
+        $A['src'] = 'rules';
+    }
+    $hz = []; foreach ($A['horizons'] as $h) $hz[$h['key']] = ['up' => (int)$h['up'], 'lo' => $h['lo'] ?? null, 'hi' => $h['hi'] ?? null, 'v' => $h['verdict'] ?? ''];
+    $o = ['ok' => true, 'score' => (int)$A['score'], 'last' => $A['last'], 'chg' => $A['chg'], 'y1' => $A['y1'] ?? null, 'vol' => $A['vol'] ?? null, 'hz' => $hz, 'src' => $A['src'],
+        's1' => $A['levels']['s1'] ?? null, 'r1' => $A['levels']['r1'] ?? null, 'pos' => $A['pos'] ?? 0, 'neg' => $A['neg'] ?? 0];
+    if (!isset($f)) return $o;
+    @file_put_contents($f, json_encode($o, JSON_UNESCAPED_UNICODE));
+    return $o;
+}
+

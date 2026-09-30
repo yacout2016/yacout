@@ -544,8 +544,7 @@ function gGridDynTargetPaint(g, price, trial){
    1) السعر عدّى هدف البيع ← الهدف اتفعّل على سعر السوق (DCA: الكمية كلها / Grid: المستويات اللي عدّت)
    2) DCA: كل المستويات اتنفذت ← المبلغ المرصود للسهم خلص (عدّل الخطة وزوّد المبلغ لفتح مستويات جديدة)
    3) Grid: السعر نزل تحت قاع النطاق
-   4) التركّز: السهم وصل 40% أو أكتر من قيمة المحفظة (نفس العملة) */
-const G_CONC_PCT = 40;
+   4) التركّز: السهم وزنه أعلى من «النسبة المقترحة» ليه حسب ميزان المحفظة (الإصدار 117 - gPlanWatchConc) */
 function gPlanWatchItems(plans, grids){
   const px = window.__mkLivePx || {}, out = [], val = {}, ccyTot = {};
   const keyOf = (s, m) => String(s).toUpperCase() + '|' + (m || 'مصر');
@@ -578,20 +577,35 @@ function gPlanWatchItems(plans, grids){
     if (over.length) out.push({ kind: 'up', type: 'Grid', sym: s, text: `السعر ${fmt2(last)} عدّى هدف البيع في ${over.length === 1 ? 'مستوى واحد' : over.length + ' مستويات'} — الهدف اتفعّل على سعر السوق: ربح فعلي ${fmt2(over.reduce((a, l) => a + (last - l.executedPrice) * l.executedQty, 0))} بدل ${fmt2(over.reduce((a, l) => a + (l.sellTargetPrice - l.executedPrice) * l.executedQty, 0))}` });
     if (+g.rangeLow > 0 && last < +g.rangeLow) out.push({ kind: 'cap', type: 'Grid', sym: s, text: `السعر ${fmt2(last)} نزل تحت قاع النطاق ${fmt2(g.rangeLow)} — مستويات الشراء في النطاق خلصت، تقدر تعدّل النطاق أو المبلغ.` });
   });
-  // التركّز (لو في العملة دي أكتر من سهم)
-  const perSym = {}; Object.keys(val).forEach(k => { const i = k.lastIndexOf('|'); const c = k.slice(i + 1); (perSym[c] = perSym[c] || []).push(k.slice(0, i)); });
-  Object.entries(val).forEach(([k, v]) => {
-    const i = k.lastIndexOf('|'), s = k.slice(0, i), c = k.slice(i + 1);
-    if ((perSym[c] || []).length < 2) return;
-    const pct = v / ccyTot[c] * 100;
-    if (pct >= G_CONC_PCT) out.push({ kind: 'conc', type: '', sym: s, text: `السهم ده بقى ${pct.toFixed(0)}% من قيمة محفظتك${c ? ' (' + c + ')' : ''} — نسبة تركّز عالية (الحد المقترح أقل من ${G_CONC_PCT}%). ملحوظة للمراجعة، مش أمر بيع.` });
-  });
+  // الإصدار 117: ملحوظة التركّز بقت حسب «النسبة المقترحة» لكل سهم من ميزان المحفظة (gPlanWatchConc) - مش رقم ثابت
   const ord = { up: 0, cap: 1, conc: 2 };
   return out.sort((a, b) => ord[a.kind] - ord[b.kind]);
+}
+/* الإصدار 117: ملحوظة التركّز = السهم وزنه أعلى من «النسبة المقترحة» ليه حسب ميزان المحفظة بأكتر من 5 نقط
+   النسبة من آخر تحليل «ميزان محفظتك AI» (بالذكاء الاصطناعي) ولو مفيش ← بالقواعد المتعارف عليها لتوازن المحافظ (القطاع / التذبذب / الارتباط / عدد الأسهم) */
+async function gPlanWatchConc(plans, grids){
+  if (typeof mzPositions !== 'function') return [];
+  const { by } = mzPositions(plans, grids), out = [];
+  for (const [ccy, pos] of Object.entries(by)) {
+    if (new Set(pos.map(p => p.s + '|' + p.m)).size < 2) continue;
+    const key = 'gs_mzl_' + ccy + '_' + JSON.stringify(pos).length + '_' + pos.map(p => p.s + p.q).join(',');
+    let r = null; try { const c = JSON.parse(sessionStorage.getItem(key) || 'null'); if (c && Date.now() - c.at < 20 * 60 * 1000) r = c.r; } catch(e){}
+    if (!r) { r = await apiPost('/mizan_api.php', { action: 'limits', positions: JSON.stringify(pos), ccy }).catch(() => null); if (r && r.success) { try { sessionStorage.setItem(key, JSON.stringify({ at: Date.now(), r })); } catch(e){} } }
+    if (!r || !r.success) continue;
+    (r.items || []).forEach(it => { if (it.w > it.t + 5) out.push({ kind: 'conc', type: '', sym: it.s, mizan: true,
+      text: `السهم ده بقى ${it.w.toFixed(0)}% من قيمة محفظتك${ccy && ccy !== '—' ? ' (' + ccy + ')' : ''}، والنسبة المقترحة ليه حسب ميزان المحفظة ${it.t}%${it.src === 'ai' ? ' (تحليل الذكاء الاصطناعي)' : ''} — يُفضّل تنزل لـ ${it.t}% تدريجيًا بتقليل المبلغ المرصود لخطته أو ببيع جزء عند هدف ربح. ملحوظة للمراجعة، مش أمر بيع.${it.r ? ' السبب: ' + it.r : ''}` }); });
+  }
+  return out;
 }
 function gPlanWatchPaint(el, plans, grids){
   if (!el) return;
   let items = []; try { items = gPlanWatchItems(plans, grids); } catch(e){ console.error(e); }
+  const tok = (el._watchTok = (el._watchTok || 0) + 1);
+  gPlanWatchConc(plans, grids).then(extra => { if (!extra.length || el._watchTok !== tok || !el.isConnected) return; el._conc = extra; gPlanWatchDraw(el, items.concat(extra), plans, grids); }).catch(() => {});
+  if (el._conc) items = items.concat(el._conc);
+  gPlanWatchDraw(el, items, plans, grids);
+}
+function gPlanWatchDraw(el, items, plans, grids){
   if (!items.length) { el.innerHTML = ''; return; }
   const ic = { up: '🚀', cap: '🧾', conc: '⚖️' };
   el.innerHTML = `<div class="g-watch" id="gPlanWatch"><div class="g-watch-h"><b>متابعة خططك على آخر سعر</b><small>أسعار متأخرة 15 دقيقة</small></div>
@@ -599,6 +613,7 @@ function gPlanWatchPaint(el, plans, grids){
     ${items.length > 8 ? `<small class="u-muted">+ ${items.length - 8} ملاحظات أخرى</small>` : ''}</div>`;
   el.querySelectorAll('.g-watch-it').forEach(b => b.onclick = () => {
     const t = b.dataset.type, s = b.dataset.sym;
+    if (b.classList.contains('k-conc') && typeof renderDiversificationReport === 'function' && (window.__isAdmin || !(window.GShell && GShell.settings && GShell.settings.hide_mizan_screen === true))) return renderDiversificationReport();
     if (t === 'Grid') renderGridPlanDetail(s); else if (t === 'DCA') renderPlanDetail(s); else if (plans && plans[s]) renderPlanDetail(s); else renderGridPlanDetail(s);
   });
 }

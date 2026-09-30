@@ -64,3 +64,6 @@ html[data-theme="dark"] .mz-co .go{ color:var(--gs-brand,#D4AF37); }
 .mz-table td.mz-num{ direction:ltr; text-align:right; font-variant-numeric:tabular-nums; }
 body.g-shell #app h2.mz-sec-title, h2.mz-sec-title{ display:flex !important; align-items:center; gap:8px; }
 .mz-sec-title .ic{ flex:none; }
+/* الإصدار 117: النسبة المقترحة لكل سهم */
+.mz-table td.mz-tgt{ white-space:normal; min-width:170px; max-width:260px; }
+.mz-why{ font-size:11px; line-height:1.6; display:block; margin-top:2px; }

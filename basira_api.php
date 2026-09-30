@@ -4,6 +4,7 @@
    GET  action=config                      ← إعدادات الشاشة (الاسم / التنويه / الفترات / الأسماء العربية المخصصة)
    GET  action=analyze&symbol=&market=[&fresh=1] ← تحليل كامل (مخزّن مؤقتًا لكل سهم)
    GET  action=watch                        ← تحليل سريع لكل أسهم قائمة المتابعة
+   GET  action=scan&market=&sector=&offset=&limit= ← مسح السوق (الإصدار 118): كل أسهم البورصة أو قطاع + احتمال الصعود لكل فترة
    GET  action=list                         ← تحليلاتي المحفوظة
    GET  action=get&id=                      ← تحليل محفوظ
    POST action=save   symbol, market        ← حفظ آخر تحليل للسهم (من التخزين المؤقت على السيرفر - مش من المتصفح)
@@ -90,6 +91,7 @@ try {
     if ($action === 'config') {
         bs_out(["success" => true, "config" => ['name' => $cfg['name'], 'tagline' => $cfg['tagline'], 'disclaimer' => $cfg['disclaimer'], 'horizons' => $cfg['horizons'],
             'shareOn' => !empty($cfg['share_on']), 'plansOn' => !empty($cfg['plans_on']), 'newsOn' => !empty($cfg['news_on']), 'names' => bs_names($cfg),
+            'scanOn' => !empty($cfg['scan_on']), 'scanMax' => $cfg['scan_max'],
             'aiReady' => !empty($cfg['ai_on']) && site_config_get($conn, 'basira_ai_key') !== ''], "ready" => bs_ready($conn)]);
     }
     if ($action === 'analyze') {
@@ -106,6 +108,25 @@ try {
         $rows = $st->get_result()->fetch_all(MYSQLI_ASSOC); $st->close(); $items = [];
         foreach ($rows as $r) $items[] = ['symbol' => $r['symbol'], 'market' => $r['market']] + bs_quick($conn, $r['symbol'], $r['market']);
         bs_out(["success" => true, "items" => $items]);
+    }
+    // الإصدار 118: مسح السوق (كل البورصة أو قطاع) - بالدفعات: offset + limit (الأسهم اللي اتحللت قبل كده بترجع فورًا من التخزين المؤقت)
+    if ($action === 'scan') {
+        @set_time_limit(120);
+        if (empty($cfg['scan_on'])) bs_out(["success" => false, "message" => "مسح السوق متوقف حاليًا من لوحة التحكم."]);
+        $market = (string)($_GET['market'] ?? 'مصر'); if (!isset(MQ_MARKETS[$market])) $market = 'مصر';
+        $sector = mb_substr((string)($_GET['sector'] ?? ''), 0, 60);
+        $off = max(0, (int)($_GET['offset'] ?? 0)); $lim = max(0, min(15, (int)($_GET['limit'] ?? 10)));   // 0 = القطاعات والعدد بس
+        $U = bs_universe($conn, $market); $names = bs_names($cfg);
+        $secs = []; foreach ($U as $u) $secs[$u['sec']] = ($secs[$u['sec']] ?? 0) + 1; arsort($secs);
+        $F = array_values(array_filter($U, fn($u) => $sector === '' || $u['sec'] === $sector));
+        $F = array_slice($F, 0, $cfg['scan_max']);
+        $items = [];
+        foreach (array_slice($F, $off, $lim) as $u) {
+            $ar = $names['*'][$u['s']] ?? ($names[$market][$u['s']] ?? '');
+            $items[] = ['symbol' => $u['s'], 'name' => $u['n'], 'ar' => $ar, 'sector' => $u['sec']] + bs_scan_item($conn, $u['s'], $market);
+        }
+        bs_out(["success" => true, "market" => $market, "sector" => $sector, "total" => count($F), "offset" => $off, "items" => $items,
+            "sectors" => array_map(fn($k, $v) => ['name' => $k, 'n' => $v], array_keys($secs), array_values($secs))]);
     }
     if (!bs_ready($conn)) bs_out(["success" => false, "message" => "شغّل ALL_SCHEMA_UPDATES.sql (الإصدار 114) أولًا عشان الحفظ يشتغل."]);
     if ($action === 'list') {

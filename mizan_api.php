@@ -2,6 +2,7 @@
 /* =====================================================================
    GRIFFINE — mizan_api.php (الإصدار 115) — «ميزان محفظتك AI» (تقرير توزيع التنوع)
    POST action=analyze  positions=[{s,m,q,avg,t}] , ccy , fresh=1 ← تحليل تنويع المحفظة الفعلية
+   POST action=limits   positions , ccy ← النسبة المقترحة لكل سهم (للرئيسية - من آخر تحليل أو بالقواعد) (الإصدار 117)
    المراكز جاية من خطط المستخدم نفسه (والتحليل ليه هو بس - مبيتشاركش ومبيتخزنش في قاعدة البيانات)
    ===================================================================== */
 header('Content-Type: application/json; charset=utf-8');
@@ -22,7 +23,7 @@ try {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') mz_out(["success" => false, "message" => "طلب غير صحيح."]);
     requireCsrf();
     $action = $_POST['action'] ?? '';
-    if ($action !== 'analyze') mz_out(["success" => false, "message" => "طلب غير معروف."]);
+    if ($action !== 'analyze' && $action !== 'limits') mz_out(["success" => false, "message" => "طلب غير معروف."]);
     $in = json_decode((string)($_POST['positions'] ?? ''), true);
     if (!is_array($in) || !$in) mz_out(["success" => false, "message" => "مفيش مراكز مفتوحة للتحليل."]);
     $pos = []; $seen = [];
@@ -36,6 +37,7 @@ try {
     }
     if (!$pos) mz_out(["success" => false, "message" => "مفيش مراكز مفتوحة صالحة للتحليل."]);
     $ccy = mb_substr(strip_tags((string)($_POST['ccy'] ?? '')), 0, 30);
+    if ($action === 'limits') mz_out(["success" => true] + mz_limits($conn, $email, $pos, $ccy));   // الإصدار 117: النسب المقترحة للرئيسية
     $r = mz_analyze($conn, $email, $pos, $ccy, !empty($_POST['fresh']));
     if (empty($r['ok'])) mz_out(["success" => false, "message" => $r['message'] ?? 'تعذّر التحليل.']);
     mz_out(["success" => true, "report" => $r]);

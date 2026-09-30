@@ -29,13 +29,14 @@ const http = (u) => fetch(u).then(r => r.json());
   });
 
   /* ============ فحص الخطط في الرئيسية ============ */
-  await a.evaluate(() => renderHome()); await a.waitForSelector('#gPlanWatch', { timeout: 15000 }).catch(() => {});
+  await a.evaluate(() => { try { sessionStorage.clear(); } catch(e){} renderHome(); }); await a.waitForSelector('#gPlanWatch .k-conc', { timeout: 30000 }).catch(() => {});
   const w = await a.evaluate(() => [...document.querySelectorAll('#gPlanWatch .g-watch-it')].map(x => ({ k: x.className.replace(/.*k-/, ''), s: x.dataset.sym, t: x.textContent.replace(/\s+/g, ' ') })));
   const has = (k, s, re) => w.some(x => x.k === k && x.s === s && (!re || re.test(x.t)));
   check('الرئيسية: DCA عدّى الهدف ← الهدف اتفعّل على سعر السوق (ربح فعلي 400 = +40%)', has('up', 'COMI', /ربح فعلي 400\.00 \(\+40\.00%\)/), JSON.stringify(w).slice(0, 300));
   check('الرئيسية: Grid عدّى الهدف في مستويين (ربح فعلي 65 بدل 10)', has('up', 'HRHO', /مستويات[\s\S]*ربح فعلي 65\.00 بدل 10\.00/));
   check('الرئيسية: DCA كل المستويات اتنفذت ← المبلغ المرصود خلص', has('cap', 'TMGH', /المبلغ المرصود/));
-  check('الرئيسية: التركّز 40% أو أكتر (COMI) ملحوظة مش أمر بيع', has('conc', 'COMI', /من قيمة محفظتك/));
+  check('الرئيسية: التركّز حسب «النسبة المقترحة» من ميزان المحفظة (مش 40% ثابت) + «يُفضّل تنزل لـ» + ملحوظة مش أمر بيع', has('conc', 'COMI', /من قيمة محفظتك[\s\S]*النسبة المقترحة ليه حسب ميزان المحفظة \d+%[\s\S]*يُفضّل تنزل لـ \d+%[\s\S]*مش أمر بيع/) && !w.some(x => /40%/.test(x.t)), (w.find(x => x.k === 'conc') || {}).t);
+  check('الرئيسية: TMGH (قطاع تاني وأقل من نسبته المقترحة) مالوش ملحوظة تركّز', !has('conc', 'TMGH'));
   check('الرئيسية: مفيش حد خسارة / حد حماية في الملاحظات', !w.some(x => /حد (الخسارة|الحماية)|وقف الخسارة/.test(x.t)));
 
   /* ============ DCA: الهدف + نافذة البيع ============ */
@@ -94,9 +95,12 @@ const http = (u) => fetch(u).then(r => r.json());
   check('ميزان: الشاشة الجديدة «ميزان محفظتك GRIFFINE AI» + درجة الخطورة', /ميزان محفظتك/.test(z1.title || '') && z1.gauge, z1.title);
   check('ميزان: النسب المالية (HHI + عدد الأسهم الفعلي + التذبذب + أقصى تراجع + الارتباط + نسبة التنويع)', ['HHI', 'عدد الأسهم الفعلي', 'التذبذب السنوي', 'أقصى تراجع', 'متوسط الارتباط', 'نسبة التنويع'].every(k => z1.kpis.some(x => x.includes(k))), z1.kpis.join('|'));
   const comi = (z1.rows.find(r => /^COMI/.test(r[0])) || []);
-  check('ميزان: القيمة بسعر السوق (6 × 140 = 840 بعد البيع) مش آخر سعر شراء', comi[4] === '840.00', comi.join(' | '));
+  check('ميزان: القيمة بسعر السوق (6 × 140 = 840 بعد البيع) مش آخر سعر شراء', comi[5] === '840.00', comi.join(' | '));
   check('ميزان: القطاعات من السوق بالعربي (المالية والبنوك / الخدمات الصناعية)', z1.secs.includes('المالية والبنوك') && z1.secs.some(x => /الخدمات الصناعية/.test(x)), z1.secs.join('|'));
   check('ميزان: DCA + Grid لنفس القطاع متجمعين + كل سهم ليه نوع خطته', z1.rows.length === 3 && z1.rows.some(r => /^HRHO/.test(r[0]) && r[2] === 'Grid'), z1.rows.map(r => r[0] + ':' + r[2]).join(','));
+  const tr = await a.evaluate(() => [...document.querySelectorAll('.mz-table tbody tr')].map(r => ({ s: r.cells[0].textContent.trim().slice(0, 4), t: (r.querySelector('.mz-tgt b') || {}).textContent, why: (r.querySelector('.mz-why') || {}).textContent || '' })));
+  check('ميزان من غير مفتاح: «النسبة المقترحة» لكل سهم بالقواعد + السبب (قطاع مسيطر ← COMI أقل من الوزن المتساوي+الهامش)', tr.length === 3 && tr.every(x => /^\d+%$/.test(x.t || '')) && /قطاع «المالية والبنوك»/.test((tr.find(x => x.s === 'COMI') || {}).why), JSON.stringify(tr));
+  check('ميزان: التنبيه «فوق النسبة المقترحة» مع «يُفضّل تنزل لـ»', z1.alerts.some(x => /COMI فوق النسبة المقترحة/.test(x)));
   check('ميزان: من غير مفتاح ← «تحليل آلي» + تنبيهات + إعادة توازن بالأرقام', /تحليل آلي/.test(z1.chip || '') && z1.alerts.length > 0 && z1.moves.length > 0, (z1.chip || '') + ' / ' + z1.alerts.join('|'));
 
   // بالمفتاح ← رأي الذكاء الاصطناعي + الشركات المرشحة (من قائمة السوق بس)
@@ -106,6 +110,10 @@ const http = (u) => fetch(u).then(r => r.json());
   const z2 = await a.evaluate(() => ({ chip: (document.querySelector('.mz-sub .bs-chip') || {}).textContent, sum: (document.querySelector('.mz-ai p') || {}).textContent, aim: [...document.querySelectorAll('.mz-ai .mz-mv')].map(x => x.textContent), cands: [...document.querySelectorAll('.mz-co')].map(x => x.dataset.s) }));
   const last = await http('http://127.0.0.1:8098/ai-last'); const body = last.body || {};
   check('ميزان بالمفتاح: «ذكاء اصطناعي» + الملخص من Claude', /ذكاء اصطناعي/.test(z2.chip || '') && /تحليل تجريبي من الذكاء الاصطناعي/.test(z2.sum || ''), JSON.stringify(z2).slice(0, 200));
+  const tg = await a.evaluate(() => [...document.querySelectorAll('.mz-table tbody tr')].map(r => ({ s: r.cells[0].textContent.trim().slice(0, 4), t: r.querySelector('.mz-tgt b').textContent, src: r.querySelector('.mz-tgt .bs-chip').textContent })));
+  const tC = tg.find(x => x.s === 'COMI') || {}, tT = tg.find(x => x.s === 'TMGH') || {};
+  check('ميزان بالمفتاح: «النسبة المقترحة» من الذكاء الاصطناعي (COMI = 30%) + علامة AI', tC.t === '30%' && /AI/.test(tC.src), JSON.stringify(tg));
+  check('ميزان: نسبة الذكاء الاصطناعي المبالغ فيها (99%) اتقصت لحد ±25 من القواعد', parseInt(tT.t) < 99, JSON.stringify(tT));
   check('ميزان: خطوات الذكاء الاصطناعي بس برموز المحفظة (الرمز الوهمي اتشال)', z2.aim.some(x => /COMI/.test(x)) && !z2.aim.some(x => /FAKE1/.test(x)), z2.aim.join(' | '));
   check('ميزان: الشركات المرشحة من قائمة السوق بس (NOPE9 اتشال) ومش من الأسهم المملوكة', z2.cands.length === 1 && !['COMI', 'HRHO', 'TMGH', 'NOPE9'].includes(z2.cands[0]), z2.cands.join(','));
   check('طلب Claude لميزان: JSON schema خاص (candidates) + النسب + من غير الإيميل', body.output_config && body.output_config.format.schema.properties.candidates && /hhi/.test(JSON.stringify(body.messages)) && !JSON.stringify(body).includes(ADMIN), JSON.stringify(body.output_config && Object.keys(body.output_config.format.schema.properties)));
