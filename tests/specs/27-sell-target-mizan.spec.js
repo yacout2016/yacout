@@ -1,7 +1,7 @@
 // الإصدار 115:
 //   1) نافذة البيع: السعر = آخر سعر (متأخر 15 دقيقة) أوتوماتيك + الربح/الخسارة + تحذير «بيع بخسارة» وضغطة تأكيد + السعر اليدوي
 //   2) الهدف بيتكيّف مع السوق: السعر عدّى هدف البيع ← الهدف والربح على سعر السوق (DCA + Grid)
-//   3) فحص الخطط في الرئيسية: الهدف اتفعّل / المبلغ المرصود خلص / التركّز 40%
+//   3) فحص الخطط على آخر سعر (الإصدار 119: في شاشات الخطط): الهدف اتفعّل / المبلغ المرصود خلص / التركّز حسب ميزان المحفظة
 //   4) «ميزان محفظتك AI» (تقرير توزيع التنوع): النسب المالية + القطاعات + الذكاء الاصطناعي + الشركات المرشحة (بصيرة)
 const { check, summary, launch, page, loginAdmin, q, ADMIN } = require('../lib');
 const http = (u) => fetch(u).then(r => r.json());
@@ -28,16 +28,33 @@ const http = (u) => fetch(u).then(r => r.json());
     return { d: d.value || '{}', g: g.value || '{}' };
   });
 
-  /* ============ فحص الخطط في الرئيسية ============ */
-  await a.evaluate(() => { try { sessionStorage.clear(); } catch(e){} renderHome(); }); await a.waitForSelector('#gPlanWatch .k-conc', { timeout: 30000 }).catch(() => {});
-  const w = await a.evaluate(() => [...document.querySelectorAll('#gPlanWatch .g-watch-it')].map(x => ({ k: x.className.replace(/.*k-/, ''), s: x.dataset.sym, t: x.textContent.replace(/\s+/g, ' ') })));
+  /* ============ الإصدار 119: «متابعة خططك» في شاشات الخطط (مش في الرئيسية) ============ */
+  await a.evaluate(() => { try { sessionStorage.clear(); localStorage.removeItem('g_watch_open'); } catch(e){} renderHome(); }); await a.waitForTimeout(2500);
+  check('خططي: مربع «متابعة خططك» اتشال منها', await a.evaluate(() => !document.getElementById('gPlanWatch') && !document.getElementById('gsPlanWatch')));
+  await a.evaluate(() => renderPlansList()); await a.waitForSelector('#gPlanWatch .k-conc', { timeout: 30000 }).catch(() => {});
+  const col = await a.evaluate(() => ({ body: document.querySelector('#gPlanWatch .g-watch-body').hidden, n: document.querySelector('#gPlanWatch .g-watch-n').textContent, hint: document.querySelector('.g-watch-tg').textContent }));
+  check('خطط DCA: المربع ظاهر فوق الخطط ومقفول (العنوان + عدد الملاحظات + «اضغط لعرض الملاحظات»)', col.body && /ملاحظ/.test(col.n) && /اضغط لعرض/.test(col.hint), JSON.stringify(col));
+  await a.click('#gWatchToggle'); await a.waitForTimeout(200);
+  const rd = await a.evaluate(() => { const it = document.querySelector('#gPlanWatch .g-watch-it'); const p = it.querySelector('p'); return { open: !document.querySelector('#gPlanWatch .g-watch-body').hidden, fs: parseFloat(getComputedStyle(p).fontSize), lh: parseFloat(getComputedStyle(p).lineHeight), btn: (it.querySelector('.g-watch-open') || {}).textContent, clickable: it.tagName }; });
+  check('الضغط بيفتح الملاحظات: نص واضح للقراءة (14px وسطر واسع) + زرار «فتح الخطة» جنب كل ملاحظة', rd.open && rd.fs >= 14 && rd.lh >= 24 && /فتح الخطة/.test(rd.btn) && rd.clickable === 'DIV', JSON.stringify(rd));
+  const w = await a.evaluate(() => [...document.querySelectorAll('#gPlanWatch .g-watch-it')].map(x => ({ k: x.className.replace(/.*k-/, ''), s: x.querySelector('.g-watch-open').dataset.sym, t: x.textContent.replace(/\s+/g, ' ') })));
+  check('خطط DCA: ملاحظات DCA بس (مفيش ملاحظات Grid)', !w.some(x => x.s === 'HRHO' && x.k === 'up'), JSON.stringify(w.map(x => x.k + ':' + x.s)));
+  await a.evaluate(() => renderGridPlansList()); await a.waitForSelector('#gPlanWatch .g-watch-it', { timeout: 30000 }).catch(() => {});
+  const wg = await a.evaluate(() => ({ open: !document.querySelector('#gPlanWatch .g-watch-body').hidden, items: [...document.querySelectorAll('#gPlanWatch .g-watch-it')].map(x => ({ k: x.className.replace(/.*k-/, ''), s: x.querySelector('.g-watch-open').dataset.sym, t: x.textContent.replace(/\s+/g, ' ') })) }));
+  w.push(...wg.items);
+  check('خطط Grid: ملاحظات Grid + حالة الفتح محفوظة', wg.open && wg.items.some(x => x.s === 'HRHO' && x.k === 'up') && !wg.items.some(x => x.s === 'COMI' && x.k === 'up'), JSON.stringify(wg.items.map(x => x.k + ':' + x.s)));
+  await a.click('#gPlanWatch .g-watch-it.k-up .g-watch-open'); await a.waitForTimeout(1500);
+  check('زرار «فتح الخطة» بيفتح الخطة', await a.evaluate(() => !!document.getElementById('gridLevelsTable')));
+  await a.evaluate(() => saveAdminSetting('hide_plan_watch', true)); await a.evaluate(async () => { await refreshTopNav(); }); await a.evaluate(() => renderPlansList()); await a.waitForTimeout(2500);
+  check('إخفاء المربع من لوحة التحكم ← مش ظاهر في خططي', await a.evaluate(() => !document.getElementById('gPlanWatch')));
+  await a.evaluate(() => saveAdminSetting('hide_plan_watch', false)); await a.evaluate(async () => { await refreshTopNav(); });
   const has = (k, s, re) => w.some(x => x.k === k && x.s === s && (!re || re.test(x.t)));
-  check('الرئيسية: DCA عدّى الهدف ← الهدف اتفعّل على سعر السوق (ربح فعلي 400 = +40%)', has('up', 'COMI', /ربح فعلي 400\.00 \(\+40\.00%\)/), JSON.stringify(w).slice(0, 300));
-  check('الرئيسية: Grid عدّى الهدف في مستويين (ربح فعلي 65 بدل 10)', has('up', 'HRHO', /مستويات[\s\S]*ربح فعلي 65\.00 بدل 10\.00/));
-  check('الرئيسية: DCA كل المستويات اتنفذت ← المبلغ المرصود خلص', has('cap', 'TMGH', /المبلغ المرصود/));
-  check('الرئيسية: التركّز حسب «النسبة المقترحة» من ميزان المحفظة (مش 40% ثابت) + «يُفضّل تنزل لـ» + ملحوظة مش أمر بيع', has('conc', 'COMI', /من قيمة محفظتك[\s\S]*النسبة المقترحة ليه حسب ميزان المحفظة \d+%[\s\S]*يُفضّل تنزل لـ \d+%[\s\S]*مش أمر بيع/) && !w.some(x => /40%/.test(x.t)), (w.find(x => x.k === 'conc') || {}).t);
-  check('الرئيسية: TMGH (قطاع تاني وأقل من نسبته المقترحة) مالوش ملحوظة تركّز', !has('conc', 'TMGH'));
-  check('الرئيسية: مفيش حد خسارة / حد حماية في الملاحظات', !w.some(x => /حد (الخسارة|الحماية)|وقف الخسارة/.test(x.t)));
+  check('خططي: DCA عدّى الهدف ← الهدف اتفعّل على سعر السوق (ربح فعلي 400 = +40%)', has('up', 'COMI', /ربح فعلي 400\.00 \(\+40\.00%\)/), JSON.stringify(w).slice(0, 300));
+  check('خططي: Grid عدّى الهدف في مستويين (ربح فعلي 65 بدل 10)', has('up', 'HRHO', /مستويات[\s\S]*ربح فعلي 65\.00 بدل 10\.00/));
+  check('خططي: DCA كل المستويات اتنفذت ← المبلغ المرصود خلص', has('cap', 'TMGH', /المبلغ المرصود/));
+  check('خططي: التركّز حسب «النسبة المقترحة» من ميزان المحفظة (مش 40% ثابت) + «يُفضّل تنزل لـ» + ملحوظة مش أمر بيع', has('conc', 'COMI', /من قيمة محفظتك[\s\S]*النسبة المقترحة ليه حسب ميزان المحفظة \d+%[\s\S]*يُفضّل تنزل لـ \d+%[\s\S]*مش أمر بيع/) && !w.some(x => /40%/.test(x.t)), (w.find(x => x.k === 'conc') || {}).t);
+  check('خططي: TMGH (قطاع تاني وأقل من نسبته المقترحة) مالوش ملحوظة تركّز', !has('conc', 'TMGH'));
+  check('خططي: مفيش حد خسارة / حد حماية في الملاحظات', !w.some(x => /حد (الخسارة|الحماية)|وقف الخسارة/.test(x.t)));
 
   /* ============ DCA: الهدف + نافذة البيع ============ */
   await a.evaluate(() => { try { localStorage.removeItem('gs_livepx2'); } catch(e){} renderPlanDetail('COMI'); });

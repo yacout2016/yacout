@@ -180,3 +180,48 @@ body.g-shell #app .bs-sctc, .bs-sctc{ all:unset; box-sizing:border-box; cursor:p
 @media (max-width: 900px){ .bs-scrow{ grid-template-columns:1fr 1fr; } .bs-scrow > div:nth-child(3), .bs-scbtns{ grid-column:1 / -1; } }
 @media (max-width: 560px){ .bs-scrow{ grid-template-columns:1fr; } .bs-sctop{ grid-template-columns:1fr; } .bs-tabs button{ font-size:12.5px; } }
 .bs-sctc > b, .bs-sctc > .bs-scpct{ align-self:flex-start; }
+/* الإصدار 120: جدول المسح جوه حدود الصفحة (من غير تمرير يمين وشمال) + إظهار/إخفاء الأعمدة + زراير أوضح */
+.bs-sctools{ display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+.bs-colbox{ position:relative; }
+body.g-shell #app button.bs-colbtn, button.bs-colbtn{ width:auto !important; margin:0 !important; min-height:0 !important; padding:7px 12px !important; border-radius:10px !important; font-size:12.5px !important; font-weight:700; background:var(--gs-surface-2,#F8FAFC) !important; color:var(--gs-text,#111) !important; border:1px solid var(--gs-border,#E5E7EB) !important; cursor:pointer; }
+.bs-colbtn b{ color:var(--gs-brand-strong,#A6811E); font-weight:700; }
+.bs-colmenu{ position:absolute; top:calc(100% + 4px); inset-inline-end:0; z-index:40; min-width:210px; background:var(--gs-surface,#fff); border:1px solid var(--gs-border,#E5E7EB); border-radius:12px; box-shadow:0 12px 30px rgba(0,0,0,.15); padding:8px; display:grid; gap:2px; }
+.bs-colmenu[hidden]{ display:none; }
+.bs-colmenu label{ display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:8px; font-size:13px; cursor:pointer; margin:0; }
+.bs-colmenu label:hover{ background:var(--gs-surface-2,#F8FAFC); }
+.bs-colmenu input{ width:16px; height:16px; margin:0; accent-color:var(--gs-brand,#C9A227); }
+body.g-shell #app .bs-colmenu button.bs-colall, .bs-colall{ width:100% !important; margin:4px 0 0 !important; font-size:12.5px !important; min-height:0 !important; padding:7px !important; }
+.bs-scbody{ max-height:640px; overflow-y:auto; overflow-x:hidden; border-radius:10px; }
+.bs-sctable{ table-layout:fixed; width:100%; }
+.bs-sctable thead th{ position:sticky; top:0; background:var(--gs-surface,#fff); z-index:2; white-space:normal; line-height:1.4; vertical-align:bottom; }
+.bs-sctable th[data-sort]{ cursor:pointer; user-select:none; } .bs-sctable th[data-sort]:hover{ color:var(--gs-text,#111); }
+.bs-sctable th.on{ color:var(--gs-brand-strong,#A6811E); }
+.bs-sorti::after{ content:'⇅'; font-style:normal; opacity:.45; margin-inline-start:4px; font-size:11px; } th.on .bs-sorti::after{ content:'▼'; opacity:1; } th.on.asc .bs-sorti::after{ content:'▲'; }
+.bs-sctable td{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:8px 6px; }
+.bs-sctable th{ padding:8px 6px; }
+.bs-sctable [data-col="n"]{ width:34px; text-align:center; color:var(--gs-muted,#64748B); }
+.bs-sctable [data-col="sym"]{ width:150px; }
+.bs-sctable [data-col="sec"]{ width:130px; }
+.bs-sctable [data-col="px"]{ width:92px; }
+.bs-sctable [data-col="up"]{ width:auto; min-width:120px; }   /* العمود المرن: المساحة الزيادة بتروح لشريط الاحتمال مش لاسم السهم */
+.bs-sctable [data-col="v"]{ width:104px; }
+.bs-sctable [data-col="rng"]{ width:130px; }
+.bs-sctable [data-col="sc"]{ width:64px; text-align:center; }
+.bs-sctable [data-col="y1"]{ width:78px; }
+.bs-sctable [data-col="go"]{ width:48px; text-align:center; }
+.bs-sctable td[data-col="sym"] b{ font-size:14px; }
+.bs-scname{ display:block; font-size:11.5px; color:var(--gs-muted,#64748B); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.bs-sctable td[data-col="px"] small{ display:block; font-size:11.5px; }
+.bs-scsec{ display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12.5px; }
+.bs-scup{ min-width:0; } .bs-scbar.sm{ min-width:40px; }
+body.g-shell #app .bs-sctable button.bs-scopen, .bs-scopen{ padding:4px 10px !important; min-height:0 !important; }
+.bs-sctable.bs-hc-sec [data-col="sec"], .bs-sctable.bs-hc-px [data-col="px"], .bs-sctable.bs-hc-v [data-col="v"], .bs-sctable.bs-hc-rng [data-col="rng"], .bs-sctable.bs-hc-sc [data-col="sc"], .bs-sctable.bs-hc-y1 [data-col="y1"]{ display:none; }
+/* زرار «ابدأ المسح» أصفر واضح + تبويب «مسح السوق» بلون مختلف */
+body.g-shell #app .bs-scbtns button.bs-go, .bs-scbtns .bs-go{ background:#FACC15 !important; color:#1F1600 !important; border:2px solid #EAB308 !important; font-size:15px !important; font-weight:800 !important; padding:0 22px !important; box-shadow:0 6px 18px -6px rgba(234,179,8,.7); }
+body.g-shell #app .bs-scbtns button.bs-go:hover, .bs-scbtns .bs-go:hover{ background:#FDE047 !important; }
+body.g-shell #app .bs-tabs button#bsTabScan, .bs-tabs #bsTabScan{ background:linear-gradient(135deg,#2563EB,#7C3AED); color:#fff; box-shadow:0 6px 16px -8px rgba(79,70,229,.8); }
+body.g-shell #app .bs-tabs button#bsTabScan.on, .bs-tabs #bsTabScan.on{ background:linear-gradient(135deg,#1D4ED8,#6D28D9); color:#fff; outline:3px solid rgba(124,58,237,.35); outline-offset:1px; }
+@media (max-width: 700px){ .bs-sctable [data-col="sym"]{ width:auto; } .bs-sctable [data-col="up"]{ width:104px; } .bs-sctable [data-col="v"]{ width:84px; } .bs-sctable [data-col="px"]{ width:74px; } .bs-scbar.sm{ display:none; } .bs-sctable td, .bs-sctable th{ padding:7px 4px; font-size:12px; } }
+.bs-sctable [data-col="sc"]{ width:84px; } .bs-sctable [data-col="go"]{ width:56px; }
+.bs-sctable td[data-col="go"], .bs-sctable td[data-col="v"]{ overflow:visible; text-overflow:clip; }
+.bs-sctable th{ overflow:hidden; word-break:normal; }

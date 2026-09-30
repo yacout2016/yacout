@@ -28,6 +28,7 @@ $allowedKeys = [
     'hide_basira_screen', // الإصدار 114
     'hide_mizan_screen', // الإصدار 116
     'hide_install_icon', 'hide_site_search', // الإصدار 116: أيقونات الشريط العلوي
+    'hide_plan_watch', // الإصدار 119: متابعة خططك على آخر سعر
 ];
 
 $key = trim($_POST['key'] ?? '');

@@ -597,25 +597,53 @@ async function gPlanWatchConc(plans, grids){
   }
   return out;
 }
-function gPlanWatchPaint(el, plans, grids){
+/* الإصدار 119: «متابعة خططك على آخر سعر» اتنقلت من الرئيسية لشاشات الخطط (DCA / Grid)
+   - kind = 'dca' ← ملاحظات خطط DCA + التركّز لأسهمها ، 'grid' ← ملاحظات Grid + التركّز لأسهمها
+   - مقفولة في الأول (عنوان + عدد الملاحظات) ← الضغط بيفتحها: كل ملاحظة واضحة للقراءة وجنبها زرار «فتح الخطة»
+   - بتتخفي من لوحة التحكم (hide_plan_watch) */
+function gPlanWatchPaint(el, plans, grids, kind){
   if (!el) return;
-  let items = []; try { items = gPlanWatchItems(plans, grids); } catch(e){ console.error(e); }
+  if (window.GShell && GShell.allSettings && GShell.allSettings.hide_plan_watch === true) { el.innerHTML = ''; return; }
+  const keep = (it) => !kind || (kind === 'dca' ? (it.type === 'DCA' || (it.kind === 'conc' && plans && plans[it.sym])) : (it.type === 'Grid' || (it.kind === 'conc' && grids && grids[it.sym])));
+  let items = []; try { items = gPlanWatchItems(plans, grids).filter(keep); } catch(e){ console.error(e); }
   const tok = (el._watchTok = (el._watchTok || 0) + 1);
-  gPlanWatchConc(plans, grids).then(extra => { if (!extra.length || el._watchTok !== tok || !el.isConnected) return; el._conc = extra; gPlanWatchDraw(el, items.concat(extra), plans, grids); }).catch(() => {});
+  gPlanWatchConc(plans, grids).then(extra => { extra = extra.filter(keep); if (!extra.length || el._watchTok !== tok || !el.isConnected) return; el._conc = extra; gPlanWatchDraw(el, items.concat(extra), plans, grids, kind); }).catch(() => {});
   if (el._conc) items = items.concat(el._conc);
-  gPlanWatchDraw(el, items, plans, grids);
+  gPlanWatchDraw(el, items, plans, grids, kind);
 }
-function gPlanWatchDraw(el, items, plans, grids){
+function gPlanWatchDraw(el, items, plans, grids, kind){
   if (!items.length) { el.innerHTML = ''; return; }
-  const ic = { up: '🚀', cap: '🧾', conc: '⚖️' };
-  el.innerHTML = `<div class="g-watch" id="gPlanWatch"><div class="g-watch-h"><b>متابعة خططك على آخر سعر</b><small>أسعار متأخرة 15 دقيقة</small></div>
-    ${items.slice(0, 8).map(it => `<button type="button" class="g-watch-it k-${it.kind}" data-sym="${escapeHtml(it.sym)}" data-type="${it.type}"><span class="ic">${ic[it.kind]}</span><span><b>${escapeHtml(it.sym)}${it.type ? ` <small>${it.type}</small>` : ''}</b> ${escapeHtml(it.text)}</span></button>`).join('')}
-    ${items.length > 8 ? `<small class="u-muted">+ ${items.length - 8} ملاحظات أخرى</small>` : ''}</div>`;
-  el.querySelectorAll('.g-watch-it').forEach(b => b.onclick = () => {
+  const ic = { up: '🚀', cap: '🧾', conc: '⚖️' }, lbl = { up: 'السعر عدّى هدف البيع', cap: 'المبلغ المرصود / النطاق', conc: 'نسبة التركّز في المحفظة' };
+  let open = false; try { open = localStorage.getItem('g_watch_open') === '1'; } catch(e){}
+  const mizanOk = typeof renderDiversificationReport === 'function' && (window.__isAdmin || !(window.GShell && GShell.settings && GShell.settings.hide_mizan_screen === true));
+  el.innerHTML = `<div class="g-watch${open ? ' open' : ''}" id="gPlanWatch">
+    <button type="button" class="g-watch-h" id="gWatchToggle" aria-expanded="${open}"><span class="g-watch-t"><b>🔔 متابعة خططك على آخر سعر</b><span class="g-watch-n">${items.length} ${items.length === 1 ? 'ملاحظة' : 'ملاحظات'}</span></span><small>أسعار متأخرة 15 دقيقة • <span class="g-watch-tg">${open ? 'إخفاء الملاحظات ▲' : 'اضغط لعرض الملاحظات ▼'}</span></small></button>
+    <div class="g-watch-body"${open ? '' : ' hidden'}>
+    ${items.map((it, i) => `<div class="g-watch-it k-${it.kind}" data-i="${i}">
+      <div class="g-watch-txt"><div class="g-watch-ttl"><span class="ic">${ic[it.kind]}</span><b>${escapeHtml(it.sym)}</b>${it.type ? `<span class="g-watch-chip">${it.type}</span>` : ''}<span class="g-watch-k">${lbl[it.kind]}</span></div>
+        <p>${escapeHtml(it.text)}</p></div>
+      <div class="g-watch-acts"><button type="button" class="small g-watch-open" data-sym="${escapeHtml(it.sym)}" data-type="${it.type}">فتح الخطة ↗</button>${it.kind === 'conc' && mizanOk ? '<button type="button" class="small secondary g-watch-mz">ميزان المحفظة ⚖️</button>' : ''}</div>
+    </div>`).join('')}</div></div>`;
+  const tg = el.querySelector('#gWatchToggle');
+  tg.onclick = () => { const w = el.querySelector('.g-watch'), b = el.querySelector('.g-watch-body'), o = b.hidden; b.hidden = !o; w.classList.toggle('open', o); tg.setAttribute('aria-expanded', String(o)); el.querySelector('.g-watch-tg').textContent = o ? 'إخفاء الملاحظات ▲' : 'اضغط لعرض الملاحظات ▼'; try { localStorage.setItem('g_watch_open', o ? '1' : '0'); } catch(e){} };
+  el.querySelectorAll('.g-watch-open').forEach(b => b.onclick = () => {
     const t = b.dataset.type, s = b.dataset.sym;
-    if (b.classList.contains('k-conc') && typeof renderDiversificationReport === 'function' && (window.__isAdmin || !(window.GShell && GShell.settings && GShell.settings.hide_mizan_screen === true))) return renderDiversificationReport();
-    if (t === 'Grid') renderGridPlanDetail(s); else if (t === 'DCA') renderPlanDetail(s); else if (plans && plans[s]) renderPlanDetail(s); else renderGridPlanDetail(s);
+    if (t === 'Grid') renderGridPlanDetail(s); else if (t === 'DCA') renderPlanDetail(s);
+    else if (kind === 'grid' && grids && grids[s]) renderGridPlanDetail(s); else if (plans && plans[s]) renderPlanDetail(s); else renderGridPlanDetail(s);
   });
+  el.querySelectorAll('.g-watch-mz').forEach(b => b.onclick = () => renderDiversificationReport());
+}
+// الإصدار 119: بتتنادى من شاشة خطط DCA / Grid (الأسعار الأخيرة للخطط كلها عشان التركّز يتحسب على المحفظة كلها)
+async function gPlanWatchList(tok, kind){
+  const el = document.getElementById('gPlanWatchBox'); if (!el) return;
+  if (window.GShell && GShell.allSettings && GShell.allSettings.hide_plan_watch === true) return;
+  const email = await getSession(); if (!email) return;
+  const [plans, grids] = await Promise.all([getPlans(email).catch(() => ({})), getGridPlans(email).catch(() => ({}))]);
+  if (screenStale(tok)) return;
+  if (typeof mkEnsureLivePrices === 'function') { try { await mkEnsureLivePrices(plans, grids, 4000); } catch(e){} }
+  if (screenStale(tok)) return;
+  gPlanWatchPaint(document.getElementById('gPlanWatchBox'), plans, grids, kind);
+  if (window.__mkLivePxPending) window.__mkLivePxPending.then(ch => { if (ch && !screenStale(tok)) gPlanWatchPaint(document.getElementById('gPlanWatchBox'), plans, grids, kind); }).catch(() => {});
 }
 
 function gFillListProfits(tok, plans, grids, items){
@@ -687,6 +715,7 @@ async function renderPlansList(){
     <button id="newPlanBtn">+ خطة جديدة لسهم</button>
     <h2>${pageTitle('plans_list','خططك الحالية (سهم لكل خطة)')}</h2>
     <div class="gpl-total" id="gplTotal" hidden></div>
+    <div id="gPlanWatchBox"></div>
     ${symbols.length>0 ? `<div class="std-filter-bar">
       <div class="std-filter-search"><input type="text" id="dacListSearch" placeholder="🔍 ابحث باسم السهم..."></div>
       <div class="std-filter-tabs">
@@ -734,6 +763,7 @@ async function renderPlansList(){
     });
     gFillListProfits(__tok, plans, {}, symbols.map(sym => { let sm = null; try { sm = simulatePlan(plans[sym]); } catch(e){}
       return sm && sm.heldQty > 0 ? { sym, market: plans[sym].market || 'مصر', held: sm.heldQty, avg: sm.avgCostCurrent, ccy: plans[sym].currency } : null; }).filter(Boolean));
+    gPlanWatchList(__tok, 'dca');   // الإصدار 119
     window.__editDacPlanFromList = (sym) => renderEditPlanSettings(sym);
     window.__delDacPlanFromList = (sym) => gDeletePlan('dca', sym, () => { window.__navSilent = true; try { renderPlansList(); } finally { window.__navSilent = false; } });
 
@@ -1910,6 +1940,7 @@ async function renderGridPlansList(){
     <button id="goNewGridBtn">+ خطة شبكة جديدة لسهم</button>
     <h2>${pageTitle('grid_plans_list','خطط الشبكة (Grid) — سهم لكل خطة')}</h2>
     <div class="gpl-total" id="gplTotal" hidden></div>
+    <div id="gPlanWatchBox"></div>
     ${symbols.length>0 ? `<div class="std-filter-bar">
       <div class="std-filter-search"><input type="text" id="gridListSearch" placeholder="🔍 ابحث باسم السهم..."></div>
       <div class="std-filter-tabs">
@@ -1951,6 +1982,7 @@ async function renderGridPlansList(){
   listWrap.querySelectorAll('.plan-list-item').forEach(el=>{
     el.onclick=(e)=>{ if (e.target.closest('button')) return; renderGridPlanDetail(el.dataset.sym); };   // أزرار التعديل والحذف مبتفتحش الخطة
   });
+  gPlanWatchList(__tok, 'grid');   // الإصدار 119
   window.__openGrid = (sym) => renderGridPlanDetail(sym);
   window.__editGridFromList = (sym) => renderGridEditPlanSettings(sym);
   window.__delGridFromList = (sym) => gDeletePlan('grid', sym, () => { window.__navSilent = true; try { renderGridPlansList(); } finally { window.__navSilent = false; } });

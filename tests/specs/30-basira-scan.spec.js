@@ -15,7 +15,7 @@ const { check, summary, launch, page, loginAdmin, q } = require('../lib');
   // كل البورصة
   await a.click('#bsScGo');
   await a.waitForFunction(() => /اكتمل المسح/.test((document.getElementById('bsScTxt') || {}).textContent || ''), null, { timeout: 90000 }).catch(() => {});
-  const rowsOf = () => a.evaluate(() => [...document.querySelectorAll('#bsScTable tbody tr.bs-scr')].map(r => ({ s: r.dataset.s, up: parseInt(r.cells[5].textContent), sec: r.cells[2].textContent.trim() })));
+  const rowsOf = () => a.evaluate(() => [...document.querySelectorAll('#bsScTable tbody tr.bs-scr')].map(r => ({ s: r.dataset.s, up: parseInt(r.querySelector('[data-col="up"]').textContent), sec: r.querySelector('[data-col="sec"]').textContent.trim() })));
   let rows = await rowsOf();
   const sorted = (L) => L.every((x, i) => i === 0 || L[i - 1].up >= x.up);
   check('كل البورصة: الأسهم اتحللت كلها + شريط التقدّم اكتمل', rows.length === 5 && await a.evaluate(() => document.getElementById('bsScBar').style.width === '100%'), JSON.stringify(rows.map(r => r.s)));
@@ -26,6 +26,27 @@ const { check, summary, launch, page, loginAdmin, q } = require('../lib');
   rows = await rowsOf();
   check('تغيير الفترة لسنة ← إعادة الترتيب فورًا (من غير مسح تاني)', sorted(rows) && await a.evaluate(() => /سنة/.test(document.getElementById('bsScHzTh').textContent) && /خلال سنة/.test(document.getElementById('bsScTop').textContent)), rows.map(r => r.s + ':' + r.up).join(', '));
 
+  // الإصدار 120: الجدول جوه حدود الصفحة + إظهار/إخفاء الأعمدة + ألوان الزراير
+  const fit = await a.evaluate(() => { const t = document.getElementById('bsScTable'), card = document.getElementById('bsScRes'), sym = t.querySelector('th[data-col="sym"]').getBoundingClientRect().width, n = t.querySelector('th[data-col="n"]').getBoundingClientRect().width;
+    return { tw: Math.round(t.getBoundingClientRect().width), cw: Math.round(card.clientWidth), sx: card.querySelector('.bs-scbody').scrollWidth - card.querySelector('.bs-scbody').clientWidth, sym: Math.round(sym), n: Math.round(n), page: document.documentElement.scrollWidth - window.innerWidth }; });
+  check('الجدول جوه حدود الصفحة: مفيش تمرير يمين وشمال + عمود السهم والمسلسل مش عريضين', fit.sx <= 1 && fit.page <= 1 && fit.sym <= 170 && fit.n <= 40, JSON.stringify(fit));
+  const btnVis = () => a.evaluate(() => { const b = document.getElementById('bsColBtn'); return !!(b && b.offsetParent !== null); });
+  check('زرار «إظهار / إخفاء الأعمدة» ظاهر دايمًا', await btnVis());
+  await a.click('#bsColBtn'); await a.waitForTimeout(150);
+  await a.uncheck('#bsColMenu input[data-k="sec"]'); await a.uncheck('#bsColMenu input[data-k="y1"]'); await a.waitForTimeout(150);
+  const hid = await a.evaluate(() => ({ sec: getComputedStyle(document.querySelector('#bsScTable td[data-col="sec"]')).display, y1: getComputedStyle(document.querySelector('#bsScTable th[data-col="y1"]')).display, lbl: document.getElementById('bsColHid').textContent }));
+  check('إخفاء عمودين (القطاع + عائد سنة) من القائمة', hid.sec === 'none' && hid.y1 === 'none' && /مخفي/.test(hid.lbl), JSON.stringify(hid));
+  await a.click('body', { position: { x: 5, y: 5 } }); await a.waitForTimeout(150);
+  check('بعد الإخفاء: زرار إظهار الأعمدة لسه ظاهر', await btnVis());
+  await a.click('#bsColBtn'); await a.click('#bsColMenu .bs-colall'); await a.waitForTimeout(150);
+  check('«إظهار كل الأعمدة» بيرجّعهم', await a.evaluate(() => getComputedStyle(document.querySelector('#bsScTable td[data-col="sec"]')).display !== 'none' && getComputedStyle(document.querySelector('#bsScTable td[data-col="rng"]')).display !== 'none'));
+  await a.evaluate(() => { localStorage.removeItem('bs_scan_cols_v1'); }); await a.click('body', { position: { x: 5, y: 5 } });
+  await a.click('#bsScTable th[data-sort="sym"]'); await a.waitForTimeout(150);
+  const bySym = (await rowsOf()).map(r => r.s);
+  check('الضغط على عنوان العمود بيرتّب (السهم أبجدي)', bySym.join(',') === bySym.slice().sort().join(','), bySym.join(','));
+  await a.click('#bsScTable th[data-sort="up"]'); await a.waitForTimeout(150);
+  const col = await a.evaluate(() => ({ go: getComputedStyle(document.getElementById('bsScGo')).backgroundColor, tab: getComputedStyle(document.getElementById('bsTabScan')).backgroundImage, one: getComputedStyle(document.getElementById('bsTabOne')).backgroundImage }));
+  check('زرار «ابدأ المسح» أصفر + تبويب «مسح السوق» بلون مختلف واضح', col.go === 'rgb(250, 204, 21)' && /gradient/.test(col.tab) && !/gradient/.test(col.one), JSON.stringify(col));
   // قطاع واحد
   await a.selectOption('#bsScSec', 'المالية والبنوك'); await a.click('#bsScGo');
   await a.waitForFunction(() => /اكتمل المسح/.test((document.getElementById('bsScTxt') || {}).textContent || ''), null, { timeout: 60000 }).catch(() => {});

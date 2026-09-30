@@ -131,6 +131,7 @@ function getAllAdminSettings($conn){
         'hide_mizan_screen' => false,     // الإصدار 116: ميزان محفظتك AI
         'hide_install_icon' => false,     // الإصدار 116: أيقونة تثبيت التطبيق
         'hide_site_search' => false,      // الإصدار 116: البحث العام
+        'hide_plan_watch' => false,       // الإصدار 119: متابعة خططك على آخر سعر
     ];
     $result = @$conn->query("SELECT setting_key, setting_value FROM admin_settings");
     if ($result) {
