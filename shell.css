@@ -1165,3 +1165,23 @@ a.g-plan-link:hover{ opacity:.8; }
 .g-range-mode label{ display:inline-flex; align-items:center; gap:6px; margin:0; font-weight:500; }
 .g-range-box select:disabled{ opacity:.45; cursor:not-allowed; }
 .g-range-info{ margin-top:6px; min-height:18px; line-height:1.7; }
+/* الإصدار 115: نافذة البيع - مصدر السعر + الربح/الخسارة + تحذير البيع بخسارة */
+.glv-mpx{ font-size:11.5px; color:var(--gs-muted, #64748B); margin-top:4px; }
+.glv-mpl b.pos{ color:var(--gs-pos, #0E9F6E); } .glv-mpl b.neg{ color:var(--gs-neg, #E02424); }
+.glv-mwarn{ background:#FEF2F2; color:#B91C1C; border:1px solid #FECACA; border-radius:10px; padding:8px 10px; font-size:12.5px; font-weight:700; margin-top:8px; }
+.glv-mrow button.glv-danger{ background:#DC2626 !important; border-color:#DC2626 !important; color:#fff !important; }
+/* الإصدار 115: الهدف اتفعّل على سعر السوق + فحص الخطط في الرئيسية */
+.g-dyn-target{ background:#ECFDF5; border:1px solid #A7F3D0; color:#065F46; border-radius:12px; padding:10px 12px; font-size:13px; margin:10px 0; line-height:1.7; }
+.g-dyn-target b.pos{ color:#047857; }
+.g-watch{ background:var(--gs-surface, #fff); border:1px solid var(--gs-line, #E2E8F0); border-radius:18px; padding:12px; margin-top:14px; display:flex; flex-direction:column; gap:6px; }
+.g-watch-h{ display:flex; justify-content:space-between; align-items:baseline; gap:8px; margin-bottom:2px; }
+.g-watch-h small{ color:var(--gs-muted, #64748B); font-size:11px; }
+.g-watch-it{ all:unset; box-sizing:border-box; display:flex; gap:8px; align-items:flex-start; cursor:pointer; padding:8px 10px; border-radius:12px; font-size:12.5px; line-height:1.6; background:var(--gs-surface-2, #F8FAFC); }
+.g-watch-it:hover, .g-watch-it:focus-visible{ outline:2px solid var(--gs-brand, #0E9F6E); outline-offset:-2px; }
+.g-watch-it .ic{ flex:none; }
+.g-watch-it b small{ font-weight:600; font-size:10.5px; color:var(--gs-muted, #64748B); }
+.g-watch-it.k-up{ background:#ECFDF5; } .g-watch-it.k-cap{ background:#FFFBEB; } .g-watch-it.k-conc{ background:#EFF6FF; }
+html[data-theme="dark"] .g-dyn-target{ background:#0B2A20; border-color:#14532D; color:#A7F3D0; }
+html[data-theme="dark"] .g-dyn-target b.pos{ color:#6EE7B7; }
+html[data-theme="dark"] .g-watch-it.k-up{ background:#0B2A20; } html[data-theme="dark"] .g-watch-it.k-cap{ background:#2A2110; } html[data-theme="dark"] .g-watch-it.k-conc{ background:#0F1E33; }
+html[data-theme="dark"] .glv-mwarn{ background:#2A1215; color:#FCA5A5; border-color:#7F1D1D; }

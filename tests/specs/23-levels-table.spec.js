@@ -108,8 +108,10 @@ const { check, summary, launch, page, loginAdmin } = require('../lib');
   check('Grid: كمية الشراء 16.56 = المتبقي 6.56 + المباع 10 — متوسط البيع 22.07 — الربح 0.73', g0[4] === '16.56' && g0[8] === '10' && g0[10] === '6.56' && g0[9] === '22.07' && g0[13] === '+0.73', g0.join(' | '));
   // بيع الباقي ← جاهزة للترحيل ← ترحيل
   await openModal('#gridLevelsTable tr[data-lv="0"] button[data-gcall="__gridSellAtLevel"]');
-  check('Grid: نافذة البيع بالكمية المتاحة وسعر هدف البيع', await a.evaluate(() => document.getElementById('glvMQ').value === '6.56' && document.getElementById('glvMP').value === '22.5'));
-  await save();
+  // الإصدار 115: السعر = آخر سعر للسهم (متأخر 15 دقيقة) ولو مش متاح ← هدف البيع
+  const gm = await a.evaluate(() => { const live = (window.__mkLivePx || {})['HRHO|مصر']; return { q: document.getElementById('glvMQ').value, p: document.getElementById('glvMP').value, want: live > 0 ? String(+live.toFixed(2)) : '22.5' }; });
+  check('Grid: نافذة البيع بالكمية المتاحة وآخر سعر للسهم (أو هدف البيع لو السعر مش متاح)', gm.q === '6.56' && gm.p === gm.want, JSON.stringify(gm));
+  await fill(null, 22.5); await save();
   let G = await grid();
   check('Grid: البيع اتسجل والمتبقي صفر', G.levels[0].sells.length === 2 && Math.abs(G.levels[0].executedQty) < 1e-9, JSON.stringify(G.levels[0]));
   const rd = await a.evaluate(() => ({ st: document.querySelector('#gridLevelsTable tr[data-lv="0"] td:nth-child(4)').textContent, b: [...document.querySelectorAll('#gridLevelsTable tr[data-lv="0"] .glv-acts button')].map(x => x.textContent.trim()).join(',') }));

@@ -50,7 +50,7 @@
      ===================================================================== */
 
   // رقم الإصدار - بيظهر في شاشة "حسابي" (غيّره مع ?v= في index.php و VERSION في sw.js)
-  const APP_VERSION = 114;
+  const APP_VERSION = 115;
 
   /* الاستعلامات المتكررة (الدردشة/التوصيات/قائمة المتابعة) - استعلام متكيّف (الإصدار 89)
      - بتقف لما التبويب يكون مخفي أو الموبايل مقفول
@@ -1143,6 +1143,7 @@
       ${installCard}
       <div class="gs-home-cols"><div class="c1">
       <div id="gsHero"></div>
+      <div id="gsPlanWatch"></div>
       <div id="gsCurve"></div>
       <div id="gsAlertsCard"></div>
       ${quick.length ? `<div class="gs-quick" style="grid-template-columns:repeat(${quick.length},1fr)">${quick.map((q, i) => `<button type="button" data-i="${i}"><span class="ic ${q.brand ? 'brand' : ''}">${icon(q.ic)}</span>${q.label}</button>`).join('')}</div>` : ''}
@@ -1248,13 +1249,15 @@
     let holdFilter = store.get('gs_hold_filter', 'open'); if (!['open', 'closed', 'all'].includes(holdFilter)) holdFilter = 'open';
     let holdAll = false;
     // أول فتح خالص (مفيش أسعار محفوظة): تحميل مكان الأرقام بدل أرقام غلط
-    if (pxReady) { drawHero(); drawHoldings(false); }
+    // الإصدار 115: فحص الخطط على آخر سعر (الهدف اتفعّل على سعر السوق / المبلغ المرصود خلص / التركّز)
+    const drawWatch = () => { if (typeof gPlanWatchPaint === 'function') gPlanWatchPaint($('#gsPlanWatch'), plans, grids); };
+    if (pxReady) { drawHero(); drawHoldings(false); drawWatch(); }
     else { const h = $('#gsHero'); if (h) h.innerHTML = '<div class="gs-skel" style="height:220px;border-radius:24px"></div>'; const hd = $('#gsHoldings'); if (hd) hd.innerHTML = '<div class="gs-skel" style="height:220px"></div>'; }
     // أسعار أحدث وصلت ← الأرقام بس بتتحدّث (البطاقة + استثماراتي + المنحنى)
     if (pxPending) pxPending.then(changed => {
       if (GS.seq !== my || GS.currentScreen !== 'renderHome' || !document.getElementById('gsHero')) return;
       if (!changed && pxReady) return;
-      computeHome(); drawHero(); drawHoldings(holdAll);
+      computeHome(); drawHero(); drawHoldings(holdAll); drawWatch();
       if (typeof mkPortfolioCurve === 'function' && !hidden('hide_curve_home')) mkPortfolioCurve(document.getElementById('gsCurve'), ccys, sel, plans, grids);
     });
     const hf = $('#gsHoldFilter'); if (hf) { hf.value = holdFilter; hf.onchange = () => { holdFilter = hf.value; store.set('gs_hold_filter', holdFilter); holdAll = false; drawHoldings(false); }; }

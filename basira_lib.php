@@ -247,10 +247,10 @@ function bs_ai_schema(){
         ]];
 }
 /* طلب واحد للـ Messages API - بيرجّع [مصفوفة الرأي أو null, رسالة خطأ] */
-function bs_ai_call($key, $model, $effort, $system, $user, $maxTokens = 16000){
+function bs_ai_call($key, $model, $effort, $system, $user, $maxTokens = 16000, $schema = null){
     $body = ['model' => $model, 'max_tokens' => $maxTokens, 'system' => $system,
         'messages' => [['role' => 'user', 'content' => $user]],
-        'output_config' => ['format' => ['type' => 'json_schema', 'schema' => bs_ai_schema()]]];
+        'output_config' => ['format' => ['type' => 'json_schema', 'schema' => $schema ?: bs_ai_schema()]]];
     $hdr = ['Content-Type: application/json', 'x-api-key: ' . $key, 'anthropic-version: 2023-06-01'];
     if ($model !== 'claude-haiku-4-5') {
         $body['output_config']['effort'] = $effort;

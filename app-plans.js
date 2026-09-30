@@ -455,18 +455,37 @@ function glvModal(o){
       <label for="glvMQ">الكمية</label><input type="number" step="any" min="0" id="glvMQ" inputmode="decimal">
       <label for="glvMP">السعر</label><input type="number" step="any" min="0" id="glvMP" inputmode="decimal">
       <label for="glvMD">التاريخ</label><input type="date" id="glvMD">
+      <div class="glv-mpx" id="glvMX" hidden></div>
       <div class="glv-mcalc"><span>القيمة</span><b id="glvMV">0.00</b></div>
+      <div class="glv-mcalc glv-mpl" id="glvMPLRow" hidden><span id="glvMPLLbl">الربح / الخسارة</span><b id="glvMPL">0.00</b></div>
+      <div class="glv-mwarn" id="glvMW" role="alert" hidden></div>
       <div class="glv-merr" id="glvME" role="alert"></div>
       <div class="glv-mrow"><button type="button" id="glvMOk">حفظ</button><button type="button" class="secondary" id="glvMNo">إلغاء</button></div>
     </div>`;
     document.body.appendChild(ov);
-    const calc = () => { document.getElementById('glvMV').textContent = glvN((+document.getElementById('glvMQ').value || 0) * (+document.getElementById('glvMP').value || 0)); };
+    // الإصدار 115: في البيع ← الربح / الخسارة بيتحسب على السعر المكتوب (أوتوماتيك أو يدوي) + تحذير لو أقل من متوسط التكلفة
+    const calc = () => {
+      const q = +document.getElementById('glvMQ').value || 0, pr = +document.getElementById('glvMP').value || 0, o2 = ov._o || {};
+      document.getElementById('glvMV').textContent = glvN(q * pr);
+      const plRow = document.getElementById('glvMPLRow'), w = document.getElementById('glvMW'), ok = document.getElementById('glvMOk');
+      ov._armed = false; ok.textContent = o2.okText || 'حفظ'; ok.classList.remove('glv-danger');
+      if (!(o2.cost > 0)) { plRow.hidden = true; w.hidden = true; return; }
+      const pl = (pr - o2.cost) * q, pct = (pr - o2.cost) / o2.cost * 100;
+      plRow.hidden = !(pr > 0 && q > 0);
+      document.getElementById('glvMPLLbl').textContent = pl < 0 ? 'خسارة البيع' : 'ربح البيع';
+      const plEl = document.getElementById('glvMPL'); plEl.textContent = `${glvN(Math.abs(pl))} (${pct > 0 ? '+' : ''}${pct.toFixed(2)}%)`; plEl.className = pl < 0 ? 'neg' : 'pos';
+      if (pr > 0 && q > 0 && pr < o2.cost - 1e-9) { w.hidden = false; w.textContent = `⚠️ بيع بخسارة ${glvN(Math.abs(pl))} (${pct.toFixed(2)}%) — السعر ${glvN(pr)} أقل من ${o2.costLbl || 'متوسط التكلفة'} ${glvN(o2.cost)}.`; }
+      else w.hidden = true;
+    };
     ov.querySelectorAll('input').forEach(i => i.addEventListener('input', calc));
     ov.addEventListener('click', (e) => { if (e.target === ov) ov.hidden = true; });
     document.getElementById('glvMNo').onclick = () => { ov.hidden = true; };
     ov.addEventListener('keydown', (e) => { if (e.key === 'Escape') ov.hidden = true; if (e.key === 'Enter' && e.target.tagName === 'INPUT') { e.preventDefault(); document.getElementById('glvMOk').click(); } });
     ov._calc = calc;
   }
+  ov._o = o;
+  const mx = document.getElementById('glvMX');
+  mx.hidden = !o.pxNote; mx.textContent = o.pxNote || '';
   document.getElementById('glvMT').textContent = o.title || '';
   document.getElementById('glvMS').textContent = o.sub || '';
   document.getElementById('glvMQ').value = o.q != null && o.q !== '' ? +(+o.q).toFixed(4) : '';
@@ -481,6 +500,8 @@ function glvModal(o){
     if (!(v.q > 0)) { err.textContent = 'اكتب كمية أكبر من صفر (ممكن تكون كسر عشري).'; return; }
     if (!(v.p > 0)) { err.textContent = 'اكتب سعر أكبر من صفر.'; return; }
     if (o.maxQ != null && v.q > o.maxQ + 1e-9) { err.textContent = `أقصى كمية مسموحة ${glvQ(o.maxQ)}.`; return; }
+    // بيع بخسارة ← ضغطة تانية للتأكيد
+    if (o.cost > 0 && v.p < o.cost - 1e-9 && !ov._armed) { ov._armed = true; ok.textContent = `تأكيد البيع بخسارة ${glvN(Math.abs((v.p - o.cost) * v.q))}`; ok.classList.add('glv-danger'); return; }
     ok.disabled = true;
     let r; try { r = await o.onSave(v); } catch(e2){ r = 'حصل خطأ — حاول تاني.'; }
     ok.disabled = false;
@@ -488,6 +509,98 @@ function glvModal(o){
     ov.hidden = true;
   };
   setTimeout(() => { const q = document.getElementById('glvMQ'); q.focus(); q.select(); }, 30);
+}
+
+/* الإصدار 115: الهدف بيتكيّف مع السوق
+   لو آخر سعر للسهم عدّى هدف البيع المخطط (مثال: الهدف 10.5 = 5% والسعر 14) ← الهدف بيتفعّل على سعر السوق
+   والربح المعروض = الربح الفعلي (40%) مش النسبة المخططة. لو السعر رجع تحت الهدف ← يرجع الهدف المخطط.
+   (مفيش حد خسارة ولا حد حماية - حد خطة DCA هو المبلغ المرصود للسهم) */
+function gDynTargetPaint(o){
+  const val = document.getElementById(o.valId), lbl = document.getElementById(o.lblId), note = document.getElementById(o.noteId);
+  if (!val || !lbl) return;
+  const on = o.price > 0 && o.target > 0 && o.held > 0 && o.avg > 0 && o.price > o.target + 1e-9;
+  if (!on) { val.textContent = fmtMoney(o.target); val.classList.remove('pos'); lbl.textContent = o.baseLbl; if (note) note.hidden = true; return; }
+  const pct = (o.price - o.avg) / o.avg * 100, pnl = (o.price - o.avg) * o.held, planned = (o.target - o.avg) * o.held;
+  val.textContent = fmtMoney(o.price); val.classList.add('pos');
+  lbl.textContent = `هدف البيع الفعلي على سعر السوق (+${pct.toFixed(2)}% بدل ${o.pt}%)`;
+  if (note) { note.hidden = false;
+    note.innerHTML = `🚀 <b>السعر عدّى هدف البيع${o.trial ? ' (سعر التجربة)' : ''}:</b> الهدف المخطط ${fmt2(o.target)} (${o.pt}%) والسعر ${fmt2(o.price)} — اتفعّل الهدف على سعر السوق: <b class="pos">ربح فعلي ${fmt2(pnl)} (+${pct.toFixed(2)}%)</b> بدل ${fmt2(planned)} المخطط. لو السعر رجع تحت ${fmt2(o.target)} يرجع الهدف المخطط.`; }
+}
+function gGridDynTargetPaint(g, price, trial){
+  const held = g.levels.filter(l => l.status === 'bought' && l.executedQty > 0 && +l.sellTargetPrice > 0);
+  const val = document.getElementById('gridSellTarget'), lbl = document.getElementById('gridSellTargetLbl'), note = document.getElementById('gridDynTargetNote');
+  if (!val || !lbl) return;
+  const qty = held.reduce((a, l) => a + l.executedQty, 0);
+  const over = price > 0 ? held.filter(l => price > +l.sellTargetPrice + 1e-9) : [];
+  const avgT = (eff) => qty > 0 ? held.reduce((a, l) => a + (eff ? Math.max(+l.sellTargetPrice, price || 0) : +l.sellTargetPrice) * l.executedQty, 0) / qty : null;
+  if (!over.length) { val.textContent = fmtMoney(avgT(false)); val.classList.remove('pos'); lbl.textContent = 'هدف البيع (متوسط)'; if (note) note.hidden = true; return; }
+  val.textContent = fmtMoney(avgT(true)); val.classList.add('pos'); lbl.textContent = 'هدف البيع الفعلي (متوسط — على سعر السوق)';
+  const plannedPnl = over.reduce((a, l) => a + (l.sellTargetPrice - l.executedPrice) * l.executedQty, 0), realPnl = over.reduce((a, l) => a + (price - l.executedPrice) * l.executedQty, 0);
+  if (note) { note.hidden = false;
+    note.innerHTML = `🚀 <b>${over.length === 1 ? 'مستوى واحد عدّى' : over.length + ' مستويات عدّت'} هدف البيع${trial ? ' (سعر التجربة)' : ''}:</b> السعر ${fmt2(price)} — اتفعّل هدف ${over.length === 1 ? 'المستوى' : 'المستويات دي'} على سعر السوق: <b class="pos">ربح فعلي ${fmt2(realPnl)}</b> بدل ${fmt2(plannedPnl)} المخطط (المستويات: ${over.map(l => g.levels.indexOf(l) + 1).join('، ')}).`; }
+}
+
+/* الإصدار 115: فحص الخطط على آخر سعر - أول حاجة في الرئيسية بعد وصول الأسعار
+   1) السعر عدّى هدف البيع ← الهدف اتفعّل على سعر السوق (DCA: الكمية كلها / Grid: المستويات اللي عدّت)
+   2) DCA: كل المستويات اتنفذت ← المبلغ المرصود للسهم خلص (عدّل الخطة وزوّد المبلغ لفتح مستويات جديدة)
+   3) Grid: السعر نزل تحت قاع النطاق
+   4) التركّز: السهم وصل 40% أو أكتر من قيمة المحفظة (نفس العملة) */
+const G_CONC_PCT = 40;
+function gPlanWatchItems(plans, grids){
+  const px = window.__mkLivePx || {}, out = [], val = {}, ccyTot = {};
+  const keyOf = (s, m) => String(s).toUpperCase() + '|' + (m || 'مصر');
+  const ccyOf = (p) => p.currency || (typeof MARKET_TO_CURRENCY_MAP !== 'undefined' ? MARKET_TO_CURRENCY_MAP[p.market] : '') || '';
+  const addVal = (s, c, v) => { if (!(v > 0)) return; const k = s + '|' + c; val[k] = (val[k] || 0) + v; ccyTot[c] = (ccyTot[c] || 0) + v; };
+  Object.entries(plans || {}).forEach(([s, p]) => {
+    if (!p || !Array.isArray(p.levels)) return;
+    let sim; try { sim = simulatePlan(p); } catch(e){ return; }
+    if (!(sim.heldQty > 0)) return;
+    const last = px[keyOf(s, p.market)] || (+p.manualLastPrice > 0 ? +p.manualLastPrice : null), avg = sim.avgCostCurrent, tgt = sim.sellTargetCurrent;
+    addVal(s, ccyOf(p), sim.heldQty * (last || avg || 0));
+    if (!(last > 0) || !(avg > 0)) return;
+    if (tgt > 0 && last > tgt + 1e-9) {
+      const pct = (last - avg) / avg * 100;
+      out.push({ kind: 'up', type: 'DCA', sym: s, text: `السعر ${fmt2(last)} عدّى هدف البيع ${fmt2(tgt)} (${+p.profitTarget || 0}%) — الهدف اتفعّل على سعر السوق: ربح فعلي ${fmt2((last - avg) * sim.heldQty)} (+${pct.toFixed(2)}%)` });
+    }
+    const hasNext = sim.rows.some(r => r.isNext && !r.executed && !r.trimmed);
+    if (!hasNext && last < (sim.lastBoughtPrice || 0)) {
+      out.push({ kind: 'cap', type: 'DCA', sym: s, text: `كل المستويات اتنفذت والمبلغ المرصود للسهم خلص (السعر ${fmt2(last)} تحت آخر شراء ${fmt2(sim.lastBoughtPrice)}) — تقدر تعدّل الخطة وتزوّد المبلغ لفتح مستويات جديدة.` });
+    }
+  });
+  Object.entries(grids || {}).forEach(([s, g]) => {
+    if (!g || !Array.isArray(g.levels) || g.closed) return;
+    const held = g.levels.filter(l => l.status === 'bought' && l.executedQty > 0);
+    const last = px[keyOf(s, g.market)] || (+g.manualLastPrice > 0 ? +g.manualLastPrice : null);
+    const cost = held.reduce((a, l) => a + l.executedQty * l.executedPrice, 0), qty = held.reduce((a, l) => a + l.executedQty, 0);
+    addVal(s, ccyOf(g), qty * (last || (qty ? cost / qty : 0)));
+    if (!(last > 0) || !held.length) return;
+    const over = held.filter(l => +l.sellTargetPrice > 0 && last > +l.sellTargetPrice + 1e-9);
+    if (over.length) out.push({ kind: 'up', type: 'Grid', sym: s, text: `السعر ${fmt2(last)} عدّى هدف البيع في ${over.length === 1 ? 'مستوى واحد' : over.length + ' مستويات'} — الهدف اتفعّل على سعر السوق: ربح فعلي ${fmt2(over.reduce((a, l) => a + (last - l.executedPrice) * l.executedQty, 0))} بدل ${fmt2(over.reduce((a, l) => a + (l.sellTargetPrice - l.executedPrice) * l.executedQty, 0))}` });
+    if (+g.rangeLow > 0 && last < +g.rangeLow) out.push({ kind: 'cap', type: 'Grid', sym: s, text: `السعر ${fmt2(last)} نزل تحت قاع النطاق ${fmt2(g.rangeLow)} — مستويات الشراء في النطاق خلصت، تقدر تعدّل النطاق أو المبلغ.` });
+  });
+  // التركّز (لو في العملة دي أكتر من سهم)
+  const perSym = {}; Object.keys(val).forEach(k => { const i = k.lastIndexOf('|'); const c = k.slice(i + 1); (perSym[c] = perSym[c] || []).push(k.slice(0, i)); });
+  Object.entries(val).forEach(([k, v]) => {
+    const i = k.lastIndexOf('|'), s = k.slice(0, i), c = k.slice(i + 1);
+    if ((perSym[c] || []).length < 2) return;
+    const pct = v / ccyTot[c] * 100;
+    if (pct >= G_CONC_PCT) out.push({ kind: 'conc', type: '', sym: s, text: `السهم ده بقى ${pct.toFixed(0)}% من قيمة محفظتك${c ? ' (' + c + ')' : ''} — نسبة تركّز عالية (الحد المقترح أقل من ${G_CONC_PCT}%). ملحوظة للمراجعة، مش أمر بيع.` });
+  });
+  const ord = { up: 0, cap: 1, conc: 2 };
+  return out.sort((a, b) => ord[a.kind] - ord[b.kind]);
+}
+function gPlanWatchPaint(el, plans, grids){
+  if (!el) return;
+  let items = []; try { items = gPlanWatchItems(plans, grids); } catch(e){ console.error(e); }
+  if (!items.length) { el.innerHTML = ''; return; }
+  const ic = { up: '🚀', cap: '🧾', conc: '⚖️' };
+  el.innerHTML = `<div class="g-watch" id="gPlanWatch"><div class="g-watch-h"><b>متابعة خططك على آخر سعر</b><small>أسعار متأخرة 15 دقيقة</small></div>
+    ${items.slice(0, 8).map(it => `<button type="button" class="g-watch-it k-${it.kind}" data-sym="${escapeHtml(it.sym)}" data-type="${it.type}"><span class="ic">${ic[it.kind]}</span><span><b>${escapeHtml(it.sym)}${it.type ? ` <small>${it.type}</small>` : ''}</b> ${escapeHtml(it.text)}</span></button>`).join('')}
+    ${items.length > 8 ? `<small class="u-muted">+ ${items.length - 8} ملاحظات أخرى</small>` : ''}</div>`;
+  el.querySelectorAll('.g-watch-it').forEach(b => b.onclick = () => {
+    const t = b.dataset.type, s = b.dataset.sym;
+    if (t === 'Grid') renderGridPlanDetail(s); else if (t === 'DCA') renderPlanDetail(s); else if (plans && plans[s]) renderPlanDetail(s); else renderGridPlanDetail(s);
+  });
 }
 
 function gFillListProfits(tok, plans, grids, items){
@@ -1541,87 +1654,7 @@ async function renderPortfolio(){
 }
 
 /* ================== تقرير تنويع المحفظة (خدمة جديدة - بند 43) ================== */
-async function renderDiversificationReport(){
-  const __tok = screenToken();   // الإصدار 88
-  pushNav(() => renderDiversificationReport());
-  const email = await getSession();
-  if(!email) return renderLogin();
-  if(!(await ensureAccess())) return;
-
-  const plans = await getPlans(email);
-  const symbols = Object.keys(plans);
-
-  const rows = [];
-  let totalExposure = 0;
-  const byMarket = {};
-
-  symbols.forEach(sym => {
-    const p = plans[sym];
-    if (!p.closedTrades) p.closedTrades = [];
-    const sim = simulatePlan(p);
-    const isOpen = sim.heldQty > 0;
-    if (!isOpen) return; // التنويع بيتحسب على المراكز المفتوحة بس (اللي فعليًا محتفظ بيها دلوقتي)
-    const lastPrice = (p.manualLastPrice > 0) ? p.manualLastPrice : sim.lastBoughtPrice;
-    const value = (lastPrice != null) ? sim.heldQty * lastPrice : sim.totalBuyAmountSpent;
-    rows.push({ symbol: sym, market: p.market || 'غير محدد', value });
-    totalExposure += value;
-    byMarket[p.market || 'غير محدد'] = (byMarket[p.market || 'غير محدد'] || 0) + value;
-  });
-
-  rows.sort((a,b) => b.value - a.value);
-  const topHolding = rows[0];
-  const topPct = (totalExposure > 0 && topHolding) ? (topHolding.value / totalExposure * 100) : 0;
-
-  let riskLabel, riskColor, riskAdvice;
-  if (rows.length === 0) {
-    riskLabel = 'لا توجد مراكز مفتوحة حاليًا'; riskColor = '#888';
-    riskAdvice = 'لا توجد أسهم محتفظ بها الآن لتقييم تنويعها.';
-  } else if (topPct >= 50) {
-    riskLabel = 'تركيز مرتفع جدًا'; riskColor = '#8b1e1e';
-    riskAdvice = `${escapeHtml(topHolding.symbol)} وحده يمثّل ${topPct.toFixed(0)}% من محفظتك المفتوحة — هذا تركيز عالٍ جدًا، وأي تراجع في هذا السهم سيؤثر بقوة على محفظتك كلها.`;
-  } else if (topPct >= 30) {
-    riskLabel = 'تركيز مرتفع'; riskColor = '#c0392b';
-    riskAdvice = `${escapeHtml(topHolding.symbol)} يمثّل ${topPct.toFixed(0)}% من محفظتك — نسبة معقولة تستحق الانتباه، فكّر في زيادة تنويعك على أسهم/قطاعات أخرى.`;
-  } else if (rows.length < 3) {
-    riskLabel = 'عدد أسهم قليل'; riskColor = '#8a6d1b';
-    riskAdvice = 'عدد الأسهم المفتوحة لديك قليل — التنويع ليس نسبة فقط، بل إن عددًا كافيًا من الأسهم المختلفة يقلل المخاطرة العشوائية.';
-  } else {
-    riskLabel = 'محفظة متنوعة نسبيًا'; riskColor = '#2e9e4f';
-    riskAdvice = 'توزيع محفظتك المفتوحة معقول ومش متركّز في سهم واحد بشكل مبالغ فيه.';
-  }
-
-  const marketRows = Object.keys(byMarket).map(m => ({ market: m, value: byMarket[m], pct: totalExposure>0 ? byMarket[m]/totalExposure*100 : 0 }));
-
-  if (screenStale(__tok)) return; app.innerHTML = `<div class="container wide">${logoHeader()}
-    <div class="topbar"><div>${pageTitle('diversification_report','🎯 تقرير تنويع المحفظة')}</div><button class="secondary small" id="homeBtn">🏠 الشاشة الرئيسية</button></div>
-    <div class="info">هذا التقرير يحلل فقط المراكز المفتوحة حاليًا (الأسهم التي ما زلت تحتفظ بها)، بناءً على بيانات خططك المُدخلة.</div>
-
-    <div style="text-align:center;padding:16px;background:${riskColor}15;border-radius:12px;margin-bottom:16px;">
-      <div style="font-size:12px;color:#666;">تقييم التنويع</div>
-      <div style="font-size:22px;font-weight:bold;color:${riskColor};">${riskLabel}</div>
-      <div style="font-size:13px;color:#555;margin-top:8px;max-width:500px;margin-inline:auto;">${riskAdvice}</div>
-    </div>
-
-    <h2>توزيع القيمة حسب السهم</h2>
-    <div class="section-card">
-      ${rows.length ? rows.map(r=>{
-        const pct = totalExposure>0 ? (r.value/totalExposure*100) : 0;
-        return `<div class="u-mb10">
-          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px;"><strong>${escapeHtml(r.symbol)}</strong><span>${pct.toFixed(1)}%</span></div>
-          <div style="background:#eee;border-radius:4px;height:10px;overflow:hidden;"><div style="background:${pct>=40?'#c0392b':'var(--green)'};height:100%;width:${Math.min(pct,100)}%;"></div></div>
-        </div>`;
-      }).join('') : '<p class="u-note">لا توجد مراكز مفتوحة حاليًا.</p>'}
-    </div>
-
-    ${marketRows.length > 1 ? `<h2 class="u-mt20">توزيع القيمة حسب السوق</h2>
-    <div class="section-card">
-      ${marketRows.map(m=>`<div>${escapeHtml(m.market)}: <strong>${m.pct.toFixed(1)}%</strong></div>`).join('')}
-    </div>` : ''}
-
-    <p class="disclaimer">تنويه: هذا التقرير تحليلي مبني على بياناتك المُدخلة فقط، وليس توصية استثمارية. قرار التنويع من عدمه مسؤوليتك الكاملة.</p>
-  </div>`;
-  document.getElementById('homeBtn').onclick=()=>renderHome();
-}
+/* الإصدار 115: تقرير توزيع التنوع اتنقل لـ mizan.js («ميزان محفظتك AI») */
 
 /* ================== برنامج الإحالة - ادعُ صديق (خدمة جديدة - بند 43) ================== */
 async function renderReferralPage(){
@@ -2164,12 +2197,14 @@ async function renderGridPlanDetail(symbol){
 
     <div class="summary-cards">
       <div class="summary-card"><div class="val">${fmtMoney(gsum.avgCostCurrent)}</div><div class="lbl">متوسط التكلفة الحالي</div></div>
-      <div class="summary-card"><div class="val">${fmtMoney(gsum.avgSellTarget)}</div><div class="lbl">هدف البيع (متوسط)</div></div>
+      <div class="summary-card"><div class="val" id="gridSellTarget">${fmtMoney(gsum.avgSellTarget)}</div><div class="lbl" id="gridSellTargetLbl">هدف البيع (متوسط)</div></div>
       <div class="summary-card"><div class="val" id="gridHeldQty">${fmtQty(gsum.heldQty)}</div><div class="lbl">الكمية المتبقية حاليًا</div></div>
       <div class="summary-card"><div class="val">${fmtMoney(gsum.totalInvested)}</div><div class="lbl">إجمالي المبلغ المستثمر</div></div>
       <div class="summary-card"><div class="val ${gsum.expectedProfitIfSoldNow>=0?'pos':'neg'}">${fmtMoney(gsum.expectedProfitIfSoldNow)}</div><div class="lbl">الربح المتوقع لو البيع الآن</div></div>
       <div class="summary-card"><div class="val ${totalProfit>=0?'pos':'neg'}">${fmtMoney(totalProfit)}</div><div class="lbl">الربح المحقق حتى الآن</div></div>
     </div>
+
+    <div id="gridDynTargetNote" class="g-dyn-target" hidden></div>
 
     <h2 class="u-mt20">موقف السهم على آخر سعر</h2>
     <div class="section-card">
@@ -2384,6 +2419,7 @@ async function renderGridPlanDetail(symbol){
     const nxEl = document.getElementById('gridStatusNext');
     if (nxEl) nxEl.innerHTML = `${nb ? `شراء ${fmt2(nb)}${lastPrice!=null && lastPrice <= nb ? ' ✅' : ''}` : 'شراء -'}<br>${ns ? `بيع ${fmt2(ns)}${lastPrice!=null && lastPrice >= ns ? ' ✅' : ''}` : 'بيع -'}`;
     glvFillUnreal('gridLevelsTable', lastPrice);
+    gGridDynTargetPaint(g, lastPrice, manualVal > 0);
 
     const alertEl = document.getElementById('rangeAlert');
     if (lastPrice == null) {
@@ -2580,8 +2616,12 @@ async function renderGridPlanDetail(symbol){
 
   window.__gridSellAtLevel = (idx, maxQty) => {
     const lv = g.levels[idx];
+    // الإصدار 115: السعر = آخر سعر للسهم (متأخر 15 دقيقة) أوتوماتيك ، ولو مش متاح ← هدف البيع - وتقدر تكتب سعر تاني
+    const px = gLivePx > 0 ? gLivePx : null;
     glvModal({ title: `بيع — المستوى ${idx + 1}`, sub: `الكمية المتاحة للبيع ${glvQ(maxQty)} — سعر الشراء ${glvN(lv.executedPrice)} — هدف البيع ${glvN(lv.sellTargetPrice)}`,
-      q: maxQty, p: lv.sellTargetPrice != null ? +(+lv.sellTargetPrice).toFixed(2) : '', maxQ: maxQty,
+      q: maxQty, p: px != null ? +px.toFixed(2) : (lv.sellTargetPrice != null ? +(+lv.sellTargetPrice).toFixed(2) : ''), maxQ: maxQty,
+      cost: +lv.executedPrice, costLbl: 'سعر شراء المستوى', okText: 'تنفيذ البيع',
+      pxNote: px != null ? `السعر = آخر سعر للسهم (متأخر 15 دقيقة) ${glvN(px)} — تقدر تكتب سعر تاني والحساب هيمشي عليه.` : 'آخر سعر للسهم غير متاح الآن — السعر المكتوب هو هدف البيع، وتقدر تغيّره.',
       onSave: async (v) => {
         if (!lv.sells) lv.sells = [];
         lv.sells.push({ qty: v.q, price: v.p, date: v.d });
@@ -2600,7 +2640,7 @@ async function renderGridPlanDetail(symbol){
   window.__gridStartEditSell = (idx, sIdx) => {
     const lv = g.levels[idx], cur = (lv.sells || [])[sIdx]; if (!cur) return;
     const maxAllowed = (+lv.executedQty || 0) + cur.qty;
-    glvModal({ title: `تعديل البيع ${sIdx + 1} — المستوى ${idx + 1}`, sub: `أقصى كمية ${glvQ(maxAllowed)}`, q: cur.qty, p: cur.price, d: cur.date, maxQ: maxAllowed,
+    glvModal({ title: `تعديل البيع ${sIdx + 1} — المستوى ${idx + 1}`, sub: `أقصى كمية ${glvQ(maxAllowed)}`, q: cur.qty, p: cur.price, d: cur.date, maxQ: maxAllowed, cost: +lv.executedPrice, costLbl: 'سعر شراء المستوى',
       onSave: async (v) => {
         lv.sells[sIdx] = { qty: v.q, price: v.p, date: v.d };
         lv.executedQty = Number((maxAllowed - v.q).toFixed(6));
@@ -3470,12 +3510,14 @@ async function renderPlanDetail(symbol){
 
     <div class="summary-cards">
       <div class="summary-card"><div class="val">${fmtMoney(sim.avgCostCurrent)}</div><div class="lbl">متوسط التكلفة الحالي</div></div>
-      <div class="summary-card"><div class="val">${fmtMoney(sim.sellTargetCurrent)}</div><div class="lbl">هدف البيع (${planObj.profitTarget}%)</div></div>
+      <div class="summary-card"><div class="val" id="statusSellTarget">${fmtMoney(sim.sellTargetCurrent)}</div><div class="lbl" id="statusSellTargetLbl">هدف البيع (${planObj.profitTarget}%)</div></div>
       <div class="summary-card"><div class="val">${sim.heldQty.toLocaleString('en-US')}</div><div class="lbl">الكمية المتبقية حاليًا</div></div>
       <div class="summary-card"><div class="val">${fmtMoney(sim.totalBuyAmountSpent)}</div><div class="lbl">إجمالي المبلغ المستثمر</div></div>
       <div class="summary-card"><div class="val" id="statusSellNow">-</div><div class="lbl">الربح لو بعت كل الكمية على آخر سعر</div></div>
       <div class="summary-card"><div class="val ${sim.totalRealizedProfit>=0?'pos':'neg'}">${fmtMoney(sim.totalRealizedProfit)}</div><div class="lbl">الربح المحقق حتى الآن</div></div>
     </div>
+
+    <div id="dynTargetNote" class="g-dyn-target" hidden></div>
 
     <h2 class="u-mt20">موقف السهم على آخر سعر</h2>
     <div class="section-card">
@@ -3568,6 +3610,9 @@ async function renderPlanDetail(symbol){
     } else { ['statusUnreal','statusDropPercent','statusExitState','statusSellNow'].forEach(id => set(id, '-', '')); }
     // ربح/خسارة كل مستوى على آخر سعر = الكمية المتبقية من المستوى × (آخر سعر − سعر شرائه)
     glvFillUnreal('levelsTable', lastPriceUsed);
+    // الإصدار 115: السعر عدّى هدف البيع ← الهدف بيتفعّل على سعر السوق (الربح الفعلي بدل النسبة المخططة)
+    gDynTargetPaint({ price: lastPriceUsed, target: sim.sellTargetCurrent, avg, held: sim.heldQty, pt: +planObj.profitTarget || 0,
+      valId: 'statusSellTarget', lblId: 'statusSellTargetLbl', noteId: 'dynTargetNote', baseLbl: `هدف البيع (${planObj.profitTarget}%)`, trial: manualVal > 0 });
   }
   document.getElementById('manualLastPriceInput').addEventListener('input', updateStatusFields);
   if (planObj.listed === false) gUnlistedPriceBox('manualLastPriceInput', planObj, async (v) => { const p2 = await getPlans(email); if (p2[symbol]) { p2[symbol].manualLastPrice = v; await savePlans(email, p2); } planObj.manualLastPrice = v; livePx = v; updateStatusFields(); });
@@ -3730,7 +3775,11 @@ async function renderPlanDetail(symbol){
 
   window.__sellAtLevel = (sym, idx, maxQty) => {
     const lv = planObj.levels[idx];
-    glvModal({ title: `بيع — المستوى ${lv.level}`, sub: `الكمية المتاحة للبيع ${glvQ(maxQty)} — متوسط التكلفة ${glvN(sim.avgCostCurrent)}`, q: maxQty, p: '', maxQ: maxQty,
+    // الإصدار 115: السعر = آخر سعر للسهم (متأخر 15 دقيقة) أوتوماتيك - وتقدر تكتب سعر تاني بإيدك
+    const px = livePx > 0 ? livePx : null;
+    glvModal({ title: `بيع — المستوى ${lv.level}`, sub: `الكمية المتاحة للبيع ${glvQ(maxQty)} — متوسط التكلفة ${glvN(sim.avgCostCurrent)}`, q: maxQty, p: px != null ? +px.toFixed(2) : '', maxQ: maxQty,
+      cost: sim.avgCostCurrent, okText: 'تنفيذ البيع',
+      pxNote: px != null ? `السعر = آخر سعر للسهم (متأخر 15 دقيقة) ${glvN(px)} — تقدر تكتب سعر تاني والحساب هيمشي عليه.` : 'آخر سعر للسهم غير متاح الآن — اكتب سعر البيع.',
       onSave: async (v) => {
         const plans2 = await getPlans(email);
         const L = plans2[sym].levels[idx]; if (!L.sells) L.sells = [];
@@ -3745,7 +3794,7 @@ async function renderPlanDetail(symbol){
     // أقصى كمية = المتاح في المستوى ده بعد استبعاد البيع ده
     const tmp = JSON.parse(JSON.stringify(planObj)); tmp.levels[idx].sells[sIdx].qty = 0;
     const maxAllowed = simulatePlan(tmp).rows[idx].cumHeldQty;
-    glvModal({ title: `تعديل البيع ${sIdx + 1} — المستوى ${planObj.levels[idx].level}`, sub: `أقصى كمية ${glvQ(maxAllowed)}`, q: cur.qty, p: cur.price, d: cur.date, maxQ: maxAllowed,
+    glvModal({ title: `تعديل البيع ${sIdx + 1} — المستوى ${planObj.levels[idx].level}`, sub: `أقصى كمية ${glvQ(maxAllowed)}`, q: cur.qty, p: cur.price, d: cur.date, maxQ: maxAllowed, cost: (() => { const ss = ((sim.rows[idx] || {}).sells || []).find(x => x.idx === sIdx); return ss && ss.avgCostAtSale > 0 ? ss.avgCostAtSale : sim.avgCostCurrent; })(),
       onSave: async (v) => {
         const plans2 = await getPlans(email);
         plans2[sym].levels[idx].sells[sIdx] = { qty: v.q, price: v.p, date: v.d };

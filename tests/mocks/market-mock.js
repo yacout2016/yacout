@@ -10,6 +10,13 @@ http.createServer((req, res) => { let body = ''; req.on('data', c => body += c);
   if (u.pathname === '/ai-last') return send(global.__aiLast || {});
   if (u.pathname === '/ai') { const j = JSON.parse(body || '{}'); global.__aiLast = { headers: req.headers, body: j, n: ((global.__aiLast || {}).n || 0) + 1 };
     if (req.headers['x-api-key'] === 'sk-bad-key-000000000000000') return send({ type: 'error', error: { type: 'authentication_error', message: 'invalid x-api-key' } }, 401);
+    // الإصدار 115: «ميزان محفظتك AI» (مخطط فيه candidates)
+    const sch = (((j.output_config || {}).format || {}).schema || {}).properties || {};
+    if (sch.candidates) { let firstSym = 'ZZZZ'; try { const c = String(j.messages[0].content); const d = JSON.parse(c.slice(c.indexOf('\n') + 1)); global.__mzIn = d; firstSym = (d.candidate_pool[0] || {}).symbol || 'ZZZZ'; } catch(e){}
+      const mz = { summary: 'تحليل تجريبي من الذكاء الاصطناعي: المحفظة متركزة في قطاع المالية.', strengths: ['كل خطة ليها مبلغ مرصود'], risks: ['تركّز في قطاع واحد', 'ارتباط عالي'],
+        moves: [{ symbol: 'COMI', action: 'reduce', text: 'تقليل المبلغ المرصود لخطة COMI تدريجيًا' }, { symbol: 'FAKE1', action: 'add', text: 'رمز مش موجود لازم يتشال' }],
+        market_view: 'السوق في اتجاه صاعد متوسط.', candidates: [{ symbol: firstSym, reason: 'قطاع مختلف' }, { symbol: 'NOPE9', reason: 'مش في القائمة' }] };
+      return send({ id: 'msg_test', type: 'message', role: 'assistant', model: j.model, stop_reason: 'end_turn', content: [{ type: 'text', text: JSON.stringify(mz) }], usage: { input_tokens: 10, output_tokens: 10 } }); }
     const out = { opinion: 'رأي تجريبي من الذكاء الاصطناعي: الصورة العامة متوازنة مع ميل إيجابي.', positives: ['نمو الأرباح', 'سيولة داخلة', 'فوق المتوسط 50'], negatives: ['تذبذب السوق', 'مقاومة قريبة'],
       bull: { prob: 40, text: 'اختراق المقاومة' }, base: { prob: 40, text: 'تداول عرضي' }, bear: { prob: 20, text: 'كسر الدعم' },
       horizons: [{ key: 'week', up: 99, note: 'زخم قصير' }, { key: 'month', up: 60, note: 'متوازن' }], news_summary: 'الأخبار تميل للإيجابية.', market_view: 'السوق في اتجاه صاعد متوسط.' };
@@ -20,7 +27,8 @@ http.createServer((req, res) => { let body = ''; req.on('data', c => body += c);
     if (!j.symbols || !j.symbols.tickers) return send({ totalCount: Object.keys(prices).length, data: Object.keys(prices).sort().map(sym => ({ s: 'EGX:' + sym, d: [sym, sym + ' Co', prices[sym]] })) });
     const t = j.symbols.tickers[0]; const sym = t.split(':')[1]; const p = prices[sym];
     if (!p) return send({ data: [] });
-    const vals = { description: sym + ' Co', close: p, change_abs: 1, high: p * 1.02, low: p * 0.98, currency: 'EGP', update_mode: 'delayed_streaming_900', 'High.1M': p * 1.1, 'Low.1M': p * 0.9, 'High.3M': p * 1.2, 'Low.3M': p * 0.8 };
+    const SECT = { COMI: 'Finance', HRHO: 'Finance', TMGH: 'Industrial Services', CRVX: 'Health Technology', DROPX: 'Retail Trade' };
+    const vals = { sector: SECT[sym] || 'Miscellaneous', description: sym + ' Co', close: p, change_abs: 1, high: p * 1.02, low: p * 0.98, currency: 'EGP', update_mode: 'delayed_streaming_900', 'High.1M': p * 1.1, 'Low.1M': p * 0.9, 'High.3M': p * 1.2, 'Low.3M': p * 0.8 };
     return send({ data: [{ s: t, d: j.columns.map(c => vals[c] ?? p) }] }); }
   // Yahoo chart (الإصدار 91): أسعار إغلاق يومية لآخر 400 يوم - خط من 70% لحد السعر الحالي
   const ym = u.pathname.match(/^\/([A-Z0-9-]+)\.CA$/);
