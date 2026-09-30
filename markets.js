@@ -122,22 +122,26 @@ async function renderWatchlistPage(){
       <button type="button" id="wlAdd" class="u-wa u-m0">➕ إضافة</button>
       <span style="font-size:12px;opacity:.7;margin-inline-start:auto;">الأسعار تتحدّث تلقائيًا كل دقيقة (متأخرة 15 دقيقة)</span>
     </div>
-    <div class="section-card" style="padding:0;overflow:auto;"><table class="std-table u-w100"><thead><tr>
-      <th>السهم</th><th>آخر سعر</th><th>التغير</th><th>أعلى</th><th>أقل</th><th></th></tr></thead><tbody id="wlRows"><tr><td colspan="6" style="padding:14px;color:#888;">جارٍ التحميل...</td></tr></tbody></table></div>
+    <div class="section-card wl-card"><table class="std-table u-w100 wl-table" id="wlTable"><thead><tr>
+      <th class="wl-c-sym">السهم</th><th class="wl-c-px">آخر سعر</th><th class="wl-c-chg">التغير</th><th class="wl-c-hl">أعلى / أقل</th><th class="wl-c-act">تحليل</th><th class="wl-c-del"></th></tr></thead><tbody id="wlRows"><tr><td colspan="6" style="padding:14px;color:#888;">جارٍ التحميل...</td></tr></tbody></table></div>
     <div id="wlMsg" style="font-size:12.5px;"></div>
   </div>`;
   const load = async () => {
     const tb = document.getElementById('wlRows'); if (!tb) { clearInterval(window.__mkWatchTimer); return; }
     const r = await MK.get('action=watchlist');
+    // الإصدار 121: زرار «تحليل» (بصيرة) جنب كل سهم - لو الشاشة مش مخفية
+    const bsOk = typeof window.renderBasira === 'function' && (window.__isAdmin || !(window.GShell && GShell.settings && GShell.settings.hide_basira_screen === true));
     if (!r.success) { tb.innerHTML = `<tr><td colspan="6" class="error">${escapeHtml(r.message || '')}</td></tr>`; return; }
     tb.innerHTML = r.items.length ? r.items.map(x => `<tr>
       <td><button type="button" class="gs-link" data-open="${escapeHtml(x.symbol)}" data-mkt="${escapeHtml(x.market)}" style="font-weight:800;">${escapeHtml(x.symbol)}</button><div style="font-size:11px;opacity:.7">${escapeHtml(x.name || '')} · ${escapeHtml(x.market)}</div></td>
       <td dir="ltr"><b>${x.ok ? MK.n(x.last, 4) : '—'}</b> <small>${escapeHtml(x.currency || '')}</small></td>
       <td>${x.ok ? mkChgHtml(x.last, x.prevClose) : '<small class="neg">لا توجد بيانات</small>'}</td>
-      <td dir="ltr">${MK.n(x.high, 4)}</td><td dir="ltr">${MK.n(x.low, 4)}</td>
-      <td><button type="button" class="small danger u-wa" data-del="${x.id}">✕</button></td></tr>`).join('')
+      <td class="wl-hl"><span dir="ltr">${MK.n(x.high, 4)}</span><small dir="ltr">${MK.n(x.low, 4)}</small></td>
+      <td>${bsOk ? `<button type="button" class="wl-bs" data-bs="${escapeHtml(x.symbol)}" data-mkt="${escapeHtml(x.market)}" title="تحليل ${escapeHtml(x.symbol)} في بصيرة AI">تحليل ↗</button>` : '—'}</td>
+      <td><button type="button" class="small danger u-wa wl-del" data-del="${x.id}" title="حذف من القائمة" aria-label="حذف ${escapeHtml(x.symbol)} من القائمة">✕</button></td></tr>`).join('')
       : '<tr><td colspan="6" style="padding:14px;color:#888;">قائمتك فارغة - أضف رمز سهم من الأعلى.</td></tr>';
     tb.querySelectorAll('[data-open]').forEach(b => b.onclick = () => renderStockPage(b.dataset.open, b.dataset.mkt));
+    tb.querySelectorAll('[data-bs]').forEach(b => b.onclick = () => window.renderBasira(b.dataset.bs, b.dataset.mkt));   // الإصدار 121: تحليل السهم في بصيرة
     tb.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => { await MK.post({ action: 'watch_remove', id: +b.dataset.del }); load(); });
   };
   document.getElementById('wlAdd').onclick = async () => {

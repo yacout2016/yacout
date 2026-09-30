@@ -2084,6 +2084,7 @@ async function renderGridPlanForm(){
   if (prefill.symbol) document.getElementById('g_symbol').value = prefill.symbol;
   if (prefill.market) document.getElementById('g_market').value = prefill.market;
   if (prefill.price) document.getElementById('g_currentPrice').value = prefill.price;
+  if (prefill.capital) document.getElementById('g_capital').value = prefill.capital;   // الإصدار 122: من «ميزان GRIFFINE AI»
   const gRange = gWireGridRange({ prefix: 'g', symId: 'g_symbol', getSym: () => document.getElementById('g_symbol').value, mktId: 'g_market', highId: 'g_high', lowId: 'g_low', listedName: 'g_listed',
     isListed: () => (document.querySelector('input[name="g_listed"]:checked') || {}).value !== '0', mode: 'auto', period: 'month' });   // الإصدار 111
 
@@ -2955,7 +2956,7 @@ async function renderNewPlanForm(error, formState){
         <div></div>
       </div>
       <label>السعر الحالي</label><input type="number" step="any" id="currentPrice" required value="${fs.currentPrice??prefill.price??''}">
-      <label>رأس المال المخطط للمضاربة (بالكامل)</label><input type="number" step="any" id="capital" required value="${fs.capital??''}">
+      <label>رأس المال المخطط للمضاربة (بالكامل)</label><input type="number" step="any" id="capital" required value="${fs.capital??prefill.capital??''}">
 
       <label>نسبة المخاطرة المطلوبة (اختياري)</label>
       <div class="radio-row">

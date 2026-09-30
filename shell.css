@@ -1219,3 +1219,17 @@ button.g-watch-h:hover, button.g-watch-h:focus-visible{ background:var(--gs-surf
 body.g-shell #app .g-watch-acts button, .g-watch-acts button{ width:auto !important; margin:0 !important; white-space:nowrap; }
 html[data-theme="dark"] .g-watch .g-watch-it{ background:var(--gs-surface-2, #1B212C); color:var(--gs-text, #E8ECF2); }
 @media (max-width:640px){ .g-watch .g-watch-it{ flex-direction:column; align-items:stretch; } .g-watch-acts{ flex-direction:row; } .g-watch-acts button{ flex:1; } }
+/* الإصدار 121: قائمة المتابعة جوه عرض الصفحة (من غير تمرير يمين وشمال) + زرار «↗ تحليل» (بصيرة) */
+.wl-card{ padding:0 !important; overflow:hidden !important; }
+.wl-card .gs-tscroll{ overflow-x:hidden !important; }
+table.wl-table{ table-layout:fixed; width:100% !important; min-width:0 !important; }
+table.wl-table th, table.wl-table td{ white-space:normal !important; overflow:hidden; text-overflow:ellipsis; padding:9px 8px !important; vertical-align:middle; word-break:break-word; }
+table.wl-table .wl-c-sym{ width:auto; } table.wl-table .wl-c-px{ width:17%; } table.wl-table .wl-c-chg{ width:16%; } table.wl-table .wl-c-hl{ width:15%; }
+table.wl-table .wl-c-act{ width:96px; } table.wl-table .wl-c-del{ width:48px; }
+table.wl-table input{ width:100% !important; min-width:0 !important; box-sizing:border-box; }
+.wl-hl small{ display:block; opacity:.7; font-size:11.5px; }
+body.g-shell #app button.wl-bs, button.wl-bs{ width:auto !important; margin:0 !important; min-height:0 !important; padding:6px 10px !important; border-radius:10px !important; font-size:12.5px !important; font-weight:700; white-space:nowrap;
+  background:linear-gradient(135deg,#2563EB,#7C3AED) !important; color:#fff !important; border:0 !important; cursor:pointer; }
+body.g-shell #app button.wl-bs:hover, button.wl-bs:hover{ filter:brightness(1.1); }
+body.g-shell #app button.wl-del, button.wl-del{ padding:5px 9px !important; min-height:0 !important; }
+@media (max-width:640px){ table.wl-table .wl-c-hl, table.wl-table td.wl-hl{ display:none; } table.wl-table .wl-c-px{ width:24%; } table.wl-table .wl-c-chg{ width:22%; } table.wl-table .wl-c-act{ width:78px; } table.wl-table .wl-c-del{ width:40px; } body.g-shell #app button.wl-bs, button.wl-bs{ padding:6px 7px !important; font-size:12px !important; } }

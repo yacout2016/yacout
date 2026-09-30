@@ -225,3 +225,5 @@ body.g-shell #app .bs-tabs button#bsTabScan.on, .bs-tabs #bsTabScan.on{ backgrou
 .bs-sctable [data-col="sc"]{ width:84px; } .bs-sctable [data-col="go"]{ width:56px; }
 .bs-sctable td[data-col="go"], .bs-sctable td[data-col="v"]{ overflow:visible; text-overflow:clip; }
 .bs-sctable th{ overflow:hidden; word-break:normal; }
+/* الإصدار 121: زرار «↗ تحليل» في جدول المسح */
+.bs-sctable [data-col="go"]{ width:84px; }

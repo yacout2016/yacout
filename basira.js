@@ -197,7 +197,7 @@
         <td data-col="up"><div class="bs-scup"><div class="bs-scbar sm"><i class="${v}" style="width:${u}%"></i></div><b class="n ${v}">${u}%</b></div></td>
         <td data-col="v"><span class="bs-chip ${v === 'pos' ? 'bs-c-pos' : v === 'neg' ? 'bs-c-neg' : 'bs-c-neu'}">${u >= 58 ? 'صعود محتمل' : u <= 42 ? 'هبوط محتمل' : 'عرضي'}</span></td>
         <td data-col="rng" class="n">${h.lo != null ? n2(h.lo) + ' — ' + n2(h.hi) : '—'}</td><td data-col="sc" class="n ${vk(x.score)}">${x.score}</td><td data-col="y1" class="n ${cls(x.y1)}">${pct(x.y1)}</td>
-        <td data-col="go"><button type="button" class="secondary small bs-scopen" data-s="${E(x.symbol)}" title="التحليل الكامل" aria-label="التحليل الكامل لـ ${E(x.symbol)}">↗</button></td></tr>`; }).join('') || `<tr><td colspan="10" class="u-muted">لسه مفيش نتايج…</td></tr>`;
+        <td data-col="go"><button type="button" class="secondary small bs-scopen" data-s="${E(x.symbol)}" title="التحليل الكامل" aria-label="التحليل الكامل لـ ${E(x.symbol)}">تحليل ↗</button></td></tr>`; }).join('') || `<tr><td colspan="10" class="u-muted">لسه مفيش نتايج…</td></tr>`;
     scApplyCols();
     const open = (s) => { if (window.__bsShowSingle) window.__bsShowSingle(); const inp = document.getElementById('bsSym'), mk = document.getElementById('bsMkt'); if (inp) inp.value = s; if (mk) mk.value = SCAN.market; window.scrollTo({ top: 0, behavior: 'smooth' }); analyze(s, SCAN.market, false, null); };
     tb.querySelectorAll('tr.bs-scr').forEach(r => { r.onclick = (e) => { open(r.dataset.s); }; r.onkeydown = (e) => { if (e.key === 'Enter') open(r.dataset.s); }; });
