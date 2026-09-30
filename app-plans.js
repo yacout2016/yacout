@@ -320,6 +320,19 @@ async function gDeletePlan(kind, symbol, after){
 
 /* الإصدار 98: ربح الخطط المفتوحة على آخر سعر (متأخر 15 دقيقة) في قوائم الخطط
    items = [{ sym, market, held, avg, ccy }] ← بيملا .gpl-px[data-sym] في كل سطر + #gplTotal (إجمالي لكل عملة لوحدها) */
+
+/* الإصدار 110: شارة حالة الخطة (مفتوحة / مغلقة / لم تبدأ) + الضغط على اسم السهم يفتح خطته */
+function gPlanStatusBadge(st){
+  const k = /مفتوح/.test(st) ? 'open' : /مغلق|مقفول/.test(st) ? 'closed' : /محذوف/.test(st) ? 'del' : 'new';
+  const l = { open: 'مفتوحة', closed: 'مغلقة', del: 'محذوفة', new: 'لم تبدأ' }[k];
+  return `<span class="g-st g-st-${k}">${l}</span>`;
+}
+function gPlanLink(sym, kind){ return `<a class="g-plan-link" data-go-plan="${escapeHtml(sym)}" data-kind="${kind === 'Grid' ? 'Grid' : 'DCA'}" title="فتح الخطة">${escapeHtml(sym)}</a>`; }
+document.addEventListener('click', (e) => {
+  const a = e.target.closest && e.target.closest('[data-go-plan]'); if (!a) return;
+  e.preventDefault(); e.stopPropagation();
+  const sym = a.dataset.goPlan; if (a.dataset.kind === 'Grid') renderGridPlanDetail(sym); else renderPlanDetail(sym);
+}, true);
 function gFillListProfits(tok, plans, grids, items){
   if (typeof mkEnsureLivePrices !== 'function' || !items.length) return;
   const paint = () => {
@@ -421,8 +434,9 @@ async function renderPlansList(){
       const isOpenPosition = sim.heldQty > 0;
       const isActuallyClosed = !isOpenPosition && p.closedTrades.length > 0;
       const statusKey = isActuallyClosed ? 'مقفولة' : 'مفتوحة';
+      const stLabel = isOpenPosition ? 'مفتوحة' : isActuallyClosed ? 'مغلقة' : 'لم تبدأ';
       return `<div class="plan-list-item" data-sym="${sym}" data-q="${sym.toLowerCase()}" data-status="${statusKey}">
-        <div><strong>${sym}</strong><div class="u-fs11 u-muted">${doneCount}/${p.levels.length} مستويات — ${isActuallyClosed?'مقفولة ✅':'مفتوحة'} — ${p.market||''} — ${p.currency||''}${p.listed === false ? ' — <span class="tag">غير مدرج 🔕</span>' : ''}</div>${isOpenPosition ? `<div class="gpl-px u-fs12" data-sym="${escapeHtml(sym)}">جارٍ تحميل آخر سعر...</div>` : ''}</div>
+        <div><strong>${sym}</strong> <span class="g-kind">DCA</span> ${gPlanStatusBadge(stLabel)}<div class="u-fs11 u-muted">${doneCount}/${p.levels.length} مستويات — ${isActuallyClosed?'مقفولة ✅':'مفتوحة'} — ${p.market||''} — ${p.currency||''}${p.listed === false ? ' — <span class="tag">غير مدرج 🔕</span>' : ''}</div>${isOpenPosition ? `<div class="gpl-px u-fs12" data-sym="${escapeHtml(sym)}">جارٍ تحميل آخر سعر...</div>` : ''}</div>
         <div style="display:flex;align-items:center;gap:10px;">
           <button class="small secondary u-wa u-m0" data-gcall="__editDacPlanFromList" data-gargs="${gArgs([String(sym)])}" data-gstop="1">⚙️ تعديل الخطة</button>
           <button class="small danger u-wa u-m0" data-gcall="__delDacPlanFromList" data-gargs="${gArgs([String(sym)])}" data-gstop="1" title="حذف (ينتقل إلى سلة المحذوفات)" aria-label="حذف الخطة">🗑️</button>
@@ -863,7 +877,7 @@ async function renderPortfolio(){
       </tr></thead>
       <tbody>
         ${r.map(x=>`<tr>
-          <td>${escapeHtml(x.symbol)}</td><td><span class="tag ${x.planType==='DCA'?'tag-done':'tag-next'}">${x.planType}</span></td><td>${x.status}</td>
+          <td>${gPlanLink(x.symbol, x.planType)}</td><td class="u-nowrap"><span class="tag ${x.planType==='DCA'?'tag-done':'tag-next'}">${x.planType}</span> ${gPlanStatusBadge(x.status)}</td><td>${gPlanStatusBadge(x.status)}</td>
           <td>${fmtMoney(x.openCost)}</td><td>${x.currentValue?fmtMoney(x.currentValue):'-'}</td>
           <td class="${x.dropPercent==null?'':(x.dropPercent<0?'neg':'pos')}">${x.dropPercent!=null?x.dropPercent.toFixed(2)+'%':'-'}</td>
           <td class="${x.unrealized<0?'neg':x.unrealized>0?'pos':''}">${fmtMoney(x.unrealized)}</td>
@@ -1714,7 +1728,7 @@ async function renderGridPlansList(){
       const bought = g.levels.filter(l=>l.status==='bought').length;
       const totalCycles = g.levels.reduce((s,l)=>s+(l.cycles||0),0);
       return `<div class="plan-list-item" data-q="${sym.toLowerCase()}" data-gcall="__openGrid" data-gargs="${gArgs([String(sym)])}">
-        <div><strong>${escapeHtml(sym)}</strong> <span class="u-fs11 u-muted">(${escapeHtml(g.market||'')})</span>${g.listed === false ? ' <span class="tag">غير مدرج 🔕</span>' : ''}${g.levels.some(l => l.status==='bought' && l.executedQty > 0) ? `<div class="gpl-px u-fs12" data-sym="${escapeHtml(sym)}">جارٍ تحميل آخر سعر...</div>` : ''}</div>
+        <div><strong>${escapeHtml(sym)}</strong> <span class="g-kind g-kind-grid">Grid</span> ${gPlanStatusBadge(bought ? 'مفتوحة' : ((g.cycleHistory || []).length ? 'مغلقة' : 'لم تبدأ'))} <span class="u-fs11 u-muted">(${escapeHtml(g.market||'')})</span>${g.listed === false ? ' <span class="tag">غير مدرج 🔕</span>' : ''}${g.levels.some(l => l.status==='bought' && l.executedQty > 0) ? `<div class="gpl-px u-fs12" data-sym="${escapeHtml(sym)}">جارٍ تحميل آخر سعر...</div>` : ''}</div>
         <div style="display:flex;align-items:center;gap:10px;">
           <div style="font-size:12px;color:#666;">مستويات مشتراة: ${bought}/${g.levels.length} — دورات مكتملة: ${totalCycles}</div>
           <button class="small secondary u-wa u-m0" data-gcall="__editGridFromList" data-gargs="${gArgs([String(sym)])}" data-gstop="1">⚙️ تعديل الخطة</button>
@@ -1726,7 +1740,7 @@ async function renderGridPlansList(){
   if (closedSymbols.length) {
     document.getElementById('gridClosedListWrap').innerHTML = closedSymbols.map(sym => `
       <div class="plan-list-item" data-q="${sym.toLowerCase()}" data-gcall="__openGrid" data-gargs="${gArgs([String(sym)])}" style="opacity:.7;">
-        <div><strong>${escapeHtml(sym)}</strong> <span class="tag tag-wait">مقفولة</span></div>
+        <div><strong>${escapeHtml(sym)}</strong> <span class="g-kind g-kind-grid">Grid</span> ${gPlanStatusBadge('مغلقة')}</div>
         <button class="small danger u-wa u-m0" data-gcall="__delGridFromList" data-gargs="${gArgs([String(sym)])}" data-gstop="1" title="حذف (ينتقل إلى سلة المحذوفات)" aria-label="حذف الخطة">🗑️</button>
       </div>`).join('');
   }

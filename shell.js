@@ -50,7 +50,7 @@
      ===================================================================== */
 
   // رقم الإصدار - بيظهر في شاشة "حسابي" (غيّره مع ?v= في index.php و VERSION في sw.js)
-  const APP_VERSION = 109;
+  const APP_VERSION = 110;
 
   /* الاستعلامات المتكررة (الدردشة/التوصيات/قائمة المتابعة) - استعلام متكيّف (الإصدار 89)
      - بتقف لما التبويب يكون مخفي أو الموبايل مقفول
@@ -771,7 +771,7 @@
       enhanceTables(app);   // الإصدار 96: ترتيب + فلتر لكل عمود + بحث في كل الجداول
       lockMarkets(app);     // الإصدار 96: قوائم السوق والعملة ← سوق الحساب بس (الأدمن: الأسواق المفعّلة)
       // 10أ) الإصدار 90: شاشة المحفظة والتقارير ← كل جدول بيعرض 10 صفوف والباقي بالتمرير لفوق وتحت
-      if (ROWS10_SCREENS[GS.currentScreen]) { limitTableRows(app, 10); setTimeout(relimit, 400); }
+      if (ROWS10_SCREENS[GS.currentScreen]) { limitTableRows(app, ROWS10_SCREENS[GS.currentScreen]); setTimeout(relimit, 400); }
       // 10ب) الإصدار 97: زرار إخفاء فوق كل عمود + "إظهار الأعمدة المخفية" ، وأي جدول عليه data-g-rows="7" ← 7 صفوف والباقي تمرير
       colHide(app);
       if (app.querySelector('table[data-g-rows]')) { limitMarkedRows(app); setTimeout(() => { const a = document.getElementById('app'); if (a) limitMarkedRows(a); }, 400); }
@@ -804,9 +804,9 @@
   }
 
   // الإصدار 90: أقصى 10 صفوف ظاهرة في جداول شاشة المحفظة والتقارير (الباقي تمرير رأسي + رأس الجدول ثابت)
-  const ROWS10_SCREENS = { renderPortfolio:1, renderDiversificationReport:1, renderTradesReportPage:1 };
+  const ROWS10_SCREENS = { renderPortfolio:7, renderDiversificationReport:10, renderTradesReportPage:10 };   // الإصدار 110: المحفظة 7 صفوف (زي DCA وGrid)
   // إعادة الحساب بعد تحميل الخطوط وتغيير حجم الشاشة (ارتفاع الصفوف بيتغير)
-  const relimit = () => { const a = document.getElementById('app'); if (a && ROWS10_SCREENS[GS.currentScreen]) limitTableRows(a, 10); if (a && a.querySelector('table[data-g-rows]')) limitMarkedRows(a); };
+  const relimit = () => { const a = document.getElementById('app'); if (a && ROWS10_SCREENS[GS.currentScreen]) limitTableRows(a, ROWS10_SCREENS[GS.currentScreen]); if (a && a.querySelector('table[data-g-rows]')) limitMarkedRows(a); };
   window.addEventListener('resize', () => { clearTimeout(relimit.t); relimit.t = setTimeout(relimit, 150); });
   try { document.fonts && document.fonts.ready.then(relimit); } catch(e){}
   function limitMarkedRows(root){
@@ -815,9 +815,16 @@
   function limitTableRows(root, n){
     root.querySelectorAll('.gs-tscroll').forEach(w => { const t = w.querySelector('table'); if (t) limitWrapRows(w, t, n); });
   }
+  const rows_moreThan = (k, n) => k > n;
   function limitWrapRows(w, t, n){
     {
-      const rows = t.tBodies[0] ? Array.from(t.tBodies[0].rows) : [];
+      // الإصدار 110: صف «الإجمالي» مبيتحسبش من الصفوف ، وبيفضل ثابت تحت ظاهر وقت التمرير
+      const all = t.tBodies[0] ? Array.from(t.tBodies[0].rows) : [];
+      all.forEach(r => { const c = r.cells[0]; if (c && /^\s*(الإجمالي|الاجمالي|الإجماليات)\s*$/.test(c.textContent)) r.classList.add('gs-total-row'); });
+      // صف الإجمالي بيتنقل لذيل الجدول (tfoot) ويتثبت تحت - والفلتر والترتيب مبيحركوهوش
+      const tots = all.filter(r => r.classList.contains('gs-total-row'));
+      if (tots.length && rows_moreThan(all.length - tots.length, n)) { const tf = t.tFoot || t.createTFoot(); tots.forEach(r => tf.appendChild(r)); }
+      const rows = all.filter(r => !r.classList.contains('gs-total-row'));
       const want = rows.length > n;
       let h = 0;
       if (want) {
@@ -825,6 +832,7 @@
         const wb = w.getBoundingClientRect(), r = rows[n - 1].getBoundingClientRect();
         h = Math.ceil(r.bottom - wb.top - w.clientTop + w.scrollTop);   // من أول الغلاف (فيه مسافة قبل الجدول) لحد آخر الصف العاشر
       }
+      if (want && h > 0 && t.tFoot) h += Math.ceil(t.tFoot.getBoundingClientRect().height);
       if (want && h > 0) {
         const extra = Math.max(0, w.offsetHeight - w.clientHeight - w.clientTop);   // شريط التمرير الأفقي + الحد السفلي
         const v = (h + extra + 1) + 'px';

@@ -18,9 +18,9 @@ const { check, summary, launch, page, loginAdmin, q, ADMIN } = require('../lib')
     for (let i = 1; i <= 12; i++) m['RW' + i] = { market:'مصر', levels:[{ level:1, executed:true, actualQty:10, actualPrice:5 + i, execDate:'2026-09-02', sells:[] }], closedTrades:[] };
     await apiPost('/user_data_save.php', { key:'plans', value: JSON.stringify(m), base: JSON.stringify(g.versions || {}) }); });
   await go(() => renderPortfolio(), 3000);
-  const lim = await p.evaluate(() => { const w = document.querySelector('#app .gs-rows-limit'); if (!w) return null; const t = w.querySelector('table'); const top = w.getBoundingClientRect().bottom;
+  const lim = await p.evaluate(() => { const w = document.querySelector('#app .gs-rows-limit'); if (!w) return null; const t = w.querySelector('table'); const top = t.tFoot ? t.tFoot.getBoundingClientRect().top : w.getBoundingClientRect().bottom;
     return { rows: t.tBodies[0].rows.length, visible: [...t.tBodies[0].rows].filter(r => r.getBoundingClientRect().bottom <= top + 2).length, scroll: w.scrollHeight > w.clientHeight }; });
-  check('المحفظة والتقارير: 10 صفوف ظاهرة والباقي تمرير', lim && lim.rows > 10 && lim.visible === 10 && lim.scroll, JSON.stringify(lim));
+  check('المحفظة والتقارير: 7 صفوف ظاهرة والباقي تمرير', lim && lim.rows > 7 && lim.visible === 7 && lim.scroll, JSON.stringify(lim));
   await p.evaluate(async () => { const g = await apiGet('/user_data_get.php?key=plans'); const m = JSON.parse(g.value || '{}'); for (let i = 1; i <= 12; i++) delete m['RW' + i]; await apiPost('/user_data_save.php', { key:'plans', value: JSON.stringify(m), base: JSON.stringify(g.versions || {}) }); });
   q(`DELETE FROM trash_bin WHERE item_label LIKE '%RW%'`);
   await go(() => renderHome(), 2500);

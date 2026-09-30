@@ -54,8 +54,26 @@ const num = (t) => { const m = String(t || '').replace(/[⁦⁩]/g, '').match(/-
   const pCost = num(cards.find(t => t.includes('تكلفة المراكز المفتوحة')));
   const pVal = num(cards.find(t => t.includes('قيمة المحفظة الحالية')));
   check('المحفظة والتقارير = الرئيسية (القيمة والتكلفة)', Math.abs(pVal - heroV) < 0.01 && Math.abs(pCost - heroCost) < 0.01, `${pVal} / ${pCost}`);
-  const tot = await p.$$eval('#portfolioTable tbody tr:last-child td', d => d.map(x => x.textContent));
+  const tot = await p.evaluate(() => { const r = document.querySelector('#portfolioTable tr.gs-total-row') || document.querySelector('#portfolioTable tbody tr:last-child'); return [...r.cells].map(x => x.textContent); });
   check('إجمالي جدول المحفظة = الرئيسية', Math.abs(num(tot[3]) - heroCost) < 0.01 && Math.abs(num(tot[4]) - heroV) < 0.01, tot.slice(3, 5).join(' / '));
+  // الإصدار 110: جدول المحفظة 7 صفوف والباقي تمرير + الرأس ثابت + صف الإجمالي ثابت تحت
+  await p.evaluate(() => document.getElementById('portfolioTable').closest('.gs-tscroll').scrollIntoView());
+  const ptb = await p.locator('#portfolioTable').boundingBox();
+  await p.mouse.move(ptb.x + ptb.width / 2, ptb.y + 200); await p.mouse.wheel(0, 250); await p.waitForTimeout(400);
+  const pt = await p.evaluate(() => { const t = document.getElementById('portfolioTable'), w = t.closest('.gs-tscroll'), wr = w.getBoundingClientRect(), hr = t.tHead.getBoundingClientRect();
+    const data = [...t.tBodies[0].rows].filter(r => !r.classList.contains('gs-total-row')), tr = t.querySelector('tr.gs-total-row');
+    w.scrollTop = 0; const vis0 = data.filter(r => r.getBoundingClientRect().bottom <= (tr ? tr.getBoundingClientRect().top : wr.bottom) + 1).length;
+    return { limit: w.classList.contains('gs-rows-limit'), rows: data.length, vis: vis0, headTop: Math.round(hr.top - wr.top), total: !!tr && tr.getBoundingClientRect().bottom <= wr.bottom + 1 }; });
+  const scrolledP = await p.evaluate(() => true);
+  check('جدول المحفظة: 7 صفوف ظاهرين والباقي تمرير + صف الإجمالي ظاهر تحت', pt.limit && pt.rows > 7 && pt.vis === 7 && pt.total, JSON.stringify(pt));
+  // الإصدار 110: حالة الخطة جنب نوعها + الضغط على اسم السهم يفتح خطته
+  const stp = await p.evaluate(() => { const r = document.querySelector('#portfolioTable tbody tr'); return { badge: !!r.cells[1].querySelector('.g-st'), label: (r.cells[1].querySelector('.g-st') || {}).textContent, link: !!r.cells[0].querySelector('a.g-plan-link'), sym: (r.cells[0].querySelector('a') || {}).textContent, kind: (r.cells[0].querySelector('a') || {}).dataset && r.cells[0].querySelector('a').dataset.kind }; });
+  check('جدول المحفظة: حالة الخطة جنب نوعها (مفتوحة / مغلقة / لم تبدأ)', stp.badge && /مفتوحة|مغلقة|لم تبدأ/.test(stp.label), JSON.stringify(stp));
+  await p.evaluate(() => document.querySelector('#portfolioTable tbody tr a.g-plan-link').scrollIntoView({ block: 'center' }));
+  await p.click('#portfolioTable tbody tr a.g-plan-link'); await p.waitForTimeout(2500);
+  const scr = await p.evaluate(() => ({ s: GShell.currentScreen, a: (GShell.screenArgs || [])[0] }));
+  check('الضغط على اسم السهم في المحفظة بيفتح خطته', (scr.s === 'renderPlanDetail' || scr.s === 'renderGridPlanDetail') && scr.a === stp.sym, JSON.stringify(scr));
+  await p.evaluate(() => renderPortfolio()); await p.waitForTimeout(2500);
   await p.evaluate(async () => { const g = await apiGet('/user_data_get.php?key=plans'); await apiPost('/user_data_save.php', { key:'plans', value: '{}', base: JSON.stringify(g.versions || {}) }); });
   q("DELETE FROM trash_bin");
   check('بدون أخطاء JavaScript', !p.__errors.length, p.__errors[0]);
