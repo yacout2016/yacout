@@ -216,7 +216,7 @@ function gAdsShow(a, preview){
     return;
   }
   // بانر: أول الشاشة الحالية
-  const host = document.querySelector('#app .container') || document.getElementById('app'); if (!host) return;
+  const host = document.querySelector('#app .lp-screen main') || document.querySelector('#app .container') || document.getElementById('app'); if (!host) return;   // الإصدار 108: في اللاندينج تحت القائمة
   host.querySelectorAll('.gs-ad-banner[data-ad="' + a.id + '"]').forEach(x => x.remove());
   const w = document.createElement('div'); w.innerHTML = gAdsHtml(a, 'banner'); const el = w.firstElementChild; el.dataset.ad = a.id || 'p';
   host.insertBefore(el, host.firstChild);
@@ -241,7 +241,7 @@ async function gAdsAfterScreen(){
     const seen = adsSeen(), now = Date.now();
     const mine = live.filter(a => aud.has(a.audience || 'all'));
     // بانر: في الرئيسية وصفحة الباقات بس، ولو اتقفل ميرجعش غير بعد يوم
-    if (/renderHome|renderSubscriptionPlans|renderPublicHome|renderPublicPricing/.test(scr)) {
+    if (/renderHome|renderSubscriptionPlans|renderPublicHome|renderPublicPricing|renderLanding/.test(scr)) {
       mine.filter(a => a.type === 'banner' && !(seen[a.id + '|x'] > now - 86400000)).slice(0, 2).forEach(a => { if (!document.querySelector('.gs-ad-banner[data-ad="' + a.id + '"]')) gAdsShow(a); });
     }
     // شريط متحرك: كل الشاشات، ولو اتقفل ميرجعش غير بعد يوم

@@ -336,7 +336,11 @@ function gFillListProfits(tok, plans, grids, items){
     });
     const t = document.getElementById('gplTotal');
     if (t) { const k = Object.keys(tot); t.hidden = !k.length;
-      t.innerHTML = k.map(c => `<div class="summary-card"><div class="val ${tot[c].pnl < 0 ? 'neg' : 'pos'}">${fmtMoney(tot[c].pnl)} <small>${escapeHtml(c)}</small></div><div class="lbl">ربح/خسارة الخطط المفتوحة على آخر سعر — التكلفة ${fmtMoney(tot[c].cost)} والقيمة الآن ${fmtMoney(tot[c].value)}</div></div>`).join(''); }
+      // الإصدار 108: مربع منسّق فوق القائمة (بعيد عن التمرير) - لكل عملة مربع
+      t.innerHTML = k.map(c => { const v = tot[c], pc = v.cost > 0 ? v.pnl / v.cost * 100 : 0, cl = v.pnl < 0 ? 'neg' : 'pos';
+        return `<div class="gpl-box"><div class="gpl-head"><span class="gpl-title">ربح/خسارة الخطط المفتوحة على آخر سعر</span><span class="gpl-ccy">${escapeHtml(c)}</span></div>
+          <div class="gpl-main ${cl}">${v.pnl < 0 ? '−' : '+'}${fmtMoney(Math.abs(v.pnl))}<small>${pc > 0 ? '+' : ''}${pc.toFixed(2)}%</small></div>
+          <div class="gpl-stats"><div><span>التكلفة</span><b>${fmtMoney(v.cost)}</b></div><div><span>القيمة الآن</span><b>${fmtMoney(v.value)}</b></div><div><span>النتيجة</span><b class="${cl}">${v.pnl < 0 ? 'خسارة' : 'ربح'}</b></div></div></div>`; }).join(''); }
   };
   paint();
   mkEnsureLivePrices(plans, grids, 4000).then(() => { paint(); if (window.__mkLivePxPending) window.__mkLivePxPending.then(paint).catch(() => {}); }).catch(() => {});
@@ -384,6 +388,7 @@ async function renderPlansList(){
     <button class="secondary small u-wa" id="homeBtn">🏠 الشاشة الرئيسية</button>
     <button id="newPlanBtn">+ خطة جديدة لسهم</button>
     <h2>${pageTitle('plans_list','خططك الحالية (سهم لكل خطة)')}</h2>
+    <div class="gpl-total" id="gplTotal" hidden></div>
     ${symbols.length>0 ? `<div class="std-filter-bar">
       <div class="std-filter-search"><input type="text" id="dacListSearch" placeholder="🔍 ابحث باسم السهم..."></div>
       <div class="std-filter-tabs">
@@ -392,7 +397,6 @@ async function renderPlansList(){
         <button type="button" class="small secondary dacListFilterBtn std-filter-tab" data-status="مقفولة">مقفولة فقط</button>
       </div>
     </div>` : ''}
-    <div class="summary-cards" id="gplTotal" hidden></div>
     <div id="plansListArea" class="plans-list-scroll"></div>
     <div class="std-filter-empty" id="dacListEmpty" style="display:none;">لا توجد خطط مطابقة للبحث/الفلتر</div>
     ${symbols.length>0 ? renderDacStockReportSectionHtml(plans, symbols) : ''}
@@ -1687,11 +1691,11 @@ async function renderGridPlansList(){
 
     <button id="goNewGridBtn" class="btn-lightgreen">+ خطة شبكة جديدة</button>
 
+    <div class="gpl-total" id="gplTotal" hidden></div>
     ${hasAnyGrid ? `<div class="std-filter-bar">
       <div class="std-filter-search"><input type="text" id="gridListSearch" placeholder="🔍 ابحث باسم السهم..."></div>
     </div>` : ''}
 
-    <div class="summary-cards" id="gplTotal" hidden></div>
     <h2 class="u-mt20" id="gridActiveHeading">خططك النشطة</h2>
     <div id="gridListWrap"></div>
 

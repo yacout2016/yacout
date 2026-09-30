@@ -1078,3 +1078,17 @@ table.g-one-line td button{ width:auto !important; margin:0 0 0 6px !important; 
 table.g-one-line td .g-np, table.g-one-line td .g-np *{ white-space:nowrap; }
 table.g-one-line td .g-np{ display:inline-flex !important; flex-wrap:nowrap !important; gap:8px; align-items:center; min-width:0; }
 table.g-one-line tbody td{ padding-top:7px !important; padding-bottom:7px !important; }
+/* الإصدار 108: مربع ربح/خسارة الخطط المفتوحة فوق قائمة الخطط (بعيد عن التمرير) */
+.gpl-total{ display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:12px; margin:6px 0 14px; }
+.gpl-total[hidden]{ display:none !important; }
+.gpl-box{ background:var(--gs-surface, #fff); border:1px solid var(--gs-border, #e5e7eb); border-radius:var(--gs-radius, 18px); padding:16px 18px; box-shadow:var(--gs-shadow, none); position:relative; overflow:hidden; }
+.gpl-box::before{ content:''; position:absolute; inset-inline-start:0; top:0; bottom:0; width:4px; background:var(--gs-brand, #C9A227); }
+.gpl-head{ display:flex; justify-content:space-between; align-items:center; gap:10px; font-size:13px; color:var(--gs-muted, #64748B); }
+.gpl-ccy{ font-weight:700; padding:2px 10px; border-radius:999px; background:var(--gs-brand-tint, rgba(201,162,39,.14)); color:var(--gs-brand-strong, #A6811E); white-space:nowrap; }
+.gpl-main{ font-size:28px; font-weight:800; margin:6px 0 10px; display:flex; align-items:baseline; gap:10px; direction:ltr; justify-content:flex-end; font-variant-numeric:tabular-nums; }
+.gpl-main small{ font-size:14px; font-weight:700; opacity:.85; }
+.gpl-main.pos, .gpl-stats .pos{ color:var(--gs-pos, #0E9F6E); } .gpl-main.neg, .gpl-stats .neg{ color:var(--gs-neg, #E02424); }
+.gpl-stats{ display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; }
+.gpl-stats div{ background:var(--gs-surface-2, #F8FAFC); border-radius:12px; padding:8px 10px; min-width:0; }
+.gpl-stats span{ display:block; font-size:11.5px; color:var(--gs-muted, #64748B); }
+.gpl-stats b{ font-size:14px; font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block; }

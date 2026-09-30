@@ -50,7 +50,7 @@
      ===================================================================== */
 
   // رقم الإصدار - بيظهر في شاشة "حسابي" (غيّره مع ?v= في index.php و VERSION في sw.js)
-  const APP_VERSION = 107;
+  const APP_VERSION = 108;
 
   /* الاستعلامات المتكررة (الدردشة/التوصيات/قائمة المتابعة) - استعلام متكيّف (الإصدار 89)
      - بتقف لما التبويب يكون مخفي أو الموبايل مقفول
@@ -702,7 +702,7 @@
     goChatAdminBtn:'chat', goContentBtn:'star', goSuggestionsAdminBtn:'bulb', goPlansMgmtBtn:'card', goReportsBtn:'report',
     goRecommendationsBtn:'megaphone', goStaffBtn:'user', goSettingsBtn:'settings', goEmergencyBtn:'shield', goAdsBtn:'megaphone', goBlacklistBtn:'shield', goSiteDesignBtn:'grid',
     goSiteTextsBtn:'news', goArchiveBtn:'receipt', goSubscribersBtn:'user', goExportScreensBtn:'report', goExportExcelBtn:'download',
-    goStudioBtn:'brush', goEmailCenterBtn:'mail', goTradesBtn:'trend', goHrBtn:'users', goJobTitlesBtn:'tag', goFaqBtn:'bulb'
+    goStudioBtn:'brush', goLandingBtn:'grid', goEmailCenterBtn:'mail', goTradesBtn:'trend', goHrBtn:'users', goJobTitlesBtn:'tag', goFaqBtn:'bulb'
   };
 
   let processing = false;
@@ -714,9 +714,10 @@
       if (!app) return;
 
       // 1) شاشات الترحيب/الدخول بتملى الشاشة كلها - من غير هيكل
-      const fullScreen = !!app.querySelector('.wl-screen, .gl-screen');
+      const fullScreen = !!app.querySelector('.wl-screen, .gl-screen, .lp-screen');
       document.body.classList.toggle('gs-no-shell', fullScreen);
-      if (fullScreen) return;
+      document.body.classList.toggle('lp-on', !!app.querySelector('.lp-screen'));   // الإصدار 108: صفحة اللاندينج
+      if (fullScreen) { applyStudio(); if (app.querySelector('.lp-screen') && window.gAdsAfterScreen) setTimeout(() => { try { window.gAdsAfterScreen(); } catch(e){} }, 0); return; }   // الإصدار 108: الدعاية كمان على اللاندينج   // الإصدار 108: تعديلات الاستوديو بتتطبق كمان على الشاشات اللي بتملى الشاشة (اللاندينج)
 
       // 2) عبارات الترحيب القديمة ("مرحبًا email") - الحساب ظاهر في الشريط
       app.querySelectorAll('.topbar').forEach(tb => {
@@ -1577,6 +1578,7 @@
   const SCREENS_TO_PRINT = [
     ['— الشاشات العامة —'],
     ['شاشة الترحيب', 'renderPublicHome'],
+    ['صفحة اللاندينج (قبل الدخول)', 'renderLanding'],
     ['تسجيل الدخول', 'renderLogin'],
     ['إنشاء حساب', 'renderRegister'],
     ['نسيت كلمة المرور', 'renderForgotPassword'],
@@ -1947,7 +1949,7 @@
     // 3) مراقبة تغيير الشاشات
     const appEl = document.getElementById('app');
     // شاشات الترحيب/الدخول الكاملة بتتعرف فورًا (قبل الرسم) عشان تنسيقات الشاشات الداخلية متلمسهاش
-    const syncFull = () => { if (appEl) document.body.classList.toggle('gs-no-shell', !!appEl.querySelector('.wl-screen, .gl-screen')); };
+    const syncFull = () => { if (appEl) document.body.classList.toggle('gs-no-shell', !!appEl.querySelector('.wl-screen, .gl-screen, .lp-screen')); };
     if (appEl) new MutationObserver(() => { syncFull(); scheduleProcess(); }).observe(appEl, { childList:true, subtree:true });
     syncFull();
 

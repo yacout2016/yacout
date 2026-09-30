@@ -17,6 +17,8 @@ function appMottoHtml(){
 }
 
 async function renderPublicHome(){
+  // الإصدار 108: صفحة اللاندينج بدل شاشة الترحيب (لو الأدمن مشغّلها من لوحة التحكم ← «صفحة اللاندينج»)
+  if (typeof gLandingShouldShow === 'function' && typeof renderLanding === 'function' && await gLandingShouldShow()) return renderLanding();
   const __tok = screenToken();   // الإصدار 88
   pushNav(() => renderPublicHome());
   setBottomNavActive('home');

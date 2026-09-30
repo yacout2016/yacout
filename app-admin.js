@@ -34,6 +34,7 @@ function adminNavButtonsHtml(){
       { id:'goBlacklistBtn', perm:'manage_blacklist', icon:'🚫', label:'القائمة السوداء' },
     ]},
     { title: 'المحتوى والتنسيق', items: [
+      { id:'goLandingBtn', perm:'edit_site_design', icon:'🏁', label:'صفحة اللاندينج (واجهة الموقع قبل الدخول)' },
       { id:'goStudioBtn', perm:'edit_site_design', icon:'🖌️', label:'استوديو التصميم (الثيمات وتعديل أي شاشة)' },
       { id:'goSiteDesignBtn', perm:'edit_site_design', icon:'🎨', label:'تنسيق الموقع' },
       { id:'goSiteTextsBtn', perm:'manage_site_content', icon:'📝', label:'نصوص شاشات الموقع' },
@@ -73,6 +74,7 @@ function wireAdminNavButtons(){
     goSettingsBtn: renderAdminSettingsPage,
     goEmergencyBtn: () => renderEmergencyAdminPage(),   // الإصدار 100 (promo.js)
     goAdsBtn: () => renderAdsAdminPage(),               // الإصدار 100 (promo.js)
+    goLandingBtn: () => renderAdminLandingPage(),       // الإصدار 108 (landing-admin.js)
     goBlacklistBtn: renderBlacklist,
     goArchiveBtn: renderArchivedCustomers,
     goStaffBtn: renderStaffManagementPage,

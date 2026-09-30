@@ -107,6 +107,9 @@ const ADMIN = 'top72026@gmail.com';
   await a.evaluate(() => { localStorage.removeItem('gs_livepx2'); renderPlansList(); }); await a.waitForTimeout(3500);
   const lp = await a.evaluate(() => ({ row: (document.querySelector('.gpl-px[data-sym="COMI"]') || {}).textContent || '', tot: (document.getElementById('gplTotal') || {}).textContent || '' }));
   check('قائمة خطط DCA: آخر سعر + ربح الخطة على آخر سعر (80)', /129/.test(lp.row) && /ربح 80\.00/.test(lp.row) && /80/.test(lp.tot), JSON.stringify(lp));
+  // الإصدار 108: مربع الربح/الخسارة فوق القائمة وبرا جزء التمرير
+  const box = await a.evaluate(() => { const t = document.getElementById('gplTotal'), l = document.getElementById('plansListArea'); return { above: !!(t && l && (t.compareDocumentPosition(l) & Node.DOCUMENT_POSITION_FOLLOWING)), inside: !!(t && l && l.contains(t)), cls: t && t.firstElementChild ? t.firstElementChild.className : '', beforeSearch: !!(t && document.getElementById('dacListSearch') && (t.compareDocumentPosition(document.getElementById('dacListSearch')) & Node.DOCUMENT_POSITION_FOLLOWING)) }; });
+  check('مربع ربح/خسارة الخطط: فوق البحث والقائمة وبرا التمرير', box.above && !box.inside && box.beforeSearch && box.cls === 'gpl-box', JSON.stringify(box));
   await a.evaluate(() => { localStorage.removeItem('gs_livepx2'); renderGridPlansList(); }); await a.waitForTimeout(3500);
   const lg = await a.evaluate(() => (document.querySelector('.gpl-px[data-sym="HRHO"]') || {}).textContent || '');
   check('قائمة خطط Grid: آخر سعر + ربح على آخر سعر', /ربح/.test(lg), lg);
