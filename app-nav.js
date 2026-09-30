@@ -116,7 +116,7 @@ function initLogoutButton(){
     window.__screens = [];
     window.__screenIndex = -1;
     await refreshTopNav();
-    renderLogin();
+    gAfterLogout();
   };
   const row1 = document.getElementById('gtopnavRow1');
   if (row1) row1.appendChild(btn); else document.body.appendChild(btn);

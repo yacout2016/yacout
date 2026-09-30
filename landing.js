@@ -286,7 +286,7 @@
     return `<div class="lp-wrap"><div class="lp-custom ${lay}"><div class="lp-custom-t lp-rev">${s.eyebrow ? `<span class="lp-eyebrow">${esc(s.eyebrow)}</span>` : ''}${s.title ? `<h2>${T(s.title)}</h2>` : ''}${s.text ? `<p>${esc(s.text)}</p>` : ''}${s.btn ? btnHtml(s.btn, s.action === 'url' ? 'url:' + (s.url || '') : (s.action || 'register'), true) : ''}</div>${img ? `<div class="lp-rev"><img src="${esc(img)}" alt=""></div>` : ''}</div></div>`; };
 
   const logoHtml = (c) => { const lg = imgSrc(c.theme.logo);
-    return lg ? `<img src="${esc(lg)}" alt="GRIFFINE">` : `<img class="lp-logo-l" src="griffine-logo-light.webp?v=112" alt="GRIFFINE"><img class="lp-logo-d" src="griffine-logo-dark.webp?v=112" alt="GRIFFINE">`; };
+    return lg ? `<img src="${esc(lg)}" alt="GRIFFINE">` : `<img class="lp-logo-l" src="griffine-logo-light.webp?v=113" alt="GRIFFINE"><img class="lp-logo-d" src="griffine-logo-dark.webp?v=113" alt="GRIFFINE">`; };
   const IC = {
     moon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg>',
     login: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>',
@@ -487,6 +487,15 @@
       if (f && f.google && !document.getElementById('lpFont')) { const l = document.createElement('link'); l.id = 'lpFont'; l.rel = 'stylesheet'; l.href = `https://fonts.googleapis.com/css2?family=${f.google}&display=swap`; document.head.appendChild(l); }
       root.style.setProperty('--lp-font', `'${String(c.theme.font).replace(/'/g, '')}','IBM Plex Sans Arabic',Tahoma,sans-serif`);
     }
+    // الإصدار 113: عناوين الشريط العلوي مبتتداخلش أبدًا - أول فتح الخط لسه بيتحمّل (الخط البديل أعرض) ← بنقيس المساحة الفعلية:
+    // لو العناوين مش واخدة راحتها ← نصغّرها شوية ونخفي كلمة «حمّل التطبيق» ← ولو لسه ← قائمة ☰ ، ونعيد القياس بعد تحميل الخط ومع تغيير حجم الشاشة
+    fitNav(); try { document.fonts && document.fonts.ready.then(fitNav); document.fonts && document.fonts.addEventListener && document.fonts.addEventListener('loadingdone', fitNav); } catch(e){}
+    [150, 600, 1500, 3000].forEach(ms => setTimeout(fitNav, ms));
+    // أي تغيير في مقاس العناوين أو الأزرار (تحميل الخط / الشعار / تغيير النصوص) ← إعادة القياس فورًا
+    try { if (window.__lpNavRO) window.__lpNavRO.disconnect();
+      if ('ResizeObserver' in window) { const ro = window.__lpNavRO = new ResizeObserver(() => { cancelAnimationFrame(window.__lpFitRaf); window.__lpFitRaf = requestAnimationFrame(fitNav); });
+        root.querySelectorAll('.lp-nav .lp-wrap, .lp-nav .lp-links button, .lp-nav .lp-end > *, .lp-nav .lp-brand').forEach(x => ro.observe(x)); } } catch(e){}
+    if (!window.__lpFitNavWired) { window.__lpFitNavWired = true; window.addEventListener('resize', () => { clearTimeout(window.__lpFitT); window.__lpFitT = setTimeout(fitNav, 120); }); }
     root.addEventListener('click', (e) => { const b = e.target.closest('[data-act]'); if (!b || !root.contains(b) || b.closest('.lp-modal')) return; e.preventDefault(); act(b.dataset.act); });
     // الأسواق: توضيحية فورًا ، وبعدين الحقيقية لو مربوطة
     MK = demoMarkets(); mkTab = 0; mkCur = 0;
@@ -514,6 +523,15 @@
       if (!seen) setTimeout(() => { if (!alive()) return; try { sessionStorage.setItem(key, '1'); } catch(e){} const img = imgSrc(pop.img);
         modal(`${img ? `<img src="${esc(img)}" alt="">` : ''}<h3>${T(pop.title || '')}</h3>${pop.text ? `<p>${esc(pop.text)}</p>` : ''}${pop.btn ? btnHtml(pop.btn, pop.action === 'url' ? 'url:' + (pop.url || '') : (pop.action || 'register'), true) : ''}`); }, Math.max(1, +pop.delay || 6) * 1000); }
     loadLiveMarkets(c);
+  }
+  function fitNav(){
+    const nav = document.querySelector('#lpRoot .lp-nav'); if (!nav) return;
+    const links = nav.querySelector('.lp-links'), wrap = nav.querySelector('.lp-wrap'); if (!links || !wrap) return;
+    const over = () => links.offsetParent !== null && (links.scrollWidth > links.clientWidth + 1 || wrap.scrollWidth > wrap.clientWidth + 1);
+    nav.classList.remove('lp-tight', 'lp-collapse');
+    if (!over()) return;
+    nav.classList.add('lp-tight');
+    if (over()) nav.classList.add('lp-collapse');
   }
   window.renderLanding = renderLanding;
 })();

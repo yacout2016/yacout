@@ -1754,7 +1754,7 @@ async function renderProfilePage(){
     if (toggleBtn) toggleBtn.click();
     renderProfilePage();
   };
-  document.getElementById('logoutFromProfileBtn').onclick=async()=>{ await setSession(''); window.__screens = []; window.__screenIndex = -1; await refreshTopNav(); renderLogin(); };
+  document.getElementById('logoutFromProfileBtn').onclick=async()=>{ await setSession(''); window.__screens = []; window.__screenIndex = -1; await refreshTopNav(); gAfterLogout(); };
   document.getElementById('requestEmailChangeToggleBtn').onclick = () => {
     const form = document.getElementById('emailChangeForm');
     form.style.display = form.style.display === 'none' ? 'block' : 'none';

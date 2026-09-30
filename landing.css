@@ -302,6 +302,16 @@ html[data-theme="dark"] .lp-phone::after{ background:var(--gs-surface-3,#1C2835)
 .lp-admin-bar{ position:sticky; top:0; z-index:60; display:flex; gap:10px; align-items:center; justify-content:center; flex-wrap:wrap; padding:8px 12px; background:#111827; color:#fff; font-size:13.5px; }
 .lp .lp-admin-bar button{ padding:6px 12px; border-radius:10px; background:#D4AF37; color:#111; font-weight:800; }
 
+/* الإصدار 113: الشريط العلوي بيتظبط على المساحة الفعلية (landing.js ← fitNav) */
+.lp-links{ overflow:hidden; }
+.lp-nav.lp-tight .lp-links button{ padding:8px 8px; font-size:14px; }
+.lp-nav.lp-tight .lp-end .lp-app .lbl{ display:none; }
+.lp-nav.lp-tight .lp-end .lp-app{ width:42px; padding:0; }
+.lp-nav.lp-collapse .lp-links{ display:none; }
+.lp .lp-nav.lp-collapse .lp-burger{ display:grid; }
+.lp-nav.lp-collapse ~ .lp-mmenu{ position:fixed; top:72px; inset-inline:0; z-index:39; background:var(--lp-surface); border-bottom:1px solid var(--lp-border); padding:12px 20px 18px; display:grid; gap:4px; transform:translateY(-130%); transition:transform .35s; box-shadow:var(--lp-shadow); }
+.lp-nav.lp-collapse ~ .lp-mmenu.open{ transform:none; }
+.lp .lp-nav.lp-collapse ~ .lp-mmenu button{ padding:12px 14px; border-radius:12px; font-weight:700; text-align:right; }
 /* الظهور مع التمرير */
 .lp-rev{ opacity:0; transform:translateY(30px); transition:opacity .8s cubic-bezier(.2,.8,.2,1), transform .8s cubic-bezier(.2,.8,.2,1); }
 .lp-rev.lp-in{ opacity:1; transform:none; }

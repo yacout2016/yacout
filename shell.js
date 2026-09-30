@@ -50,7 +50,7 @@
      ===================================================================== */
 
   // رقم الإصدار - بيظهر في شاشة "حسابي" (غيّره مع ?v= في index.php و VERSION في sw.js)
-  const APP_VERSION = 112;
+  const APP_VERSION = 113;
 
   /* الاستعلامات المتكررة (الدردشة/التوصيات/قائمة المتابعة) - استعلام متكيّف (الإصدار 89)
      - بتقف لما التبويب يكون مخفي أو الموبايل مقفول
@@ -643,7 +643,7 @@
     await setSession('');
     window.__screens = []; window.__screenIndex = -1;
     await refreshTopNav();
-    renderLogin();
+    gAfterLogout();
   };
 
 

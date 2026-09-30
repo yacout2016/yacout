@@ -680,7 +680,7 @@ async function renderDisclaimerGate(email, text){
   </div>`;
   document.getElementById('gateTextWrap').textContent = text;
   document.getElementById('gateAccept').onchange = (e)=>{ document.getElementById('gateContinueBtn').disabled = !e.target.checked; };
-  document.getElementById('gateLogoutBtn').onclick = async()=>{ await setSession(''); window.__screens = []; window.__screenIndex = -1; await refreshTopNav(); renderLogin(); };
+  document.getElementById('gateLogoutBtn').onclick = async()=>{ await setSession(''); window.__screens = []; window.__screenIndex = -1; await refreshTopNav(); gAfterLogout(); };
   document.getElementById('gateContinueBtn').onclick = async () => {
     const r = await acceptDisclaimer();
     if (r.success) { postLoginRedirect(email); } else { document.getElementById('gateResult').innerHTML = `<div class="error u-mt8">${r.message||'حصل خطأ'}</div>`; }
