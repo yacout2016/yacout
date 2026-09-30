@@ -1022,7 +1022,7 @@ async function renderPortfolio(){
   if (screenStale(__tok)) return; app.innerHTML = `<div class="container wide">${logoHeader()}
     <div class="topbar">
       <div>${pageTitle('portfolio','📊 ملخص المحفظة')}</div>
-      <div><button class="secondary small" id="goDiversificationBtn">⚖️ ميزان محفظتك AI (توزيع التنوع)</button> <button class="secondary small" id="homeBtn">🏠 الشاشة الرئيسية</button></div>
+      <div>${(window.__isAdmin || !(window.GShell && GShell.settings && GShell.settings.hide_mizan_screen === true)) ? '<button class="secondary small" id="goDiversificationBtn">⚖️ ميزان محفظتك AI (توزيع التنوع)</button> ' : ''}<button class="secondary small" id="homeBtn">🏠 الشاشة الرئيسية</button></div>
     </div>
 
     ${ccyChipsHtml}
@@ -1115,7 +1115,7 @@ async function renderPortfolio(){
   }
 
   document.getElementById('homeBtn').onclick=()=>renderHome();
-  document.getElementById('goDiversificationBtn').onclick=()=>renderDiversificationReport();
+  { const dv = document.getElementById('goDiversificationBtn'); if (dv) dv.onclick = () => renderDiversificationReport(); }
   app.querySelectorAll('[data-ccy]').forEach(b => b.onclick = () => {
     try { localStorage.setItem('gs_ccy', b.dataset.ccy); } catch(e){}
     window.__navSilent = true; try { renderPortfolio(); } finally { window.__navSilent = false; }

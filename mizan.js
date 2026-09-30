@@ -48,6 +48,7 @@ async function renderDiversificationReport(){
   const email = await getSession();
   if (!email) return renderLogin();
   if (!(await ensureAccess())) return;
+  if (!window.__isAdmin && window.GShell && GShell.settings && GShell.settings.hide_mizan_screen === true) return renderHome();   // الإصدار 116: مخفية من الإعدادات
   const [plans, grids] = await Promise.all([getPlans(email).catch(() => ({})), getGridPlans(email).catch(() => ({}))]);
   if (screenStale(__tok)) return;
   const { by, skipped } = mzPositions(plans, grids);

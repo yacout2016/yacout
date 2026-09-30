@@ -1185,3 +1185,17 @@ html[data-theme="dark"] .g-dyn-target{ background:#0B2A20; border-color:#14532D;
 html[data-theme="dark"] .g-dyn-target b.pos{ color:#6EE7B7; }
 html[data-theme="dark"] .g-watch-it.k-up{ background:#0B2A20; } html[data-theme="dark"] .g-watch-it.k-cap{ background:#2A2110; } html[data-theme="dark"] .g-watch-it.k-conc{ background:#0F1E33; }
 html[data-theme="dark"] .glv-mwarn{ background:#2A1215; color:#FCA5A5; border-color:#7F1D1D; }
+/* الإصدار 116: البحث العام في الموقع */
+.gs-search-ov{ position:fixed; inset:0; z-index:9000; background:rgba(15,23,42,.45); backdrop-filter:blur(2px); display:flex; justify-content:center; align-items:flex-start; padding:10vh 16px 16px; }
+.gs-search-ov[hidden]{ display:none; }
+.gs-search{ width:100%; max-width:620px; background:var(--gs-surface,#fff); color:var(--gs-text,#111); border:1px solid var(--gs-border,#E5E7EB); border-radius:18px; box-shadow:0 24px 60px rgba(0,0,0,.25); overflow:hidden; display:flex; flex-direction:column; max-height:75vh; }
+.gs-search-in{ display:flex; align-items:center; gap:8px; padding:10px 12px; border-bottom:1px solid var(--gs-border,#E5E7EB); }
+.gs-search-in > svg{ width:20px; height:20px; flex:none; color:var(--gs-muted,#64748B); }
+body.g-shell .gs-search-in input, .gs-search-in input{ flex:1; border:0 !important; outline:none; background:transparent !important; font-size:16px; height:40px; margin:0 !important; padding:0 4px !important; box-shadow:none !important; color:inherit; min-width:0; }
+.gs-search-res{ overflow:auto; padding:6px; display:grid; gap:2px; }
+body.g-shell .gs-search-it, .gs-search-it{ all:unset; box-sizing:border-box; display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 12px; border-radius:10px; cursor:pointer; font-size:14px; }
+.gs-search-it small{ color:var(--gs-muted,#64748B); font-size:11.5px; background:var(--gs-surface-2,#F1F5F9); padding:2px 8px; border-radius:99px; flex:none; }
+.gs-search-it.on, .gs-search-it:hover{ background:var(--gs-brand-tint,rgba(201,162,39,.14)); }
+.gs-search-empty{ padding:18px; text-align:center; color:var(--gs-muted,#64748B); font-size:13px; }
+.gs-search-hint{ padding:6px 12px 10px; color:var(--gs-muted,#64748B); font-size:11px; }
+@media (max-width:640px){ .gs-search-ov{ padding-top:12px; } .gs-search-hint{ display:none; } }

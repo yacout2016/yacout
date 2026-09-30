@@ -50,7 +50,7 @@
      ===================================================================== */
 
   // رقم الإصدار - بيظهر في شاشة "حسابي" (غيّره مع ?v= في index.php و VERSION في sw.js)
-  const APP_VERSION = 115;
+  const APP_VERSION = 116;
 
   /* الاستعلامات المتكررة (الدردشة/التوصيات/قائمة المتابعة) - استعلام متكيّف (الإصدار 89)
      - بتقف لما التبويب يكون مخفي أو الموبايل مقفول
@@ -126,6 +126,7 @@
     home:'<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/>',
     layers:'<path d="m12 3 9 5-9 5-9-5 9-5z"/><path d="m3 13 9 5 9-5"/>',
     pie:'<path d="M21 12A9 9 0 1 1 12 3v9z"/><path d="M21 12a9 9 0 0 0-9-9"/>',
+    balance:'<path d="M12 3v18"/><path d="M7 21h10"/><path d="M5 7h14"/><path d="M5 7l-3 7a3 3 0 0 0 6 0z"/><path d="M19 7l-3 7a3 3 0 0 0 6 0z"/>',   // الإصدار 116: ميزان
     radar:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/><path d="M8 11.5 10 13l4-4"/>',
     user:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
     bell:'<path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10 20a2 2 0 0 0 4 0"/>',
@@ -309,7 +310,7 @@
     renderHome:'home',
     renderPlansList:'plans', renderGridPlansList:'plans', renderPlanDetail:'plans', renderGridPlanDetail:'plans',
     renderPlanTypeChooser:'plans', renderNewPlanForm:'plans', renderGridPlanForm:'plans', renderEditPlanSettings:'plans', renderGridEditPlanSettings:'plans',
-    renderPortfolio:'portfolio', renderDiversificationReport:'portfolio',
+    renderPortfolio:'portfolio', renderDiversificationReport:'mizan',
     renderScreener:'screener',
     renderBasira:'basira',
     renderRecommendationsCustomerPage:'rec',
@@ -343,7 +344,7 @@
     renderGridPlanDetail: () => renderGridPlansList(),
     renderGridEditPlanSettings: (a) => a[0] ? renderGridPlanDetail(a[0]) : renderGridPlansList(),
     renderGridPlanForm: () => renderPlanTypeChooser(),
-    renderDiversificationReport: () => renderPortfolio(),
+    renderDiversificationReport: () => renderHome(),
     renderRecommendationsCustomerPage: () => renderHome(),
     renderArticleDetailPage: () => renderArticlesListPage(),
     renderCheckoutForm: () => renderSubscriptionPlans(),
@@ -486,6 +487,7 @@
       !hidden('hide_grid_screen') && { tab:'plans', sub:'grid', label:'خطط الشبكة (Grid)', ic:'grid', go:() => renderGridPlansList() },
       !hidden('hide_portfolio_screen') && { tab:'portfolio', label:'المحفظة والتقارير', ic:'pie', go:() => renderPortfolio() },
       !hidden('hide_screener_screen') && { tab:'screener', label:'كشاف الأسهم', ic:'radar', go:() => renderScreener() },
+      (window.__isAdmin || !hidden('hide_mizan_screen')) && { tab:'mizan', since:'116', label:'ميزان محفظتك AI', ic:'balance', go:() => renderDiversificationReport() },   // الإصدار 116
       (window.__isAdmin || !hidden('hide_basira_screen')) && { tab:'basira', since:'114', label:'بصيرة AI — تحليل الأسهم', ic:'bulb', go:() => renderBasira() },   // الإصدار 114
       !hidden('hide_recommendations_screen') && { tab:'rec', label:'التوصيات', ic:'megaphone', go:() => renderRecommendationsCustomerPage() },
       // الإصدار 88: قائمة المتابعة + تنبيهات الأسعار
@@ -549,7 +551,8 @@
     if (!GS.enabled) return;
     GS.email = email || null;
     document.body.classList.toggle('gs-anon', !email);
-    try { GS.settings = (email && !window.__isAdmin) ? await getAdminSettings() : {}; } catch(e){ GS.settings = {}; }
+    try { GS.allSettings = email ? await getAdminSettings() : {}; } catch(e){ GS.allSettings = {}; }
+    GS.settings = (email && !window.__isAdmin) ? (GS.allSettings || {}) : {};
     // الإصدار 96: سوق الحساب وعملته + الأسواق المفعّلة (الأدمن بيشتغل على الأسواق المفعّلة كلها)
     try { await GS.loadAccountMarket(true); } catch(e){}
     const img = $('#gsBrandImg'); if (img) img.src = brandSrc();
@@ -558,7 +561,11 @@
     const end = $('#gsBarEnd');
     if (email) {
       end.innerHTML = `${!hidden('hide_recommendations_screen') ? `<button type="button" class="gs-iconbtn" id="gsBellBtn" aria-label="التوصيات">${icon('bell')}<span class="gs-badge" id="gsBellBadge" style="display:none"></span></button>` : ''}
+        ${GS.allSettings && GS.allSettings.hide_site_search === true ? '' : `<button type="button" class="gs-iconbtn" id="gsSearchBtn" aria-label="بحث في الموقع" title="بحث في الموقع">${icon('search')}</button>`}
+        ${isStandalone() || (GS.allSettings && GS.allSettings.hide_install_icon === true) ? '' : `<button type="button" class="gs-iconbtn" id="gsInstallIcon" aria-label="تثبيت التطبيق" title="تثبيت تطبيق GRIFFINE">${icon('download')}</button>`}
         <button type="button" class="gs-iconbtn" id="gsThemeBtn" aria-label="تبديل الوضع الليلي">${icon('moon')}</button>`;
+      const sBtn = $('#gsSearchBtn'); if (sBtn) sBtn.onclick = () => GS.openSearch();
+      const iBtn = $('#gsInstallIcon'); if (iBtn) iBtn.onclick = () => GS.installApp();
       const bell = $('#gsBellBtn'); if (bell) bell.onclick = () => { GS.markRecsSeen(); renderRecommendationsCustomerPage(); };
     } else {
       end.innerHTML = `<button type="button" class="gs-iconbtn" id="gsThemeBtn" aria-label="تبديل الوضع الليلي">${icon('moon')}</button>
@@ -1338,7 +1345,7 @@
       <div class="gs-list">
         ${!hidden('hide_recommendations_screen') ? R('gsAccRec','megaphone','التوصيات') : ''}
         ${!hidden('hide_grid_screen') ? R('gsAccGrid','grid','خطط الشبكة (Grid)') : ''}
-        ${!hidden('hide_portfolio_screen') ? R('gsAccDiv','target','ميزان محفظتك AI (توزيع التنوع)') : ''}
+        ${!hidden('hide_portfolio_screen') && (window.__isAdmin || !hidden('hide_mizan_screen')) ? R('gsAccDiv','target','ميزان محفظتك AI (توزيع التنوع)') : ''}
         ${!hidden('hide_screener_screen') ? R('gsAccScr','radar','كشاف الأسهم') : ''}
       </div>
 
@@ -1914,6 +1921,93 @@
 
 
   /* =====================================================================
+     17أ. البحث العام في الموقع (الإصدار 116) - أي شاشة / أداة / خطة / سهم ← تفتحها مباشرة
+     بيتخفي من لوحة التحكم (hide_site_search). الشاشات المخفية عن العميل مبتظهرش في البحث.
+     ===================================================================== */
+  const SEARCH_HIDE = { renderPlansList:'hide_dac_screen', renderNewPlanForm:'hide_dac_screen', renderGridPlansList:'hide_grid_screen', renderGridPlanForm:'hide_grid_screen',
+    renderPortfolio:'hide_portfolio_screen', renderDiversificationReport:'hide_mizan_screen', renderScreener:'hide_screener_screen', renderBasira:'hide_basira_screen',
+    renderRecommendationsCustomerPage:'hide_recommendations_screen', renderReferralPage:'hide_referral_screen', renderTrashPage:'hide_trash_screen', renderWatchlistPage:'hide_watchlist_screen',
+    renderAlertsPage:'hide_alerts_screen', renderTradesReportPage:'hide_trades_screen', renderMySubscriptionHistory:'hide_sub_history_screen', renderContactInfo:'hide_contact_screen',
+    renderTestimonialsPage:'hide_testimonials_screen', renderArticlesListPage:'hide_articles_screen', renderSuggestionsPage:'hide_suggestions_screen', renderOpportunities:'hide_opps_screen' };
+  // كلمات إضافية بتساعد توصل للشاشة حتى لو مش فاكر اسمها
+  const SEARCH_WORDS = {
+    renderHome:'رئيسية بداية قيمة المحفظة', renderPlansList:'dca داك تعزيز متوسط خطط شراء', renderNewPlanForm:'dca خطة جديدة داك إضافة سهم',
+    renderGridPlansList:'grid جريد شبكة خطط', renderGridPlanForm:'grid شبكة جريد خطة جديدة نطاق', renderPlanTypeChooser:'خطة جديدة إنشاء',
+    renderPortfolio:'محفظة تقارير أرباح ملخص', renderDiversificationReport:'ميزان تنويع توزيع مخاطرة hhi قطاعات ذكاء اصطناعي ai',
+    renderScreener:'كشاف مؤشرات تحليل فني فلترة أسهم', renderBasira:'بصيرة تحليل سهم ذكاء اصطناعي ai أخبار توقع', renderOpportunities:'فرص مؤشرات إشعارات rsi',
+    renderRecommendationsCustomerPage:'توصيات شراء', renderWatchlistPage:'متابعة مفضلة نجمة', renderAlertsPage:'تنبيه سعر إشعار', renderTradesReportPage:'صفقات تقرير بيع شراء',
+    renderSubscriptionPlans:'اشتراك باقة دفع تجديد سعر', renderMySubscriptionHistory:'سجل اشتراك فواتير', renderProfilePage:'ملف شخصي اسم صورة موبايل كلمة سر',
+    renderReferralPage:'إحالة دعوة صديق كود', renderTrashPage:'سلة محذوفات استرجاع حذف', renderContactInfo:'تواصل واتساب تليفون إيميل', renderAboutPage:'عن الموقع الإصدار',
+    renderSuggestionsPage:'اقتراح شكوى رأي', renderArticlesListPage:'مقالات تعليم', renderAdminSettingsPage:'إعدادات إخفاء إظهار صلاحيات أزرار', renderSiteDesignPage:'تصميم ثيم ألوان خط استوديو',
+    renderAdminBasira:'مفتاح claude api ذكاء اصطناعي إعدادات بصيرة', renderAdminSubscribers:'مشتركين عملاء', renderEmergencyAdminPage:'صيانة طوارئ', renderAdsAdminPage:'إعلانات دعاية بانر'
+  };
+  const nrm = (t) => String(t || '').toLowerCase().replace(/[إأآا]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه').replace(/[ًٌٍَُِّْـ]/g, '').replace(/\s+/g, ' ').trim();
+  async function searchIndex(){
+    const out = [], seen = new Set();
+    const add = (label, sub, go, words, fn) => { const k = nrm(label); if (seen.has(k)) return; seen.add(k); out.push({ label, sub, go, hay: nrm(label + ' ' + sub + ' ' + (words || '')) , fn }); };
+    let sec = '';
+    SCREENS_TO_PRINT.forEach(r => {
+      if (r.length === 1) { sec = r[0].replace(/—/g, '').trim(); return; }
+      const [label, fn, need] = r; if (need) return;
+      if (/العامة/.test(sec)) return;
+      if (/لوحة التحكم/.test(sec) && !window.__isAdmin) return;
+      if (!window.__isAdmin && SEARCH_HIDE[fn] && hidden(SEARCH_HIDE[fn])) return;
+      const isGS = fn.startsWith('GS:'), name = isGS ? fn.slice(3) : fn;
+      const f = isGS ? GS[name] : window[name]; if (typeof f !== 'function') return;
+      add(label, /لوحة التحكم/.test(sec) ? 'لوحة التحكم' : 'شاشة', () => (isGS ? GS[name]() : window[name]()), SEARCH_WORDS[name], name);
+    });
+    try { sideItems().forEach(it => { if (it.label && it.go) add(it.label, 'القائمة', it.go, SEARCH_WORDS[it.screen] || ''); }); } catch(e){}
+    add('الوضع الليلي / النهاري', 'أداة', () => GS.toggleTheme(), 'ليلي نهاري داكن فاتح هلال ثيم');
+    if (!(GS.allSettings && GS.allSettings.hide_install_icon === true)) add('تثبيت التطبيق على الجهاز', 'أداة', () => GS.installApp(), 'تطبيق موبايل تحميل pwa');
+    // خطط المستخدم نفسه
+    try {
+      const [p, g] = await Promise.all([getPlans(GS.email).catch(() => ({})), getGridPlans(GS.email).catch(() => ({}))]);
+      Object.keys(p || {}).forEach(s => add(`خطة ${s}`, 'DCA', () => renderPlanDetail(s), 'dca داك ' + s));
+      Object.keys(g || {}).forEach(s => add(`خطة ${s}`, 'Grid', () => renderGridPlanDetail(s), 'grid شبكة ' + s));
+    } catch(e){}
+    return out;
+  }
+  GS.openSearch = async function(){
+    let ov = $('#gsSearchOv');
+    if (!ov) {
+      ov = document.createElement('div'); ov.id = 'gsSearchOv'; ov.className = 'gs-search-ov';
+      ov.innerHTML = `<div class="gs-search" role="dialog" aria-modal="true" aria-label="بحث في الموقع">
+        <div class="gs-search-in">${icon('search')}<input type="search" id="gsSearchQ" placeholder="ابحث عن أي شاشة أو أداة أو خطة أو سهم…" autocomplete="off"><button type="button" class="gs-iconbtn" id="gsSearchX" aria-label="إغلاق">${icon('x')}</button></div>
+        <div class="gs-search-res" id="gsSearchRes" role="listbox"></div><small class="gs-search-hint">↑ ↓ للتنقل • Enter للفتح • Esc للإغلاق</small></div>`;
+      document.body.appendChild(ov);
+      ov.addEventListener('click', (e) => { if (e.target === ov) GS.closeSearch(); });
+      $('#gsSearchX').onclick = () => GS.closeSearch();
+    }
+    ov.hidden = false; document.body.classList.add('gs-search-open');
+    const q = $('#gsSearchQ'), res = $('#gsSearchRes'); q.value = '';
+    res.innerHTML = '<div class="gs-search-empty">جاري التحميل…</div>';
+    const idx = await searchIndex(); let cur = [], sel = 0;
+    const paint = () => {
+      const t = nrm(q.value), words = t ? t.split(' ') : [];
+      cur = !words.length ? idx.filter(x => x.sub === 'القائمة').slice(0, 12)
+        : idx.map(x => ({ x, sc: words.every(w => x.hay.includes(w)) ? (nrm(x.label).startsWith(words[0]) ? 3 : nrm(x.label).includes(t) ? 2 : 1) : 0 })).filter(y => y.sc).sort((a, b) => b.sc - a.sc).map(y => y.x).slice(0, 14);
+      const raw = q.value.trim().toUpperCase();
+      if (/^[A-Z0-9.\-]{2,12}$/.test(raw) && typeof window.renderBasira === 'function' && (window.__isAdmin || !hidden('hide_basira_screen'))) cur.push({ label: `تحليل سهم ${raw} في بصيرة`, sub: 'بصيرة AI', go: () => window.renderBasira(raw) });
+      sel = Math.min(sel, Math.max(0, cur.length - 1));
+      res.innerHTML = cur.length ? cur.map((x, i) => `<button type="button" class="gs-search-it${i === sel ? ' on' : ''}" data-i="${i}" role="option"><b>${esc(x.label)}</b><small>${esc(x.sub)}</small></button>`).join('')
+        : `<div class="gs-search-empty">مفيش نتايج لـ «${esc(q.value)}» — جرّب كلمة تانية.</div>`;
+      res.querySelectorAll('.gs-search-it').forEach(b => b.onclick = () => go(+b.dataset.i));
+    };
+    const go = (i) => { const x = cur[i]; if (!x) return; GS.closeSearch(); try { x.go(); } catch(e){ console.error(e); } };
+    q.oninput = () => { sel = 0; paint(); };
+    q.onkeydown = (e) => {
+      if (e.key === 'Escape') { GS.closeSearch(); return; }
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); sel = (sel + (e.key === 'ArrowDown' ? 1 : -1) + cur.length) % Math.max(1, cur.length); paint(); const on = res.querySelector('.on'); if (on) on.scrollIntoView({ block: 'nearest' }); }
+      if (e.key === 'Enter') { e.preventDefault(); go(sel); }
+    };
+    paint(); setTimeout(() => q.focus(), 20);
+  };
+  GS.closeSearch = function(){ const ov = $('#gsSearchOv'); if (ov) ov.hidden = true; document.body.classList.remove('gs-search-open'); };
+  // Ctrl+K / ⌘K
+  document.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K') && GS.email && $('#gsSearchBtn')) { e.preventDefault(); GS.openSearch(); } });
+
+
+  /* =====================================================================
      18. التثبيت كتطبيق (PWA)
      ===================================================================== */
   const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
@@ -1939,8 +2033,16 @@
     if (x) x.onclick = () => { store.set('gs_install_dismissed', '1'); const c = $('#gsInstall'); if (c) c.remove(); };
   };
 
+  // الإصدار 116: أيقونة تثبيت التطبيق في الشريط العلوي (جنب الهلال) - تتخفي من لوحة التحكم (hide_install_icon)
+  GS.installApp = async function(){
+    if (isStandalone()) { GS.toast('التطبيق متثبّت ومفتوح بالفعل ✅', 'ok'); return; }
+    const p = GS.deferredInstall;
+    if (p) { p.prompt(); try { await p.userChoice; } catch(e){} GS.deferredInstall = null; return; }
+    if (isIOS()) { GS.toast('من زر المشاركة في Safari اختر «إضافة إلى الشاشة الرئيسية»', 'info'); return; }
+    GS.toast('من قائمة المتصفح (⋮) اختر «تثبيت التطبيق» أو «Install app» — ولو مش ظاهر يبقى التطبيق متثبّت بالفعل', 'info');
+  };
   window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); GS.deferredInstall = e; });
-  window.addEventListener('appinstalled', () => { GS.deferredInstall = null; const c = $('#gsInstall'); if (c) c.remove(); GS.toast('تم تثبيت GRIFFINE على جهازك', 'ok'); });
+  window.addEventListener('appinstalled', () => { GS.deferredInstall = null; const c = $('#gsInstall'); if (c) c.remove(); const ib = $('#gsInstallIcon'); if (ib) ib.remove(); GS.toast('تم تثبيت GRIFFINE على جهازك', 'ok'); });
 
   function registerSW(){
     if (!('serviceWorker' in navigator)) return;

@@ -351,6 +351,27 @@
      - مبنحرّكش العناصر في الصفحة نفسها (عشان محددات التنسيق والنصوص تفضل شغالة) ← بنغيّر ترتيب ظهورها بس
      - mode: col = الأب بيتحوّل لعمود مرن ، row = صف مرن بيلف ، '' = الأب أصلًا flex/grid
      - أي عنصر مش في الترتيب المحفوظ (زي عنصر جديد) بيظهر في الآخر */
+  /* الإصدار 116: عنصر جديد في الموقع (زي شاشة جديدة في القائمة) مش موجود في الترتيب المحفوظ ←
+     بياخد مكانه الطبيعي قبل العنصر اللي بعده في الصفحة (بدل ما ينزل آخر القائمة) */
+  ST.fillOrderGaps = function(){
+    ((ST.overrides && ST.overrides.orders) || []).forEach(r => {
+      if (!Array.isArray(r.keys) || r.keys.length < 2 || !ST.safeSelector(r.psel)) return;
+      if (r.screen && r.screen !== '*' && document.body.getAttribute('data-gs-screen') !== r.screen) return;
+      let par; try { par = document.querySelectorAll(r.psel); } catch(e){ return; }
+      par.forEach(p => {
+        // مكانه قبل العنصر اللي بعده في الصفحة على طول (العنصر الجديد بيتضاف قبل عنصر معيّن - زي «ميزان» قبل «بصيرة»)
+        const kids = Array.from(p.children), ord = kids.map(ch => { const k = ch.getAttribute('data-gs-key'); const i = k ? r.keys.indexOf(k) : -1; return i >= 0 ? (i + 1) * 10 : null; });
+        let last = 0;
+        kids.forEach((ch, j) => {
+          if (ord[j] != null) { last = ord[j]; if (ch.style.order) ch.style.removeProperty('order'); return; }
+          if (!ch.getAttribute('data-gs-key')) return;
+          const nx = ord.slice(j + 1).find(x => x != null);
+          ch.style.setProperty('order', String(nx != null ? nx - 5 : last + 5));
+        });
+      });
+    });
+  };
+
   ST.ordersCss = function(ovr){
     return ((ovr && ovr.orders) || []).map(r => {
       if (!ST.safeSelector(r.psel) || !Array.isArray(r.seq) || r.seq.length < 2) return '';
@@ -359,7 +380,7 @@
       let css = r.mode === 'col' ? `${P}{display:flex !important;flex-direction:column !important;}`
               : r.mode === 'row' ? `${P}{display:flex !important;flex-direction:row !important;flex-wrap:wrap !important;align-items:center !important;column-gap:6px;}` : '';
       css += `${P} > *{order:1000;}`;
-      if (Array.isArray(r.keys) && r.keys.length >= 2) r.keys.forEach((k, i) => { if (KEY_RE.test(k)) css += `${P} > [data-gs-key="${k}"]{order:${i + 1} !important;}`; });   // الإصدار 114: بالأسماء الثابتة
+      if (Array.isArray(r.keys) && r.keys.length >= 2) r.keys.forEach((k, i) => { if (KEY_RE.test(k)) css += `${P} > [data-gs-key="${k}"]{order:${(i + 1) * 10} !important;}`; });   // الإصدار 114: بالأسماء الثابتة (الإصدار 116: بفواصل 10 عشان العناصر الجديدة تدخل بينهم)
       else r.seq.forEach((n, i) => { n = parseInt(n, 10); if (n >= 1 && n <= 200) css += `${P} > :nth-child(${n}){order:${i + 1} !important;}`; });
       return css;
     }).join('\n');
@@ -487,7 +508,11 @@
           if (!kids.every(c => KEY_RE.test(c.getAttribute('data-gs-key') || ''))) return;
           r.keys = r.seq.map(n => kids[n - 1] && kids[n - 1].getAttribute('data-gs-key')).filter(Boolean);
           // العناصر الجديدة (اللي اتشالت مؤقتًا) بتاخد مكانها الطبيعي بعد العنصر اللي قبلها
-          held.forEach(([el, par, nx, pvKey]) => { if (par !== p) return; const k = el.getAttribute('data-gs-key'), at = r.keys.indexOf(pvKey); if (k && !r.keys.includes(k)) r.keys.splice(at >= 0 ? at + 1 : r.keys.length, 0, k); });
+          // (الإصدار 116: كذا عنصر جديد ورا بعض ← بنفس ترتيبهم في الصفحة)
+          const added = [];
+          held.forEach(([el, par, nx, pvKey]) => { if (par !== p) return; const k = el.getAttribute('data-gs-key'); if (!k || r.keys.includes(k)) return;
+            let at = r.keys.indexOf(pvKey); if (at < 0) at = r.keys.length - 1; while (at + 1 < r.keys.length && added.includes(r.keys[at + 1])) at++;
+            r.keys.splice(at + 1, 0, k); added.push(k); });
           r.psel = ST.cssPath(p) || r.psel;
         });
       }
@@ -509,6 +534,7 @@
     try {
       // .gs-st-br = نص فيه أكتر من سطر (بيغلب "الجداول في سطر واحد" كمان)
       styleTag('gsStudioRules').textContent = '.gs-st-br{white-space:pre-line !important;}\n' + ST.ordersCss(ST.overrides) + '\n' + ST.stylesCss(ST.overrides);   // الإصدار 107: التنسيق بعد الترتيب ← ترتيب الصندوق (عمودين / وسط ...) بيغلب
+      ST.fillOrderGaps();
       applyElTexts();
       applyTexts();
     } catch(e){ console.warn('studio apply:', e); }
@@ -559,7 +585,7 @@
     if (!window.GStudioEditor) {
       await new Promise((res, rej) => {
         const s = document.createElement('script');
-        s.src = 'studio-editor.js?v=115'; s.onload = res; s.onerror = () => rej(new Error('تعذّر تحميل استوديو التصميم'));
+        s.src = 'studio-editor.js?v=116'; s.onload = res; s.onerror = () => rej(new Error('تعذّر تحميل استوديو التصميم'));
         document.head.appendChild(s);
       }).catch(e => { if (window.GShell) GShell.toast(e.message, 'err'); });
     }

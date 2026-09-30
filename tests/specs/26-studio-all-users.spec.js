@@ -26,7 +26,7 @@ const CUST = { email: 'paytest@example.com', pass: process.env.GT_CUSTOMER_PASS 
   await a.reload(); await a.waitForTimeout(3500);
   const conv = (await fetch(BASE + '/ui_custom_get.php').then(r => r.json())).overrides || {};
   check('التحويل التلقائي: تنسيق «سلة المحذوفات» بقى بالاسم الثابت', conv.keysV === 1 && conv.styles[0].sel === '.gs-sidebar [data-gs-key="renderTrashPage"] > span:nth-child(2)', conv.styles[0] && conv.styles[0].sel);
-  check('التحويل التلقائي: ترتيب القائمة بقى بالأسماء (كشاف الأسهم بعد الرئيسية ثم DCA ثم Grid)', Array.isArray(conv.orders[0].keys) && conv.orders[0].keys.slice(0, 6).join(',') === 'side-brand,home,screener,basira,plans-dca,plans-grid', JSON.stringify(conv.orders[0].keys));
+  check('التحويل التلقائي: ترتيب القائمة بقى بالأسماء (كشاف الأسهم بعد الرئيسية ثم DCA ثم Grid)', Array.isArray(conv.orders[0].keys) && conv.orders[0].keys.slice(0, 7).join(',') === 'side-brand,home,screener,mizan,basira,plans-dca,plans-grid', JSON.stringify(conv.orders[0].keys));
   check('العنصر الجديد (بصيرة) أخد مكانه الطبيعي بعد كشاف الأسهم (مش تحت الحساب)', conv.orders[0].keys.indexOf('basira') < conv.orders[0].keys.indexOf('side-foot'));
   const adm = await a.evaluate(() => { const t = document.querySelector('.gs-sidebar [data-gs-key="renderTrashPage"] > span'); return getComputedStyle(t).color; });
   check('عند الأدمن: «سلة المحذوفات» باللون الأحمر', adm === 'rgb(225, 29, 72)', adm);
@@ -39,7 +39,7 @@ const CUST = { email: 'paytest@example.com', pass: process.env.GT_CUSTOMER_PASS 
     const t = document.querySelector('.gs-sidebar [data-gs-key="renderTrashPage"] > span');
     const items = Array.from(document.querySelectorAll('.gs-sidebar > .gs-side-item')).filter(x => x.offsetParent !== null).sort((x, y) => (+getComputedStyle(x).order) - (+getComputedStyle(y).order) || 0);
     const vis = Array.from(document.querySelectorAll('.gs-sidebar > .gs-side-item')).map(x => ({ k: x.getAttribute('data-gs-key'), top: Math.round(x.getBoundingClientRect().top) })).sort((x, y) => x.top - y.top).map(x => x.k);
-    return { color: t ? getComputedStyle(t).color : null, order: vis.filter(k => k !== 'basira').slice(0, 4), adminItems: !!document.querySelector('.gs-sidebar [data-gs-key="renderAdminHub"]') };
+    return { color: t ? getComputedStyle(t).color : null, order: vis.filter(k => k !== 'basira' && k !== 'mizan').slice(0, 4), adminItems: !!document.querySelector('.gs-sidebar [data-gs-key="renderAdminHub"]') };
   });
   check('عند العميل: «سلة المحذوفات» باللون الأحمر (رغم إن قائمته أقصر من الأدمن)', cu.color === 'rgb(225, 29, 72)', JSON.stringify(cu));
   check('عند العميل: الترتيب (الرئيسية ← كشاف الأسهم ← DCA ← Grid)', cu.order.join(',') === 'home,screener,plans-dca,plans-grid' && !cu.adminItems, cu.order.join(','));

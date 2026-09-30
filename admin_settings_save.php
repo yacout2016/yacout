@@ -26,6 +26,8 @@ $allowedKeys = [
     'hide_watchlist_screen', 'hide_alerts_screen', 'hide_stock_screen', 'hide_curve_home', 'hide_trash_screen', 'hide_trades_screen',   // الإصدار 96
     'hide_opps_screen',   // الإصدار 101
     'hide_basira_screen', // الإصدار 114
+    'hide_mizan_screen', // الإصدار 116
+    'hide_install_icon', 'hide_site_search', // الإصدار 116: أيقونات الشريط العلوي
 ];
 
 $key = trim($_POST['key'] ?? '');
