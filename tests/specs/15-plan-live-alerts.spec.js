@@ -102,6 +102,16 @@ const ADMIN = 'top72026@gmail.com';
   check('رمز غلط (ZZQX) مرفوض عند إنشاء خطة', !c1.ok && /غير موجود/.test(c1.msg), JSON.stringify(c1));
   check('رمز صحيح (COMI) مقبول', c2.ok && !c2.unverified);
 
+  // الإصدار 109: جدول المستويات أكتر من 7 صفوف ← تمرير ورأس الجدول ثابت ملزوق في أول الصندوق (مفيش صفوف بتبان فوقه)
+  await a.evaluate(async () => { const lv = Array.from({ length: 14 }, (_, i) => ({ level: i + 1, executed: i < 2, actualQty: i < 2 ? 10 : null, actualPrice: i < 2 ? 40 - i : null, execDate: i < 2 ? '2026-09-0' + (i + 1) : null, sells: [] }));
+    const g = await getPlans(await getSession()); g.AMESX = { market:'مصر', listed:false, capital:10000, dropPercent:5, volumeIncrease:10, profitTarget:5, currentPrice:40, seedAmount:400, levels: lv, closedTrades:[] }; await savePlans(await getSession(), g); renderPlanDetail('AMESX'); });
+  await a.waitForTimeout(3000);
+  const stk = await a.evaluate(() => { const t = document.getElementById('levelsTable'), w = t.closest('.gs-tscroll'); w.scrollIntoView(); w.scrollTop = 160; const wr = w.getBoundingClientRect(), hr = t.tHead.getBoundingClientRect(); const bt = parseFloat(getComputedStyle(w).borderTopWidth) || 0;
+    const above = [...t.tBodies[0].rows].some(r => { const rr = r.getBoundingClientRect(); return rr.bottom > wr.top + bt + 1 && rr.top < hr.top - 1; });
+    return { limit: w.classList.contains('gs-rows-limit'), gap: Math.round(hr.top - wr.top - bt), above, scrolled: w.scrollTop > 0 }; });
+  check('جدول المستويات: تمرير + رأس الجدول ثابت في أول الصندوق ومفيش صفوف فوقه', stk.limit && stk.scrolled && stk.gap <= 1, JSON.stringify(stk));
+  await a.evaluate(async () => { const g = await getPlans(await getSession()); delete g.AMESX; await savePlans(await getSession(), g); });
+
   // 10) الإصدار 98: ربح الخطط المفتوحة على آخر سعر في قائمة الخطط
   await setPx('COMI', 129);
   await a.evaluate(() => { localStorage.removeItem('gs_livepx2'); renderPlansList(); }); await a.waitForTimeout(3500);
