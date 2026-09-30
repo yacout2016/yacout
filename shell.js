@@ -50,7 +50,7 @@
      ===================================================================== */
 
   // رقم الإصدار - بيظهر في شاشة "حسابي" (غيّره مع ?v= في index.php و VERSION في sw.js)
-  const APP_VERSION = 111;
+  const APP_VERSION = 112;
 
   /* الاستعلامات المتكررة (الدردشة/التوصيات/قائمة المتابعة) - استعلام متكيّف (الإصدار 89)
      - بتقف لما التبويب يكون مخفي أو الموبايل مقفول
@@ -824,7 +824,7 @@
       // صف الإجمالي بيتنقل لذيل الجدول (tfoot) ويتثبت تحت - والفلتر والترتيب مبيحركوهوش
       const tots = all.filter(r => r.classList.contains('gs-total-row'));
       if (tots.length && rows_moreThan(all.length - tots.length, n)) { const tf = t.tFoot || t.createTFoot(); tots.forEach(r => tf.appendChild(r)); }
-      const rows = all.filter(r => !r.classList.contains('gs-total-row'));
+      const rows = all.filter(r => !r.classList.contains('gs-total-row') && !r.classList.contains('g-subrow'));   // الإصدار 112: سطور عمليات البيع مبتتحسبش
       const want = rows.length > n;
       let h = 0;
       if (want) {
@@ -863,10 +863,12 @@
       if (t.dataset.gEnh || t.classList.contains('g-no-enh') || t.closest('.g-no-enh, .gs-alert-list, .chat-msg')) return;
       const { head, body } = tableParts(t);
       if (!head || head.cells.length < 2) return;
-      const dataRows = body.filter(r => !isTotalRow(r) && r.cells.length >= head.cells.length - 1);
+      const dataRows = body.filter(r => !isTotalRow(r) && !r.classList.contains('g-subrow') && r.cells.length >= head.cells.length - 1);
       if (dataRows.length < 2) return;
       t.dataset.gEnh = '1'; t.classList.add('g-enh');
-      const rowsNow = () => tableParts(t).body.filter(r => !r.classList.contains('g-filter-row') && !isTotalRow(r));
+      const rowsNow = () => tableParts(t).body.filter(r => !r.classList.contains('g-filter-row') && !r.classList.contains('g-subrow') && !isTotalRow(r));
+      // الإصدار 112: سطور عمليات البيع (tr.g-subrow[data-sub-of]) بتفضل تحت مستواها (tr[data-lv]) في الترتيب والفلتر
+      const subsOf = (r) => r.dataset.lv == null ? [] : Array.from(t.querySelectorAll(`tr.g-subrow[data-sub-of="${r.dataset.lv}"]`));
       const cols = head.cells.length;
       // ---- أنواع الأعمدة
       const kinds = [];
@@ -891,7 +893,7 @@
           rows.sort((a, b) => { const x = key(a), y = key(b);
             if (x === null || x === '' ) return 1; if (y === null || y === '') return -1;
             return (k === 'num' ? x - y : String(x).localeCompare(String(y), 'ar')) * sortDir; });
-          rows.forEach(r => tb.appendChild(r)); totals.forEach(r => tb.appendChild(r));
+          rows.forEach(r => { const sb = subsOf(r); tb.appendChild(r); sb.forEach(x => tb.appendChild(x)); }); totals.forEach(r => tb.appendChild(r));
         });
       });
       // ---- سطر الفلتر + خانة البحث
@@ -924,7 +926,7 @@
             const v = r.cells[c] ? T_NORM(r.cells[c].textContent) : '';
             ok = f.tagName === 'SELECT' ? v === f.value : v.toLowerCase().includes(T_NORM(f.value).toLowerCase());
           }
-          r.style.display = ok ? '' : 'none'; if (ok) shown++;
+          r.style.display = ok ? '' : 'none'; if (ok) shown++; subsOf(r).forEach(x => { x.style.display = ok ? '' : 'none'; });
         });
         cnt.textContent = (qs || filters.some(f => f && f.value)) ? `${shown} من ${rows.length}` : `${rows.length} صف`;
       };

@@ -397,6 +397,99 @@ document.addEventListener('click', (e) => {
   e.preventDefault(); e.stopPropagation();
   const sym = a.dataset.goPlan; if (a.dataset.kind === 'Grid') renderGridPlanDetail(sym); else renderPlanDetail(sym);
 }, true);
+/* ================== الإصدار 112: جدول المستويات الموحّد (DCA / Grid) ==================
+   - كل معلومة في عمود لوحدها (مفيش مستطيلات شرح جوه الجدول) + كل رقم في سطر واحد برقمين بعد العلامة
+   - الإجراءات أزرار صغيرة (شراء / بيع / ✎ تعديل / 🗑 حذف) بتفتح نافذة إدخال (الكمية + السعر + التاريخ)
+   - عمليات البيع: سهم ▸ جنب رقم المستوى ← كل عملية بيع في سطر تحته بنفس الأعمدة + تعديل/حذف
+   - أول عمود وعمود الإجراءات ثابتين وقت التمرير بالعرض (shell.css) */
+const glvN = v => (v == null || !isFinite(v)) ? '—' : Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const glvQ = v => (v == null || !isFinite(v)) ? '—' : (Math.abs(v - Math.round(v)) < 1e-9 ? Math.round(v).toLocaleString('en-US') : glvN(v));
+const glvSign = v => (v == null || !isFinite(v)) ? '' : v > 1e-9 ? 'pos' : v < -1e-9 ? 'neg' : '';
+const glvPL = v => (v == null || !isFinite(v)) ? '—' : (v > 1e-9 ? '+' : '') + glvN(v);
+function glvTd(v, kind, extra){
+  const txt = kind === 'q' ? glvQ(v) : kind === 'pl' ? glvPL(v) : glvN(v);
+  const cls = ['glv-n']; if (v == null || !isFinite(v)) cls.push('glv-dim'); if (kind === 'pl') cls.push(glvSign(v)); if (extra) cls.push(extra);
+  return `<td class="${cls.filter(Boolean).join(' ')}">${txt}</td>`;
+}
+function glvLevelCell(n, idx, sellsCount, open){
+  return `<td><span class="glv-lvc">${sellsCount ? `<span class="glv-exp" role="button" tabindex="0" data-glv-exp="${idx}" aria-expanded="${open ? 'true' : 'false'}" aria-label="عمليات البيع (${sellsCount})" title="عمليات البيع (${sellsCount})"></span>` : '<span class="glv-exp glv-ph" aria-hidden="true"></span>'}<b>${n}</b></span></td>`;
+}
+function glvBadge(label, k){ return `<span class="glv-st glv-st-${k}">${escapeHtml(label)}</span>`; }
+function glvBtn(label, call, args, o){
+  o = o || {};
+  return `<button type="button" class="glv-b${o.cls ? ' ' + o.cls : ''}" data-gcall="${call}" data-gargs="${gArgs(args)}"${o.title ? ` title="${escapeHtml(o.title)}" aria-label="${escapeHtml(o.title)}"` : ''}${o.disabled ? ' disabled' : ''}>${label}</button>`;
+}
+function glvOpenSet(key){ window.__glvOpen = window.__glvOpen || {}; return (window.__glvOpen[key] = window.__glvOpen[key] || new Set()); }
+// فتح/قفل عمليات البيع من غير إعادة رسم الشاشة (البحث والفلتر والترتيب بيفضلوا زي ما هما)
+function glvToggle(el){
+  const t = el.closest('table'); if (!t) return;
+  const i = el.dataset.glvExp, open = el.getAttribute('aria-expanded') !== 'true';
+  el.setAttribute('aria-expanded', open ? 'true' : 'false');
+  t.querySelectorAll(`tr.g-subrow[data-sub-of="${i}"]`).forEach(r => r.classList.toggle('g-sub-closed', !open));
+  const set = glvOpenSet(t.dataset.glvKey || t.id); if (open) set.add(String(i)); else set.delete(String(i));
+}
+document.addEventListener('click', (e) => { const el = e.target.closest && e.target.closest('[data-glv-exp]'); if (el) { e.preventDefault(); glvToggle(el); } });
+document.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('[data-glv-exp]')) { e.preventDefault(); glvToggle(e.target); } });
+
+// ربح/خسارة كل مستوى على آخر سعر = الكمية المتبقية من المستوى × (آخر سعر − سعر شرائه) + الإجمالي
+function glvFillUnreal(tableId, last){
+  const t = document.getElementById(tableId); if (!t) return;
+  let sum = 0, any = false;
+  t.querySelectorAll('td.lv-unreal').forEach(td => {
+    const q = +td.dataset.q, p = +td.dataset.p;
+    if (!(q > 0) || !(p > 0) || !(last > 0)) { td.textContent = '—'; td.className = 'glv-n glv-dim lv-unreal'; return; }
+    const v = (last - p) * q; sum += v; any = true;
+    td.textContent = glvPL(v); td.className = 'glv-n lv-unreal ' + glvSign(v);
+  });
+  const tt = t.querySelector('td.lv-unreal-total');
+  if (tt) { tt.textContent = any ? glvPL(sum) : '—'; tt.className = 'glv-n lv-unreal-total ' + (any ? glvSign(sum) : 'glv-dim'); }
+}
+
+/* نافذة الإدخال: o = { title, sub, q, p, d, maxQ, onSave(v) ← ترجع نص خطأ أو لا شيء } */
+function glvModal(o){
+  let ov = document.getElementById('glvOv');
+  if (!ov) {
+    ov = document.createElement('div'); ov.id = 'glvOv'; ov.className = 'glv-ov'; ov.hidden = true;
+    ov.innerHTML = `<div class="glv-modal" role="dialog" aria-modal="true" aria-labelledby="glvMT">
+      <h3 id="glvMT"></h3><div class="glv-msub" id="glvMS"></div>
+      <label for="glvMQ">الكمية</label><input type="number" step="any" min="0" id="glvMQ" inputmode="decimal">
+      <label for="glvMP">السعر</label><input type="number" step="any" min="0" id="glvMP" inputmode="decimal">
+      <label for="glvMD">التاريخ</label><input type="date" id="glvMD">
+      <div class="glv-mcalc"><span>القيمة</span><b id="glvMV">0.00</b></div>
+      <div class="glv-merr" id="glvME" role="alert"></div>
+      <div class="glv-mrow"><button type="button" id="glvMOk">حفظ</button><button type="button" class="secondary" id="glvMNo">إلغاء</button></div>
+    </div>`;
+    document.body.appendChild(ov);
+    const calc = () => { document.getElementById('glvMV').textContent = glvN((+document.getElementById('glvMQ').value || 0) * (+document.getElementById('glvMP').value || 0)); };
+    ov.querySelectorAll('input').forEach(i => i.addEventListener('input', calc));
+    ov.addEventListener('click', (e) => { if (e.target === ov) ov.hidden = true; });
+    document.getElementById('glvMNo').onclick = () => { ov.hidden = true; };
+    ov.addEventListener('keydown', (e) => { if (e.key === 'Escape') ov.hidden = true; if (e.key === 'Enter' && e.target.tagName === 'INPUT') { e.preventDefault(); document.getElementById('glvMOk').click(); } });
+    ov._calc = calc;
+  }
+  document.getElementById('glvMT').textContent = o.title || '';
+  document.getElementById('glvMS').textContent = o.sub || '';
+  document.getElementById('glvMQ').value = o.q != null && o.q !== '' ? +(+o.q).toFixed(4) : '';
+  document.getElementById('glvMP').value = o.p != null && o.p !== '' ? +(+o.p).toFixed(4) : '';
+  document.getElementById('glvMD').value = String(o.d || new Date().toISOString().slice(0, 10)).slice(0, 10);
+  document.getElementById('glvME').textContent = '';
+  ov._calc(); ov.hidden = false;
+  const ok = document.getElementById('glvMOk'); ok.disabled = false;
+  ok.onclick = async () => {
+    const v = { q: parseFloat(document.getElementById('glvMQ').value), p: parseFloat(document.getElementById('glvMP').value), d: document.getElementById('glvMD').value || new Date().toISOString().slice(0, 10) };
+    const err = document.getElementById('glvME');
+    if (!(v.q > 0)) { err.textContent = 'اكتب كمية أكبر من صفر (ممكن تكون كسر عشري).'; return; }
+    if (!(v.p > 0)) { err.textContent = 'اكتب سعر أكبر من صفر.'; return; }
+    if (o.maxQ != null && v.q > o.maxQ + 1e-9) { err.textContent = `أقصى كمية مسموحة ${glvQ(o.maxQ)}.`; return; }
+    ok.disabled = true;
+    let r; try { r = await o.onSave(v); } catch(e2){ r = 'حصل خطأ — حاول تاني.'; }
+    ok.disabled = false;
+    if (typeof r === 'string' && r) { err.textContent = r; return; }
+    ov.hidden = true;
+  };
+  setTimeout(() => { const q = document.getElementById('glvMQ'); q.focus(); q.select(); }, 30);
+}
+
 function gFillListProfits(tok, plans, grids, items){
   if (typeof mkEnsureLivePrices !== 'function' || !items.length) return;
   const paint = () => {
@@ -2098,9 +2191,18 @@ async function renderGridPlanDetail(symbol){
     <div class="section-card" id="curveWrap"></div>
 
     <h2 class="u-mt20">مستويات الشبكة</h2>
+    <button class="secondary small u-wa" id="gridToggleDatesBtn">📅 إظهار/إخفاء أعمدة التواريخ</button>
     <div class="section-card u-ox">
-      <table id="gridLevelsTable" data-g-rows="7">
-        <thead><tr><th>المستوى المخطط</th><th>الكمية الإرشادية</th><th>الحالة</th><th>الشراء الفعلي</th><th>هدف البيع</th><th>عمليات البيع الفعلي</th><th>دورات</th><th>الكمية المتبقية تراكمي</th><th>متوسط التكلفة تراكمي</th><th>هدف البيع تراكمي</th><th>الربح المحقق تراكمي</th><th>ربح/خسارة على آخر سعر</th></tr></thead>
+      <table id="gridLevelsTable" class="dates-hidden glv" data-g-rows="7" data-glv-key="grid|${escapeHtml(symbol)}">
+        <thead><tr>
+          <th>المستوى</th><th>السعر المخطط</th><th>الكمية الإرشادية</th><th>الحالة</th>
+          <th>كمية الشراء</th><th>سعر الشراء</th><th>قيمة الشراء</th><th>هدف البيع</th>
+          <th>الكمية المباعة</th><th>متوسط سعر البيع</th><th>الكمية المتبقية</th>
+          <th>المتبقي تراكمي</th><th>متوسط التكلفة تراكمي</th>
+          <th>الربح المحقق</th><th>ربح/خسارة على آخر سعر</th><th>دورات</th>
+          <th class="date-col">تاريخ الشراء</th><th class="date-col">آخر بيع</th>
+          <th>إجراءات</th>
+        </tr></thead>
         <tbody id="gridLevelsBody"></tbody>
       </table>
     </div>
@@ -2127,6 +2229,7 @@ async function renderGridPlanDetail(symbol){
   document.getElementById('homeBtn').onclick=()=>renderHome();
   document.getElementById('backBtn').onclick=()=>renderGridPlansList();
   document.getElementById('gridEditSettingsBtn').onclick=()=>renderGridEditPlanSettings(symbol);
+  document.getElementById('gridToggleDatesBtn').onclick=()=>{ document.getElementById('gridLevelsTable').classList.toggle('dates-hidden'); };
   document.getElementById('gridDelBtn').onclick = () => gDeletePlan('grid', symbol, () => renderGridPlansList());
 
   (function renderCurveInline(){
@@ -2280,11 +2383,7 @@ async function renderGridPlanDetail(symbol){
     const ns = g.levels.filter(l => l.status === 'bought' && l.executedQty > 0 && +l.sellTargetPrice > 0).map(l => +l.sellTargetPrice).sort((a, b) => a - b)[0];
     const nxEl = document.getElementById('gridStatusNext');
     if (nxEl) nxEl.innerHTML = `${nb ? `شراء ${fmt2(nb)}${lastPrice!=null && lastPrice <= nb ? ' ✅' : ''}` : 'شراء -'}<br>${ns ? `بيع ${fmt2(ns)}${lastPrice!=null && lastPrice >= ns ? ' ✅' : ''}` : 'بيع -'}`;
-    document.querySelectorAll('#gridLevelsBody td.lv-unreal').forEach(td => {
-      const q = +td.dataset.q, p = +td.dataset.p;
-      if (!(q > 0) || !(p > 0) || lastPrice == null) { td.textContent = '-'; td.className = 'lv-unreal'; return; }
-      const v = (lastPrice - p) * q; td.textContent = fmt2(v); td.className = 'lv-unreal ' + (v<0 ? 'neg' : v>0 ? 'pos' : '');
-    });
+    glvFillUnreal('gridLevelsTable', lastPrice);
 
     const alertEl = document.getElementById('rangeAlert');
     if (lastPrice == null) {
@@ -2363,100 +2462,66 @@ async function renderGridPlanDetail(symbol){
         if (diff < bestDiff) { bestDiff = diff; exitHighlightIdx = idx; }
       });
     }
-    let cumQty = 0, cumInvested = 0, cumSellTargetWeighted = 0, cumRealizedProfit = 0;
+    // الإصدار 112: جدول المستويات الجديد - executedQty في الشبكة = الكمية المتبقية (بتقل مع كل بيع) ← كمية الشراء = المتبقي + المباع
+    const lvOpen = glvOpenSet('grid|' + symbol);
+    const nextIdx = g.levels.findIndex(l => l.status !== 'bought');
+    let cumQty = 0, cumInvested = 0;
+    const tot = { bq: 0, bv: 0, sq: 0, rem: 0, real: 0, cyc: 0 };
     document.getElementById('gridLevelsBody').innerHTML = g.levels.map((lv, idx) => {
-      if (lv.status === 'bought' && lv.executedQty > 0) {
-        cumQty += lv.executedQty;
-        cumInvested += lv.executedQty * lv.executedPrice;
-        cumSellTargetWeighted += lv.sellTargetPrice * lv.executedQty;
-        cumRealizedProfit += (lv.sells||[]).reduce((s,sl)=>s+((sl.price-lv.executedPrice)*sl.qty), 0);
+      const bought = lv.status === 'bought';
+      const sells = lv.sells || [];
+      const soldQ = sells.reduce((a, x) => a + (+x.qty || 0), 0);
+      const rem = bought ? Math.max(0, +lv.executedQty || 0) : null;
+      const bq = bought ? rem + soldQ : null;
+      const soldAvg = soldQ > 0 ? sells.reduce((a, x) => a + x.qty * x.price, 0) / soldQ : null;
+      const real = bought ? sells.reduce((a, x) => a + (x.price - lv.executedPrice) * x.qty, 0) : null;
+      if (bought && rem > 0) { cumQty += rem; cumInvested += rem * lv.executedPrice; }
+      if (bought) { tot.bq += bq; tot.bv += bq * lv.executedPrice; tot.sq += soldQ; tot.rem += rem; tot.real += real; }
+      tot.cyc += lv.cycles || 0;
+      const isExit = idx === exitHighlightIdx;
+      let st = !bought ? (idx === nextIdx ? glvBadge('فارغ — القادم', 'next') : glvBadge('فارغ', 'empty'))
+        : rem <= 1e-6 ? glvBadge('اتباعت كلها — جاهزة للترحيل', 'sold') : soldQ > 0 ? glvBadge('بيع جزئي', 'part') : glvBadge('مشترى — بانتظار البيع', 'held');
+      if (isExit) st += ' ' + glvBadge('🎯 نقطة خروج', 'exit');
+      let acts = '';
+      if (!bought) acts = glvBtn('شراء', '__gridBuyLevel', [idx], { cls: 'glv-buy', title: `شراء عند ${glvN(lv.plannedPrice)}` });
+      else {
+        if (rem > 1e-6) acts += glvBtn('بيع', '__gridSellAtLevel', [idx, rem], { cls: 'glv-sell', title: `بيع — أقصى كمية ${glvQ(rem)}` });
+        else acts += glvBtn('ترحيل', '__gridArchiveCycle', [idx], { cls: 'glv-buy', title: 'ترحيل الدورة لسجل الصفقات المغلقة وبدء دورة جديدة' });
+        acts += glvBtn('✎', '__gridStartEditBuy', [idx], { title: 'تعديل الشراء' });
+        acts += glvBtn('🗑', '__gridDeleteBuy', [idx], { cls: 'glv-del', title: 'حذف الشراء' });
       }
-      const cumAvgCost = cumQty>0 ? cumInvested/cumQty : null;
-      const cumSellTarget = cumQty>0 ? cumSellTargetWeighted/cumQty : null;
-
-      let buyCell = '-';
-      if (lv.status === 'empty') {
-        buyCell = `<div class="trade-group">
-          <div class="trade-fields">
-            <input type="number" step="any" min="0.0001" placeholder="كمية${lv.plannedQty?` (إرشادي ${fmtQty(lv.plannedQty)})`:''}" value="${lv.plannedQty??''}" id="gridBuyQty_${idx}">
-            <input type="number" step="any" placeholder="سعر" id="gridBuyPrice_${idx}">
-          </div>
-          <button class="trade-btn-buy" data-gcall="__gridBuyLevel" data-gargs="${gArgs([idx])}">تسجيل شراء فعلي</button>
-        </div>`;
-      } else if (window.__gridEditingBuy === (symbol+':'+idx)) {
-        buyCell = `<div class="trade-group">
-          <div class="trade-fields">
-            <input type="number" step="any" min="0.0001" id="gridEditBuyQty_${idx}" value="${lv.executedQty}">
-            <input type="number" step="any" id="gridEditBuyPrice_${idx}" value="${lv.executedPrice}">
-          </div>
-          <button class="trade-btn-buy" data-gcall="__gridUpdateBuy" data-gargs="${gArgs([idx])}">حفظ</button>
-        </div>`;
-      } else {
-        buyCell = `<div class="buy-cell">الكمية: <strong>${fmtQty(lv.executedQty)}</strong> | السعر: <strong>${lv.executedPrice}</strong><br>
-          <button class="small secondary" data-gcall="__gridStartEditBuy" data-gargs="${gArgs([idx])}">تعديل</button>
-          <button class="small danger" data-gcall="__gridDeleteBuy" data-gargs="${gArgs([idx])}">حذف</button>
-        </div>`;
-      }
-
-      let sellCell = '-';
-      if (lv.status === 'bought') {
-        sellCell = '';
-        let cumSoldQty = 0, cumSoldValue = 0, cumProfit = 0;
-        (lv.sells||[]).forEach((s, sIdx) => {
-          cumSoldQty += s.qty; cumSoldValue += s.qty*s.price;
-          const p = (s.price - lv.executedPrice) * s.qty;
-          cumProfit += p;
-          if (window.__gridEditingSell === (symbol+':'+idx+':'+sIdx)) {
-            sellCell += `<div class="trade-group">
-              <div class="trade-fields">
-                <input type="number" step="any" min="0.0001" id="gridEditSellQty_${idx}_${sIdx}" value="${s.qty}">
-                <input type="number" step="any" id="gridEditSellPrice_${idx}_${sIdx}" value="${s.price}">
-              </div>
-              <button class="trade-btn-sell" data-gcall="__gridUpdateSell" data-gargs="${gArgs([idx, sIdx])}">حفظ</button>
-              <button class="small danger" style="width:100%;margin-top:3px;" data-gcall="__gridRemoveSell" data-gargs="${gArgs([idx, sIdx])}">حذف</button>
-            </div>`;
-          } else {
-            sellCell += `<div class="sell-line"><span>الكمية: <strong>${fmtQty(s.qty)}</strong> | السعر: <strong>${s.price}</strong> (ربح ${fmt2(p)})</span>
-              <button class="small secondary" data-gcall="__gridStartEditSell" data-gargs="${gArgs([idx, sIdx])}">✎</button></div>`;
-          }
-        });
-        if (cumSoldQty > 0) {
-          const avgSellPrice = cumSoldValue / cumSoldQty;
-          sellCell += `<div class="info" style="margin-top:4px;font-size:11px;padding:6px 8px;">تراكمي على هذا المستوى: تم بيع ${fmtQty(cumSoldQty)} بمتوسط سعر ${fmt2(avgSellPrice)} — ${cumProfit>=0?'ربح':'خسارة'} ${fmt2(Math.abs(cumProfit))} حتى الآن</div>`;
-        }
-        if (lv.executedQty <= 1e-6) {
-          sellCell += `<div class="success-banner" style="margin-top:6px;padding:8px;font-size:12px;">
-            🎉 <strong>اتباعت الكمية كلها — الدورة جاهزة للترحيل!</strong><br>
-            ما زال بإمكانك تعديل أي عملية بيع أعلاه إذا وجدت خطأً. عندما تتأكد، اضغط ترحيل لإغلاق الدورة وبدء دورة جديدة على هذا المستوى.
-            <button class="small" style="margin-top:6px;width:100%;" data-gcall="__gridArchiveCycle" data-gargs="${gArgs([idx])}">✅ ترحيل الدورة وبدء دورة جديدة</button>
-          </div>`;
-        } else {
-        sellCell += `<div class="trade-group u-mt4">
-          <div style="font-size:10px;color:#888;margin-bottom:3px;">أقصى كمية متاحة للبيع: ${fmtQty(lv.executedQty)}</div>
-          <div class="trade-fields">
-            <input type="number" step="any" min="0.0001" max="${lv.executedQty}" placeholder="كمية (أقصى ${fmtQty(lv.executedQty)})" id="gridSellQty_${idx}">
-            <input type="number" step="any" placeholder="سعر" value="${lv.sellTargetPrice!=null?lv.sellTargetPrice.toFixed(3):''}" id="gridSellPrice_${idx}">
-          </div>
-          <button class="trade-btn-sell" data-gcall="__gridSellAtLevel" data-gargs="${gArgs([idx, lv.executedQty])}">+ بيع</button>
-        </div>`;
-        }
-      }
-
-      return `<tr${idx===exitHighlightIdx ? ' style="background:#c8f0d8;"' : ''}>
-        <td>${lv.plannedPrice}${idx===exitHighlightIdx ? ' <span class="tag" style="background:#1b8a5a;color:#fff;">🎯 نقطة خروج</span>' : ''}</td>
-        <td>${lv.plannedQty!=null?fmtQty(lv.plannedQty):'-'}</td>
-        <td>${lv.status==='empty'?'<span class="tag tag-wait">فارغ</span>':(lv.executedQty<=1e-6?'<span class="tag tag-done">جاهزة للترحيل</span>':'<span class="tag tag-next">مشترى - بانتظار البيع</span>')}</td>
-        <td>${buyCell}</td>
-        <td>${lv.sellTargetPrice!=null?lv.sellTargetPrice.toFixed(3):'-'}</td>
-        <td>${sellCell}</td>
-        <td>${lv.cycles||0}</td>
-        <td>${cumQty>0?fmtQty(cumQty):'-'}</td>
-        <td>${cumAvgCost!=null?fmt2(cumAvgCost):'-'}</td>
-        <td>${cumSellTarget!=null?fmt2(cumSellTarget):'-'}</td>
-        <td class="${cumRealizedProfit<0?'neg':cumRealizedProfit>0?'pos':''}">${fmt2(cumRealizedProfit)}</td>
-        <td class="lv-unreal" data-q="${lv.status === 'bought' ? (+lv.executedQty || 0) : 0}" data-p="${lv.status === 'bought' ? (+lv.executedPrice || 0) : 0}">-</td>
+      const open = lvOpen.has(String(idx));
+      const main = `<tr data-lv="${idx}" class="${!bought && idx === nextIdx ? 'glv-next' : ''}${isExit ? ' glv-exit' : ''}">
+        ${glvLevelCell(idx + 1, idx, bought ? sells.length : 0, open)}
+        ${glvTd(lv.plannedPrice, 'n')}
+        ${glvTd(lv.plannedQty, 'q')}
+        <td>${st}</td>
+        ${glvTd(bq, 'q')}
+        ${glvTd(bought ? lv.executedPrice : null, 'n')}
+        ${glvTd(bought ? bq * lv.executedPrice : null, 'n')}
+        ${glvTd(bought ? lv.sellTargetPrice : null, 'n')}
+        ${glvTd(soldQ || null, 'q')}
+        ${glvTd(soldAvg, 'n')}
+        ${glvTd(rem, 'q', 'glv-hi')}
+        ${glvTd(bought && cumQty > 0 ? cumQty : null, 'q')}
+        ${glvTd(bought && cumQty > 0 ? cumInvested / cumQty : null, 'n')}
+        ${glvTd(real, 'pl')}
+        <td class="glv-n lv-unreal" data-q="${bought ? rem : 0}" data-p="${bought ? (+lv.executedPrice || 0) : 0}">—</td>
+        ${glvTd(lv.cycles || 0, 'q')}
+        <td class="date-col glv-n glv-dim">${bought && lv.executedDate ? escapeHtml(String(lv.executedDate).slice(0, 10)) : '—'}</td>
+        <td class="date-col glv-n glv-dim">${sells.length ? escapeHtml(String(sells[sells.length - 1].date || '').slice(0, 10)) || '—' : '—'}</td>
+        <td><span class="glv-acts">${acts}</span></td>
       </tr>`;
-    }).join('');
+      const subs = bought ? sells.map((sl, k) => `<tr class="g-subrow${open ? '' : ' g-sub-closed'}" data-sub-of="${idx}">
+        <td><span class="glv-subtag">بيع ${k + 1}</span></td><td></td><td></td><td><span class="glv-subtag">عملية بيع</span></td>
+        <td></td><td></td><td></td><td></td>
+        ${glvTd(sl.qty, 'q')}${glvTd(sl.price, 'n')}<td></td><td></td><td></td>
+        ${glvTd((sl.price - lv.executedPrice) * sl.qty, 'pl')}<td></td><td></td>
+        <td class="date-col"></td><td class="date-col glv-n glv-dim">${sl.date ? escapeHtml(String(sl.date).slice(0, 10)) : '—'}</td>
+        <td><span class="glv-acts">${glvBtn('✎', '__gridStartEditSell', [idx, k], { title: 'تعديل البيع' })}${glvBtn('🗑', '__gridRemoveSell', [idx, k], { cls: 'glv-del', title: 'حذف البيع' })}</span></td>
+      </tr>`).join('') : '';
+      return main + subs;
+    }).join('') + `<tr class="g-total"><td>الإجمالي</td><td></td><td></td><td></td>${glvTd(tot.bq, 'q')}<td></td>${glvTd(tot.bv, 'n')}<td></td>${glvTd(tot.sq, 'q')}<td></td>${glvTd(tot.rem, 'q', 'glv-hi')}<td></td><td></td>${glvTd(tot.real, 'pl')}<td class="glv-n lv-unreal-total">—</td>${glvTd(tot.cyc, 'q')}<td class="date-col"></td><td class="date-col"></td><td></td></tr>`;
 
     updateStatusCards();
   }
@@ -2464,45 +2529,40 @@ async function renderGridPlanDetail(symbol){
   if (g.listed === false) { gLivePx = +g.manualLastPrice > 0 ? +g.manualLastPrice : null; gUnlistedPriceBox('gridManualLastPriceInput', g, async (v) => { g.manualLastPrice = v; await persist(); gLivePx = v; updateStatusCards(); }); updateStatusCards(); }
   else gPlanLivePrice(__tok, {}, { [symbol]: g }, gPxKey, (v) => { gLivePx = v; updateStatusCards(); });
 
-  window.__gridBuyLevel = async (idx) => {
-    const qty = parseFloat(document.getElementById('gridBuyQty_'+idx).value);
-    const price = parseFloat(document.getElementById('gridBuyPrice_'+idx).value);
-    if(!qty || qty<=0 || !price){ alert('أدخل الكمية والسعر (رقم أكبر من صفر - ممكن يكون كسر عشري)'); return; }
-    const gridsNow = await getGridPlans(email);
-    const gNow = gridsNow[symbol];
-    const currentlyInvested = gNow.levels.filter(l=>l.status==='bought').reduce((s,l)=>s+(l.executedQty*l.executedPrice), 0);
-    const newAmount = qty*price;
-    const remainingBudget = gNow.capital - currentlyInvested;
-    if (newAmount > remainingBudget + 1e-6) {
-      alert(`⚠️ تجاوز حد رأس المال المخصص للسهم!\nالمبلغ الذي تحاول الشراء به (${newAmount.toFixed(2)}) أكبر من المتاح.\nالمتبقي المتاح للشراء حاليًا هو: ${Math.max(remainingBudget,0).toFixed(2)} فقط، حتى لا يتجاوز إجمالي المشتريات ${gNow.capital} (رأس المال المخصص للسهم).\n\nإذا أردت الشراء بمبلغ أكبر، زِد رأس المال المخصص للسهم من الخانة أعلى الصفحة.`);
-      return;
-    }
-    const lv = gNow.levels[idx];
-    lv.executedQty = qty; lv.executedPrice = price; lv.executedDate = new Date().toISOString().slice(0,10);
-    lv.status = 'bought'; lv.sells = [];
-    lv.sellTargetPrice = Number((price + gNow.step).toFixed(4));
-    grids = gridsNow; g = gNow;
-    await persist();
-    renderGridPlanDetail(symbol);
+  // الإصدار 112: الشراء / التعديل / البيع من نافذة إدخال - نفس قواعد رأس المال والكمية
+  window.__gridBuyLevel = (idx) => {
+    const lv0 = g.levels[idx];
+    glvModal({ title: `شراء — المستوى ${idx + 1}`, sub: `السعر المخطط ${glvN(lv0.plannedPrice)}${lv0.plannedQty ? ` — الكمية الإرشادية ${glvQ(lv0.plannedQty)}` : ''}`, q: lv0.plannedQty, p: +(+lv0.plannedPrice).toFixed(2),
+      onSave: async (v) => {
+        const gridsNow = await getGridPlans(email);
+        const gNow = gridsNow[symbol];
+        const invested = gNow.levels.filter(l => l.status === 'bought').reduce((a, l) => a + (l.executedQty * l.executedPrice), 0);
+        const remainingBudget = gNow.capital - invested;
+        if (v.q * v.p > remainingBudget + 1e-6) return `⚠️ المبلغ (${glvN(v.q * v.p)}) أكبر من المتاح من رأس المال (${glvN(Math.max(remainingBudget, 0))}).`;
+        const lv = gNow.levels[idx];
+        lv.executedQty = v.q; lv.executedPrice = v.p; lv.executedDate = v.d;
+        lv.status = 'bought'; lv.sells = [];
+        lv.sellTargetPrice = Number((v.p + gNow.step).toFixed(4));
+        grids = gridsNow; g = gNow;
+        await persist();
+        renderGridPlanDetail(symbol);
+      } });
   };
-  window.__gridStartEditBuy = (idx) => { window.__gridEditingBuy = symbol+':'+idx; renderLevels(); };
-  window.__gridUpdateBuy = async (idx) => {
-    const qty = parseFloat(document.getElementById('gridEditBuyQty_'+idx).value);
-    const price = parseFloat(document.getElementById('gridEditBuyPrice_'+idx).value);
-    if(!qty || qty<=0 || !price){ alert('أدخل الكمية والسعر (رقم أكبر من صفر - ممكن يكون كسر عشري)'); return; }
+  window.__gridStartEditBuy = (idx) => {
     const lv = g.levels[idx];
-    const currentlyInvestedByOthers = g.levels.filter((l,i)=>i!==idx && l.status==='bought').reduce((s,l)=>s+(l.executedQty*l.executedPrice), 0);
-    const newAmount = qty*price;
-    const remainingBudget = g.capital - currentlyInvestedByOthers;
-    if (newAmount > remainingBudget + 1e-6) {
-      alert(`⚠️ تجاوز حد رأس المال المخصص للسهم!\nالمبلغ الجديد (${newAmount.toFixed(2)}) أكبر من المتاح.\nأقصى مبلغ ممكن لهذا المستوى حاليًا هو: ${Math.max(remainingBudget,0).toFixed(2)} فقط.`);
-      return;
-    }
-    lv.executedQty = qty; lv.executedPrice = price;
-    lv.sellTargetPrice = Number((price + g.step).toFixed(4));
-    window.__gridEditingBuy = null;
-    await persist();
-    renderGridPlanDetail(symbol);
+    const soldQ = (lv.sells || []).reduce((a, x) => a + x.qty, 0);
+    glvModal({ title: `تعديل الشراء — المستوى ${idx + 1}`, sub: soldQ ? `اتباع من المستوى ده ${glvQ(soldQ)} — الكمية لازم تكون ${glvQ(soldQ)} أو أكتر` : 'عدّل الكمية أو السعر أو التاريخ',
+      q: (+lv.executedQty || 0) + soldQ, p: lv.executedPrice, d: lv.executedDate,
+      onSave: async (v) => {
+        if (v.q < soldQ - 1e-9) return `الكمية لازم تكون ${glvQ(soldQ)} أو أكتر (الكمية المباعة).`;
+        const othersInvested = g.levels.filter((l, i) => i !== idx && l.status === 'bought').reduce((a, l) => a + (l.executedQty * l.executedPrice), 0);
+        const remainingBudget = g.capital - othersInvested;
+        if ((v.q - soldQ) * v.p > remainingBudget + 1e-6) return `⚠️ المبلغ الجديد أكبر من المتاح. أقصى مبلغ للمستوى ده ${glvN(Math.max(remainingBudget, 0))}.`;
+        lv.executedQty = Number((v.q - soldQ).toFixed(6)); lv.executedPrice = v.p; lv.executedDate = v.d;
+        lv.sellTargetPrice = Number((v.p + g.step).toFixed(4));
+        await persist();
+        renderGridPlanDetail(symbol);
+      } });
   };
   window.__gridDeleteBuy = async (idx) => {
     const lv = g.levels[idx];
@@ -2518,18 +2578,18 @@ async function renderGridPlanDetail(symbol){
     renderGridPlanDetail(symbol);
   };
 
-  window.__gridSellAtLevel = async (idx, maxQty) => {
-    const qty = parseFloat(document.getElementById('gridSellQty_'+idx).value);
-    const price = parseFloat(document.getElementById('gridSellPrice_'+idx).value);
-    if(!qty || qty<=0 || !price){ alert('أدخل الكمية والسعر (رقم أكبر من صفر - ممكن يكون كسر عشري)'); return; }
-    if(qty > maxQty + 1e-9){ alert(`العدد الذي كتبته (${qty}) أكبر من الكمية المتاحة للبيع (${maxQty}). العدد الأقصى المسموح به هو ${maxQty}.`); return; }
+  window.__gridSellAtLevel = (idx, maxQty) => {
     const lv = g.levels[idx];
-    if(!lv.sells) lv.sells = [];
-    lv.sells.push({ qty, price, date: new Date().toISOString().slice(0,10) });
-    lv.executedQty = Number((lv.executedQty - qty).toFixed(6));
-    // ملاحظة: لو الكمية بقت صفر، المستوى بيفضل "بانتظار الترحيل" - الترحيل خطوة يدوية زي DCA بالظبط (زرار "ترحيل" هيظهر تحت)
-    await persist();
-    renderGridPlanDetail(symbol);
+    glvModal({ title: `بيع — المستوى ${idx + 1}`, sub: `الكمية المتاحة للبيع ${glvQ(maxQty)} — سعر الشراء ${glvN(lv.executedPrice)} — هدف البيع ${glvN(lv.sellTargetPrice)}`,
+      q: maxQty, p: lv.sellTargetPrice != null ? +(+lv.sellTargetPrice).toFixed(2) : '', maxQ: maxQty,
+      onSave: async (v) => {
+        if (!lv.sells) lv.sells = [];
+        lv.sells.push({ qty: v.q, price: v.p, date: v.d });
+        lv.executedQty = Number((lv.executedQty - v.q).toFixed(6));
+        glvOpenSet('grid|' + symbol).add(String(idx));
+        await persist();
+        renderGridPlanDetail(symbol);
+      } });
   };
   window.__gridArchiveCycle = async (idx) => {
     const lv = g.levels[idx];
@@ -2537,24 +2597,16 @@ async function renderGridPlanDetail(symbol){
     await persist();
     renderGridPlanDetail(symbol);
   };
-  window.__gridStartEditSell = (idx, sIdx) => { window.__gridEditingSell = symbol+':'+idx+':'+sIdx; renderLevels(); };
-  window.__gridUpdateSell = async (idx, sIdx) => {
-    const qty = parseFloat(document.getElementById(`gridEditSellQty_${idx}_${sIdx}`).value);
-    const price = parseFloat(document.getElementById(`gridEditSellPrice_${idx}_${sIdx}`).value);
-    if(!qty || qty<=0 || !price){ alert('أدخل الكمية والسعر (رقم أكبر من صفر - ممكن يكون كسر عشري)'); return; }
-    const lv = g.levels[idx];
-    const oldQty = lv.sells[sIdx].qty;
-    const maxAllowed = lv.executedQty + oldQty;
-    if(qty > maxAllowed + 1e-9){
-      alert(`العدد الذي كتبته (${qty}) أكبر من الكمية المتاحة (${maxAllowed}). العدد الأقصى المسموح به هو ${maxAllowed}.`);
-      return;
-    }
-    const existingDate = lv.sells[sIdx].date;
-    lv.sells[sIdx] = { qty, price, date: existingDate };
-    lv.executedQty = Number((maxAllowed - qty).toFixed(6));
-    window.__gridEditingSell = null;
-    await persist();
-    renderGridPlanDetail(symbol);
+  window.__gridStartEditSell = (idx, sIdx) => {
+    const lv = g.levels[idx], cur = (lv.sells || [])[sIdx]; if (!cur) return;
+    const maxAllowed = (+lv.executedQty || 0) + cur.qty;
+    glvModal({ title: `تعديل البيع ${sIdx + 1} — المستوى ${idx + 1}`, sub: `أقصى كمية ${glvQ(maxAllowed)}`, q: cur.qty, p: cur.price, d: cur.date, maxQ: maxAllowed,
+      onSave: async (v) => {
+        lv.sells[sIdx] = { qty: v.q, price: v.p, date: v.d };
+        lv.executedQty = Number((maxAllowed - v.q).toFixed(6));
+        await persist();
+        renderGridPlanDetail(symbol);
+      } });
   };
   window.__gridRemoveSell = async (idx, sIdx) => {
     if(!await gConfirm('هل أنت متأكد من حذف عملية البيع هذه؟')) return;
@@ -3312,95 +3364,69 @@ async function renderPlanDetail(symbol){
       if (diff < bestDiff) { bestDiff = diff; exitHighlightIdx = i; }
     });
   }
-  const tableRows = rowsToRender.map(({ r, i: idx })=>{
-    let statusTag = '<span class="tag tag-wait">بعد</span>';
-    let rowClass = '';
-    if(r.executed){ statusTag = '<span class="tag tag-done">تم الشراء</span>'; rowClass='executed'; }
-    if(r.executed && r.cumHeldQty<=0 && r.sells.length){ statusTag += ' <span class="tag tag-sold">اتباعت كلها</span>'; }
-    else if(r.executed && r.sells.length){ statusTag += ' <span class="tag tag-partial">بيع جزئي</span>'; }
-    if(!r.executed && r.isNext){ statusTag = '<span class="tag tag-next">القادم</span>'; rowClass='pending-next'; }
-    if(r.trimmed){ statusTag = '<span class="tag" style="background:#e2e2e2;color:#999;">ملغى — تجاوز رأس المال</span>'; }
+  // الإصدار 112: جدول المستويات الجديد - كل معلومة في عمود + أزرار الإجراءات + عمليات البيع في سطور تحت المستوى
+  const lvOpen = glvOpenSet('dca|' + symbol);
+  const tot = { bq: 0, bv: 0, sq: 0, rem: 0, real: 0 };
+  const tableRows = rowsToRender.map(({ r, i: idx }) => {
+    const lv = planObj.levels[idx];
+    const isExit = idx === exitHighlightIdx;
+    let st;
+    if (r.trimmed) st = glvBadge('ملغى — تجاوز رأس المال', 'off');
+    else if (r.executed) {
+      const sold = r.sells.reduce((a, x) => a + x.qty, 0);
+      st = r.cumHeldQty <= 0 && r.sells.length ? glvBadge('اتباعت كلها', 'sold') : sold > 0 ? glvBadge('بيع جزئي', 'part') : glvBadge('تم الشراء', 'held');
+    } else st = r.isNext ? glvBadge('القادم', 'next') : glvBadge('بعد', 'empty');
+    if (isExit) st += ' ' + glvBadge('🎯 نقطة خروج', 'exit');
+    const soldQ = r.executed ? r.sells.reduce((a, x) => a + x.qty, 0) : null;
+    const soldAvg = soldQ ? r.sells.reduce((a, x) => a + x.qty * x.price, 0) / soldQ : null;
+    const rem = r.executed && !r.trimmed ? Math.max(0, (+r.qty || 0) - (soldQ || 0)) : null;
+    const real = r.executed ? r.sells.reduce((a, x) => a + (+x.profit || 0), 0) : null;
+    if (r.executed) { tot.bq += +r.qty || 0; tot.bv += +r.amount || 0; tot.sq += soldQ || 0; tot.rem += rem || 0; tot.real += real || 0; }
+    const planned = !r.executed;   // المستوى لسه متنفذش ← السعر والكمية المخططين (باهت)
 
-    let buyCell = r.trimmed ? '<div style="font-size:11px;color:#999;">تم إلغاء هذا المستوى تلقائيًا لأن المبالغ التي اشتريتها فعليًا في المستويات السابقة تجاوزت رأس المال المخصص</div>' : '-';
+    let acts = '';
     if (!r.trimmed) {
-    if (!r.executed && r.isNext) {
-      if (sim.isClosed) {
-        buyCell = `<div style="font-size:11px;color:#8a6d1b;">🔒 رحّل الصفقة الحالية المقفولة أولاً (الزر أعلى الجدول) قبل ما تقدر تضيف مستوى جديد</div>`;
+      if (!r.executed) {
+        if (r.isNext) acts = sim.isClosed ? glvBtn('شراء', '__buyLevel', [String(symbol), idx, r.maxQty], { cls: 'glv-buy', disabled: true, title: 'رحّل الصفقة المقفولة الأول (الزر أعلى الجدول)' })
+                                          : glvBtn('شراء', '__buyLevel', [String(symbol), idx, r.maxQty], { cls: 'glv-buy', title: `شراء المستوى ${r.level}` });
+        else acts = glvBtn('شراء', '__buyLevel', [String(symbol), idx, r.maxQty], { cls: 'glv-buy', disabled: true, title: 'اشترِ المستوى القادم الأول' });
       } else {
-        buyCell = `<div class="trade-group">
-          <div style="font-size:10px;color:#888;margin-bottom:3px;">أقصى كمية على هذا السعر: ${fmtQty(r.maxQty)}</div>
-          <div class="trade-fields">
-            <input type="number" step="any" min="0.0001" max="${r.maxQty}" placeholder="كمية (أقصى ${fmtQty(r.maxQty)})" id="buyQty_${idx}">
-            <input type="number" step="any" placeholder="سعر" id="buyPrice_${idx}">
-          </div>
-          <button class="trade-btn-buy" data-gcall="__buyLevel" data-gargs="${gArgs([String(symbol), idx, r.maxQty])}">شراء</button>
-        </div>`;
-      }
-    } else if (r.executed) {
-      if (window.__editingBuy === (symbol+':'+idx)) {
-        buyCell = `<div class="trade-group">
-          <div class="trade-fields">
-            <input type="number" step="any" min="0.0001" id="editBuyQty_${idx}" value="${r.qty}">
-            <input type="number" step="any" id="editBuyPrice_${idx}" value="${r.price}">
-          </div>
-          <button class="trade-btn-buy" data-gcall="__updateBuy" data-gargs="${gArgs([String(symbol), idx])}">حفظ</button>
-        </div>`;
-      } else {
-        const isLast = (idx === sim.lastBoughtIndex);
-        buyCell = `<div class="buy-cell">الكمية: <strong>${fmtQty(r.qty)}</strong> | السعر: <strong>${r.price}</strong><br>
-          <button class="small secondary" data-gcall="__startEditBuy" data-gargs="${gArgs([String(symbol), idx])}">تعديل</button>
-          ${isLast ? `<button class="small danger" data-gcall="__deleteBuy" data-gargs="${gArgs([String(symbol), idx])}">حذف</button>` : ''}
-        </div>`;
+        if (r.cumHeldQty > 0) acts += glvBtn('بيع', '__sellAtLevel', [String(symbol), idx, r.cumHeldQty], { cls: 'glv-sell', title: `بيع — أقصى كمية ${glvQ(r.cumHeldQty)}` });
+        acts += glvBtn('✎', '__startEditBuy', [String(symbol), idx], { title: 'تعديل الشراء' });
+        acts += glvBtn('🗑', '__deleteBuy', [String(symbol), idx], idx === sim.lastBoughtIndex ? { cls: 'glv-del', title: 'حذف الشراء' } : { cls: 'glv-del', disabled: true, title: 'تقدر تحذف آخر مستوى اشتريته بس' });
       }
     }
-    }
-
-    let sellCell = '';
-    if (r.executed) {
-      r.sells.forEach(sInfo => {
-        if (window.__editingSell === (symbol+':'+idx+':'+sInfo.idx)) {
-          sellCell += `<div class="trade-group">
-            <div class="trade-fields">
-              <input type="number" step="any" min="0.0001" id="editSellQty_${idx}_${sInfo.idx}" value="${sInfo.qty}">
-              <input type="number" step="any" id="editSellPrice_${idx}_${sInfo.idx}" value="${sInfo.price}">
-            </div>
-            <button class="trade-btn-sell" data-gcall="__updateSell" data-gargs="${gArgs([String(symbol), idx, sInfo.idx])}">حفظ</button>
-            <button class="small danger" style="width:100%;margin-top:3px;" data-gcall="__removeSell" data-gargs="${gArgs([String(symbol), idx, sInfo.idx])}">حذف</button>
-          </div>`;
-        } else {
-          sellCell += `<div class="sell-line"><span>الكمية: <strong>${fmtQty(sInfo.qty)}</strong> | السعر: <strong>${sInfo.price}</strong> (ربح ${sInfo.profit})</span>
-            <button class="small secondary" data-gcall="__startEditSell" data-gargs="${gArgs([String(symbol), idx, sInfo.idx])}">✎</button></div>`;
-        }
-      });
-      if (r.cumHeldQty > 0) {
-        sellCell += `<div class="trade-group u-mt4">
-          <div class="trade-fields">
-            <input type="number" step="any" min="0.0001" max="${r.cumHeldQty}" placeholder="كمية (أقصى ${fmtQty(r.cumHeldQty)})" id="sellQty_${idx}">
-            <input type="number" step="any" placeholder="سعر" id="sellPrice_${idx}">
-          </div>
-          <button class="trade-btn-sell" data-gcall="__sellAtLevel" data-gargs="${gArgs([String(symbol), idx, r.cumHeldQty])}">+ بيع</button>
-        </div>`;
-      }
-    } else { sellCell = '-'; }
-
-    return `<tr class="${rowClass}"${idx===exitHighlightIdx ? ' style="background:#c8f0d8;"' : ''}>
-      <td>${r.level}${idx===exitHighlightIdx ? ' <span class="tag" style="background:#1b8a5a;color:#fff;">🎯 نقطة خروج</span>' : ''}</td>
-      <td>${fmtQty(r.qty)}</td>
-      <td>${fmt2(r.price)}</td>
-      <td>${fmt2(r.amount)}</td>
-      <td>${buyCell}</td>
-      <td>${sellCell}</td>
-      <td>${r.cumHeldQty!=null?fmtQty(r.cumHeldQty):'-'}</td>
-      <td>${fmt2(r.cumAvgCost)}</td>
-      <td>${fmt2(r.cumSellTarget)}</td>
-      <td class="${r.cumRealizedProfit<0?'neg':r.cumRealizedProfit>0?'pos':''}">${fmt2(r.cumRealizedProfit)}</td>
-      <td class="lv-unreal" data-q="${r.executed && !r.trimmed ? Math.max(0, (+r.qty || 0) - (r.sells || []).reduce((a, x) => a + (+x.qty || 0), 0)) : 0}" data-p="${r.executed ? (+r.price || 0) : 0}">-</td>
-      <td>${statusTag}</td>
-      <td class="date-col">${r.execDate?formatDateAr(r.execDate):'-'}</td>
-      <td class="date-col">${r.daysElapsed!=null?r.daysElapsed+' يوم':'-'}</td>
-      <td class="date-col">${r.tradeCloseDate?formatDateAr(r.tradeCloseDate):'-'}</td>
+    const open = lvOpen.has(String(idx));
+    const main = `<tr data-lv="${idx}" class="${r.isNext && !r.executed ? 'glv-next' : ''}${isExit ? ' glv-exit' : ''}${r.trimmed ? ' glv-off' : ''}">
+      ${glvLevelCell(r.level, idx, r.executed ? r.sells.length : 0, open)}
+      <td>${st}</td>
+      ${glvTd(r.trimmed ? null : r.price, 'n', planned ? 'glv-plan' : '')}
+      ${glvTd(r.trimmed ? null : r.qty, 'q', planned ? 'glv-plan' : '')}
+      ${glvTd(r.trimmed ? null : r.amount, 'n', planned ? 'glv-plan' : '')}
+      ${glvTd(soldQ || null, 'q')}
+      ${glvTd(soldAvg, 'n')}
+      ${glvTd(rem, 'q', 'glv-hi')}
+      ${glvTd(r.executed ? r.cumHeldQty : null, 'q')}
+      ${glvTd(r.cumAvgCost, 'n')}
+      ${glvTd(r.cumSellTarget, 'n')}
+      ${glvTd(real, 'pl')}
+      ${glvTd(r.executed ? r.cumRealizedProfit : null, 'pl')}
+      <td class="glv-n lv-unreal" data-q="${rem || 0}" data-p="${r.executed ? (+r.price || 0) : 0}">—</td>
+      <td class="date-col glv-n glv-dim">${r.execDate ? escapeHtml(String(r.execDate).slice(0, 10)) : '—'}</td>
+      <td class="date-col glv-n glv-dim">${r.daysElapsed != null ? r.daysElapsed : '—'}</td>
+      <td class="date-col glv-n glv-dim">${r.tradeCloseDate ? escapeHtml(String(r.tradeCloseDate).slice(0, 10)) : '—'}</td>
+      <td><span class="glv-acts">${acts}</span></td>
     </tr>`;
-  }).join('');
+    const subs = r.executed ? r.sells.map((sl, k) => `<tr class="g-subrow${open ? '' : ' g-sub-closed'}" data-sub-of="${idx}">
+      <td><span class="glv-subtag">بيع ${k + 1}</span></td><td><span class="glv-subtag">عملية بيع</span></td>
+      <td></td><td></td><td></td>
+      ${glvTd(sl.qty, 'q')}${glvTd(sl.price, 'n')}<td></td><td></td><td></td><td></td>
+      ${glvTd(sl.profit, 'pl')}<td></td><td></td>
+      <td class="date-col glv-n glv-dim">${sl.date ? escapeHtml(String(sl.date).slice(0, 10)) : '—'}</td><td class="date-col"></td><td class="date-col"></td>
+      <td><span class="glv-acts">${glvBtn('✎', '__startEditSell', [String(symbol), idx, sl.idx], { title: 'تعديل البيع' })}${glvBtn('🗑', '__removeSell', [String(symbol), idx, sl.idx], { cls: 'glv-del', title: 'حذف البيع' })}</span></td>
+    </tr>`).join('') : '';
+    return main + subs;
+  }).join('') + `<tr class="g-total"><td>الإجمالي</td><td></td><td></td>${glvTd(tot.bq, 'q')}${glvTd(tot.bv, 'n')}${glvTd(tot.sq, 'q')}<td></td>${glvTd(tot.rem, 'q', 'glv-hi')}<td></td><td></td><td></td>${glvTd(tot.real, 'pl')}<td></td><td class="glv-n lv-unreal-total">—</td><td class="date-col"></td><td class="date-col"></td><td class="date-col"></td><td></td></tr>`;
 
   const agg = planObj.closedTrades.reduce((acc,ct)=>({
     capital: acc.capital+ct.capitalUsed, profit: acc.profit+ct.profit, qty: acc.qty+ct.totalQty
@@ -3470,15 +3496,14 @@ async function renderPlanDetail(symbol){
     <h2 class="u-mt20">جدول المستويات (تراكمي)</h2>
     <button class="secondary small u-wa" id="toggleDatesBtn">📅 إظهار/إخفاء أعمدة التواريخ</button>
     <div class="section-card u-ox">
-      <table id="levelsTable" class="dates-hidden" data-g-rows="7">
+      <table id="levelsTable" class="dates-hidden glv" data-g-rows="7" data-glv-key="dca|${escapeHtml(symbol)}">
         <thead><tr>
-          <th>المستوى</th><th>عدد الأسهم</th><th>سعر الشراء</th><th>قيمة الشراء</th>
-          <th>الشراء الفعلي</th><th>عمليات البيع الفعلي</th>
-          <th>الكمية المتبقية تراكمي</th><th>متوسط التكلفة تراكمي</th><th>هدف البيع تراكمي</th>
-          <th>الربح المحقق تراكمي</th>
-          <th>ربح/خسارة على آخر سعر</th>
-          <th>الحالة</th>
+          <th>المستوى</th><th>الحالة</th><th>سعر الشراء</th><th>عدد الأسهم</th><th>قيمة الشراء</th>
+          <th>الكمية المباعة</th><th>متوسط سعر البيع</th><th>الكمية المتبقية</th>
+          <th>المتبقي تراكمي</th><th>متوسط التكلفة تراكمي</th><th>هدف البيع تراكمي</th>
+          <th>الربح المحقق</th><th>الربح المحقق تراكمي</th><th>ربح/خسارة على آخر سعر</th>
           <th class="date-col">تاريخ الشراء</th><th class="date-col">الأيام المنقضية</th><th class="date-col">تاريخ غلق الصفقة</th>
+          <th>إجراءات</th>
         </tr></thead>
         <tbody>${tableRows}</tbody>
       </table>
@@ -3527,7 +3552,7 @@ async function renderPlanDetail(symbol){
     const src = planObj.listed === false ? 'آخر سعر (يدوي — سهم غير مدرج)' : manualVal>0 ? 'سعر افتراضي للتجربة' : (livePx ? 'آخر سعر للسهم (متأخر 15 دقيقة)' : 'آخر سعر شراء (سعر السوق غير متاح الآن)');
     const set = (id, txt, cls) => { const el = document.getElementById(id); if (el) { el.textContent = txt; if (cls !== undefined) el.className = 'val ' + cls; } };
     const lbl = document.getElementById('statusLastPriceLbl'); if (lbl) lbl.textContent = src;
-    if (lastPriceUsed==null) { ['statusLastPriceUsed','statusTotalValue','statusUnreal','statusDropPercent','statusExitState','statusSellNow'].forEach(id => set(id, '-')); return; }
+    if (lastPriceUsed==null) { ['statusLastPriceUsed','statusTotalValue','statusUnreal','statusDropPercent','statusExitState','statusSellNow'].forEach(id => set(id, '-')); glvFillUnreal('levelsTable', null); return; }
     set('statusLastPriceUsed', fmtMoney(lastPriceUsed));
     set('statusTotalValue', fmtMoney(sim.heldQty * lastPriceUsed));
     const avg = sim.avgCostCurrent;
@@ -3542,11 +3567,7 @@ async function renderPlanDetail(symbol){
       } else set('statusExitState', '-', '');
     } else { ['statusUnreal','statusDropPercent','statusExitState','statusSellNow'].forEach(id => set(id, '-', '')); }
     // ربح/خسارة كل مستوى على آخر سعر = الكمية المتبقية من المستوى × (آخر سعر − سعر شرائه)
-    document.querySelectorAll('#levelsTable td.lv-unreal').forEach(td => {
-      const q = +td.dataset.q, p = +td.dataset.p;
-      if (!(q > 0) || !(p > 0)) { td.textContent = '-'; td.className = 'lv-unreal'; return; }
-      const v = (lastPriceUsed - p) * q; td.textContent = fmt2(v); td.className = 'lv-unreal ' + (v<0 ? 'neg' : v>0 ? 'pos' : '');
-    });
+    glvFillUnreal('levelsTable', lastPriceUsed);
   }
   document.getElementById('manualLastPriceInput').addEventListener('input', updateStatusFields);
   if (planObj.listed === false) gUnlistedPriceBox('manualLastPriceInput', planObj, async (v) => { const p2 = await getPlans(email); if (p2[symbol]) { p2[symbol].manualLastPrice = v; await savePlans(email, p2); } planObj.manualLastPrice = v; livePx = v; updateStatusFields(); });
@@ -3658,49 +3679,37 @@ async function renderPlanDetail(symbol){
     },
   });
 
-  window.__buyLevel = async (sym, idx) => {
-    const qty = parseFloat(document.getElementById('buyQty_'+idx).value);
-    const price = parseFloat(document.getElementById('buyPrice_'+idx).value);
-    if(!qty || qty<=0 || !price){ alert('أدخل الكمية والسعر (رقم أكبر من صفر - ممكن يكون كسر عشري)'); return; }
-    const plans2 = await getPlans(email);
-    const p = plans2[sym];
-    const simBefore = simulatePlan(p);
-    const newAmount = qty*price;
-    const remainingBudget = p.capital - simBefore.totalBuyAmountSpent;
-    if (newAmount > remainingBudget + 1e-6) {
-      alert(`⚠️ تجاوز حد رأس المال المخصص للسهم!\nالمبلغ الذي تحاول الشراء به (${newAmount.toFixed(2)}) أكبر من المتاح.\nالمتبقي المتاح للشراء حاليًا هو: ${Math.max(remainingBudget,0).toFixed(2)} فقط، حتى لا يتجاوز إجمالي المشتريات ${p.capital} (رأس المال المخصص للسهم).\n\nإذا أردت الشراء بمبلغ أكبر، يمكنك زيادة رأس المال المخصص للسهم من الخانة أعلى الجدول، وستُعاد جدولة المستويات وحسابها تلقائيًا لفتح مستويات إضافية تتناسب مع رأس المال الجديد.`);
-      return;
-    }
-    plans2[sym].levels[idx].executed = true;
-    plans2[sym].levels[idx].actualQty = qty;
-    plans2[sym].levels[idx].actualPrice = price;
-    plans2[sym].levels[idx].execDate = new Date().toISOString().split('T')[0];
-    plans2[sym].levels[idx].sells = [];
-    await savePlans(email, plans2);
-    renderPlanDetail(sym);
+  // الإصدار 112: الشراء / التعديل / البيع من نافذة إدخال (بدل الخانات جوه الجدول) - نفس قواعد رأس المال والكمية
+  window.__buyLevel = (sym, idx, maxQty) => {
+    const r = sim.rows[idx] || {};
+    glvModal({ title: `شراء — المستوى ${r.level}`, sub: `السعر المخطط ${glvN(r.price)} — الكمية المخططة ${glvQ(r.qty)}${maxQty ? ` — أقصى كمية على السعر ده ${glvQ(maxQty)}` : ''}`,
+      q: r.qty, p: r.price != null ? +(+r.price).toFixed(2) : '', d: new Date().toISOString().slice(0, 10),
+      onSave: async (v) => {
+        const plans2 = await getPlans(email);
+        const p = plans2[sym];
+        const simBefore = simulatePlan(p);
+        const remainingBudget = p.capital - simBefore.totalBuyAmountSpent;
+        if (v.q * v.p > remainingBudget + 1e-6) return `⚠️ المبلغ (${glvN(v.q * v.p)}) أكبر من المتاح من رأس المال (${glvN(Math.max(remainingBudget, 0))}).`;
+        const lv = p.levels[idx];
+        lv.executed = true; lv.actualQty = v.q; lv.actualPrice = v.p; lv.execDate = v.d; lv.sells = [];
+        await savePlans(email, plans2);
+        renderPlanDetail(sym);
+      } });
   };
-  window.__startEditBuy = (sym, idx) => { window.__editingBuy = sym+':'+idx; renderPlanDetail(sym); };
-  window.__updateBuy = async (sym, idx) => {
-    const qty = parseFloat(document.getElementById('editBuyQty_'+idx).value);
-    const price = parseFloat(document.getElementById('editBuyPrice_'+idx).value);
-    if(!qty || qty<=0 || !price){ alert('أدخل الكمية والسعر (رقم أكبر من صفر - ممكن يكون كسر عشري)'); return; }
-    const plans2 = await getPlans(email);
-    const p = plans2[sym];
-    const oldQty = p.levels[idx].actualQty, oldPrice = p.levels[idx].actualPrice;
-    const oldAmount = (oldQty||0) * (oldPrice||0);
-    const simBefore = simulatePlan(p);
-    const spentByOthers = simBefore.totalBuyAmountSpent - oldAmount;
-    const newAmount = qty*price;
-    const remainingBudget = p.capital - spentByOthers;
-    if (newAmount > remainingBudget + 1e-6) {
-      alert(`⚠️ تجاوز حد رأس المال المخصص للسهم!\nالمبلغ الجديد (${newAmount.toFixed(2)}) أكبر من المتاح.\nأقصى مبلغ ممكن لهذا المستوى حاليًا هو: ${Math.max(remainingBudget,0).toFixed(2)} فقط، حتى لا يتجاوز إجمالي المشتريات ${p.capital}.\n\nإذا أردت الشراء بمبلغ أكبر، زِد رأس المال المخصص للسهم من الخانة أعلى الجدول، وستُعاد جدولة المستويات تلقائيًا.`);
-      return;
-    }
-    plans2[sym].levels[idx].actualQty = qty;
-    plans2[sym].levels[idx].actualPrice = price;
-    await savePlans(email, plans2);
-    window.__editingBuy = null;
-    renderPlanDetail(sym);
+  window.__startEditBuy = (sym, idx) => {
+    const lv = planObj.levels[idx];
+    glvModal({ title: `تعديل الشراء — المستوى ${lv.level}`, sub: 'عدّل الكمية أو السعر أو التاريخ', q: lv.actualQty, p: lv.actualPrice, d: lv.execDate,
+      onSave: async (v) => {
+        const plans2 = await getPlans(email);
+        const p = plans2[sym];
+        const oldAmount = (p.levels[idx].actualQty || 0) * (p.levels[idx].actualPrice || 0);
+        const spentByOthers = simulatePlan(p).totalBuyAmountSpent - oldAmount;
+        const remainingBudget = p.capital - spentByOthers;
+        if (v.q * v.p > remainingBudget + 1e-6) return `⚠️ المبلغ الجديد (${glvN(v.q * v.p)}) أكبر من المتاح. أقصى مبلغ للمستوى ده ${glvN(Math.max(remainingBudget, 0))}.`;
+        p.levels[idx].actualQty = v.q; p.levels[idx].actualPrice = v.p; p.levels[idx].execDate = v.d;
+        await savePlans(email, plans2);
+        renderPlanDetail(sym);
+      } });
   };
   window.__deleteBuy = async (sym, idx) => {
     const plans2 = await getPlans(email);
@@ -3719,42 +3728,30 @@ async function renderPlanDetail(symbol){
     renderPlanDetail(sym);
   };
 
-  window.__sellAtLevel = async (sym, idx, maxQty) => {
-    const qty = parseFloat(document.getElementById('sellQty_'+idx).value);
-    const price = parseFloat(document.getElementById('sellPrice_'+idx).value);
-    if(!qty || qty<=0 || !price){ alert('أدخل الكمية والسعر (رقم أكبر من صفر - ممكن يكون كسر عشري)'); return; }
-    if(qty > maxQty){ alert(`العدد الذي كتبته (${qty}) أكبر من الكمية المتاحة للبيع (${maxQty}). العدد الأقصى المسموح به هو ${maxQty}.`); return; }
-    const plans2 = await getPlans(email);
-    if(!plans2[sym].levels[idx].sells) plans2[sym].levels[idx].sells = [];
-    plans2[sym].levels[idx].sells.push({ qty, price, date: new Date().toISOString().split('T')[0] });
-    await savePlans(email, plans2);
-    renderPlanDetail(sym);
+  window.__sellAtLevel = (sym, idx, maxQty) => {
+    const lv = planObj.levels[idx];
+    glvModal({ title: `بيع — المستوى ${lv.level}`, sub: `الكمية المتاحة للبيع ${glvQ(maxQty)} — متوسط التكلفة ${glvN(sim.avgCostCurrent)}`, q: maxQty, p: '', maxQ: maxQty,
+      onSave: async (v) => {
+        const plans2 = await getPlans(email);
+        const L = plans2[sym].levels[idx]; if (!L.sells) L.sells = [];
+        L.sells.push({ qty: v.q, price: v.p, date: v.d });
+        glvOpenSet('dca|' + sym).add(String(idx));
+        await savePlans(email, plans2);
+        renderPlanDetail(sym);
+      } });
   };
-  window.__startEditSell = (sym, idx, sIdx) => { window.__editingSell = sym+':'+idx+':'+sIdx; renderPlanDetail(sym); };
-  window.__updateSell = async (sym, idx, sIdx) => {
-    const qty = parseFloat(document.getElementById(`editSellQty_${idx}_${sIdx}`).value);
-    const price = parseFloat(document.getElementById(`editSellPrice_${idx}_${sIdx}`).value);
-    if(!qty || qty<=0 || !price){ alert('أدخل الكمية والسعر (رقم أكبر من صفر - ممكن يكون كسر عشري)'); return; }
-
-    const plans2 = await getPlans(email);
-    const p = plans2[sym];
-    // نتأكد إن الكمية الجديدة منطقية: نحسب أقصى كمية متاحة باستبعاد هذا البيع من الحساب أولًا
-    const originalQty = p.levels[idx].sells[sIdx].qty;
-    p.levels[idx].sells[sIdx].qty = 0; // مؤقتًا لحساب السقف
-    const simCheck = simulatePlan(p);
-    const maxAllowed = simCheck.rows[idx].cumHeldQty + 0; // الكمية المتاحة في هذا المستوى بعد استبعاد هذا البيع
-    p.levels[idx].sells[sIdx].qty = originalQty; // استرجاع القيمة الأصلية لحين التأكيد
-
-    if(qty > maxAllowed){
-      alert(`العدد الذي كتبته (${qty}) أكبر من الكمية المتاحة (${maxAllowed}). العدد الأقصى المسموح به هو ${maxAllowed}.`);
-      return;
-    }
-
-    const existingDate = p.levels[idx].sells[sIdx].date;
-    p.levels[idx].sells[sIdx] = { qty, price, date: existingDate };
-    await savePlans(email, plans2);
-    window.__editingSell = null;
-    renderPlanDetail(sym);
+  window.__startEditSell = (sym, idx, sIdx) => {
+    const cur = planObj.levels[idx].sells[sIdx]; if (!cur) return;
+    // أقصى كمية = المتاح في المستوى ده بعد استبعاد البيع ده
+    const tmp = JSON.parse(JSON.stringify(planObj)); tmp.levels[idx].sells[sIdx].qty = 0;
+    const maxAllowed = simulatePlan(tmp).rows[idx].cumHeldQty;
+    glvModal({ title: `تعديل البيع ${sIdx + 1} — المستوى ${planObj.levels[idx].level}`, sub: `أقصى كمية ${glvQ(maxAllowed)}`, q: cur.qty, p: cur.price, d: cur.date, maxQ: maxAllowed,
+      onSave: async (v) => {
+        const plans2 = await getPlans(email);
+        plans2[sym].levels[idx].sells[sIdx] = { qty: v.q, price: v.p, date: v.d };
+        await savePlans(email, plans2);
+        renderPlanDetail(sym);
+      } });
   };
   window.__removeSell = async (sym, idx, sIdx) => {
     if(!await gConfirm('هل أنت متأكد من حذف عملية البيع هذه؟')) return;

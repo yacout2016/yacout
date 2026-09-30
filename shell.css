@@ -943,28 +943,72 @@ body.g-shell table th:hover button.g-colx, table th button.g-colx:focus-visible{
 .g-hcmenu button:hover{ background:rgba(127,127,127,.12); }
 @media print{ th .g-colx, .g-hcbox{ display:none !important; } }
 
-/* الإصدار 97: جدول مستويات الخطة (DCA / Grid) - على قد عرض الشاشة وكل مستوى في سطر واحد */
-#levelsTable, #gridLevelsTable{ width:100%; font-size:12.5px; }
-#levelsTable th, #levelsTable td, #gridLevelsTable th, #gridLevelsTable td{ padding:6px 7px; vertical-align:middle; }
-#levelsTable .trade-group, #gridLevelsTable .trade-group{ display:flex; flex-wrap:nowrap; align-items:center; gap:4px; margin:0; }
-#levelsTable .trade-group > div:not(.trade-fields), #gridLevelsTable .trade-group > div:not(.trade-fields){ display:none; }
-#levelsTable .trade-fields, #gridLevelsTable .trade-fields{ display:flex; gap:4px; margin:0; }
-#levelsTable .trade-fields input, #gridLevelsTable .trade-fields input{ width:78px; min-width:0; margin:0; padding:5px 6px; font-size:12px; }
-#levelsTable .trade-group button, #gridLevelsTable .trade-group button{ width:auto !important; margin:0 !important; padding:5px 10px; font-size:12px; white-space:nowrap; }
-#levelsTable .buy-cell, #gridLevelsTable .buy-cell{ white-space:nowrap; }
-#levelsTable .buy-cell br, #gridLevelsTable .buy-cell br{ display:none; }
-#levelsTable .buy-cell button, #gridLevelsTable .buy-cell button{ width:auto; margin:0 0 0 4px; padding:3px 8px; font-size:11px; }
-#levelsTable .sell-line, #gridLevelsTable .sell-line{ white-space:nowrap; font-size:11.5px; }
-#levelsTable .sell-line + .trade-group, #gridLevelsTable .sell-line + .trade-group{ margin-top:4px; }
-#levelsTable td .info, #gridLevelsTable td .info, #gridLevelsTable td .success-banner{ white-space:normal; min-width:180px; }
-
-body.g-shell:not(.gs-no-shell) #app #levelsTable th, body.g-shell:not(.gs-no-shell) #app #gridLevelsTable th{ white-space:normal !important; line-height:1.35; min-width:48px; font-size:11.5px; }
-#levelsTable .g-filter-row th, #gridLevelsTable .g-filter-row th{ padding:3px 4px; }
-table.g-enh#levelsTable .g-filter, table.g-enh#gridLevelsTable .g-filter{ min-width:0 !important; }
-#levelsTable .trade-fields input, #gridLevelsTable .trade-fields input{ width:60px !important; }
-#levelsTable .tag, #gridLevelsTable .tag{ font-size:10.5px; padding:2px 6px; }
-#levelsTable input, #gridLevelsTable input{ height:30px !important; min-height:0 !important; }
-#levelsTable td button, #gridLevelsTable td button{ min-height:0 !important; height:30px; line-height:1; }
+/* الإصدار 112: جدول مستويات الخطة (DCA / Grid) - كل معلومة في عمود + كل رقم في سطر واحد
+   أول عمود (المستوى) ثابت يمين وعمود الإجراءات ثابت شمال وقت التمرير بالعرض */
+table.glv{ width:100%; font-size:12.5px; border-collapse:separate !important; border-spacing:0; }
+body.g-shell #app table.glv th, body.g-shell #app table.glv td, table.glv th, table.glv td{ white-space:nowrap !important; padding:0 9px !important; height:42px; text-align:center; vertical-align:middle; line-height:1.3; }
+body.g-shell #app table.glv thead th{ font-size:11.5px; min-width:0; height:44px; }
+table.glv tr.g-filter-row th{ height:38px; padding:3px 5px !important; }
+table.glv .g-filter{ min-width:64px !important; max-width:110px; height:28px !important; min-height:0 !important; font-size:11.5px !important; padding:2px 6px !important; }
+table.glv td.glv-n{ font-variant-numeric:tabular-nums; direction:ltr; unicode-bidi:plaintext; }
+table.glv td.glv-dim{ color:var(--gs-muted, #64748B); }
+table.glv td.glv-plan{ color:var(--gs-muted, #64748B); font-style:normal; }
+table.glv td.glv-hi{ font-weight:700; }
+table.glv td.pos{ color:var(--gs-pos, #0E9F6E); } table.glv td.neg{ color:var(--gs-neg, #E02424); }
+/* الأعمدة الثابتة */
+table.glv tr > :first-child{ position:sticky !important; right:0; z-index:2; background:var(--gs-surface, #fff); border-inline-start:1px solid var(--gs-border, #E5E7EB); }
+table.glv tr > :last-child{ position:sticky !important; left:0; z-index:2; background:var(--gs-surface, #fff); box-shadow:6px 0 8px -8px rgba(0,0,0,.35); }
+table.glv thead tr > :first-child, table.glv thead tr > :last-child, table.glv tfoot tr > :first-child, table.glv tfoot tr > :last-child{ z-index:5; }
+/* رأس الجدول (thead ثابت فوق) - خلايا الطرفين لازم تفضل ثابتة بالعرض كمان */
+.gs-tscroll table.glv.g-enh thead tr > :first-child, .gs-tscroll.gs-rows-limit table.glv.g-enh thead tr > :first-child, .gs-tscroll table.glv thead tr > :first-child{ position:sticky !important; right:0; z-index:5; }
+.gs-tscroll table.glv.g-enh thead tr > :last-child, .gs-tscroll.gs-rows-limit table.glv.g-enh thead tr > :last-child, .gs-tscroll table.glv thead tr > :last-child{ position:sticky !important; left:0; z-index:5; }
+table.glv tbody tr:hover > td{ background:var(--gs-surface-2, #F8FAFC); }
+table.glv tbody tr.glv-exit > td{ background:linear-gradient(var(--gs-pos-tint), var(--gs-pos-tint)), var(--gs-surface, #fff); }
+table.glv tbody tr.glv-next > td:first-child{ box-shadow:inset -3px 0 0 var(--gs-brand, #C9A227); }
+table.glv tbody tr.glv-off > td{ opacity:.6; }
+table.glv tr.g-total > td, table.glv tfoot td{ font-weight:700; background:var(--gs-surface-3, #EEF1F5) !important; }
+/* رقم المستوى + سهم عمليات البيع */
+.glv-lvc{ display:inline-flex; align-items:center; gap:6px; }
+.glv-exp{ width:22px; height:22px; border-radius:6px; border:1px solid var(--gs-border, #E5E7EB); background:var(--gs-surface-2, #F8FAFC); display:inline-grid; place-items:center; cursor:pointer; font-size:10px; color:var(--gs-text, #111); }
+.glv-exp::before{ content:'◂'; }
+.glv-exp[aria-expanded="true"]{ background:var(--gs-brand-tint); border-color:var(--gs-brand, #C9A227); color:var(--gs-brand-strong, #A6811E); }
+.glv-exp[aria-expanded="true"]::before{ content:'▾'; }
+.glv-exp:focus-visible{ outline:2px solid var(--gs-brand, #C9A227); outline-offset:1px; }
+.glv-exp.glv-ph{ visibility:hidden; }
+/* شارات الحالة */
+.glv-st{ display:inline-flex; align-items:center; padding:2px 9px; border-radius:999px; font-size:11.5px; font-weight:600; white-space:nowrap; background:var(--gs-surface-3, #EEF1F5); color:var(--gs-muted, #64748B); }
+.glv-st-next{ background:var(--gs-brand-tint); color:var(--gs-brand-strong, #A6811E); }
+.glv-st-held{ background:var(--gs-info-tint, #EEF2F7); color:#2563EB; }
+html[data-theme="dark"] .glv-st-held{ color:#60A5FA; }
+.glv-st-part{ background:var(--gs-brand-tint); color:var(--gs-brand-strong, #A6811E); }
+.glv-st-sold, .glv-st-exit{ background:var(--gs-pos-tint); color:var(--gs-pos, #0E9F6E); }
+.glv-st-off{ background:var(--gs-neg-tint); color:var(--gs-neg, #E02424); }
+html[data-theme="dark"] .glv-st-next, html[data-theme="dark"] .glv-st-part{ color:var(--gs-brand, #D4AF37); }
+/* أزرار الإجراءات */
+.glv-acts{ display:inline-flex; gap:4px; align-items:center; }
+body.g-shell #app table.glv button.glv-b, table.glv button.glv-b{ width:auto !important; min-width:30px; height:28px !important; min-height:0 !important; margin:0 !important; padding:0 9px !important; border-radius:8px !important; font-size:12px !important; font-weight:600; line-height:1 !important; display:inline-flex; align-items:center; justify-content:center; background:var(--gs-surface, #fff) !important; color:var(--gs-text, #111) !important; border:1px solid var(--gs-border, #E5E7EB) !important; box-shadow:none !important; cursor:pointer; }
+body.g-shell #app table.glv button.glv-b:hover:not([disabled]){ border-color:var(--gs-brand, #C9A227) !important; }
+body.g-shell #app table.glv button.glv-buy, table.glv button.glv-buy{ background:var(--gs-brand, #C9A227) !important; border-color:var(--gs-brand, #C9A227) !important; color:#111 !important; }
+body.g-shell #app table.glv button.glv-sell, table.glv button.glv-sell{ color:var(--gs-pos, #0E9F6E) !important; border-color:var(--gs-pos, #0E9F6E) !important; }
+body.g-shell #app table.glv button.glv-del, table.glv button.glv-del{ color:var(--gs-neg, #E02424) !important; }
+body.g-shell #app table.glv button.glv-b[disabled]{ opacity:.35; cursor:not-allowed; }
+/* سطور عمليات البيع */
+table.glv tr.g-subrow > td{ height:36px; font-size:12px; background:var(--gs-surface-2, #F8FAFC) !important; border-bottom:1px dashed var(--gs-border, #E5E7EB); }
+table.glv tr.g-subrow.g-sub-closed{ display:none !important; }
+.glv-subtag{ color:var(--gs-muted, #64748B); font-size:11.5px; }
+/* نافذة الإدخال */
+.glv-ov{ position:fixed; inset:0; z-index:9000; background:rgba(0,0,0,.45); display:flex; align-items:center; justify-content:center; padding:16px; }
+.glv-ov[hidden]{ display:none !important; }
+.glv-modal{ width:100%; max-width:380px; background:var(--gs-surface, #fff); color:var(--gs-text, #111); border:1px solid var(--gs-border, #E5E7EB); border-radius:16px; box-shadow:var(--gs-shadow-lg, 0 10px 30px rgba(0,0,0,.2)); padding:18px; }
+.glv-modal h3{ margin:0 0 4px; font-size:16px; }
+.glv-msub{ color:var(--gs-muted, #64748B); font-size:12.5px; margin-bottom:6px; line-height:1.6; }
+.glv-modal label{ display:block; font-size:12.5px; color:var(--gs-muted, #64748B); margin:10px 0 4px; }
+.glv-modal input{ width:100%; margin:0 !important; direction:ltr; text-align:right; font-variant-numeric:tabular-nums; }
+.glv-mcalc{ display:flex; justify-content:space-between; background:var(--gs-surface-2, #F8FAFC); border-radius:10px; padding:8px 10px; font-size:12.5px; margin-top:10px; }
+.glv-mcalc b{ direction:ltr; font-variant-numeric:tabular-nums; }
+.glv-merr{ color:var(--gs-neg, #E02424); font-size:12px; min-height:18px; margin-top:6px; }
+.glv-mrow{ display:flex; gap:8px; margin-top:8px; }
+.glv-mrow button{ flex:1; margin:0 !important; }
 
 /* الإصدار 100: قيم المحور في منحنى المحفظة */
 .gs-curve-box{ position:relative; }

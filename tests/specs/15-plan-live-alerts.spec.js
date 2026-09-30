@@ -44,8 +44,12 @@ const ADMIN = 'top72026@gmail.com';
 
   // 3) الجدول: على قد الشاشة + 7 مستويات + إخفاء عمود يفضل بعد إعادة الرسم
   const tb = await a.evaluate(() => { const t = document.getElementById('levelsTable'), w = t.closest('.gs-tscroll'); const r = [...t.tBodies[0].rows]; const wb = w.getBoundingClientRect();
-    return { sw: w.scrollWidth, cw: w.clientWidth, limited: w.classList.contains('gs-rows-limit'), r7: Math.round(r[6].getBoundingClientRect().bottom - wb.top + w.scrollTop), r8: Math.round(r[7].getBoundingClientRect().bottom - wb.top + w.scrollTop), h: w.clientHeight + (w.offsetHeight - w.clientHeight), rows: r.length }; });
-  check('جدول المستويات على قد عرض الشاشة', tb.sw <= tb.cw + 2, `${tb.sw} / ${tb.cw}`);
+    return { sw: w.scrollWidth, cw: w.clientWidth, limited: w.classList.contains('gs-rows-limit'), r7: Math.round(r[6].getBoundingClientRect().bottom - wb.top + w.scrollTop), r8: Math.round(r[7].getBoundingClientRect().bottom - wb.top + w.scrollTop), h: w.clientHeight + (w.offsetHeight - w.clientHeight) - (t.tFoot ? Math.round(t.tFoot.getBoundingClientRect().height) : 0), rows: r.length }; });   // الإصدار 112: صف الإجمالي ثابت تحت (tfoot)
+  // الإصدار 112: الجدول بقى أعمدة كتير (كل معلومة في عمود) ← تمرير بالعرض وعمود الإجراءات ثابت ظاهر + كل رقم جوه خانته
+  const fit = await a.evaluate(() => { const t = document.getElementById('levelsTable'), w = t.closest('.gs-tscroll'), wb = w.getBoundingClientRect();
+    const act = t.tBodies[0].rows[0].cells[t.tBodies[0].rows[0].cells.length - 1].getBoundingClientRect();
+    return { over: [...t.querySelectorAll('td')].filter(x => x.offsetParent && x.scrollWidth > x.clientWidth + 1).length, actIn: act.left >= wb.left - 1 && act.right <= wb.right + 1 }; });
+  check('جدول المستويات: كل رقم جوه خانته + عمود الإجراءات ظاهر من غير تمرير', fit.over === 0 && fit.actIn, JSON.stringify(fit));
   check('جدول المستويات: 7 مستويات ظاهرين والباقي تمرير', tb.limited && tb.r7 <= tb.h + 2 && tb.r8 > tb.h, JSON.stringify(tb));
   await a.click('#levelsTable th:nth-child(3) .g-colx'); await a.waitForTimeout(200);
   check('زرار إخفاء العمود بيخفيه', await a.evaluate(() => getComputedStyle(document.querySelector('#levelsTable tbody tr td:nth-child(3)')).display === 'none'));
