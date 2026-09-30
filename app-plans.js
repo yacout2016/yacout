@@ -8,89 +8,95 @@
    هنا للـ DCA بس (نفس نوع الخطط اللي في الشاشة دي)، وبيستخدم نفس دوال الحساب العامة
    (computeAggregates / buildStockTransactionRows / buildCumulativeProfitPoints) اللي
    شاشة ملخص المحفظة بتستخدمها، عشان الأرقام تفضل متطابقة مع بعض دايمًا. */
-function renderDacStockReportSectionHtml(plans, symbols){
-  const allEntries = symbols.map(s=>({key:s, sym:s, type:'DCA'}));
-  const agg = computeAggregates(plans, {}, allEntries, null, null);
+function renderDacStockReportSectionHtml(plans, symbols, kind){
+  // الإصدار 111: نفس القسم لخطط الشبكة (Grid) - kind='Grid' ← plans هنا هي خطط الشبكة
+  const isG = kind === 'Grid', pre = isG ? 'gridRpt' : 'dacRpt';
+  const allEntries = symbols.map(s=>({key:s, sym:s, type:isG ? 'Grid' : 'DCA'}));
+  const agg = isG ? computeAggregates({}, plans, allEntries, null, null) : computeAggregates(plans, {}, allEntries, null, null);
   return `
     <h2 class="u-mt24">تقرير سهم</h2>
     <div class="section-card">
       <div class="std-filter-daterow">
-        <div><label>من تاريخ</label><input type="date" id="dacRptFrom"></div>
-        <div><label>إلى تاريخ</label><input type="date" id="dacRptTo"></div>
+        <div><label>من تاريخ</label><input type="date" id="${pre}From"></div>
+        <div><label>إلى تاريخ</label><input type="date" id="${pre}To"></div>
       </div>
       <label style="display:block;margin-top:10px;">اختر الأسهم للتقرير (مفتوحة أو مقفولة)</label>
-      <div class="ms-dropdown" id="dacRptMsDropdown">
-        <button type="button" class="ms-toggle" id="dacRptMsToggleBtn">اختر الأسهم ▾</button>
-        <div class="ms-panel" id="dacRptMsPanel" style="display:none;">
-          <div class="std-filter-search u-mb8"><input type="text" id="dacRptSymSearchInput" placeholder="ابحث باسم السهم..."></div>
+      <div class="ms-dropdown" id="${pre}MsDropdown">
+        <button type="button" class="ms-toggle" id="${pre}MsToggleBtn">اختر الأسهم ▾</button>
+        <div class="ms-panel" id="${pre}MsPanel" style="display:none;">
+          <div class="std-filter-search u-mb8"><input type="text" id="${pre}SymSearchInput" placeholder="ابحث باسم السهم..."></div>
           <div class="std-filter-tabs u-mb8">
-            <button type="button" class="small secondary dacRptStatusFilterBtn std-filter-tab btn-active" data-status="all">الكل</button>
-            <button type="button" class="small secondary dacRptStatusFilterBtn std-filter-tab" data-status="مفتوحة">مفتوحة فقط</button>
-            <button type="button" class="small secondary dacRptStatusFilterBtn std-filter-tab" data-status="مغلقة">مغلقة فقط</button>
+            <button type="button" class="small secondary ${pre}StatusFilterBtn std-filter-tab btn-active" data-status="all">الكل</button>
+            <button type="button" class="small secondary ${pre}StatusFilterBtn std-filter-tab" data-status="مفتوحة">مفتوحة فقط</button>
+            <button type="button" class="small secondary ${pre}StatusFilterBtn std-filter-tab" data-status="مغلقة">مغلقة فقط</button>
           </div>
-          <label class="ms-item ms-all"><input type="checkbox" id="dacRptSelectAll"> تحديد كل الأسهم</label>
+          <label class="ms-item ms-all"><input type="checkbox" id="${pre}SelectAll"> تحديد كل الأسهم</label>
           <div class="ms-sep"></div>
-          <div id="dacRptSymbolChecks">
-            ${agg.stockRows.map(r=>`<label class="ms-item" data-sym="${r.symbol.toLowerCase()}" data-status="${r.status}"><input type="checkbox" class="dacRptSymCheck" value="${escapeHtml(r.symbol)}"> ${escapeHtml(r.symbol)} <span style="color:#888;font-size:11px;">${r.status}</span></label>`).join('')}
+          <div id="${pre}SymbolChecks">
+            ${agg.stockRows.map(r=>`<label class="ms-item" data-sym="${r.symbol.toLowerCase()}" data-status="${r.status}"><input type="checkbox" class="${pre}SymCheck" value="${escapeHtml(r.symbol)}"> ${escapeHtml(r.symbol)} <span style="color:#888;font-size:11px;">${r.status}</span></label>`).join('')}
           </div>
-          <div id="dacRptSymNoMatch" style="display:none;font-size:12px;color:#888;padding:8px;text-align:center;">لا توجد أسهم مطابقة</div>
-          <button type="button" class="small" id="dacRptMsDoneBtn" style="width:100%;margin-top:8px;">تم</button>
+          <div id="${pre}SymNoMatch" style="display:none;font-size:12px;color:#888;padding:8px;text-align:center;">لا توجد أسهم مطابقة</div>
+          <button type="button" class="small" id="${pre}MsDoneBtn" style="width:100%;margin-top:8px;">تم</button>
         </div>
       </div>
-      <button id="dacRptPrintBtn" class="u-mt14">🖨 إصدار تقرير PDF للأسهم المحددة</button>
-      <button id="dacRptExportXlsBtn" class="secondary">⬇ تصدير التقرير Excel</button>
+      <button id="${pre}PrintBtn" class="u-mt14">🖨 إصدار تقرير PDF للأسهم المحددة</button>
+      <button id="${pre}ExportXlsBtn" class="secondary">⬇ تصدير التقرير Excel</button>
       <div style="font-size:11.5px;color:#888;margin-top:6px;">تقدر تختار سهم واحد أو أكتر أو كل الأسهم (مفتوحة أو مقفولة) — سيب "من/إلى تاريخ" فاضيين لتقرير عن كل الفترة المتاحة.</div>
     </div>`;
 }
 
-function wireDacStockReportSection(plans, symbols){
-  const allEntries = symbols.map(s=>({key:s, sym:s, type:'DCA'}));
+function wireDacStockReportSection(plans, symbols, kind){
+  const isG = kind === 'Grid', pre = isG ? 'gridRpt' : 'dacRpt', $ = (id) => document.getElementById(pre + id);
+  const allEntries = symbols.map(s=>({key:s, sym:s, type:isG ? 'Grid' : 'DCA'}));
+  const aggOf = (from, to, sel) => isG ? computeAggregates({}, plans, allEntries, from, to, sel) : computeAggregates(plans, {}, allEntries, from, to, sel);
+  const pointsOf = (from, to, sel) => isG ? buildCumulativeProfitPoints({}, from, to, sel, plans) : buildCumulativeProfitPoints(plans, from, to, sel, null);
+  const rowsOf = (sym, from, to) => isG ? buildGridTransactionRows(plans[sym], from, to) : buildStockTransactionRows(plans[sym], from, to);
 
   function updateDacRptToggleLabel(){
-    const checked = Array.from(document.querySelectorAll('.dacRptSymCheck:checked')).map(cb=>cb.value);
-    const btn = document.getElementById('dacRptMsToggleBtn');
+    const checked = Array.from(document.querySelectorAll(`.${pre}SymCheck:checked`)).map(cb=>cb.value);
+    const btn = $('MsToggleBtn');
     if(checked.length===0) btn.textContent = 'اختر الأسهم ▾';
     else if(checked.length===symbols.length) btn.textContent = `كل الأسهم (${symbols.length}) ▾`;
     else if(checked.length<=3) btn.textContent = checked.join('، ') + ' ▾';
     else btn.textContent = `${checked.length} أسهم مختارة ▾`;
   }
 
-  document.getElementById('dacRptMsToggleBtn').onclick = (e) => {
+  $('MsToggleBtn').onclick = (e) => {
     e.stopPropagation();
-    const panel = document.getElementById('dacRptMsPanel');
+    const panel = $('MsPanel');
     panel.style.display = panel.style.display==='none' ? 'block' : 'none';
   };
-  document.getElementById('dacRptMsDoneBtn').onclick = () => { document.getElementById('dacRptMsPanel').style.display = 'none'; };
+  $('MsDoneBtn').onclick = () => { $('MsPanel').style.display = 'none'; };
   document.addEventListener('click', (e) => {
-    const dd = document.getElementById('dacRptMsDropdown');
-    if (dd && !dd.contains(e.target)) document.getElementById('dacRptMsPanel').style.display = 'none';
+    const dd = $('MsDropdown');
+    if (dd && !dd.contains(e.target)) $('MsPanel').style.display = 'none';
   });
 
-  document.getElementById('dacRptSelectAll').addEventListener('change', (e)=>{
-    document.querySelectorAll('.dacRptSymCheck').forEach(cb=>{ cb.checked = e.target.checked; });
+  $('SelectAll').addEventListener('change', (e)=>{
+    document.querySelectorAll(`.${pre}SymCheck`).forEach(cb=>{ cb.checked = e.target.checked; });
     updateDacRptToggleLabel();
   });
-  document.querySelectorAll('.dacRptSymCheck').forEach(cb=>{
+  document.querySelectorAll(`.${pre}SymCheck`).forEach(cb=>{
     cb.addEventListener('change', updateDacRptToggleLabel);
   });
 
   function filterDacRptSymList(){
-    const q = document.getElementById('dacRptSymSearchInput').value.trim().toLowerCase();
-    const statusFilter = document.querySelector('.dacRptStatusFilterBtn.btn-active').dataset.status;
+    const q = $('SymSearchInput').value.trim().toLowerCase();
+    const statusFilter = document.querySelector(`.${pre}StatusFilterBtn.btn-active`).dataset.status;
     let anyVisible = false;
-    document.querySelectorAll('#dacRptSymbolChecks .ms-item').forEach(item=>{
+    document.querySelectorAll(`#${pre}SymbolChecks .ms-item`).forEach(item=>{
       const matchesSym = !q || item.dataset.sym.includes(q);
       const matchesStatus = statusFilter === 'all' || item.dataset.status === statusFilter;
       const show = matchesSym && matchesStatus;
       item.style.display = show ? '' : 'none';
       if (show) anyVisible = true;
     });
-    document.getElementById('dacRptSymNoMatch').style.display = anyVisible ? 'none' : 'block';
+    $('SymNoMatch').style.display = anyVisible ? 'none' : 'block';
   }
-  document.getElementById('dacRptSymSearchInput').addEventListener('input', filterDacRptSymList);
-  document.querySelectorAll('.dacRptStatusFilterBtn').forEach(btn=>{
+  $('SymSearchInput').addEventListener('input', filterDacRptSymList);
+  document.querySelectorAll(`.${pre}StatusFilterBtn`).forEach(btn=>{
     btn.onclick = () => {
-      document.querySelectorAll('.dacRptStatusFilterBtn').forEach(b=>b.classList.remove('btn-active'));
+      document.querySelectorAll(`.${pre}StatusFilterBtn`).forEach(b=>b.classList.remove('btn-active'));
       btn.classList.add('btn-active');
       filterDacRptSymList();
     };
@@ -100,22 +106,22 @@ function wireDacStockReportSection(plans, symbols){
     let sections = '';
     selectedSyms.forEach(sym=>{
       const p = plans[sym];
-      const { rowsHtml, hasAny } = buildStockTransactionRows(p, from, to);
-      sections += `<h2 style="color:#14532d;margin-top:26px;border-top:2px solid #eee;padding-top:16px;">تفاصيل عمليات: ${sym} (DCA — ${p.market||''} - ${p.currency||''})</h2>
+      const { rowsHtml, hasAny } = rowsOf(sym, from, to);
+      sections += `<h2 style="color:#14532d;margin-top:26px;border-top:2px solid #eee;padding-top:16px;">تفاصيل عمليات: ${sym} (${isG ? 'Grid' : 'DCA'} — ${p.market||''}${p.currency ? ' - ' + p.currency : ''})</h2>
       <table><thead><tr><th>التاريخ</th><th>العملية</th><th>المستوى</th><th>الكمية</th><th>السعر</th><th>الربح</th></tr></thead>
       <tbody>${hasAny ? rowsHtml : '<tr><td colspan="6">لا يوجد عمليات في هذه الفترة</td></tr>'}</tbody></table>`;
     });
     return sections;
   }
 
-  document.getElementById('dacRptPrintBtn').onclick = () => {
-    const selectedSyms = Array.from(document.querySelectorAll('.dacRptSymCheck:checked')).map(cb=>cb.value);
+  $('PrintBtn').onclick = () => {
+    const selectedSyms = Array.from(document.querySelectorAll(`.${pre}SymCheck:checked`)).map(cb=>cb.value);
     if(selectedSyms.length===0){ alert('اختار سهم واحد على الأقل'); return; }
-    const from = document.getElementById('dacRptFrom').value || null;
-    const to = document.getElementById('dacRptTo').value || null;
+    const from = $('From').value || null;
+    const to = $('To').value || null;
 
-    const reportAgg = computeAggregates(plans, {}, allEntries, from, to, selectedSyms);
-    const combinedPoints = buildCumulativeProfitPoints(plans, from, to, selectedSyms, null);
+    const reportAgg = aggOf(from, to, selectedSyms);
+    const combinedPoints = pointsOf(from, to, selectedSyms);
     const groupLabel = selectedSyms.length===symbols.length ? 'كل الأسهم' : reportAgg.stockRows.map(r=>r.symbol).join('، ');
     const chartImg = renderCumulativeProfitChart(combinedPoints, 'الربح التراكمي — ' + groupLabel);
     const periodLabel = (from && to) ? `${formatDateAr(from)} إلى ${formatDateAr(to)}` : 'كل الفترة المتاحة';
@@ -140,7 +146,7 @@ function wireDacStockReportSection(plans, symbols){
       img{max-width:100%;margin-top:16px;}</style></head>
       <body>
       ${reportLogoHeaderHtml()}
-      <h1>GRIFFINE — تقرير أسهم وخطط: ${groupLabel}</h1>
+      <h1>GRIFFINE — تقرير أسهم وخطط${isG ? ' الشبكة' : ''}: ${groupLabel}</h1>
       <p>الفترة: ${periodLabel} | تاريخ الطباعة: ${new Date().toLocaleDateString('ar-EG')}</p>
 
       <div class="indicators">
@@ -173,14 +179,14 @@ function wireDacStockReportSection(plans, symbols){
     w.document.close(); gReportReady(w);
   };
 
-  document.getElementById('dacRptExportXlsBtn').onclick = () => {
-    const selectedSyms = Array.from(document.querySelectorAll('.dacRptSymCheck:checked')).map(cb=>cb.value);
+  $('ExportXlsBtn').onclick = () => {
+    const selectedSyms = Array.from(document.querySelectorAll(`.${pre}SymCheck:checked`)).map(cb=>cb.value);
     if(selectedSyms.length===0){ alert('اختار سهم واحد على الأقل'); return; }
-    const from = document.getElementById('dacRptFrom').value || null;
-    const to = document.getElementById('dacRptTo').value || null;
+    const from = $('From').value || null;
+    const to = $('To').value || null;
 
-    const reportAgg = computeAggregates(plans, {}, allEntries, from, to, selectedSyms);
-    const combinedPoints = buildCumulativeProfitPoints(plans, from, to, selectedSyms, null);
+    const reportAgg = aggOf(from, to, selectedSyms);
+    const combinedPoints = pointsOf(from, to, selectedSyms);
     const groupLabel = selectedSyms.length===symbols.length ? 'كل الأسهم' : reportAgg.stockRows.map(r=>r.symbol).join('، ');
     const chartImg = renderCumulativeProfitChart(combinedPoints, 'الربح التراكمي — ' + groupLabel);
     const periodLabel = (from && to) ? `${formatDateAr(from)} إلى ${formatDateAr(to)}` : 'كل الفترة المتاحة';
@@ -190,7 +196,7 @@ function wireDacStockReportSection(plans, symbols){
     const totalTd = "border:1px solid #000000;padding:6px 10px;text-align:center;font-weight:bold;background:#E6F4EA;";
     const titleTd = "background:#14532D;color:#ffffff;font-weight:bold;font-size:16px;padding:10px;text-align:center;";
 
-    let body = `<table><tr><td colspan="9" style="${titleTd}">GRIFFINE — تقرير أسهم وخطط: ${groupLabel}</td></tr>
+    let body = `<table><tr><td colspan="9" style="${titleTd}">GRIFFINE — تقرير أسهم وخطط${isG ? ' الشبكة' : ''}: ${groupLabel}</td></tr>
       <tr><td colspan="9" style="${td}">الفترة: ${periodLabel} | تاريخ التصدير: ${new Date().toLocaleDateString('ar-EG')}</td></tr>
       <tr><td style="${th}">السهم</td><td style="${th}">الحالة</td><td style="${th}">تكلفة المراكز المفتوحة</td><td style="${th}">القيمة الحالية</td>
       <td style="${th}">الانخفاض</td><td style="${th}">ربح غير محقق</td><td style="${th}">ربح محقق</td>
@@ -211,8 +217,8 @@ function wireDacStockReportSection(plans, symbols){
 
     selectedSyms.forEach(sym=>{
       const p = plans[sym];
-      const { rowsHtml, hasAny } = buildStockTransactionRows(p, from, to);
-      body += `<table class="u-mt20"><tr><td colspan="6" style="${titleTd}">تفاصيل عمليات: ${sym} (DCA)</td></tr>
+      const { rowsHtml, hasAny } = rowsOf(sym, from, to);
+      body += `<table class="u-mt20"><tr><td colspan="6" style="${titleTd}">تفاصيل عمليات: ${sym} (${isG ? 'Grid' : 'DCA'})</td></tr>
         <tr><td style="${th}">التاريخ</td><td style="${th}">العملية</td><td style="${th}">المستوى</td><td style="${th}">الكمية</td><td style="${th}">السعر</td><td style="${th}">الربح</td></tr>
         ${hasAny ? rowsHtml.replace(/<td>/g, `<td style="${td}">`) : `<tr><td colspan="6" style="${td}">لا يوجد عمليات في هذه الفترة</td></tr>`}
         </table>`;
@@ -222,7 +228,7 @@ function wireDacStockReportSection(plans, symbols){
       <head><meta charset="UTF-8"><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
       <x:Name>تقرير أسهم</x:Name><x:WorksheetOptions><x:RTL/><x:DisplayGridlines/></x:WorksheetOptions>
       </x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml></head><body dir="rtl">${body}</body></html>`;
-    buildAndDownloadMhtmlXls(html, chartImg, `griffine_تقرير_أسهم_وخطط.xls`);
+    buildAndDownloadMhtmlXls(html, chartImg, `griffine_تقرير_أسهم_وخطط${isG ? '_شبكة' : ''}.xls`);
   };
 }
 
@@ -281,6 +287,64 @@ function gWireSymbolLookup(o){
   pm.addEventListener('change', apply);
   document.querySelectorAll(`input[name="${o.listedName}"]`).forEach(r => r.addEventListener('change', check));
   if (sym.value.trim()) check(); else apply();
+}
+
+/* الإصدار 111: نطاق خطة الشبكة (سقف / قاع) - «تلقائي» (الافتراضي) أو «يدوي»
+   تلقائي: تختار المدة (يومي ... سنة) ← أول ما رمز السهم يتكتب بيظهر آخر سعر، والسقف = أعلى سعر والقاع = أقل سعر خلال المدة دي
+           (من نفس مصدر الأسعار المتأخرة 15 دقيقة) - والقيمتين بيفضلوا قابلين للتعديل اليدوي
+   يدوي: قائمة المدة بتتقفل وبتكتب القيمتين بنفسك. السهم غير المدرج في البورصة ← يدوي بس */
+const G_RANGE_PERIODS = [['day','يومي'], ['week','أسبوعي'], ['month','شهري'], ['3months','3 شهور'], ['6months','6 شهور'], ['year','سنة']];
+function gWireGridRange(o){
+  const hi = document.getElementById(o.highId), lo = document.getElementById(o.lowId), mkt = document.getElementById(o.mktId);
+  if (!hi || !lo) return null;
+  const row = hi.closest('.grid2') || hi.parentNode;
+  const box = document.createElement('div'); box.className = 'g-range-box';
+  const nm = o.prefix + '_rangeMode';
+  box.innerHTML = `<label>تحديد سقف وقاع النطاق</label>
+    <div class="radio-row g-range-mode" role="radiogroup" aria-label="تحديد سقف وقاع النطاق">
+      <label><input type="radio" name="${nm}" value="auto"> تلقائي — أعلى وأقل سعر للسهم خلال مدة تختارها</label>
+      <label><input type="radio" name="${nm}" value="manual"> يدوي — أكتب السقف والقاع بنفسي</label>
+    </div>
+    <label for="${o.prefix}_rangePeriod">المدة</label>
+    <select id="${o.prefix}_rangePeriod">${G_RANGE_PERIODS.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
+    <div class="g-range-info u-fs12" id="${o.prefix}_rangeInfo" aria-live="polite"></div>`;
+  row.parentNode.insertBefore(box, row);
+  const per = box.querySelector('select'), info = box.querySelector('.g-range-info');
+  const listed = () => o.isListed ? o.isListed() : true;
+  per.value = G_RANGE_PERIODS.some(x => x[0] === o.period) ? o.period : 'month';
+  box.querySelector(`input[value="${o.mode === 'manual' ? 'manual' : 'auto'}"]`).checked = true;
+  const mode = () => listed() ? ((box.querySelector('input:checked') || {}).value || 'auto') : 'manual';
+  const perLabel = () => (G_RANGE_PERIODS.find(x => x[0] === per.value) || [,''])[1];
+  let seq = 0, t = null;
+  const fetchRange = async (fill) => {
+    const sym = String(o.getSym() || '').trim().toUpperCase(), my = ++seq;
+    if (mode() !== 'auto') return;
+    if (!sym) { info.innerHTML = '<span class="u-muted">اكتب رمز السهم الأول، وبعدها السقف والقاع هيتملوا تلقائيًا.</span>'; return; }
+    info.innerHTML = '<span class="u-muted">🔎 جارٍ البحث عن أعلى وأقل سعر...</span>';
+    const r = await apiGet(`/markets_api.php?action=quote&symbol=${encodeURIComponent(sym)}&market=${encodeURIComponent((mkt && mkt.value) || 'مصر')}&period=${encodeURIComponent(per.value)}`).catch(() => null);
+    if (my !== seq || mode() !== 'auto') return;
+    if (!(r && r.success && +r.last > 0)) { info.innerHTML = '<span class="neg">مقدرناش نجيب أسعار السهم دلوقتي — تأكد من الرمز والسوق، أو اختر «يدوي» واكتب القيمتين.</span>'; return; }
+    if (r.high > 0 && r.low > 0 && !r.partial) {
+      if (fill !== false) { hi.value = +r.high; lo.value = +r.low; hi.dispatchEvent(new Event('input', { bubbles: true })); }
+      info.innerHTML = `آخر سعر <b data-g-last>${fmt2(+r.last)}</b> — أعلى سعر خلال (${perLabel()}) <b class="pos" data-g-hi>${fmt2(+r.high)}</b> — أقل سعر <b class="neg" data-g-lo>${fmt2(+r.low)}</b> <span class="u-muted">(متأخر ${+r.delayMinutes || 15} دقيقة — تقدر تعدّل القيمتين بإيدك)</span>`;
+    } else {
+      info.innerHTML = `آخر سعر <b data-g-last>${fmt2(+r.last)}</b> — <span class="neg">أعلى وأقل سعر للمدة دي مش متاحين حاليًا، اكتبهم يدوي.</span>`;
+    }
+  };
+  const apply = (fill) => {
+    const L = listed(), auto = mode() === 'auto';
+    box.querySelectorAll('input[type=radio]').forEach(r => { if (r.value === 'auto') r.disabled = !L; });
+    if (!L) box.querySelector('input[value="manual"]').checked = true;
+    per.disabled = !auto; box.classList.toggle('g-range-manual', !auto);
+    if (!auto) { seq++; info.innerHTML = L ? '<span class="u-muted">✍️ يدوي: اكتب سقف وقاع النطاق بنفسك.</span>' : '<span class="u-muted">🔕 سهم غير مدرج — السقف والقاع يدوي.</span>'; return; }
+    fetchRange(fill);
+  };
+  box.addEventListener('change', (e) => { if (e.target.name === nm || e.target === per) apply(); });
+  if (mkt) mkt.addEventListener('change', () => apply());
+  if (o.symId) { const se = document.getElementById(o.symId); if (se) se.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => apply(), 650); }); }
+  if (o.listedName) document.querySelectorAll(`input[name="${o.listedName}"]`).forEach(r => r.addEventListener('change', () => apply()));
+  apply(o.fillOnStart !== false);
+  return { mode, period: () => per.value };
 }
 
 /* الإصدار 99: حذف خطة (DCA / Grid) ← بتنتقل لسلة المحذوفات (أي مستخدم: عميل / موظف / أدمن) ويقدر يرجّعها أو يحذفها نهائيًا من السلة */
@@ -1693,77 +1757,87 @@ async function renderGridPlansList(){
   if(!email) return renderLogin();
   if(!(await ensureAccess())) return;
 
+  // الإصدار 111: نفس شكل قائمة خطط الـ DCA بالظبط (بحث + الكل/مفتوحة/مقفولة + قائمة واحدة بتمرير + قسم «تقرير سهم» PDF/Excel)
   const grids = await getGridPlans(email);
-  const activeSymbols = Object.keys(grids).filter(s => !grids[s].closed);
-  const closedSymbols = Object.keys(grids).filter(s => grids[s].closed);
-
-  const hasAnyGrid = activeSymbols.length + closedSymbols.length > 0;
+  const symbols = Object.keys(grids);
+  const CCY = { 'مصر':'جنيه مصري', 'السعودية':'ريال سعودي', 'الإمارات':'درهم إماراتي', 'قطر':'ريال قطري', 'الكويت':'دينار كويتي' };
+  const heldOf = (g) => (g.levels || []).filter(l => l.status === 'bought' && l.executedQty > 0);
 
   if (screenStale(__tok)) return; app.innerHTML = `<div class="container wide">${logoHeader()}
-    <div class="topbar"><div>${pageTitle('grid_plans_list','🔲 خطط الشبكة (Grid)')}</div><button class="secondary small" id="homeBtn">🏠 الشاشة الرئيسية</button></div>
-    <div class="info">استراتيجية "الشبكة" مناسبة للأسهم المتذبذبة داخل نطاق سعري (وليست في اتجاه هابط قوي مستمر) — تشتري في المستويات الهابطة وتبيع الكمية نفسها عندما يرتفع السعر مجددًا، وتكرر الدورة. لا يوجد وقف خسارة تلقائي هنا (كما اتفقنا) — قرار البيع بخسارة قرارك الشخصي خارج منطق الأداة.</div>
-
-    <button id="goNewGridBtn" class="btn-lightgreen">+ خطة شبكة جديدة</button>
-
+    <div class="topbar"><div>مرحبًا <strong>${escapeHtml(email)}</strong></div></div>
+    <button class="secondary small u-wa" id="homeBtn">🏠 الشاشة الرئيسية</button>
+    <button id="goNewGridBtn">+ خطة شبكة جديدة لسهم</button>
+    <h2>${pageTitle('grid_plans_list','خطط الشبكة (Grid) — سهم لكل خطة')}</h2>
     <div class="gpl-total" id="gplTotal" hidden></div>
-    ${hasAnyGrid ? `<div class="std-filter-bar">
+    ${symbols.length>0 ? `<div class="std-filter-bar">
       <div class="std-filter-search"><input type="text" id="gridListSearch" placeholder="🔍 ابحث باسم السهم..."></div>
+      <div class="std-filter-tabs">
+        <button type="button" class="small secondary gridListFilterBtn std-filter-tab btn-active" data-status="all">الكل</button>
+        <button type="button" class="small secondary gridListFilterBtn std-filter-tab" data-status="مفتوحة">مفتوحة فقط</button>
+        <button type="button" class="small secondary gridListFilterBtn std-filter-tab" data-status="مقفولة">مقفولة فقط</button>
+      </div>
     </div>` : ''}
-
-    <h2 class="u-mt20" id="gridActiveHeading">خططك النشطة</h2>
-    <div id="gridListWrap"></div>
-
-    ${closedSymbols.length ? `<h2 class="u-mt20" id="gridClosedHeading">خطط مقفولة</h2><div id="gridClosedListWrap"></div>` : ''}
-    <div class="std-filter-empty" id="gridListEmpty" style="display:none;">لا توجد خطط مطابقة للبحث</div>
+    <div id="gridListWrap" class="plans-list-scroll"></div>
+    <div class="std-filter-empty" id="gridListEmpty" style="display:none;">لا توجد خطط مطابقة للبحث/الفلتر</div>
+    ${symbols.length>0 ? renderDacStockReportSectionHtml(grids, symbols, 'Grid') : ''}
   </div>`;
   document.getElementById('homeBtn').onclick=()=>renderHome();
   document.getElementById('goNewGridBtn').onclick=()=>renderGridPlanForm();
+  if (symbols.length>0) wireDacStockReportSection(grids, symbols, 'Grid');
 
   const listWrap = document.getElementById('gridListWrap');
-  if (!activeSymbols.length) {
-    listWrap.innerHTML = '<p class="u-note">لم تنشئ أي خطة شبكة نشطة بعد.</p>';
-  } else {
-    listWrap.innerHTML = activeSymbols.map(sym => {
-      const g = grids[sym];
-      const bought = g.levels.filter(l=>l.status==='bought').length;
-      const totalCycles = g.levels.reduce((s,l)=>s+(l.cycles||0),0);
-      return `<div class="plan-list-item" data-q="${sym.toLowerCase()}" data-gcall="__openGrid" data-gargs="${gArgs([String(sym)])}">
-        <div><strong>${escapeHtml(sym)}</strong> <span class="g-kind g-kind-grid">Grid</span> ${gPlanStatusBadge(bought ? 'مفتوحة' : ((g.cycleHistory || []).length ? 'مغلقة' : 'لم تبدأ'))} <span class="u-fs11 u-muted">(${escapeHtml(g.market||'')})</span>${g.listed === false ? ' <span class="tag">غير مدرج 🔕</span>' : ''}${g.levels.some(l => l.status==='bought' && l.executedQty > 0) ? `<div class="gpl-px u-fs12" data-sym="${escapeHtml(sym)}">جارٍ تحميل آخر سعر...</div>` : ''}</div>
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div style="font-size:12px;color:#666;">مستويات مشتراة: ${bought}/${g.levels.length} — دورات مكتملة: ${totalCycles}</div>
-          <button class="small secondary u-wa u-m0" data-gcall="__editGridFromList" data-gargs="${gArgs([String(sym)])}" data-gstop="1">⚙️ تعديل الخطة</button>
-          <button class="small danger u-wa u-m0" data-gcall="__delGridFromList" data-gargs="${gArgs([String(sym)])}" data-gstop="1" title="حذف (ينتقل إلى سلة المحذوفات)" aria-label="حذف الخطة">🗑️</button>
-        </div>
-      </div>`;
-    }).join('');
+  if (!symbols.length) {
+    listWrap.innerHTML = '<p class="u-note">لا يوجد خطط شبكة بعد. ابدأ بإنشاء خطة جديدة.</p>';
+    return;
   }
-  if (closedSymbols.length) {
-    document.getElementById('gridClosedListWrap').innerHTML = closedSymbols.map(sym => `
-      <div class="plan-list-item" data-q="${sym.toLowerCase()}" data-gcall="__openGrid" data-gargs="${gArgs([String(sym)])}" style="opacity:.7;">
-        <div><strong>${escapeHtml(sym)}</strong> <span class="g-kind g-kind-grid">Grid</span> ${gPlanStatusBadge('مغلقة')}</div>
+  listWrap.innerHTML = symbols.map(sym => {
+    const g = grids[sym];
+    const bought = heldOf(g).length;
+    const totalCycles = (g.levels || []).reduce((s,l)=>s+(l.cycles||0),0);
+    const isOpenPosition = bought > 0;
+    const isActuallyClosed = !!g.closed || (!isOpenPosition && ((g.cycleHistory || []).length > 0 || (g.closedTrades || []).length > 0));
+    const statusKey = isActuallyClosed && !isOpenPosition ? 'مقفولة' : 'مفتوحة';
+    const stLabel = isOpenPosition ? 'مفتوحة' : isActuallyClosed ? 'مغلقة' : 'لم تبدأ';
+    return `<div class="plan-list-item" data-sym="${escapeHtml(sym)}" data-q="${escapeHtml(sym.toLowerCase())}" data-status="${statusKey}">
+      <div><strong>${escapeHtml(sym)}</strong> <span class="g-kind g-kind-grid">Grid</span> ${gPlanStatusBadge(stLabel)}<div class="u-fs11 u-muted">${bought}/${(g.levels || []).length} مستويات مشتراة — دورات مكتملة: ${totalCycles} — ${statusKey === 'مقفولة' ? 'مقفولة ✅' : 'مفتوحة'} — ${escapeHtml(g.market||'')} — ${escapeHtml(g.currency || CCY[g.market || 'مصر'] || '')}${g.listed === false ? ' — <span class="tag">غير مدرج 🔕</span>' : ''}</div>${isOpenPosition ? `<div class="gpl-px u-fs12" data-sym="${escapeHtml(sym)}">جارٍ تحميل آخر سعر...</div>` : ''}</div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button class="small secondary u-wa u-m0" data-gcall="__editGridFromList" data-gargs="${gArgs([String(sym)])}" data-gstop="1">⚙️ تعديل الخطة</button>
         <button class="small danger u-wa u-m0" data-gcall="__delGridFromList" data-gargs="${gArgs([String(sym)])}" data-gstop="1" title="حذف (ينتقل إلى سلة المحذوفات)" aria-label="حذف الخطة">🗑️</button>
-      </div>`).join('');
-  }
+        <span>&#8250;</span>
+      </div>
+    </div>`;
+  }).join('');
+  listWrap.querySelectorAll('.plan-list-item').forEach(el=>{
+    el.onclick=(e)=>{ if (e.target.closest('button')) return; renderGridPlanDetail(el.dataset.sym); };   // أزرار التعديل والحذف مبتفتحش الخطة
+  });
   window.__openGrid = (sym) => renderGridPlanDetail(sym);
   window.__editGridFromList = (sym) => renderGridEditPlanSettings(sym);
   window.__delGridFromList = (sym) => gDeletePlan('grid', sym, () => { window.__navSilent = true; try { renderGridPlansList(); } finally { window.__navSilent = false; } });
-  { const act = {}; activeSymbols.forEach(sym => { act[sym] = grids[sym]; });
-    gFillListProfits(__tok, {}, act, activeSymbols.map(sym => { const b = (grids[sym].levels || []).filter(l => l.status === 'bought' && l.executedQty > 0);
+  { const act = {}; symbols.forEach(sym => { if (heldOf(grids[sym]).length) act[sym] = grids[sym]; });
+    gFillListProfits(__tok, {}, act, Object.keys(act).map(sym => { const b = heldOf(grids[sym]);
       const held = b.reduce((a, l) => a + (+l.executedQty || 0), 0), cost = b.reduce((a, l) => a + (+l.executedQty || 0) * (+l.executedPrice || 0), 0);
-      return held > 0 ? { sym, market: grids[sym].market || 'مصر', held, avg: cost / held, ccy: grids[sym].currency || ({ 'مصر':'جنيه مصري', 'السعودية':'ريال سعودي', 'الإمارات':'درهم إماراتي', 'قطر':'ريال قطري', 'الكويت':'دينار كويتي' })[grids[sym].market || 'مصر'] } : null; }).filter(Boolean)); }
+      return held > 0 ? { sym, market: grids[sym].market || 'مصر', held, avg: cost / held, ccy: grids[sym].currency || CCY[grids[sym].market || 'مصر'] } : null; }).filter(Boolean)); }
 
-  if (hasAnyGrid) {
-    wireStdFilterBar({
-      searchInputId:'gridListSearch', itemSelector:'.plan-list-item', emptyStateId:'gridListEmpty',
-      onApply: () => {
-        const activeHeading = document.getElementById('gridActiveHeading');
-        if (activeHeading) activeHeading.style.display = Array.from(listWrap.querySelectorAll('.plan-list-item')).some(el=>el.style.display!=='none') ? '' : 'none';
-        const closedWrap = document.getElementById('gridClosedListWrap');
-        const closedHeading = document.getElementById('gridClosedHeading');
-        if (closedWrap && closedHeading) closedHeading.style.display = Array.from(closedWrap.querySelectorAll('.plan-list-item')).some(el=>el.style.display!=='none') ? '' : 'none';
-      }
+  function filterGridPlansList(){
+    const q = document.getElementById('gridListSearch').value.trim().toLowerCase();
+    const activeBtn = document.querySelector('.gridListFilterBtn.btn-active');
+    const statusFilter = activeBtn ? activeBtn.dataset.status : 'all';
+    let anyVisible = false;
+    document.querySelectorAll('#gridListWrap .plan-list-item').forEach(item=>{
+      const show = (!q || (item.dataset.q||'').includes(q)) && (statusFilter==='all' || item.dataset.status===statusFilter);
+      item.style.display = show ? '' : 'none';
+      if (show) anyVisible = true;
     });
+    document.getElementById('gridListEmpty').style.display = anyVisible ? 'none' : '';
   }
+  document.getElementById('gridListSearch').addEventListener('input', filterGridPlansList);
+  document.querySelectorAll('.gridListFilterBtn').forEach(btn=>{
+    btn.onclick = () => {
+      document.querySelectorAll('.gridListFilterBtn').forEach(b=>b.classList.remove('btn-active'));
+      btn.classList.add('btn-active');
+      filterGridPlansList();
+    };
+  });
 }
 
 async function renderGridPlanForm(){
@@ -1837,6 +1911,8 @@ async function renderGridPlanForm(){
   if (prefill.symbol) document.getElementById('g_symbol').value = prefill.symbol;
   if (prefill.market) document.getElementById('g_market').value = prefill.market;
   if (prefill.price) document.getElementById('g_currentPrice').value = prefill.price;
+  const gRange = gWireGridRange({ prefix: 'g', symId: 'g_symbol', getSym: () => document.getElementById('g_symbol').value, mktId: 'g_market', highId: 'g_high', lowId: 'g_low', listedName: 'g_listed',
+    isListed: () => (document.querySelector('input[name="g_listed"]:checked') || {}).value !== '0', mode: 'auto', period: 'month' });   // الإصدار 111
 
   function updatePreview(){
     const capital = parseFloat(document.getElementById('g_capital').value);
@@ -1926,7 +2002,7 @@ async function renderGridPlanForm(){
     const currentPrice = parseFloat(document.getElementById('g_currentPrice').value) || null;
     const grids = await getGridPlans(email);
     const exitProfitPercent = parseFloat(document.getElementById('g_exitProfitPercent').value);
-    grids[symbol] = { symbol, market, currentPrice, capital, risk, tradeSize, rangeHigh: high, rangeLow: low, step, levels, manualExits: [], cycleHistory: [], closedTrades: [], closed: false, exitProfitPercent: (!isNaN(exitProfitPercent) && exitProfitPercent>0) ? exitProfitPercent : null, createdAt: new Date().toISOString() };
+    grids[symbol] = { symbol, market, currentPrice, capital, risk, tradeSize, rangeHigh: high, rangeLow: low, step, levels, manualExits: [], cycleHistory: [], closedTrades: [], closed: false, rangeMode: gRange ? gRange.mode() : 'manual', rangePeriod: gRange && gRange.mode() === 'auto' ? gRange.period() : null, exitProfitPercent: (!isNaN(exitProfitPercent) && exitProfitPercent>0) ? exitProfitPercent : null, createdAt: new Date().toISOString() };
     if (!gListed) { grids[symbol].listed = false; grids[symbol].manualLastPrice = currentPrice || null; }
     await saveGridPlans(email, grids);
     renderGridPlanDetail(symbol);
@@ -2582,6 +2658,9 @@ async function renderGridEditPlanSettings(symbol, error){
 
   document.getElementById('ge_market').value = g.market || 'مصر';
   document.getElementById('cancelBtn').onclick = () => renderGridPlanDetail(symbol);
+  // الإصدار 111: النطاق تلقائي/يدوي - الخطط القديمة (من غير اختيار محفوظ) بتفتح «يدوي» عشان السقف والقاع المحفوظين ميتغيروش لوحدهم
+  const geRange = gWireGridRange({ prefix: 'ge', getSym: () => symbol, mktId: 'ge_market', highId: 'ge_high', lowId: 'ge_low', isListed: () => g.listed !== false,
+    mode: g.rangeMode || 'manual', period: g.rangePeriod || 'month', fillOnStart: false });
 
   function updatePreview(){
     const capital = parseFloat(document.getElementById('ge_capital').value);
@@ -2650,7 +2729,7 @@ async function renderGridEditPlanSettings(symbol, error){
       };
     });
     const grids2 = await getGridPlans(email);
-    grids2[symbol] = { ...grids2[symbol], market, currentPrice, capital, risk, tradeSize, rangeHigh: high, rangeLow: low, step, levels };
+    grids2[symbol] = { ...grids2[symbol], market, currentPrice, capital, risk, tradeSize, rangeHigh: high, rangeLow: low, step, levels, rangeMode: geRange ? geRange.mode() : 'manual', rangePeriod: geRange && geRange.mode() === 'auto' ? geRange.period() : null };
     await saveGridPlans(email, grids2);
     renderGridPlanDetail(symbol);
   };

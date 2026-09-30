@@ -1114,3 +1114,10 @@ html[data-theme="dark"] .g-kind-grid{ color:#60A5FA; }
 a.g-plan-link{ color:var(--gs-brand-strong, #A6811E); font-weight:800; text-decoration:underline; text-underline-offset:3px; cursor:pointer; }
 html[data-theme="dark"] a.g-plan-link{ color:var(--gs-brand, #D4AF37); }
 a.g-plan-link:hover{ opacity:.8; }
+/* الإصدار 111: نطاق خطة الشبكة - تلقائي / يدوي + المدة */
+.g-range-box{ margin:10px 0 8px; padding:10px 12px; border:1px solid var(--gs-border, rgba(127,127,127,.25)); border-radius:12px; }
+.g-range-box > label{ margin-top:0; }
+.g-range-mode{ display:flex; gap:14px; flex-wrap:wrap; margin:4px 0 8px; }
+.g-range-mode label{ display:inline-flex; align-items:center; gap:6px; margin:0; font-weight:500; }
+.g-range-box select:disabled{ opacity:.45; cursor:not-allowed; }
+.g-range-info{ margin-top:6px; min-height:18px; line-height:1.7; }
