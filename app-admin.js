@@ -1773,7 +1773,7 @@ const BG_SCREENS = [
   {v:'suggestions_admin', l:'💡 مقترحات العملاء لتطوير الموقع', fn:'renderSuggestionsAdminPage'},
   {v:'plans_list', l:'خططك الحالية (سهم لكل خطة)', fn:'renderPlansList'},
   {v:'portfolio', l:'📊 ملخص المحفظة', fn:'renderPortfolio'},
-  {v:'diversification_report', l:'🎯 تقرير تنويع المحفظة', fn:'renderDiversificationReport'},
+  {v:'diversification_report', l:'⚖️ ميزان محفظتك AI (توزيع التنوع)', fn:'renderDiversificationReport'},
   {v:'referral', l:'🎁 ادعُ صديق', fn:'renderReferralPage'},
   {v:'profile', l:'👤 الملف الشخصي', fn:'renderProfilePage'},
   {v:'grid_plans_list', l:'🔲 خطط الشبكة (Grid)', fn:'renderGridPlansList'},

@@ -1338,7 +1338,7 @@
       <div class="gs-list">
         ${!hidden('hide_recommendations_screen') ? R('gsAccRec','megaphone','التوصيات') : ''}
         ${!hidden('hide_grid_screen') ? R('gsAccGrid','grid','خطط الشبكة (Grid)') : ''}
-        ${!hidden('hide_portfolio_screen') ? R('gsAccDiv','target','تقرير التنويع') : ''}
+        ${!hidden('hide_portfolio_screen') ? R('gsAccDiv','target','ميزان محفظتك AI (توزيع التنوع)') : ''}
         ${!hidden('hide_screener_screen') ? R('gsAccScr','radar','كشاف الأسهم') : ''}
       </div>
 
@@ -1614,7 +1614,7 @@
     ['خطة DCA جديدة', 'renderNewPlanForm'],
     ['خطة Grid جديدة', 'renderGridPlanForm'],
     ['ملخص المحفظة', 'renderPortfolio'],
-    ['تقرير التنويع', 'renderDiversificationReport'],
+    ['ميزان محفظتك AI (توزيع التنوع)', 'renderDiversificationReport'],
     ['كشاف الأسهم', 'renderScreener'],
     ['التوصيات', 'renderRecommendationsCustomerPage'],
     ['حسابي', 'GS:renderAccount'],

@@ -1022,7 +1022,7 @@ async function renderPortfolio(){
   if (screenStale(__tok)) return; app.innerHTML = `<div class="container wide">${logoHeader()}
     <div class="topbar">
       <div>${pageTitle('portfolio','📊 ملخص المحفظة')}</div>
-      <div><button class="secondary small" id="goDiversificationBtn">🎯 تقرير التنويع</button> <button class="secondary small" id="homeBtn">🏠 الشاشة الرئيسية</button></div>
+      <div><button class="secondary small" id="goDiversificationBtn">⚖️ ميزان محفظتك AI (توزيع التنوع)</button> <button class="secondary small" id="homeBtn">🏠 الشاشة الرئيسية</button></div>
     </div>
 
     ${ccyChipsHtml}
