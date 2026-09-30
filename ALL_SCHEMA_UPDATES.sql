@@ -1,5 +1,5 @@
 -- ============================================================
--- GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 113)
+-- GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 114)
 -- كل تحديثات قاعدة البيانات في ملف واحد.
 -- آمن تشغّله أي عدد من المرات: بيضيف الناقص بس ومبيمسحش أي بيانات.
 -- الاستخدام: phpMyAdmin ← اختار قاعدة البيانات ← تبويب SQL ← الصق الملف كله ← Go
@@ -56,6 +56,7 @@
 -- الإصدار 111: مفيش تغييرات في قاعدة البيانات (قائمة خطط الشبكة بنفس شكل الـ DCA + «تقرير سهم» + نطاق الشبكة تلقائي/يدوي بالمدة - الاختيار بيتحفظ جوه بيانات الخطة نفسها).
 -- الإصدار 112: مفيش تغييرات في قاعدة البيانات (جدول المستويات الجديد لخطط DCA وGrid: كل معلومة في عمود + أزرار ونافذة إدخال + عمليات البيع في سطور).
 -- الإصدار 113: مفيش تغييرات في قاعدة البيانات (عناوين اللاندينج مبتتداخلش + تسجيل الخروج بيرجّع لصفحة اللاندينج).
+-- الإصدار 114: جدول basira_reports («بصيرة GRIFFINE AI» - التحليلات المحفوظة) + إعدادات بصيرة في site_config.
 -- ============================================================
 
 -- الإصدار 85: ترميز الاتصال UTF-8 عشان النصوص العربي اللي بتتضاف من الملف (زي المسميات الوظيفية) تتحفظ صح
@@ -1166,4 +1167,19 @@ CREATE TABLE IF NOT EXISTS notify_prefs (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-SELECT 'GRIFFINE database is up to date (v113)' AS result;
+-- الإصدار 114: «بصيرة GRIFFINE AI» - التحليلات المحفوظة لكل مستخدم (+ رابط مشاركة للقراءة بس)
+CREATE TABLE IF NOT EXISTS basira_reports (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  account_email VARCHAR(190) NOT NULL,
+  symbol VARCHAR(20) NOT NULL,
+  market VARCHAR(20) NOT NULL DEFAULT 'مصر',
+  score TINYINT NOT NULL DEFAULT 50,
+  verdict VARCHAR(40) NOT NULL DEFAULT '',
+  data MEDIUMTEXT NOT NULL,
+  share_token VARCHAR(40) NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_bs_owner (account_email, id),
+  UNIQUE KEY uq_bs_share (share_token)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+SELECT 'GRIFFINE database is up to date (v114)' AS result;

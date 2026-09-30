@@ -53,6 +53,9 @@ function site_config_defaults(){
         'wa_notify_on'         => '0',
         'wa_notify_template'   => '',
         'notify_prefs_visible' => '0',
+        // الإصدار 114: «بصيرة GRIFFINE AI» - الإعدادات (JSON) + مفتاح Claude API (سر - عمره ما بيترجع للمتصفح)
+        'basira_cfg'           => '',
+        'basira_ai_key'        => '',
         'bank_on_eg' => '0', 'bank_name_eg' => '', 'bank_holder_eg' => '', 'bank_iban_eg' => '', 'bank_note_eg' => '', 'extra_on_eg' => '0', 'extra_label_eg' => '', 'extra_details_eg' => '', 'paymob_on_eg' => '0',
         'bank_on_sa' => '0', 'bank_name_sa' => '', 'bank_holder_sa' => '', 'bank_iban_sa' => '', 'bank_note_sa' => '', 'extra_on_sa' => '0', 'extra_label_sa' => '', 'extra_details_sa' => '', 'paymob_on_sa' => '0',
         'bank_on_ae' => '0', 'bank_name_ae' => '', 'bank_holder_ae' => '', 'bank_iban_ae' => '', 'bank_note_ae' => '', 'extra_on_ae' => '0', 'extra_label_ae' => '', 'extra_details_ae' => '', 'paymob_on_ae' => '0',
@@ -61,7 +64,7 @@ function site_config_defaults(){
     ];
 }
 // المفاتيح السرية اللي عمرها ما بتترجع للمتصفح (بيترجع بس إنها متسجّلة ولا لأ)
-function site_config_secret_keys(){ return ['paymob_api_key', 'paymob_hmac', 'sms_url', 'wa_token']; }
+function site_config_secret_keys(){ return ['paymob_api_key', 'paymob_hmac', 'sms_url', 'wa_token', 'basira_ai_key']; }
 
 function site_config_all($conn, $fresh = false){
     static $cache = null;

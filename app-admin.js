@@ -35,6 +35,7 @@ function adminNavButtonsHtml(){
     ]},
     { title: 'المحتوى والتنسيق', items: [
       { id:'goLandingBtn', perm:'edit_site_design', icon:'🏁', label:'صفحة اللاندينج (واجهة الموقع قبل الدخول)' },
+      { id:'goBasiraBtn', perm:'edit_site_design', icon:'🔮', label:'تحليلات بصيرة AI' },
       { id:'goStudioBtn', perm:'edit_site_design', icon:'🖌️', label:'استوديو التصميم (الثيمات وتعديل أي شاشة)' },
       { id:'goSiteDesignBtn', perm:'edit_site_design', icon:'🎨', label:'تنسيق الموقع' },
       { id:'goSiteTextsBtn', perm:'manage_site_content', icon:'📝', label:'نصوص شاشات الموقع' },
@@ -75,6 +76,7 @@ function wireAdminNavButtons(){
     goEmergencyBtn: () => renderEmergencyAdminPage(),   // الإصدار 100 (promo.js)
     goAdsBtn: () => renderAdsAdminPage(),               // الإصدار 100 (promo.js)
     goLandingBtn: () => renderAdminLandingPage(),       // الإصدار 108 (landing-admin.js)
+    goBasiraBtn: () => renderAdminBasira(),             // الإصدار 114 (basira.js)
     goBlacklistBtn: renderBlacklist,
     goArchiveBtn: renderArchivedCustomers,
     goStaffBtn: renderStaffManagementPage,
@@ -1303,6 +1305,7 @@ async function renderAdminSettingsPage(){
     { key:'hide_stock_screen', label:'إخفاء صفحة السهم (السعر والشارت)', desc:'' },
     { key:'hide_curve_home', label:'إخفاء منحنى أداء المحفظة في الرئيسية', desc:'' },
     { key:'hide_trash_screen', label:'إخفاء سلة المحذوفات عن العملاء', desc:'الحذف يفضل ينتقل للسلة، ويقدر الأدمن يسترجع من سلته.' },
+    { key:'hide_basira_screen', label:'إخفاء «بصيرة AI — تحليل الأسهم» عن العملاء', desc:'الشاشة بتختفي من القائمة والكشاف، والأدمن بيفضل يشوفها. إعداداتها من «تحليلات بصيرة AI» في لوحة التحكم.' },
     { key:'hide_opps_screen', label:'إخفاء «البحث عن فرص» في كشاف الأسهم عن العملاء', desc:'البحث عن فرص حسب المؤشرات الفنية مع إشعارات (لحد 4 فرص لكل مشترك).' },
     { key:'hide_trades_screen', label:'إخفاء «تقرير صفقاتي» عن العملاء', desc:'لو أظهرته: كل عميل يشوف صفقاته هو بس (الشراء والبيع والصفقات المقفولة والأرباح).' },
   ];

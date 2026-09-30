@@ -57,38 +57,40 @@ header("Content-Security-Policy: default-src 'self'; "
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="theme-boot.js?v=113"></script>
-<link rel="stylesheet" href="griffine.css?v=113">
-<link rel="stylesheet" href="shell.css?v=113">
-<link rel="stylesheet" href="landing.css?v=113">
+<script src="theme-boot.js?v=114"></script>
+<link rel="stylesheet" href="griffine.css?v=114">
+<link rel="stylesheet" href="shell.css?v=114">
+<link rel="stylesheet" href="landing.css?v=114">
+<link rel="stylesheet" href="basira.css?v=114">
 </head>
 <body>
 <div id="app"></div>
 <!-- الإصدار 100: الشاشات الطارئة (صيانة / انقطاع النت / السيرفر / التحميل البطيء) - لازم تبقى قبل أي ملف تاني -->
-<script src="emergency.js?v=113"></script>
+<script src="emergency.js?v=114"></script>
 
-<script src="shell.js?v=113"></script>
+<script src="shell.js?v=114"></script>
 <!-- الإصدار 72: استوديو التصميم - يطبّق الثيم وتعديلات الأدمن على كل الشاشات (شاشة التعديل نفسها studio-editor.js تُحمَّل للأدمن فقط) -->
-<script src="studio.js?v=113"></script>
+<script src="studio.js?v=114"></script>
 <!-- الإصدار 88: griffine.js قُسّم إلى ملفات حسب الأقسام (بالترتيب نفسه) - يجب أن يبقى app-init.js آخر ملف -->
-<script src="app-core.js?v=113"></script>
-<script src="app-public.js?v=113"></script>
-<script src="app-subscribe.js?v=113"></script>
-<script src="app-admin.js?v=113"></script>
-<script src="app-plans.js?v=113"></script>
-<script src="app-screener.js?v=113"></script>
-<script src="app-chat.js?v=113"></script>
-<script src="app-nav.js?v=113"></script>
-<script src="hr.js?v=113"></script>
-<script src="markets.js?v=113"></script>
-<script src="trades.js?v=113"></script>
-<script src="faq.js?v=113"></script>
-<script src="trash.js?v=113"></script>
-<script src="promo.js?v=113"></script>
-<script src="notify.js?v=113"></script>
-<script src="opps.js?v=113"></script>
-<script src="landing.js?v=113"></script>
-<script src="landing-admin.js?v=113"></script>
-<script src="app-init.js?v=113"></script>
+<script src="app-core.js?v=114"></script>
+<script src="app-public.js?v=114"></script>
+<script src="app-subscribe.js?v=114"></script>
+<script src="app-admin.js?v=114"></script>
+<script src="app-plans.js?v=114"></script>
+<script src="app-screener.js?v=114"></script>
+<script src="app-chat.js?v=114"></script>
+<script src="app-nav.js?v=114"></script>
+<script src="hr.js?v=114"></script>
+<script src="markets.js?v=114"></script>
+<script src="trades.js?v=114"></script>
+<script src="faq.js?v=114"></script>
+<script src="trash.js?v=114"></script>
+<script src="promo.js?v=114"></script>
+<script src="notify.js?v=114"></script>
+<script src="opps.js?v=114"></script>
+<script src="landing.js?v=114"></script>
+<script src="landing-admin.js?v=114"></script>
+<script src="basira.js?v=114"></script>
+<script src="app-init.js?v=114"></script>
 </body>
 </html>

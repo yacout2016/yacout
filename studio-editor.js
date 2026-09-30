@@ -91,25 +91,8 @@
     return { kind, txt: txt.slice(0, 40) + (txt.length > 40 ? '…' : '') };
   }
 
-  // محدد CSS ثابت للعنصر: من أقرب عنصر ليه id (أو الشريط الجانبي/العلوي/التبويبات) ونازل بترتيب العناصر
-  function cssPath(el){
-    const parts = [];
-    let cur = el;
-    while (cur && cur !== document.body && cur !== document.documentElement) {
-      if (cur.id && /^[A-Za-z][A-Za-z0-9_-]*$/.test(cur.id) && document.querySelectorAll('#' + cur.id).length === 1) { parts.unshift('#' + cur.id); break; }
-      const anchor = ['gs-sidebar', 'gs-appbar', 'gs-tabbar'].find(c => cur.classList && cur.classList.contains(c));
-      if (anchor) { parts.unshift('.' + anchor); break; }
-      const parent = cur.parentElement;
-      if (!parent) break;
-      const idx = Array.prototype.indexOf.call(parent.children, cur) + 1;
-      parts.unshift(`${cur.tagName.toLowerCase()}:nth-child(${idx})`);
-      cur = parent;
-      if (cur === document.body) parts.unshift('body');
-    }
-    const sel = parts.join(' > ');
-    try { if (ST.safeSelector(sel) && document.querySelector(sel) === el) return sel; } catch(e){}
-    return null;
-  }
+  // محدد CSS ثابت للعنصر (الإصدار 114: الأسماء الثابتة data-gs-key ← نفس العنصر عند كل المستخدمين) - في studio.js
+  function cssPath(el){ return ST.cssPath(el); }
 
 
   /* =====================================================================
@@ -175,7 +158,9 @@
     const psel = cssPath(p); if (!psel) return null;
     const n = p.children.length; if (n < 2 || n > 60) return null;
     const rule = state.draft.orders.find(r => r.screen === place && r.psel === psel);
-    let seq = rule ? rule.seq.filter(k => k >= 1 && k <= n) : [];
+    // الإصدار 114: لو كل العناصر ليها أسماء ثابتة ← الترتيب بيتحفظ بالأسماء (نفس الترتيب عند كل المستخدمين)
+    const kids = Array.from(p.children), keysNow = kids.every(c => ST.KEY_RE.test(c.getAttribute('data-gs-key') || '')) ? kids.map(c => c.getAttribute('data-gs-key')) : null;
+    let seq = rule ? (rule.keys && keysNow ? rule.keys.map(k => keysNow.indexOf(k) + 1).filter(k => k >= 1) : rule.seq.filter(k => k >= 1 && k <= n)) : [];
     for (let k = 1; k <= n; k++) if (!seq.includes(k)) seq.push(k);
     let mode = rule ? rule.mode : '';
     if (!rule) {
@@ -185,7 +170,7 @@
         mode = blocky ? 'col' : 'row';
       }
     }
-    return { p, psel, n, seq, mode, rule };
+    return { p, psel, n, seq, mode, rule, keys: keysNow };
   }
   function setOrder(place, g, seq, label){
     const list = state.draft.orders;
@@ -193,6 +178,7 @@
     const identity = seq.every((k, j) => k === j + 1);
     if (identity) { if (i >= 0) list.splice(i, 1); return; }
     const r = { screen: place, psel: g.psel, seq: seq.slice(), mode: g.mode, label: label || '' };
+    if (g.keys) r.keys = seq.map(k => g.keys[k - 1]).filter(Boolean);   // الإصدار 114
     if (i >= 0) list[i] = r; else list.push(r);
   }
 
@@ -204,7 +190,7 @@
   function buildUi(){
     if (!document.getElementById('gsStudioCss')) {
       const l = document.createElement('link');
-      l.id = 'gsStudioCss'; l.rel = 'stylesheet'; l.href = 'studio.css?v=113';
+      l.id = 'gsStudioCss'; l.rel = 'stylesheet'; l.href = 'studio.css?v=114';
       document.head.appendChild(l);
     }
     const root = document.createElement('div');

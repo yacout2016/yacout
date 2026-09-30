@@ -50,7 +50,7 @@
      ===================================================================== */
 
   // رقم الإصدار - بيظهر في شاشة "حسابي" (غيّره مع ?v= في index.php و VERSION في sw.js)
-  const APP_VERSION = 113;
+  const APP_VERSION = 114;
 
   /* الاستعلامات المتكررة (الدردشة/التوصيات/قائمة المتابعة) - استعلام متكيّف (الإصدار 89)
      - بتقف لما التبويب يكون مخفي أو الموبايل مقفول
@@ -311,6 +311,7 @@
     renderPlanTypeChooser:'plans', renderNewPlanForm:'plans', renderGridPlanForm:'plans', renderEditPlanSettings:'plans', renderGridEditPlanSettings:'plans',
     renderPortfolio:'portfolio', renderDiversificationReport:'portfolio',
     renderScreener:'screener',
+    renderBasira:'basira',
     renderRecommendationsCustomerPage:'rec',
     renderAccount:'account', renderProfilePage:'account', renderSubscriptionPlans:'account', renderMySubscriptionHistory:'account',
     renderReferralPage:'account', renderAboutPage:'account', renderContactInfo:'account', renderRefundPolicyPage:'account',
@@ -485,6 +486,7 @@
       !hidden('hide_grid_screen') && { tab:'plans', sub:'grid', label:'خطط الشبكة (Grid)', ic:'grid', go:() => renderGridPlansList() },
       !hidden('hide_portfolio_screen') && { tab:'portfolio', label:'المحفظة والتقارير', ic:'pie', go:() => renderPortfolio() },
       !hidden('hide_screener_screen') && { tab:'screener', label:'كشاف الأسهم', ic:'radar', go:() => renderScreener() },
+      (window.__isAdmin || !hidden('hide_basira_screen')) && { tab:'basira', since:'114', label:'بصيرة AI — تحليل الأسهم', ic:'bulb', go:() => renderBasira() },   // الإصدار 114
       !hidden('hide_recommendations_screen') && { tab:'rec', label:'التوصيات', ic:'megaphone', go:() => renderRecommendationsCustomerPage() },
       // الإصدار 88: قائمة المتابعة + تنبيهات الأسعار
       !hidden('hide_watchlist_screen') && { screen:'renderWatchlistPage', label:'قائمة المتابعة', ic:'star', go:() => renderWatchlistPage() },
@@ -570,7 +572,7 @@
     if (email) {
       const tabs = tabsForUser();
       tb.style.gridTemplateColumns = `repeat(${tabs.length},1fr)`;
-      tb.innerHTML = tabs.map((t, i) => `<button type="button" class="gs-tab" data-tab="${t.tab}" data-i="${i}"><span class="gs-tab-icon">${icon(t.ic)}</span><span>${t.label}</span></button>`).join('');
+      tb.innerHTML = tabs.map((t, i) => `<button type="button" class="gs-tab" data-tab="${t.tab}" data-i="${i}" data-gs-key="tab-${t.tab}"><span class="gs-tab-icon">${icon(t.ic)}</span><span>${t.label}</span></button>`).join('');
       tb.querySelectorAll('.gs-tab').forEach(b => b.onclick = () => { GS.closeSheet(); tabs[+b.dataset.i].go(); });
     } else tb.innerHTML = '';
 
@@ -578,11 +580,13 @@
     const sb = $('.gs-sidebar');
     if (email) {
       const items = sideItems();
-      sb.innerHTML = `<div class="gs-side-brand" id="gsSideBrand"><img src="${brandSrc()}" alt="GRIFFINE"><span>GRIFFINE</span></div>
+      // الإصدار 114: كل عنصر ليه اسم ثابت (data-gs-key) ← تعديلات استوديو التصميم بتتطبق على نفس العنصر عند كل المستخدمين مهما اختلفت القائمة
+      const skey = (it) => it.sec ? 'sec-' + ({ 'حسابي': 'account', 'الإدارة': 'admin' }[it.sec] || 'x') : (it.screen || (it.tab + (it.sub ? '-' + it.sub : '')));
+      sb.innerHTML = `<div class="gs-side-brand" id="gsSideBrand" data-gs-key="side-brand"><img src="${brandSrc()}" alt="GRIFFINE"><span>GRIFFINE</span></div>
         ${items.map((it, i) => it.sec
-          ? `<div class="gs-side-sec">${it.sec}</div>`
-          : `<button type="button" class="gs-side-item" data-i="${i}" ${it.tab ? `data-tab="${it.tab}"` : ''} ${it.screen ? `data-screen="${it.screen}"` : ''} ${it.sub ? `data-sub="${it.sub}"` : ''}>${icon(it.ic)}<span>${it.label}</span>${it.badge ? `<b class="gs-side-badge" data-gs-alerts-badge style="display:none"></b>` : ''}</button>`).join('')}
-        <div class="gs-side-foot"><div class="gs-side-user" id="gsSideUser"><span class="gs-avatar" id="gsSideAvatar">${esc(email.charAt(0).toUpperCase())}</span><span class="t"><b>${esc(email)}</b><small>الملف الشخصي والإعدادات</small></span></div></div>`;
+          ? `<div class="gs-side-sec" data-gs-key="${skey(it)}">${it.sec}</div>`
+          : `<button type="button" class="gs-side-item" data-i="${i}" data-gs-key="${skey(it)}"${it.since ? ` data-gs-since="${it.since}"` : ''} ${it.tab ? `data-tab="${it.tab}"` : ''} ${it.screen ? `data-screen="${it.screen}"` : ''} ${it.sub ? `data-sub="${it.sub}"` : ''}>${icon(it.ic)}<span>${it.label}</span>${it.badge ? `<b class="gs-side-badge" data-gs-alerts-badge style="display:none"></b>` : ''}</button>`).join('')}
+        <div class="gs-side-foot" data-gs-key="side-foot"><div class="gs-side-user" id="gsSideUser"><span class="gs-avatar" id="gsSideAvatar">${esc(email.charAt(0).toUpperCase())}</span><span class="t"><b>${esc(email)}</b><small>الملف الشخصي والإعدادات</small></span></div></div>`;
       sb.querySelectorAll('.gs-side-item').forEach(b => b.onclick = () => items[+b.dataset.i].go());
       $('#gsSideBrand').onclick = () => renderHome();
       $('#gsSideUser').onclick = () => GS.renderAccount();
@@ -1636,6 +1640,8 @@
     ['الإعدادات الإلزامية', 'renderAdminSettingsPage'],
     ['الشاشات الطارئة', 'renderEmergencyAdminPage'],
     ['البحث عن فرص', 'renderOpportunities'],
+    ['بصيرة AI — تحليل سهم', 'renderBasira'],
+    ['تحليلات بصيرة AI (الإعدادات)', 'renderAdminBasira'],
     ['الدعاية والعروض', 'renderAdsAdminPage'],
     ['الفريق والصلاحيات', 'renderStaffManagementPage'],
     ['شؤون الموظفين (HR)', 'renderHrPage'],

@@ -3,6 +3,17 @@ const http = require('http'); const prices = { COMI: 80, HRHO: 20, TMGH: 55, CRV
 const falling = new Set(['DROPX']);   // الإصدار 101: سهم نازل (RSI تشبع بيعي) لاختبار البحث عن فرص
 http.createServer((req, res) => { let body = ''; req.on('data', c => body += c); req.on('end', () => {
   const u = new URL(req.url, 'http://x'); const send = (o, c = 200) => { res.writeHead(c, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(o)); };
+  // الإصدار 114: أخبار (RSS) + Claude Messages API تجريبي لـ «بصيرة»
+  if (u.pathname === '/news') { const q = u.searchParams.get('q') || ''; res.writeHead(200, { 'Content-Type': 'application/rss+xml; charset=utf-8' });
+    const items = [['ارتفاع أرباح الشركة بنسبة 20% في الربع الثالث', 'مباشر'], ['تراجع السيولة الأجنبية في البورصة', 'الأهرام'], ['مجلس الإدارة يوافق على توزيع كوبون نقدي', 'البورصة'], ['البنك المركزي يثبت أسعار الفائدة', 'رويترز']];
+    return res.end(`<?xml version="1.0"?><rss><channel>${items.map(([t, s], i) => `<item><title>${t} - ${s}</title><link>https://example.com/n${i}?q=${encodeURIComponent(q)}</link><pubDate>${new Date(Date.now() - i * 3600e3).toUTCString()}</pubDate><source url="https://example.com">${s}</source></item>`).join('')}</channel></rss>`); }
+  if (u.pathname === '/ai-last') return send(global.__aiLast || {});
+  if (u.pathname === '/ai') { const j = JSON.parse(body || '{}'); global.__aiLast = { headers: req.headers, body: j, n: ((global.__aiLast || {}).n || 0) + 1 };
+    if (req.headers['x-api-key'] === 'sk-bad-key-000000000000000') return send({ type: 'error', error: { type: 'authentication_error', message: 'invalid x-api-key' } }, 401);
+    const out = { opinion: 'رأي تجريبي من الذكاء الاصطناعي: الصورة العامة متوازنة مع ميل إيجابي.', positives: ['نمو الأرباح', 'سيولة داخلة', 'فوق المتوسط 50'], negatives: ['تذبذب السوق', 'مقاومة قريبة'],
+      bull: { prob: 40, text: 'اختراق المقاومة' }, base: { prob: 40, text: 'تداول عرضي' }, bear: { prob: 20, text: 'كسر الدعم' },
+      horizons: [{ key: 'week', up: 99, note: 'زخم قصير' }, { key: 'month', up: 60, note: 'متوازن' }], news_summary: 'الأخبار تميل للإيجابية.', market_view: 'السوق في اتجاه صاعد متوسط.' };
+    return send({ id: 'msg_test', type: 'message', role: 'assistant', model: j.model, stop_reason: 'end_turn', content: [{ type: 'text', text: JSON.stringify(out) }], usage: { input_tokens: 10, output_tokens: 10 } }); }
   if (u.pathname === '/set') { prices[u.searchParams.get('sym')] = +u.searchParams.get('price'); return send({ ok: true, prices }); }
   if (/\/scan$/.test(u.pathname)) { const j = JSON.parse(body || '{}');
     // الإصدار 101: قائمة كل أسهم البورصة (من غير tickers)

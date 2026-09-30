@@ -101,7 +101,7 @@ function uc_clean_theme($t, $fonts){
 // ---------------------------------------------------------------------
 function uc_clean_overrides($o, $props, $fonts, $maxItems){
     if (!is_array($o)) return null;
-    $out = ["v" => 1, "texts" => [], "elTexts" => [], "styles" => [], "orders" => []];
+    $out = ["v" => 1, "keysV" => (int)($o['keysV'] ?? 0) === 1 ? 1 : 0, "texts" => [], "elTexts" => [], "styles" => [], "orders" => []];
 
     // أ) قاموس النصوص: كلمة ← كلمة (في شاشة أو في كل الموقع)
     foreach (array_slice((array)($o['texts'] ?? []), 0, $maxItems) as $r) {
@@ -139,7 +139,11 @@ function uc_clean_overrides($o, $props, $fonts, $maxItems){
         $seq = []; foreach (array_slice($r['seq'], 0, 60) as $n) { $n = intval($n); if ($n >= 1 && $n <= 200 && !in_array($n, $seq, true)) $seq[] = $n; }
         if (count($seq) < 2) continue;
         $mode = in_array($r['mode'] ?? '', ['col', 'row'], true) ? $r['mode'] : '';
-        $out['orders'][] = ["screen" => $screen, "psel" => $sel, "seq" => $seq, "mode" => $mode, "label" => uc_text($r['label'] ?? '', 80)];
+        // الإصدار 114: keys = أسماء العناصر الثابتة بالترتيب الجديد (بتغلب seq) ← الترتيب واحد عند كل المستخدمين
+        $keys = []; foreach (array_slice((array)($r['keys'] ?? []), 0, 60) as $k) { $k = (string)$k; if (preg_match('/^[A-Za-z0-9_\-]{1,60}$/', $k) && !in_array($k, $keys, true)) $keys[] = $k; }
+        $row = ["screen" => $screen, "psel" => $sel, "seq" => $seq, "mode" => $mode, "label" => uc_text($r['label'] ?? '', 80)];
+        if (count($keys) >= 2) $row['keys'] = $keys;
+        $out['orders'][] = $row;
     }
     return $out;
 }

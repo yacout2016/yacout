@@ -302,6 +302,37 @@
     return true;
   };
 
+  /* الإصدار 114: محدد CSS ثابت للعنصر - نفس العنصر عند كل المستخدمين (الأدمن والعميل والقديم والجديد)
+     - أقرب عنصر ليه id فريد ← #id
+     - عنصر ليه اسم ثابت (data-gs-key: عناصر القائمة الجانبية / التبويبات) ← .gs-sidebar [data-gs-key="..."]
+       (قبل كده كان بالترتيب: عناصر القائمة عند الأدمن أكتر من العميل فالترتيب بيختلف والتعديل مكانش بيوصل)
+     - غير كده بترتيب العناصر جوه الأب */
+  const KEY_RE = /^[A-Za-z0-9_\-]{1,60}$/;
+  ST.KEY_RE = KEY_RE;
+  ST.cssPath = function(el){
+    const parts = [];
+    let cur = el, prefix = '';
+    while (cur && cur !== document.body && cur !== document.documentElement) {
+      if (cur.id && /^[A-Za-z][A-Za-z0-9_-]*$/.test(cur.id) && document.querySelectorAll('#' + cur.id).length === 1) { parts.unshift('#' + cur.id); break; }
+      const anchor = ['gs-sidebar', 'gs-appbar', 'gs-tabbar'].find(c => cur.classList && cur.classList.contains(c));
+      if (anchor) { parts.unshift('.' + anchor); break; }
+      const k = cur.getAttribute && cur.getAttribute('data-gs-key');
+      if (k && KEY_RE.test(k)) {
+        const anc = cur.closest('.gs-sidebar, .gs-appbar, .gs-tabbar');
+        if (anc) { parts.unshift(`[data-gs-key="${k}"]`); prefix = '.' + ['gs-sidebar', 'gs-appbar', 'gs-tabbar'].find(c => anc.classList.contains(c)) + ' '; break; }
+        if (document.querySelectorAll(`[data-gs-key="${k}"]`).length === 1) { parts.unshift(`[data-gs-key="${k}"]`); break; }
+      }
+      const parent = cur.parentElement;
+      if (!parent) break;
+      parts.unshift(`${cur.tagName.toLowerCase()}:nth-child(${Array.prototype.indexOf.call(parent.children, cur) + 1})`);
+      cur = parent;
+      if (cur === document.body) parts.unshift('body');
+    }
+    const sel = prefix + parts.join(' > ');
+    try { if (ST.safeSelector(sel) && document.querySelector(sel) === el) return sel; } catch(e){}
+    return null;
+  };
+
   ST.stylesCss = function(ovr){
     return ((ovr && ovr.styles) || []).map(r => {
       if (!ST.safeSelector(r.sel) || !r.css) return '';
@@ -328,7 +359,8 @@
       let css = r.mode === 'col' ? `${P}{display:flex !important;flex-direction:column !important;}`
               : r.mode === 'row' ? `${P}{display:flex !important;flex-direction:row !important;flex-wrap:wrap !important;align-items:center !important;column-gap:6px;}` : '';
       css += `${P} > *{order:1000;}`;
-      r.seq.forEach((n, i) => { n = parseInt(n, 10); if (n >= 1 && n <= 200) css += `${P} > :nth-child(${n}){order:${i + 1} !important;}`; });
+      if (Array.isArray(r.keys) && r.keys.length >= 2) r.keys.forEach((k, i) => { if (KEY_RE.test(k)) css += `${P} > [data-gs-key="${k}"]{order:${i + 1} !important;}`; });   // الإصدار 114: بالأسماء الثابتة
+      else r.seq.forEach((n, i) => { n = parseInt(n, 10); if (n >= 1 && n <= 200) css += `${P} > :nth-child(${n}){order:${i + 1} !important;}`; });
       return css;
     }).join('\n');
   };
@@ -432,8 +464,48 @@
     touchedEls = now;
   }
 
+  /* الإصدار 114: تحويل تعديلات القائمة الجانبية / التبويبات القديمة (المحفوظة بالترتيب) للأسماء الثابتة
+     - بيحصل مرة واحدة في متصفح الأدمن (نفس القائمة اللي التعديلات اتعملت عليها) وبيتحفظ على السيرفر ← يوصل لكل المستخدمين
+     - العناصر اللي اتضافت بعد كده (data-gs-since) بتتشال مؤقتًا أثناء التحويل عشان الترتيب القديم يطابق */
+  ST.migrateKeys = async function(){
+    const O = ST.overrides;
+    if (ST._migrating || ST._keysChecked || !ST.loaded || !O || O.keysV === 1 || !ST.canEdit() || !document.querySelector('.gs-sidebar [data-gs-key]')) return false;
+    const CH = /^\.gs-(sidebar|appbar|tabbar)\b/;
+    const legacy = (O.styles || []).concat(O.elTexts || []).some(r => CH.test(r.sel || '') && /nth-child/.test(r.sel)) || (O.orders || []).some(r => CH.test(r.psel || '') && !r.keys);
+    ST._migrating = true;
+    const held = [];
+    try {
+      if (legacy) {
+        document.querySelectorAll('.gs-sidebar [data-gs-since], .gs-tabbar [data-gs-since]').forEach(el => { const pv = el.previousElementSibling; held.push([el, el.parentNode, el.nextSibling, pv && pv.getAttribute('data-gs-key')]); el.remove(); });
+        const fix = (sel) => { if (!CH.test(sel || '') || !/nth-child/.test(sel)) return sel; let el = null; try { el = document.querySelector(sel); } catch(e){} if (!el) return sel; return ST.cssPath(el) || sel; };
+        (O.styles || []).forEach(r => { r.sel = fix(r.sel); });
+        (O.elTexts || []).forEach(r => { r.sel = fix(r.sel); });
+        (O.orders || []).forEach(r => {
+          if (!CH.test(r.psel || '') || r.keys) return;
+          let p = null; try { p = document.querySelector(r.psel); } catch(e){} if (!p) return;
+          const kids = Array.from(p.children);
+          if (!kids.every(c => KEY_RE.test(c.getAttribute('data-gs-key') || ''))) return;
+          r.keys = r.seq.map(n => kids[n - 1] && kids[n - 1].getAttribute('data-gs-key')).filter(Boolean);
+          // العناصر الجديدة (اللي اتشالت مؤقتًا) بتاخد مكانها الطبيعي بعد العنصر اللي قبلها
+          held.forEach(([el, par, nx, pvKey]) => { if (par !== p) return; const k = el.getAttribute('data-gs-key'), at = r.keys.indexOf(pvKey); if (k && !r.keys.includes(k)) r.keys.splice(at >= 0 ? at + 1 : r.keys.length, 0, k); });
+          r.psel = ST.cssPath(p) || r.psel;
+        });
+      }
+    } finally { held.reverse().forEach(([el, par, nx]) => { if (par) par.insertBefore(el, nx && nx.parentNode === par ? nx : null); }); }
+    ST._keysChecked = true;
+    if (legacy) {
+      O.keysV = 1;
+      try { await ST.save('overrides', O); if (window.GShell) GShell.toast('تم تعميم تعديلات استوديو التصميم على كل المستخدمين ✅', 'ok'); }
+      catch(e){ O.keysV = 0; ST._keysChecked = false; }
+    }
+    ST._migrating = false;
+    ST.apply();
+    return true;
+  };
+
   // تطبيق كل تعديلات الشاشات (بيتنادى من shell.js بعد رسم أي شاشة)
   ST.apply = function(){
+    if (!ST._migrating && !ST._keysChecked && ST.loaded && ST.overrides && ST.overrides.keysV !== 1 && window.__isAdmin) setTimeout(() => { ST.migrateKeys(); }, 0);
     try {
       // .gs-st-br = نص فيه أكتر من سطر (بيغلب "الجداول في سطر واحد" كمان)
       styleTag('gsStudioRules').textContent = '.gs-st-br{white-space:pre-line !important;}\n' + ST.ordersCss(ST.overrides) + '\n' + ST.stylesCss(ST.overrides);   // الإصدار 107: التنسيق بعد الترتيب ← ترتيب الصندوق (عمودين / وسط ...) بيغلب
@@ -487,7 +559,7 @@
     if (!window.GStudioEditor) {
       await new Promise((res, rej) => {
         const s = document.createElement('script');
-        s.src = 'studio-editor.js?v=113'; s.onload = res; s.onerror = () => rej(new Error('تعذّر تحميل استوديو التصميم'));
+        s.src = 'studio-editor.js?v=114'; s.onload = res; s.onerror = () => rej(new Error('تعذّر تحميل استوديو التصميم'));
         document.head.appendChild(s);
       }).catch(e => { if (window.GShell) GShell.toast(e.message, 'err'); });
     }

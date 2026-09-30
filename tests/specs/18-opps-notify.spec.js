@@ -13,7 +13,7 @@ const loginAs = (p, a) => p.evaluate(async ([e, pw]) => { window.alert = () => {
 
   // 1) الدخول من كشاف الأسهم + التنبيه
   await a.evaluate(() => renderScreener()); await a.waitForTimeout(1200);
-  check('كشاف الأسهم: زرار «البحث عن فرص» + إنها ليست توصية', await a.locator('#goOppsBtn').count() === 1 && /ليست توصية استثمارية/.test(await a.textContent('.opp-entry')));
+  check('كشاف الأسهم: زرار «البحث عن فرص» + إنها ليست توصية', await a.locator('#goOppsBtn').count() === 1 && /ليست توصية استثمارية/.test(await a.textContent('.opp-entry:not(.bs-entry)')));
   await a.click('#goOppsBtn'); await a.waitForSelector('#oppForm', { timeout: 8000 });
   check('شاشة الفرص: تنبيه «مش توصية استثمارية»', /مش توصية استثمارية/.test(await a.textContent('.opp-disc')));
   // 2) عكس الشرط الافتراضي مع البيع

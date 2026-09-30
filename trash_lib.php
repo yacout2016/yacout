@@ -14,7 +14,7 @@
 // الجداول المسموح نسخها/استرجاعها (حماية: مفيش استرجاع لأي جدول تاني)
 const TRASH_TABLES = ['user_plans', 'user_watchlist', 'custom_alerts', 'staff_members', 'staff_permissions', 'hr_employees', 'hr_documents',
     'hr_attendance', 'job_titles', 'chat_faq', 'articles', 'testimonials', 'blacklist', 'subscription_plans', 'suggestions',
-    'chat_messages', 'chat_conversation_meta', 'subscribers', 'users', 'recommendations', 'user_alerts', 'opportunities', 'opportunity_hits'];
+    'chat_messages', 'chat_conversation_meta', 'subscribers', 'users', 'recommendations', 'user_alerts', 'opportunities', 'opportunity_hits', 'basira_reports'];
 const TRASH_KEEP_DAYS = 90;
 
 function trash_ready($conn){

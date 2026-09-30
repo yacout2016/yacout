@@ -127,6 +127,7 @@ function getAllAdminSettings($conn){
         'hide_trash_screen' => false,
         'hide_trades_screen' => true,     // تقرير صفقاتي للعميل - مخفي لحد ما الأدمن يظهره
         'hide_opps_screen' => false,      // الإصدار 101: البحث عن فرص في كشاف الأسهم
+        'hide_basira_screen' => false,    // الإصدار 114: تحليلات بصيرة AI
     ];
     $result = @$conn->query("SELECT setting_key, setting_value FROM admin_settings");
     if ($result) {
