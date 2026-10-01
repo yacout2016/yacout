@@ -20,12 +20,12 @@ function gAiCellHtml(email){
   const lim = p.limit == null ? '' : String(p.limit), custom = lim !== '' && !AI_LIMITS.includes(lim);
   return `<div class="g-np g-ai" data-ai-email="${escapeHtml(e)}">
     ${cb('basira', '🔮 بصيرة', 'شاشة بصيرة AI — تحليل الأسهم')}${cb('mizan', '⚖️ ميزان المحفظة', 'شاشة ميزان محفظتك AI')}${cb('mizanai', '🧭 ميزان GRIFFINE', 'شاشة ميزان GRIFFINE AI')}
-    <select data-ai="paid" title="الذكاء الاصطناعي المدفوع (Claude) للمشترك ده" ${dis}>
+    <select class="g-np-vis" data-ai="paid" title="الذكاء الاصطناعي المدفوع (Claude) للمشترك ده" ${dis}>
       <option value="" ${p.paid === null ? 'selected' : ''}>💳 المدفوع: حسب الباقة (${pro ? 'برو ✓' : 'مش برو'})</option>
       <option value="1" ${p.paid === true ? 'selected' : ''}>💳 المدفوع: مفتوح له</option>
       <option value="0" ${p.paid === false ? 'selected' : ''}>💳 المدفوع: مقفول (مجاني بس)</option>
     </select>
-    <select data-ai="daily_limit" title="الحد اليومي لتحليلات الـ AI المدفوع — بعده بيكمّل بالمجاني" ${dis}>
+    <select class="g-np-vis" data-ai="daily_limit" title="الحد اليومي لتحليلات الـ AI المدفوع — بعده بيكمّل بالمجاني" ${dis}>
       ${AI_LIMITS.map(v => `<option value="${v}" ${(!custom && lim === v) ? 'selected' : ''}>${v === '' ? '♾ الحد اليومي: مفتوح' : 'الحد اليومي: ' + v}</option>`).join('')}
       ${custom ? `<option value="${lim}" selected>الحد اليومي: ${lim}</option>` : ''}<option value="custom">رقم آخر…</option>
     </select><small class="u-muted" title="تحليلات AI مدفوعة النهارده">النهارده: ${p.used || 0}</small></div>`;

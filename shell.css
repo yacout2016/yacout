@@ -1281,4 +1281,4 @@ body.g-shell #app button.wl-del, button.wl-del{ padding:5px 9px !important; min-
 .ai-state{ border-inline-start:5px solid #10B981 !important; }
 .ai-state.on{ border-inline-start-color:#D4AF37 !important; }
 .ai-state .ai-big{ font-size:17px; margin-bottom:6px; }
-.g-ai select{ width:auto !important; max-width:220px; font-size:12px; padding:4px 6px; margin:2px 0 !important; }
+.g-ai .g-np-vis{ max-width:230px; }
