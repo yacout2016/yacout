@@ -57,46 +57,46 @@ header("Content-Security-Policy: default-src 'self'; "
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="theme-boot.js?v=130"></script>
-<link rel="stylesheet" href="griffine.css?v=130">
-<link rel="stylesheet" href="shell.css?v=130">
-<link rel="stylesheet" href="landing.css?v=130">
-<link rel="stylesheet" href="basira.css?v=130">
-<link rel="stylesheet" href="mizan.css?v=130">
-<link rel="stylesheet" href="mizanai.css?v=130">
+<script src="theme-boot.js?v=131"></script>
+<link rel="stylesheet" href="griffine.css?v=131">
+<link rel="stylesheet" href="shell.css?v=131">
+<link rel="stylesheet" href="landing.css?v=131">
+<link rel="stylesheet" href="basira.css?v=131">
+<link rel="stylesheet" href="mizan.css?v=131">
+<link rel="stylesheet" href="mizanai.css?v=131">
 </head>
 <body>
 <div id="app"></div>
 <!-- الإصدار 100: الشاشات الطارئة (صيانة / انقطاع النت / السيرفر / التحميل البطيء) - لازم تبقى قبل أي ملف تاني -->
-<script src="emergency.js?v=130"></script>
+<script src="emergency.js?v=131"></script>
 
-<script src="shell.js?v=130"></script>
+<script src="shell.js?v=131"></script>
 <!-- الإصدار 72: استوديو التصميم - يطبّق الثيم وتعديلات الأدمن على كل الشاشات (شاشة التعديل نفسها studio-editor.js تُحمَّل للأدمن فقط) -->
-<script src="studio.js?v=130"></script>
+<script src="studio.js?v=131"></script>
 <!-- الإصدار 88: griffine.js قُسّم إلى ملفات حسب الأقسام (بالترتيب نفسه) - يجب أن يبقى app-init.js آخر ملف -->
-<script src="app-core.js?v=130"></script>
-<script src="app-public.js?v=130"></script>
-<script src="app-subscribe.js?v=130"></script>
-<script src="app-admin.js?v=130"></script>
-<script src="app-plans.js?v=130"></script>
-<script src="app-screener.js?v=130"></script>
-<script src="app-chat.js?v=130"></script>
-<script src="app-nav.js?v=130"></script>
-<script src="hr.js?v=130"></script>
-<script src="markets.js?v=130"></script>
-<script src="trades.js?v=130"></script>
-<script src="faq.js?v=130"></script>
-<script src="trash.js?v=130"></script>
-<script src="promo.js?v=130"></script>
-<script src="notify.js?v=130"></script>
-<script src="ai_access.js?v=130"></script>
-<script src="recs.js?v=130"></script>
-<script src="opps.js?v=130"></script>
-<script src="landing.js?v=130"></script>
-<script src="landing-admin.js?v=130"></script>
-<script src="basira.js?v=130"></script>
-<script src="mizan.js?v=130"></script>
-<script src="mizanai.js?v=130"></script>
-<script src="app-init.js?v=130"></script>
+<script src="app-core.js?v=131"></script>
+<script src="app-public.js?v=131"></script>
+<script src="app-subscribe.js?v=131"></script>
+<script src="app-admin.js?v=131"></script>
+<script src="app-plans.js?v=131"></script>
+<script src="app-screener.js?v=131"></script>
+<script src="app-chat.js?v=131"></script>
+<script src="app-nav.js?v=131"></script>
+<script src="hr.js?v=131"></script>
+<script src="markets.js?v=131"></script>
+<script src="trades.js?v=131"></script>
+<script src="faq.js?v=131"></script>
+<script src="trash.js?v=131"></script>
+<script src="promo.js?v=131"></script>
+<script src="notify.js?v=131"></script>
+<script src="ai_access.js?v=131"></script>
+<script src="recs.js?v=131"></script>
+<script src="opps.js?v=131"></script>
+<script src="landing.js?v=131"></script>
+<script src="landing-admin.js?v=131"></script>
+<script src="basira.js?v=131"></script>
+<script src="mizan.js?v=131"></script>
+<script src="mizanai.js?v=131"></script>
+<script src="app-init.js?v=131"></script>
 </body>
 </html>

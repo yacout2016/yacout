@@ -109,11 +109,13 @@
             ${meta.waOn ? '<label class="u-check"><input type="checkbox" id="rcChWa"> 🟢 واتساب (رسالة بسيطة)</label>' : ''}</div>
           <h3 class="rc-h">${E(C.t_preview)}</h3>
           <div id="rcPreview"></div>
-          <div class="rc-row"><button type="button" class="rc-send" id="rcSend">${E(C.t_send_buy)}</button><span id="rcMsg" class="u-note"></span></div>
+          ${meta.approvalOn && !meta.canApprove ? `<div class="rc-pendnote">⏳ ${E(C.t_pending_note)}</div>` : ''}
+          <div class="rc-row"><button type="button" class="secondary rc-pvbtn" id="rcPreviewBtn">${E(C.t_btn_preview)}</button><button type="button" class="secondary" id="rcDraft">${E(C.t_btn_draft)}</button>
+            <button type="button" class="rc-send" id="rcSend">${E(C.t_send_buy)}</button><span id="rcMsg" class="u-note"></span></div>
           <div id="rcProg" hidden></div>
         </section>
       </div>
-      <div class="rc-loghead"><h2 class="u-m0">سجل التوصيات (<span id="recCount">${recs.length}</span>)</h2>${gAdminMarketBarHtml('recMarketF')}<button class="secondary small u-wa" id="clearNowBtn">🗑️ إلغاء كل النشطة الآن</button></div>
+      <div class="rc-loghead"><h2 class="u-m0">سجل التوصيات (<span id="recCount">${recs.length}</span>)</h2><span class="rc-pendbadge" id="recPendBadge" hidden></span>${gAdminMarketBarHtml('recMarketF')}<button class="secondary small u-wa" id="clearNowBtn">🗑️ إلغاء كل النشطة الآن</button></div>
       <div id="recListWrap"></div>
     </div>`;
     wireAdminNavButtons();
@@ -123,13 +125,23 @@
       window.__rcActiveSyms = recs.filter(r => r.status === 'active').map(r => r.symbol);
       const mf = gAdminMarket(), shown = mf ? recs.filter(r => (r.market || 'مصر') === mf) : recs;
       $('recCount').textContent = shown.length;
-      $('recListWrap').innerHTML = shown.length ? shown.map(r => logCard(r, email)).join('') : '<div class="section-card u-note">لا توجد توصيات في السجل بعد.</div>';
+      const ord = { pending: 0, draft: 1, rejected: 2 }, sorted = shown.slice().sort((a, b) => (ord[a.status] ?? 3) - (ord[b.status] ?? 3));
+      const np = shown.filter(r => r.status === 'pending').length, pb = $('recPendBadge'); if (pb) { pb.hidden = !np; pb.textContent = `⏳ ${np} بانتظار الموافقة`; }
+      $('recListWrap').innerHTML = sorted.length ? sorted.map(r => logCard(r, email)).join('') : '<div class="section-card u-note">لا توجد توصيات في السجل بعد.</div>';
     };
     const reload = async () => { const f = await getRecommendationsLog(); if (f && f.success) { recs = f.recommendations; renderList(); } };
     renderList(); gWireAdminMarket('recMarketF', renderList);
     window.__recLogTick = setInterval(renderList, 60000);
     $('recListWrap').addEventListener('click', async (e) => {
       const d = e.target.closest('[data-rc-del]'), u = e.target.closest('[data-rc-upd]');
+      // الإصدار 131: معاينة / إرسال المسودة أو الموافقة / رفض / حذف للسلة
+      const pv = e.target.closest('[data-rc-pv]'), pub = e.target.closest('[data-rc-pub]'), rej = e.target.closest('[data-rc-rej]'), tr = e.target.closest('[data-rc-trash]');
+      const act = async (body, ok) => { const x = await apiPost('/recs_api.php', body).catch(() => null); if (!x || !x.success) return toast((x && x.message) || 'حصل خطأ', 'err'); toast(ok(x)); reload(); if (x.queued) pump(); };
+      if (pv) previewSaved(pv.dataset.rcPv);
+      if (pub) { const r0 = recs.find(x => String(x.id) === pub.dataset.rcPub); if (!await gConfirm(r0 && r0.status === 'pending' ? `الموافقة على توصية ${r0.symbol} وإرسالها لكل المشتركين؟` : 'إرسال المسودة دي؟')) return;
+        act({ action: 'publish', id: pub.dataset.rcPub }, (x) => x.status === 'pending' ? 'اتبعتت للمراجعة ✓' : `اتبعتت ✓ (${x.recipients} مشترك)`); }
+      if (rej) { const why = await gPrompt('سبب الرفض (هيوصل للمحلل):', '', { ok: '❌ رفض' }); if (why === null || why === undefined) return; act({ action: 'reject', id: rej.dataset.rcRej, reason: why }, () => 'اترفضت التوصية واتبلّغ المحلل'); }
+      if (tr) { if (!await gConfirm('حذف التوصية دي؟ هتتنقل لسلة المحذوفات وتقدر ترجّعها أو تمسحها نهائي من هناك.', { ok: '🗑 نقل للسلة', danger: true })) return; act({ action: 'trash', id: tr.dataset.rcTrash }, () => 'اتنقلت لسلة المحذوفات'); }
       if (d) { if (!await gConfirm('إلغاء التوصية دي الآن؟ هتختفي عند كل العملاء.')) return; const r = await deleteRecommendation(d.dataset.rcDel); if (r.success) reload(); else toast(r.message || 'حصل خطأ', 'err'); }
       if (u) updateModal(recs.find(x => String(x.id) === u.dataset.rcUpd), reload);
     });
@@ -154,7 +166,9 @@
     $('rcBtnScan').onclick = () => findOpp($('rcMkt').value);
     $('rcIndAdd').onchange = () => { const k = $('rcIndAdd').value; if (k && !IND.includes(k)) IND.push(k); paintInd(); paint(); };
     $('rcIndChips').onclick = (e) => { const b = e.target.closest('[data-ind]'); if (!b) return; IND = IND.filter(k => k !== b.dataset.ind); paintInd(); paint(); };
-    $('rcSend').onclick = send;
+    $('rcSend').onclick = () => send('send');
+    $('rcDraft').onclick = () => send('draft');
+    $('rcPreviewBtn').onclick = previewForm;
     paintInd(); setType();
   }
   function paintInd(){
@@ -173,7 +187,7 @@
     document.querySelectorAll('.rc-pc').forEach(x => { x.hidden = !buy; }); $('rcPctTh').hidden = !buy;
     if (!buy) { $('rcStop1Mode').checked = true; }
     setStopMode(true);
-    $('rcSend').textContent = buy ? C.t_send_buy : C.t_send_sell;
+    $('rcSend').textContent = META.approvalOn && !META.canApprove ? C.t_send_review : (buy ? C.t_send_buy : C.t_send_sell);
     paint();
   }
   // وقف الخسارة: مرحلة واحدة (كسر أول دعم — 100%) أو 3 مراحل (S1 / S2 / S3 بنسب)
@@ -402,30 +416,102 @@
     });
   }
 
-  async function send(){
-    const o = formObj(), msg = $('rcMsg');
-    if (!LV) return toast('اكتب كود سهم صحيح الأول', 'err');
+  // بيانات التوصية زي ما هي في الشاشة (للإرسال / المسودة / المعاينة) — مع صور الرسم وفيبوناتشي
+  async function buildBody(action){
+    const o = formObj();
     const ch = { chApp: $('rcChApp').checked ? '1' : '0', chEmail: $('rcChEmail').checked ? '1' : '0', chWa: $('rcChWa') && $('rcChWa').checked ? '1' : '0' };
-    if (ch.chApp + ch.chEmail + ch.chWa === '000') return toast('اختار قناة إرسال واحدة على الأقل', 'err');
-    if (o.attach.includes('ai') && !o.aiText) { if (!await gConfirm('رأي بصيرة AI لسه ما وصلش — تبعت من غيره؟')) return; }
-    if (!await gConfirm(`إرسال ${o.type === 'buy' ? 'توصية شراء' : 'توصية بيع'} ${o.symbol} لكل مشتركين بورصة ${o.market}؟`)) return;
-    if (META.canRename) { try { localStorage.setItem('gs_rec_analyst', o.analyst); } catch(e){} }
-    $('rcSend').disabled = true; msg.textContent = '⏳ جارٍ تجهيز الرسم والإرسال…';
     const [imgChart, imgFib] = await Promise.all([o.attach.includes('chart') ? svgToPng(LAST_SVG.main) : '', o.attach.includes('fib') ? svgToPng(LAST_SVG.fib || svgFib(series())) : '']);
-    const body = Object.assign({ action: 'send', type: o.type, symbol: o.symbol, stockName: o.stockName, market: o.market, timeframe: o.timeframe, from: o.buyFrom ?? '', to: o.buyTo ?? '', validityHours: o.validityHours,
+    const body = Object.assign({ action, type: o.type, symbol: o.symbol, stockName: o.stockName, market: o.market, timeframe: o.timeframe, from: o.buyFrom ?? '', to: o.buyTo ?? '', validityHours: o.validityHours,
       sellPct: o.sellPct ?? '', stop1: o.stop1 ?? '', stop1pct: o.stop1Pct ?? '', stop2: o.stop2 ?? '', stop2pct: o.stop2Pct ?? '', stop3: o.stop3 ?? '', stop3pct: o.stop3Pct ?? '', note: o.note, analyst: o.analyst, last: LV.last ?? '',
       lv_p: LV.levels ? LV.levels.p : '', lv_s1: LV.levels ? LV.levels.s1 : '', lv_s2: LV.levels ? LV.levels.s2 : '', lv_s3: LV.levels ? LV.levels.s3 : '',
       attach: o.attach.join(','), aiText: o.aiText, indicators: JSON.stringify(o.indicators), img_chart: imgChart, img_fib: imgFib }, ch);
     o.resistances.forEach((x, i) => { body['t' + (i + 1)] = x.level ?? ''; body['t' + (i + 1) + 'pct'] = x.pct ?? ''; });
-    msg.textContent = '⏳ جارٍ الإرسال…';
+    return { o, ch, body };
+  }
+  async function send(mode){
+    const msg = $('rcMsg');
+    if (!LV) return toast('اكتب كود سهم صحيح الأول', 'err');
+    const o = formObj(), review = META.approvalOn && !META.canApprove;
+    const chk = { chApp: $('rcChApp').checked, chEmail: $('rcChEmail').checked, chWa: $('rcChWa') && $('rcChWa').checked };
+    if (!chk.chApp && !chk.chEmail && !chk.chWa) return toast('اختار قناة إرسال واحدة على الأقل', 'err');
+    if (mode === 'send' && o.attach.includes('ai') && !o.aiText) { if (!await gConfirm('رأي بصيرة AI لسه ما وصلش — تبعت من غيره؟')) return; }
+    if (mode === 'send' && !await gConfirm(review ? `إرسال ${o.type === 'buy' ? 'توصية الشراء' : 'توصية البيع'} ${o.symbol} للمراجعة؟ هتتبعت للمشتركين بعد الموافقة.` : `إرسال ${o.type === 'buy' ? 'توصية شراء' : 'توصية بيع'} ${o.symbol} لكل مشتركين بورصة ${o.market}؟`)) return;
+    if (META.canRename) { try { localStorage.setItem('gs_rec_analyst', o.analyst); } catch(e){} }
+    $('rcSend').disabled = $('rcDraft').disabled = true; msg.textContent = '⏳ جارٍ تجهيز الرسم…';
+    const { body } = await buildBody('send'); if (mode === 'draft') body.mode = 'draft';
+    msg.textContent = mode === 'draft' ? '⏳ جارٍ الحفظ…' : '⏳ جارٍ الإرسال…';
     const r = await apiPost('/recs_api.php', body).catch(() => null);
-    $('rcSend').disabled = false;
+    $('rcSend').disabled = $('rcDraft').disabled = false;
     if (!r || !r.success) { msg.textContent = (r && r.message) || 'تعذّر الإرسال'; return toast(msg.textContent, 'err'); }
-    msg.textContent = `✅ اتبعتت — ${r.recipients} مشترك (إشعار المنصة: ${r.app})${r.queued ? ` — ${r.queued} إيميل / واتساب في الطريق` : ''}`;
-    toast('تم إرسال التوصية ✓');
+    if (r.status === 'draft') { msg.textContent = '💾 اتحفظت مسودة — هتلاقيها في السجل تحت (معاينة / PDF / إرسال / حذف)'; toast('اتحفظت المسودة ✓'); }
+    else if (r.status === 'pending') { msg.textContent = '📨 اتبعتت للمراجعة — هتتبعت للمشتركين أول ما الأدمن يوافق'; toast('التوصية اتبعتت للمراجعة ✓'); }
+    else { msg.textContent = `✅ اتبعتت — ${r.recipients} مشترك (إشعار المنصة: ${r.app})${r.queued ? ` — ${r.queued} إيميل / واتساب في الطريق` : ''}`; toast('تم إرسال التوصية ✓'); }
     if (window.__rcReload) window.__rcReload();
     if (r.queued) pump();
   }
+  // الإصدار 131: معاينة قبل الإرسال — الإشعار + الإيميل + الواتساب (نفس اللي بيتبعت بالظبط) + PDF + مشاركة
+  async function previewForm(){
+    if (!LV) return toast('اكتب كود سهم صحيح الأول', 'err');
+    const b = $('rcPreviewBtn'); b.disabled = true;
+    const { body, o } = await buildBody('preview');
+    const r = await apiPost('/recs_api.php', body).catch(() => null); b.disabled = false;
+    if (!r || !r.success) return toast((r && r.message) || 'تعذّر تجهيز المعاينة', 'err');
+    previewModal(r, { card: cardHtml(o, { preview: true }), label: `${o.symbol} — ${o.stockName}` });
+  }
+  async function previewSaved(id, actions){
+    const r = await apiGet('/recs_api.php?action=preview_id&id=' + encodeURIComponent(id)).catch(() => null);
+    if (!r || !r.success) return toast((r && r.message) || 'تعذّر تجهيز المعاينة', 'err');
+    previewModal(r, Object.assign({ label: r.title }, actions || {}));
+  }
+  function emailBody(html){ try { const d = new DOMParser().parseFromString(html, 'text/html'); return d.body ? d.body.innerHTML : html; } catch(e){ return html; } }
+  function pvParts(p, opt){
+    const lines = (p.app || []).map(l => `<div class="rcpv-l">${E(l).replace(/\n/g, '<br>')}</div>`).join('');
+    return {
+      app: `<div class="rcpv-push"><div class="rcpv-ph"><span>GRIFFINE</span><span>الآن</span></div><b>${E(p.push.title)}</b><div class="rcpv-pb">${E(String(p.push.body || '').split('\n').slice(0, 3).join(' · '))}</div>${p.push.image ? `<img src="${E(p.push.image)}" alt="">` : ''}</div>
+        <div class="rcpv-inapp"><div class="rcpv-cap">جوه التطبيق (الإشعارات + شاشة التوصيات)</div>${opt.card || `<div class="rcpv-card"><b>${E(p.title)}</b>${lines}</div>`}</div>`,
+      email: emailBody(p.email),
+      wa: `<div class="rcpv-wa"><div class="rcpv-wah">GRIFFINE</div><div class="rcpv-bub">${E(p.wa)}</div></div>`,
+    };
+  }
+  const PV_TABS = [['app', '🔔 إشعار التطبيق'], ['email', '✉️ الإيميل'], ['wa', '🟢 واتساب']];
+  function previewModal(p, opt){
+    opt = opt || {}; const parts = pvParts(p, opt);
+    const ov = document.createElement('div'); ov.className = 'rc-ov';
+    ov.innerHTML = `<div class="rc-dlg rc-pv" role="dialog" aria-label="معاينة التوصية">
+      <div class="rc-scanhead">👁 معاينة التوصية — ${E(opt.label || p.title)} <button type="button" class="rc-x" id="rcPvClose" aria-label="إغلاق">✕</button></div>
+      <div class="rc-pvtabs" id="rcPvTabs">${PV_TABS.map(([k, l], i) => `<button type="button" data-k="${k}" class="${i ? '' : 'on'}">${l}</button>`).join('')}</div>
+      <div class="rc-pvbody">
+        <div data-pane="app">${parts.app}</div>
+        <div data-pane="email" hidden><iframe class="rcpv-mail" sandbox title="الإيميل"></iframe></div>
+        <div data-pane="wa" hidden>${parts.wa}<p class="u-fs12 u-muted">الواتساب رسالة بسيطة زي ما هي (من غير صور) ومعاها لينك التفاصيل.</p></div>
+      </div>
+      <div class="rc-row rc-pvact"><button type="button" class="secondary small" id="rcPvPdf">⬇ PDF للشكل ده</button><button type="button" class="secondary small" id="rcPvPdfAll">⬇ PDF بالثلاث أشكال</button><button type="button" class="small" id="rcPvShare">📤 مشاركة للمراجعة</button>${opt.extra || ''}</div>
+    </div>`;
+    document.body.appendChild(ov);
+    ov.querySelector('.rcpv-mail').srcdoc = p.email;
+    let cur = 'app';
+    const close = () => ov.remove(); ov.addEventListener('click', (e) => { if (e.target === ov) close(); }); $('rcPvClose').onclick = close;
+    $('rcPvTabs').onclick = (e) => { const b = e.target.closest('[data-k]'); if (!b) return; cur = b.dataset.k; $('rcPvTabs').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); ov.querySelectorAll('[data-pane]').forEach(x => { x.hidden = x.dataset.pane !== cur; }); };
+    const report = (keys, share) => {
+      const w = window.open('', '_blank'); if (!w) return toast('افتح النوافذ المنبثقة للموقع عشان الـ PDF', 'err');
+      const css = document.getElementById('rcPvCss') ? document.getElementById('rcPvCss').textContent : '';
+      w.document.write(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>معاينة توصية — ${E(opt.label || p.title)}</title><style>body{font-family:IBM Plex Sans Arabic,Tahoma,sans-serif;margin:10px;color:#111;background:#fff}h2{font-size:17px;margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid #C9A227}.rc-pvsec{page-break-inside:avoid;margin-bottom:18px}${PV_CSS}</style></head><body>
+        <h1 style="font-size:19px;margin:0 0 4px">معاينة التوصية قبل الإرسال</h1><div style="color:#555;font-size:13px">${E(p.title)} — ${new Date().toLocaleString('ar-EG')}</div>
+        ${keys.map(k => `<div class="rc-pvsec"><h2>${PV_TABS.find(t => t[0] === k)[1]}</h2>${parts[k]}</div>`).join('')}</body></html>`);
+      w.document.close(); gReportReady(w);
+      if (share) setTimeout(() => { const bs = w.document.querySelectorAll('#gReportBar button'); if (bs[2]) gReportPdf(w, true, bs[2]); }, 400);
+    };
+    $('rcPvPdf').onclick = () => report([cur], false);
+    $('rcPvPdfAll').onclick = () => report(['app', 'email', 'wa'], false);
+    $('rcPvShare').onclick = () => report(['app', 'email', 'wa'], true);
+    if (opt.wire) opt.wire(ov, close);
+  }
+  // شكل المعاينة (جوه الموقع وجوه نافذة الـ PDF)
+  const PV_CSS = `.rcpv-push{max-width:380px;background:#1f2a3d;color:#fff;border-radius:16px;padding:10px 12px;margin:0 auto 12px}.rcpv-ph{display:flex;justify-content:space-between;font-size:11px;opacity:.75}.rcpv-push b{display:block;font-size:14px;margin:2px 0}.rcpv-pb{font-size:12.5px;opacity:.9}.rcpv-push img{width:100%;border-radius:10px;margin-top:8px;background:#fff}
+    .rcpv-cap{font-size:12px;color:#64748B;margin:4px 0 6px}.rcpv-card{border:1px solid #E5E7EB;border-radius:12px;padding:10px 12px}.rcpv-l{font-size:13.5px;padding:3px 0;border-top:1px solid #F1F5F9}
+    .rcpv-wa{max-width:420px;margin:0 auto;background:#e9dfd4;border-radius:14px;padding:12px}.rcpv-wah{background:#075e54;color:#fff;margin:-12px -12px 12px;padding:10px 12px;border-radius:14px 14px 0 0;font-weight:700}.rcpv-bub{background:#fff;border-radius:10px 0 10px 10px;padding:10px 12px;font-size:14px;white-space:pre-wrap;word-break:break-word;color:#111}`;
+  (function(){ if (document.getElementById('rcPvCss')) return; const st = document.createElement('style'); st.id = 'rcPvCss'; st.textContent = PV_CSS; document.head.appendChild(st); })();
+
   // الإيميل والواتساب بيتبعتوا على دفعات (15 في الطلب) لحد ما الطابور يخلص
   let pumping = false;
   async function pump(){
@@ -442,11 +528,21 @@
     } finally { pumping = false; }
   }
   function logCard(r, email){
-    const st = { active: ['نشطة', 'pos'], cancelled: ['أُلغيت', 'neg'], expired: ['⏰ انتهت', 'u-muted'], closed: ['اتقفلت', 'u-muted'] }[r.status] || ['نشطة', 'pos'];
-    const can = r.status === 'active' && (window.__isSuperAdmin || (r.createdBy && r.createdBy.toLowerCase() === String(email).toLowerCase()));
-    return `<div class="section-card rc-log rc-${r.type || 'buy'}"><div class="u-row"><div><b>${r.type === 'sell' ? '📉 بيع' : '📈 شراء'} — ${E(r.stockName)} (${E(r.symbol)})</b> <span class="${st[1]} u-fs12">${st[0]}</span>${r.long ? ` <span class="rc-longtag">${E(CFG.t_long_term || 'طويلة المدى')}</span>` : ''} <span class="g-mkt-tag">🌍 ${E(r.market || 'مصر')}</span></div>
-      <span>${r.status === 'active' ? `<button class="small secondary u-wa" data-rc-upd="${E(r.id)}">➕ إرسال تحديث</button> ` : ''}${can ? `<button class="small danger u-wa" data-rc-del="${E(r.id)}">🗑️ إلغاء</button>` : ''}</span></div>
-      <div class="u-fs12 u-muted">${r.type === 'sell' ? 'البيع' : 'الشراء'} ${N(r.buyFrom)} – ${N(r.buyTo)} — ${TFL[r.timeframe] || ''} — أُرسلت ${formatDateAr(r.createdAt)} بواسطة ${E(r.analyst || '-')}${r.analyst && r.createdBy ? ` <small>(${E(r.createdBy)})</small>` : ''}${r.status === 'active' && r.expiresAt ? ` — تنتهي ${formatDateAr(r.expiresAt)}` : ''}${(r.updates || []).length ? ` — ${r.updates.length} تحديث` : ''}</div></div>`;
+    const st = { active: ['نشطة', 'pos'], cancelled: ['أُلغيت', 'neg'], expired: ['⏰ انتهت', 'u-muted'], closed: ['اتقفلت', 'u-muted'], draft: ['💾 مسودة', 'u-muted'], pending: ['⏳ بانتظار الموافقة', 'rc-st-pend'], rejected: ['❌ مرفوضة', 'neg'] }[r.status] || ['نشطة', 'pos'];
+    const mine = r.createdBy && r.createdBy.toLowerCase() === String(email).toLowerCase();
+    const can = r.status === 'active' && (window.__isSuperAdmin || mine), canAppr = !!(META && META.canApprove);
+    const pre = ['draft', 'pending', 'rejected'].includes(r.status);
+    const btn = (k, l, cls) => `<button class="small ${cls || 'secondary'} u-wa" data-rc-${k}="${E(r.id)}">${l}</button>`;
+    const acts = [btn('pv', '👁 معاينة'),
+      r.status === 'active' ? btn('upd', '➕ إرسال تحديث') : '',
+      r.status === 'draft' && (mine || canAppr) ? btn('pub', META && META.approvalOn && !canAppr ? '📨 إرسال للمراجعة' : '📢 إرسال', '') : '',
+      r.status === 'pending' && canAppr ? btn('pub', '✅ موافقة وإرسال', '') + ' ' + btn('rej', '❌ رفض', 'danger') : '',
+      pre && (mine || canAppr) ? btn('trash', '🗑 حذف', 'danger') : '',
+      can ? btn('del', '🗑️ إلغاء', 'danger') : ''].filter(Boolean).join(' ');
+    return `<div class="section-card rc-log rc-${r.type || 'buy'}${pre ? ' rc-log-pre' : ''}" data-st="${E(r.status)}"><div class="u-row"><div><b>${r.type === 'sell' ? '📉 بيع' : '📈 شراء'} — ${E(r.stockName)} (${E(r.symbol)})</b> <span class="${st[1]} u-fs12">${st[0]}</span>${r.long ? ` <span class="rc-longtag">${E(CFG.t_long_term || 'طويلة المدى')}</span>` : ''} <span class="g-mkt-tag">🌍 ${E(r.market || 'مصر')}</span></div>
+      <span class="rc-logacts">${acts}</span></div>
+      <div class="u-fs12 u-muted">${r.type === 'sell' ? 'البيع' : 'الشراء'} ${N(r.buyFrom)} – ${N(r.buyTo)} — ${TFL[r.timeframe] || ''} — ${pre ? 'اتعملت' : 'أُرسلت'} ${formatDateAr(r.createdAt)} بواسطة ${E(r.analyst || '-')}${r.analyst && r.createdBy ? ` <small>(${E(r.createdBy)})</small>` : ''}${r.status === 'active' && r.expiresAt ? ` — تنتهي ${formatDateAr(r.expiresAt)}` : ''}${r.approvedBy && r.status === 'active' && r.approvedBy.toLowerCase() !== String(r.createdBy || '').toLowerCase() ? ` — وافق عليها ${E(r.approvedBy)}` : ''}${(r.updates || []).length ? ` — ${r.updates.length} تحديث` : ''}</div>
+      ${r.status === 'rejected' && r.rejectReason ? `<div class="u-fs12 neg">سبب الرفض: ${E(r.rejectReason)}</div>` : ''}</div>`;
   }
   function updateModal(r, done){
     if (!r) return;
@@ -626,6 +722,8 @@
       ['t_stop_buy', 'عنوان وقف الخسارة'], ['t_stop_sell', 'عنوان «التوصية فاشلة» في البيع'], ['t_stop_one', 'اختيار وقف مرحلة واحدة'], ['t_stop_three', 'اختيار وقف 3 مراحل'],
       ['t_chart', 'عنوان الرسم البياني'], ['t_attach', 'عنوان المرفقات'], ['t_att_chart', 'مرفق الرسم'], ['t_att_ai', 'مرفق رأي بصيرة'], ['t_att_ind', 'مرفق المؤشرات'], ['t_att_fib', 'مرفق فيبوناتشي'],
       ['t_channels', 'عنوان قنوات الإرسال'], ['t_preview', 'عنوان المعاينة'], ['t_send_buy', 'زرار إرسال الشراء'], ['t_send_sell', 'زرار إرسال البيع'], ['t_analyst', 'كلمة «المحلل» في الرسالة'],
+      ['t_btn_preview', 'زرار المعاينة قبل الإرسال'], ['t_btn_draft', 'زرار حفظ مسودة'], ['t_send_review', 'زرار الإرسال للمراجعة (لما الموافقة شغالة)'], ['t_pending_note', 'ملاحظة الموافقة عند المحلل', 'area'],
+      ['h', 'موافقة الأدمن قبل الإرسال'], ['approval_on', 'كل توصيات المحللين تروح للأدمن (أو اللي معاه صلاحية «مراجعة واعتماد التوصيات») يوافق عليها الأول، وبعدين تتبعت للمشتركين', 'bool'],
       ['h', 'الرسالة والإشعارات'], ['t_long_term', 'علامة التوصية طويلة المدى'], ['t_expired_title', 'عنوان إشعار انتهاء الصلاحية'], ['t_expired_body', 'نص إشعار انتهاء الصلاحية', 'area'],
       ['t_disclaimer', 'التنويه في آخر الرسالة', 'area'], ['t_team', 'الاسم لو المحلل مالوش اسم مسجّل'], ['t_email_cta', 'زرار الإيميل'], ['t_email_foot', 'آخر الإيميل', 'area'], ['t_wa_link', 'سطر اللينك في الواتساب'],
       ['h', 'الافتراضيات'], ['entry_band', 'نطاق منطقة الدخول من النقطة المحورية %', 'num'], ['tp1', 'نسبة البيع عند الهدف 1 %', 'num'], ['tp2', 'نسبة البيع عند الهدف 2 %', 'num'], ['tp3', 'نسبة البيع عند الهدف 3 %', 'num'],

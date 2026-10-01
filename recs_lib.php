@@ -47,6 +47,9 @@ function rc_defaults(){
         't_wa_link' => '🔗 التفاصيل والرسم:',
         'entry_band' => 1, 'tp1' => 40, 'tp2' => 30, 'tp3' => 30, 'st1' => 50, 'st2' => 30, 'st3' => 20, 'long_hours' => 336,
         'att_chart' => true, 'att_ai' => true, 'att_ind' => true, 'att_fib' => false, 'ind_default' => 'sma20,sma50,rsi',
+        // الإصدار 131: موافقة الأدمن قبل الإرسال (مقفولة افتراضيًا) + نصوص المعاينة
+        'approval_on' => false, 't_btn_preview' => '👁 معاينة قبل الإرسال', 't_btn_draft' => '💾 حفظ مسودة', 't_send_review' => '📨 إرسال للمراجعة',
+        't_pending_note' => 'موافقة الأدمن شغالة: التوصية هتروح للمراجعة الأول، وبعد الموافقة بتتبعت للمشتركين.',
     ];
 }
 function rc_cfg($conn = null){
@@ -69,6 +72,45 @@ function rc_registered_name($conn, $email){
     }
     return '';
 }
+/* الإصدار 131: موافقة الأدمن قبل الإرسال */
+function rc_can_approve($conn){ return in_array('rec_approve', getCurrentUserPermissions($conn), true); }
+function rc_need_approval($conn){ return !empty(rc_cfg($conn)['approval_on']) && !rc_can_approve($conn); }
+function rc_row($conn, $id){ $st = $conn->prepare("SELECT * FROM recommendations WHERE id = ?"); $st->bind_param("i", $id); $st->execute(); $r = $st->get_result()->fetch_assoc(); $st->close(); return $r ?: null; }
+function rc_notify_users($conn, $emails, $title, $body, $sym = '', $mkt = 'مصر'){
+    foreach (array_unique(array_filter(array_map('strtolower', $emails))) as $e) {
+        try { $i = $conn->prepare("INSERT INTO user_alerts (account_email, title, body, symbol, market) VALUES (?, ?, ?, ?, ?)"); $i->bind_param("sssss", $e, $title, $body, $sym, $mkt); $i->execute(); $i->close(); } catch (Throwable $x) {}
+    }
+}
+/* اللي يقدر يوافق: الأدمن الرئيسي + أي موظف معاه «مراجعة واعتماد التوصيات» */
+function rc_approvers($conn){
+    $out = [strtolower(ADMIN_EMAIL)];
+    try { $res = $conn->query("SELECT LOWER(s.email) e FROM staff_members s JOIN staff_permissions p ON p.staff_id = s.id WHERE s.active = 1 AND p.permission_key = 'rec_approve'"); while ($x = $res->fetch_assoc()) $out[] = $x['e']; } catch (Throwable $e) {}
+    return array_values(array_unique($out));
+}
+function rc_notify_approvers($conn, $r, $by){
+    rc_notify_users($conn, array_diff(rc_approvers($conn), [strtolower($by)]), '⏳ توصية محتاجة موافقة — ' . $r['stock_name'] . ' (' . $r['symbol'] . ')',
+        'من ' . ($r['analyst_name'] ?: $by) . ' — افتح «توصية شراء / بيع» وراجعها قبل ما تتبعت للمشتركين.', $r['symbol'], $r['market'] ?? 'مصر');
+}
+/* نشر توصية (بعد الموافقة أو من المسودة): الصلاحية بتبدأ من وقت النشر + الإرسال على القنوات اللي المحلل اختارها */
+function rc_publish($conn, $id, $by){
+    $u = $conn->prepare("UPDATE recommendations SET archived = 0, archived_at = NULL, status = 'active', created_at = NOW(), approved_by = ?, approved_at = NOW() WHERE id = ? AND status IN ('draft', 'pending')");
+    $u->bind_param("si", $by, $id); $u->execute(); $ok = $u->affected_rows === 1; $u->close();
+    if (!$ok) return null;
+    $r = rc_row($conn, $id); $chs = explode(',', (string)$r['channels']);
+    $ch = ['app' => in_array('app', $chs, true), 'email' => in_array('email', $chs, true), 'wa' => in_array('wa', $chs, true)];
+    $mkt = mc_valid($r['market'] ?? '') ? $r['market'] : 'مصر';
+    $d = rc_dispatch($conn, $id, null, $mkt, rc_title($r), array_merge(rc_lines($r), rc_extra_lines($r)), $ch, $r['symbol'], true, rc_img_url($r, 'chart'));
+    if (strtolower((string)$r['created_by']) !== strtolower($by)) rc_notify_users($conn, [$r['created_by']], '✅ التوصية اتوافق عليها واتبعتت — ' . $r['stock_name'] . ' (' . $r['symbol'] . ')', 'وصلت لـ ' . $d['recipients'] . ' مشترك.', $r['symbol'], $mkt);
+    return $d;
+}
+/* الإصدار 131: شكل التوصية في الإشعار + الإيميل + الواتساب (نفس اللي بيتبعت بالظبط) */
+function rc_preview_payload($conn, $r){
+    $C = rc_cfg($conn); $title = rc_title($r); $lines = array_merge(rc_lines($r), rc_extra_lines($r));
+    $m = rc_email($conn, $r);
+    return ['title' => $title, 'app' => $lines, 'email' => $m['html'], 'emailSubject' => $title,
+        'wa' => $title . ' — ' . implode(' | ', rc_lines($r)) . ' | ' . $C['t_wa_link'] . ' ' . MAIL_SITE_URL,
+        'push' => ['title' => $title, 'body' => mb_substr(implode("\n", $lines), 0, 400), 'image' => rc_img_url($r, 'chart')], 'channels' => (string)($r['channels'] ?? '')];
+}
 function rc_can_rename($conn){ return in_array('rec_custom_analyst_name', getCurrentUserPermissions($conn), true); }
 /* صور الرسم البياني وفيبوناتشي: PNG من متصفح المحلل ← ملف على السيرفر باسم سري (بيتعرض من rec_img.php للإيميل والإشعار) */
 function rc_img_dir(){
@@ -87,13 +129,14 @@ function rc_store_img($key, $name, $data){
 }
 function rc_img_url($r, $name){
     $a = explode(',', (string)($r['attach'] ?? ''));
+    if (!empty($r['_img'][$name]) && in_array($name, $a, true)) return $r['_img'][$name];   // الإصدار 131: معاينة قبل الحفظ (صورة من المتصفح)
     if (empty($r['img_key']) || !in_array($name, $a, true)) return null;
     return MAIL_SITE_URL . '/rec_img.php?k=' . $r['img_key'] . '&n=' . $name;
 }
 
 function rc_ready($conn){
     static $r = null; if ($r !== null) return $r;
-    try { $x = $conn->query("SHOW COLUMNS FROM recommendations LIKE 'img_key'"); $r = $x && $x->num_rows > 0; } catch (Throwable $e) { $r = false; }
+    try { $x = $conn->query("SHOW COLUMNS FROM recommendations LIKE 'approved_by'");   /* الإصدار 131 */ $r = $x && $x->num_rows > 0; } catch (Throwable $e) { $r = false; }
     return $r;
 }
 function rc_ccy($market){ return mc_ccy($market); }

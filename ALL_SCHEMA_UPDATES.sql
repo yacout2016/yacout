@@ -1,5 +1,5 @@
 /* ============================================================ */
-/* GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 130) */
+/* GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 131) */
 /* كل تحديثات قاعدة البيانات في ملف واحد. */
 /* آمن تشغّله أي عدد من المرات: بيضيف الناقص بس ومبيمسحش أي بيانات. */
 /* الاستخدام (الأفضل): phpMyAdmin ← اختار قاعدة البيانات ← تبويب Import (استيراد) ← اختار الملف ← Go */
@@ -76,6 +76,7 @@
 /* الإصدار 128: «توصية شراء / بيع» للمحللين — أعمدة جديدة في recommendations (النوع / المدة / الأهداف بنسب / وقف على مرحلتين / ملاحظة / القنوات) + جدول recommendation_updates (رسائل المتابعة) + جدول rec_outbox (طابور الإيميل والواتساب). */
 /* الإصدار 129: شاشة المحلل الاحترافية — أعمدة جديدة في recommendations (وقف خسارة 3 مراحل / الرسم البياني وفيبوناتشي / رأي بصيرة AI / المؤشرات / المرفقات / تنبيه الانتهاء) + المسمّى الوظيفي «محلل مالي». نصوص الشاشة في site_config (recs_cfg) - مفيش جدول. */
 /* الإصدار 130: «ميزان GRIFFINE AI» — العوائد السنوية لكل أصل بتتحدث أونلاين مجانًا (تلقائي كل شهر / حدّث الآن / يدوي على حساب المستثمر): جدول mizan_user_rates (أرقام المستثمر) + جدول mizan_rates_log (سجل التحديثات). الإعدادات في site_config (mizanai_rates_cfg / mizanai_live). */
+/* الإصدار 131: «توصية شراء / بيع» — معاينة قبل الإرسال (إشعار / إيميل / واتساب) + PDF ومشاركة + مسودات بتتحذف لسلة المحذوفات + موافقة الأدمن قبل الإرسال (صلاحية rec_approve): أعمدة approved_by / approved_at / reject_reason في recommendations. */
 /* ============================================================ */
 
 /* الإصدار 85: ترميز الاتصال UTF-8 عشان النصوص العربي اللي بتتضاف من الملف (زي المسميات الوظيفية) تتحفظ صح */
@@ -1004,4 +1005,8 @@ CREATE TABLE IF NOT EXISTS mizan_rates_log (
   KEY idx_mrl_market (market, id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-SELECT 'GRIFFINE database is up to date (v130)' AS result;
+/* الإصدار 131: موافقة الأدمن على التوصية قبل الإرسال (مين وافق / رفض وإمتى + سبب الرفض) — الحالات: draft / pending / rejected / active */
+ALTER TABLE recommendations ADD COLUMN IF NOT EXISTS approved_by VARCHAR(190) NULL, ADD COLUMN IF NOT EXISTS approved_at DATETIME NULL, ADD COLUMN IF NOT EXISTS reject_reason VARCHAR(300) NULL;
+ALTER TABLE recommendations ADD INDEX IF NOT EXISTS idx_rec_status (status, id);
+
+SELECT 'GRIFFINE database is up to date (v131)' AS result;

@@ -8,12 +8,16 @@
    POST action=pump                         ← بيبعت دفعة من الطابور (الشاشة بتناديها لحد ما يخلص)
    الإصدار 129: GET admin_get / POST admin_save ← نصوص وأزرار وافتراضيات الشاشة (صلاحية تنسيق الموقع)
                send: وقف 3 مراحل + صور الرسم / فيبوناتشي + رأي بصيرة + المؤشرات + المرفقات + اسم المحلل (مقفول إلا بصلاحية)
+   الإصدار 131: POST preview (نفس بيانات send) / GET preview_id&id ← شكل الإشعار + الإيميل + الواتساب قبل الإرسال
+               send mode=draft ← مسودة — ولو «موافقة الأدمن» شغالة: التوصية بتروح «بانتظار الموافقة» (إلا لو المرسل معاه rec_approve)
+               POST publish id / reject id reason / trash id (المسودة / المرفوضة / اللي بانتظار الموافقة ← سلة المحذوفات)
    ===================================================================== */
 header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/session_boot.php';
 session_start();
 include 'db.php';
 require_once __DIR__ . '/recs_lib.php';
+require_once __DIR__ . '/trash_lib.php';   // الإصدار 131
 function rc_out($a){ echo json_encode($a, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); exit(); }
 try {
     $email = $_SESSION['user_email'] ?? '';
@@ -31,6 +35,8 @@ try {
         if ($raw === 'null') { site_config_set($conn, 'recs_cfg', '', $email); rc_out(["success" => true]); }
         $in = json_decode($raw, true); if (!is_array($in)) rc_out(["success" => false, "message" => "بيانات غير صحيحة."]);
         $out = []; foreach (rc_defaults() as $k => $v) if (array_key_exists($k, $in)) $out[$k] = is_bool($v) ? !empty($in[$k]) : (is_string($v) ? mb_substr(trim((string)$in[$k]), 0, 600) : (float)$in[$k]);
+        // «موافقة الأدمن قبل الإرسال» بيغيّرها بس الأدمن الرئيسي أو صاحب صلاحية الإعدادات الإلزامية
+        if (!in_array('manage_admin_settings', getCurrentUserPermissions($conn), true)) $out['approval_on'] = !empty(rc_cfg($conn)['approval_on']);
         foreach ([['tp1', 'tp2', 'tp3'], ['st1', 'st2', 'st3']] as $g) if (abs(array_sum(array_map(fn($k) => (float)($out[$k] ?? rc_defaults()[$k]), $g)) - 100) > 0.01) rc_out(["success" => false, "message" => "مجموع النسب الافتراضية (" . implode(' + ', $g) . ") لازم يبقى 100%."]);
         site_config_set($conn, 'recs_cfg', json_encode($out, JSON_UNESCAPED_UNICODE), $email);
         rc_out(["success" => true]);
@@ -41,7 +47,8 @@ try {
         $mk = mc_active($conn) ?: ['مصر'];
         rc_out(["success" => true, "markets" => array_map(fn($m) => ['name' => $m, 'ccy' => rc_ccy($m)], $mk), "waOn" => np_wa_on($conn), "tf" => array_map(fn($k, $v) => ['k' => $k, 'l' => $v[0]], array_keys(RC_TF), RC_TF),
             "valid" => array_map(fn($h) => ['h' => $h, 'l' => rc_valid_label($h), 'long' => rc_is_long($conn, $h)], RC_VALID), "kinds" => array_map(fn($k, $v) => ['k' => $k, 'l' => $v], array_keys(RC_KINDS), RC_KINDS), "queue" => (int)$conn->query("SELECT COUNT(*) FROM rec_outbox WHERE status = 0")->fetch_row()[0],
-            "cfg" => rc_cfg($conn), "ind" => RC_IND, "analystName" => rc_registered_name($conn, $email), "canRename" => rc_can_rename($conn)]);
+            "cfg" => rc_cfg($conn), "ind" => RC_IND, "analystName" => rc_registered_name($conn, $email), "canRename" => rc_can_rename($conn),
+            "approvalOn" => !empty(rc_cfg($conn)['approval_on']), "canApprove" => rc_can_approve($conn)]);
     }
     if ($action === 'levels') {
         @set_time_limit(60);
@@ -50,7 +57,8 @@ try {
         $L = rc_levels($conn, $sym, $mkt, $tf);
         rc_out(!empty($L['ok']) ? ["success" => true] + $L : ["success" => false, "message" => $L['message'] ?? 'تعذّر جلب بيانات السهم.']);
     }
-    if ($action === 'send' && $isPost) {
+    if (in_array($action, ['send', 'preview'], true) && $isPost) {
+        $preview = $action === 'preview'; $mode = ($_POST['mode'] ?? '') === 'draft' ? 'draft' : 'send';
         $num = fn($k) => (isset($_POST[$k]) && $_POST[$k] !== '' && is_numeric($_POST[$k])) ? round((float)$_POST[$k], 4) : null;
         $type = ($_POST['type'] ?? 'buy') === 'sell' ? 'sell' : 'buy';
         $sym = mk_clean_symbol($_POST['symbol'] ?? ''); $mkt = mk_clean_market($_POST['market'] ?? '');
@@ -86,23 +94,75 @@ try {
         foreach ((array)json_decode((string)($_POST['indicators'] ?? '[]'), true) as $x) if (is_array($x) && count($ind) < 10)
             $ind[] = ['k' => preg_replace('/[^a-z0-9]/', '', (string)($x['k'] ?? '')), 'l' => mb_substr(trim((string)($x['l'] ?? '')), 0, 40), 'v' => mb_substr(trim((string)($x['v'] ?? '')), 0, 40), 'n' => mb_substr(trim((string)($x['n'] ?? '')), 0, 160)];
         $indJson = in_array('ind', $att, true) && $ind ? json_encode($ind, JSON_UNESCAPED_UNICODE) : null;
-        $imgKey = bin2hex(random_bytes(16)); $imgOk = [];
-        foreach (['chart', 'fib'] as $nm) if (in_array($nm, $att, true) && rc_store_img($imgKey, $nm, $_POST['img_' . $nm] ?? '')) $imgOk[] = $nm;
+        $imgKey = bin2hex(random_bytes(16)); $imgOk = []; $imgData = [];
+        foreach (['chart', 'fib'] as $nm) if (in_array($nm, $att, true)) {
+            $du = (string)($_POST['img_' . $nm] ?? '');
+            if ($preview) { if (strpos($du, 'data:image/png;base64,') === 0 && strlen($du) < 3500000) { $imgOk[] = $nm; $imgData[$nm] = $du; } }
+            elseif (rc_store_img($imgKey, $nm, $du)) $imgOk[] = $nm;
+        }
         $att = array_values(array_filter($att, fn($a) => !in_array($a, ['chart', 'fib'], true) || in_array($a, $imgOk, true)));
         if ($aiText === '') $att = array_values(array_diff($att, ['ai']));
         if (!$indJson) $att = array_values(array_diff($att, ['ind']));
         $attS = implode(',', $att);
         $ccy = rc_ccy($mkt); $chs = implode(',', array_keys(array_filter($ch)));
         $L = ['s1' => $num('lv_s1'), 's2' => $num('lv_s2'), 's3' => $num('lv_s3'), 'p' => $num('lv_p'), 'last' => $num('last')];
+        if ($preview) {   // الإصدار 131: نفس التوصية بالظبط من غير حفظ ولا إرسال ← شكل الإشعار + الإيميل + الواتساب
+            $r = ['id' => 0, 'symbol' => $sym, 'stock_name' => $name, 'buy_from' => $from, 'buy_to' => $to, 'resistance1' => $t[1], 'resistance1_pct' => $tp[1], 'resistance2' => $t[2], 'resistance2_pct' => $tp[2],
+                'resistance3' => $t[3], 'resistance3_pct' => $tp[3], 'support1' => $L['s1'], 'support2' => $L['s2'], 'support3' => $L['s3'], 'validity_hours' => $valid, 'created_by' => $email, 'market' => $mkt,
+                'rec_type' => $type, 'timeframe' => $tf, 'currency' => $ccy, 'pivot' => $L['p'], 'last_price' => $L['last'], 'stop1' => $s1, 'stop1_pct' => $s1p, 'stop2' => $s2, 'stop2_pct' => $s2p, 'stop3' => $s3, 'stop3_pct' => $s3p,
+                'sell_pct' => $sellPct, 'note' => $note, 'channels' => $chs, 'analyst_name' => $analyst, 'img_key' => null, 'attach' => $attS, 'ai_text' => $aiText, 'indicators' => $indJson, 'created_at' => date('Y-m-d H:i:s'), 'status' => 'preview', '_img' => $imgData];
+            rc_out(["success" => true] + rc_preview_payload($conn, $r));
+        }
+        // الحالة: مسودة / بانتظار موافقة الأدمن / تتبعت على طول
+        $status = $mode === 'draft' ? 'draft' : (rc_need_approval($conn) ? 'pending' : 'active'); $arch = $status === 'active' ? 0 : 1;
         $st = $conn->prepare("INSERT INTO recommendations (symbol, stock_name, buy_from, buy_to, resistance1, resistance1_pct, resistance2, resistance2_pct, resistance3, resistance3_pct, support1, support2, support3, validity_hours, created_by, market,
-            rec_type, timeframe, currency, pivot, last_price, stop1, stop1_pct, stop2, stop2_pct, sell_pct, note, channels, analyst_name, stop3, stop3_pct, img_key, attach, ai_text, indicators) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
-        $st->bind_param("ssdddddddddddisssssdddddddsssddssss", $sym, $name, $from, $to, $t[1], $tp[1], $t[2], $tp[2], $t[3], $tp[3], $L['s1'], $L['s2'], $L['s3'], $valid, $email, $mkt,
-            $type, $tf, $ccy, $L['p'], $L['last'], $s1, $s1p, $s2, $s2p, $sellPct, $note, $chs, $analyst, $s3, $s3p, $imgKey, $attS, $aiText, $indJson);
+            rec_type, timeframe, currency, pivot, last_price, stop1, stop1_pct, stop2, stop2_pct, sell_pct, note, channels, analyst_name, stop3, stop3_pct, img_key, attach, ai_text, indicators, status, archived) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+        $st->bind_param("ssdddddddddddisssssdddddddsssddsssssi", $sym, $name, $from, $to, $t[1], $tp[1], $t[2], $tp[2], $t[3], $tp[3], $L['s1'], $L['s2'], $L['s3'], $valid, $email, $mkt,
+            $type, $tf, $ccy, $L['p'], $L['last'], $s1, $s1p, $s2, $s2p, $sellPct, $note, $chs, $analyst, $s3, $s3p, $imgKey, $attS, $aiText, $indJson, $status, $arch);
         if (!$st->execute()) rc_out(["success" => false, "message" => "تعذّر الحفظ: " . $conn->error]);
         $id = (int)$conn->insert_id; $st->close();
         $r = $conn->query("SELECT * FROM recommendations WHERE id = $id")->fetch_assoc();
+        if ($status === 'draft') rc_out(["success" => true, "id" => $id, "status" => 'draft']);
+        if ($status === 'pending') { rc_notify_approvers($conn, $r, $email); rc_out(["success" => true, "id" => $id, "status" => 'pending']); }
         $d = rc_dispatch($conn, $id, null, $mkt, rc_title($r), array_merge(rc_lines($r), rc_extra_lines($r)), $ch, $sym, true, rc_img_url($r, 'chart'));
-        rc_out(["success" => true, "id" => $id, "attach" => $attS, "analyst" => $analyst] + $d);
+        rc_out(["success" => true, "id" => $id, "status" => 'active', "attach" => $attS, "analyst" => $analyst] + $d);
+    }
+    // الإصدار 131: معاينة توصية محفوظة (مسودة / بانتظار الموافقة / مرسلة)
+    if ($action === 'preview_id') {
+        $id = (int)($_GET['id'] ?? 0); $r = rc_row($conn, $id);
+        if (!$r) rc_out(["success" => false, "message" => "التوصية مش موجودة."]);
+        rc_out(["success" => true, "status" => $r['status']] + rc_preview_payload($conn, $r));
+    }
+    if (in_array($action, ['publish', 'reject', 'trash'], true) && $isPost) {
+        $id = (int)($_POST['id'] ?? 0); $r = rc_row($conn, $id);
+        if (!$r) rc_out(["success" => false, "message" => "التوصية مش موجودة."]);
+        $mine = strtolower((string)$r['created_by']) === strtolower($email); $appr = rc_can_approve($conn);
+        if ($action === 'publish') {
+            if ($r['status'] === 'draft') {
+                if (!$mine && !$appr) rc_out(["success" => false, "message" => "المسودة دي بتاعة محلل تاني."]);
+                if (rc_need_approval($conn)) { $u = $conn->prepare("UPDATE recommendations SET status = 'pending' WHERE id = ? AND status = 'draft'"); $u->bind_param("i", $id); $u->execute(); $u->close();
+                    rc_notify_approvers($conn, $r, $email); rc_out(["success" => true, "status" => 'pending']); }
+            } elseif ($r['status'] === 'pending') { if (!$appr) rc_out(["success" => false, "message" => "الموافقة محتاجة صلاحية «مراجعة واعتماد التوصيات»."]); }
+            else rc_out(["success" => false, "message" => "التوصية دي اتبعتت أو اتقفلت قبل كده."]);
+            $d = rc_publish($conn, $id, $email);
+            if ($d === null) rc_out(["success" => false, "message" => "التوصية اتغيّرت حالتها — حدّث الصفحة."]);
+            rc_out(["success" => true, "status" => 'active'] + $d);
+        }
+        if ($action === 'reject') {
+            if (!$appr) rc_out(["success" => false, "message" => "الرفض محتاج صلاحية «مراجعة واعتماد التوصيات»."]);
+            if ($r['status'] !== 'pending') rc_out(["success" => false, "message" => "التوصية مش بانتظار الموافقة."]);
+            $why = mb_substr(trim((string)($_POST['reason'] ?? '')), 0, 300);
+            $u = $conn->prepare("UPDATE recommendations SET status = 'rejected', reject_reason = ?, approved_by = ?, approved_at = NOW() WHERE id = ? AND status = 'pending'"); $u->bind_param("ssi", $why, $email, $id); $u->execute(); $u->close();
+            rc_notify_users($conn, [$r['created_by']], '❌ التوصية اترفضت — ' . $r['stock_name'] . ' (' . $r['symbol'] . ')', ($why !== '' ? 'السبب: ' . $why : 'راجعها وابعتها تاني.'), $r['symbol'], $r['market'] ?? 'مصر');
+            rc_out(["success" => true, "status" => 'rejected']);
+        }
+        // trash: المسودة / المرفوضة / اللي بانتظار الموافقة بس (المرسلة ليها «إلغاء» و«إغلاق»)
+        if (!in_array($r['status'], ['draft', 'pending', 'rejected'], true)) rc_out(["success" => false, "message" => "التوصية المرسلة مش بتتحذف من هنا — استخدم «إلغاء» أو «إغلاق التوصية»."]);
+        if (!$mine && !$appr) rc_out(["success" => false, "message" => "مسموح بس لصاحب التوصية أو اللي بيراجع التوصيات."]);
+        $rows = trash_rows($conn, 'recommendations', 'id = ?', 'i', [$id]);
+        trash_put($conn, 'recommendation', ($r['status'] === 'draft' ? 'مسودة توصية: ' : 'توصية: ') . $r['stock_name'] . ' (' . $r['symbol'] . ')', ['recommendations' => $rows]);
+        $dl = $conn->prepare("DELETE FROM recommendations WHERE id = ?"); $dl->bind_param("i", $id); $dl->execute(); $dl->close();
+        rc_out(["success" => true]);
     }
     if ($action === 'update' && $isPost) {
         $id = (int)($_POST['id'] ?? 0); $kind = isset(RC_KINDS[$_POST['kind'] ?? '']) ? $_POST['kind'] : 'note';

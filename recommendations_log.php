@@ -42,6 +42,7 @@ function rc_extra($conn, $r){
     $o = ["type" => $r['rec_type'] ?? 'buy', "timeframe" => $r['timeframe'] ?? null, "currency" => $r['currency'] ?? null, "pivot" => $f('pivot'), "lastPrice" => $f('last_price'),
         "stop1" => $f('stop1'), "stop1Pct" => $f('stop1_pct'), "stop2" => $f('stop2'), "stop2Pct" => $f('stop2_pct'), "stop3" => $f('stop3'), "stop3Pct" => $f('stop3_pct'), "sellPct" => $f('sell_pct'),
         "note" => $r['note'] ?? '', "channels" => $r['channels'] ?? '', "analyst" => $r['analyst_name'] ?? '', "status" => $r['status'] ?? 'active',
+        "approvedBy" => $r['approved_by'] ?? null, "approvedAt" => $r['approved_at'] ?? null, "rejectReason" => $r['reject_reason'] ?? '',   // الإصدار 131
         // الإصدار 129: المرفقات (الرسم / فيبوناتشي / رأي بصيرة / المؤشرات) + طويلة المدى + وقت الانتهاء
         "attach" => $att, "chartUrl" => $img('chart'), "fibUrl" => $img('fib'), "aiText" => in_array('ai', $att, true) ? (string)($r['ai_text'] ?? '') : '',
         "indicators" => in_array('ind', $att, true) ? (json_decode((string)($r['indicators'] ?? ''), true) ?: []) : [],
