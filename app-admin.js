@@ -38,6 +38,7 @@ function adminNavButtonsHtml(){
       { id:'goLandingBtn', perm:'edit_site_design', icon:'🏁', label:'صفحة اللاندينج (واجهة الموقع قبل الدخول)' },
       { id:'goBasiraBtn', perm:'edit_site_design', icon:'🔮', label:'تحليلات بصيرة AI' },
       { id:'goMizanBtn', perm:'edit_site_design', icon:'⚖️', label:'ميزان محفظتك AI (النسب المقترحة والتنبيهات)' },
+      { id:'goRecsCfgBtn', perm:'edit_site_design', icon:'📢', label:'شاشة التوصيات (النصوص والأزرار والافتراضيات)' },
       { id:'goMizanAiBtn', perm:'edit_site_design', icon:'🧭', label:'ميزان GRIFFINE AI' },
       { id:'goStudioBtn', perm:'edit_site_design', icon:'🖌️', label:'استوديو التصميم (الثيمات وتعديل أي شاشة)' },
       { id:'goSiteDesignBtn', perm:'edit_site_design', icon:'🎨', label:'تنسيق الموقع' },
@@ -82,6 +83,7 @@ function wireAdminNavButtons(){
     goBasiraBtn: () => renderAdminBasira(),             // الإصدار 114 (basira.js)
     goMizanAiBtn: () => renderAdminMizanAi(),           // الإصدار 122 (mizanai.js)
     goMizanBtn: () => renderAdminMizan(),               // الإصدار 128 (mizan.js)
+    goRecsCfgBtn: () => renderAdminRecsCfg(),           // الإصدار 129 (recs.js)
     goBlacklistBtn: renderBlacklist,
     goArchiveBtn: renderArchivedCustomers,
     goStaffBtn: renderStaffManagementPage,

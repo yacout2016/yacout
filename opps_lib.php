@@ -80,10 +80,10 @@ function opp_universe($conn, $market){
 function opp_yahoo($ysym, $interval, $range){
     $j = mq_http(MARKET_QUOTE_BASE . rawurlencode($ysym) . '?range=' . $range . '&interval=' . $interval . '&includePrePost=false');
     $res = $j['chart']['result'][0] ?? null; if (!$res || empty($res['timestamp'])) return null;
-    $q = $res['indicators']['quote'][0] ?? []; $o = ['t' => [], 'h' => [], 'l' => [], 'c' => [], 'v' => []];
+    $q = $res['indicators']['quote'][0] ?? []; $o = ['t' => [], 'o' => [], 'h' => [], 'l' => [], 'c' => [], 'v' => []];   // الإصدار 129: سعر الفتح (لشموع رسم التوصية)
     foreach ($res['timestamp'] as $i => $t) {
         $c = $q['close'][$i] ?? null; if ($c === null) continue;
-        $o['t'][] = (int)$t; $o['c'][] = (float)$c; $o['h'][] = (float)($q['high'][$i] ?? $c); $o['l'][] = (float)($q['low'][$i] ?? $c); $o['v'][] = (float)($q['volume'][$i] ?? 0);
+        $o['t'][] = (int)$t; $o['o'][] = (float)($q['open'][$i] ?? $c); $o['c'][] = (float)$c; $o['h'][] = (float)($q['high'][$i] ?? $c); $o['l'][] = (float)($q['low'][$i] ?? $c); $o['v'][] = (float)($q['volume'][$i] ?? 0);
     }
     return count($o['c']) >= 2 ? $o : null;
 }

@@ -253,6 +253,7 @@ function getAllPermissionKeys(){
         'edit_site_design'      => 'تنسيق محتوى الموقع (بدون بيانات جوهرية)',
         'view_reports'          => 'مشاهدة التقارير والإحصائيات',
         'manage_recommendations'=> 'إرسال ومراجعة توصيات الشراء للعملاء',
+        'rec_custom_analyst_name'=> 'تغيير اسم المحلل الظاهر في التوصية (كتابة اسم آخر) — من غيرها التوصية بتتبعت باسمه المسجّل (الإصدار 129)',
         'manage_testimonials'   => 'مشاهدة وإدارة آراء العملاء (حذف التجاوزات) - الإصدار 85',
         'manage_content'        => 'إدارة المقالات (نشر وتعديل وحذف)',
         'manage_site_content'   => 'تعديل نصوص شاشات الموقع (عن جريفين، التواصل، سياسة الاسترداد، المقترحات)',
@@ -270,6 +271,7 @@ function defaultJobTitlesSeed(){
         'customer_service' => ['خدمة عملاء', ['view_chat','reply_chat']],
         'sales'            => ['مندوب مبيعات', ['manage_subscribers','view_chat','reply_chat','view_reports','manage_recommendations']],
         'accounts'         => ['مدير حسابات', ['manage_subscribers','manage_plans','manage_reminders','view_reports']],
+        'financial_analyst'=> ['محلل مالي', ['manage_recommendations']],   // الإصدار 129
     ];
 }
 function jobTitlesTable(){
@@ -493,8 +495,18 @@ function maybeRewardReferral($conn, $referredEmail){
 
 // بيأرشف (مش بيمسح نهائي) أي توصية عدّت مدة صلاحيتها الخاصة بيها - بينفّذ كل مرة حد يفتح شاشة التوصيات (تنظيف كسول)
 function cleanupExpiredRecommendations($conn){
+    // الإصدار 129: التوصية اللي صلاحيتها خلصت بتتقفل + إشعار «انتهت صلاحية التوصية» لمشتركين السوق (مرة واحدة بس)
+    try { require_once __DIR__ . '/recs_lib.php'; if (function_exists('rc_expire_sweep') && rc_ready($conn)) { rc_expire_sweep($conn); return; } } catch (Throwable $e) {}
     $conn->query("UPDATE recommendations SET archived = 1, archived_at = NOW(), status = 'expired'
         WHERE archived = 0 AND created_at < DATE_SUB(NOW(), INTERVAL validity_hours HOUR)");
+}
+
+// الإصدار 129: بتتنادى من استعلام الإشعارات (مرة كل دقيقة بالكتير) عشان إشعار «انتهت صلاحية التوصية» يوصل في وقته
+function rc_expire_tick($conn){
+    $f = sys_get_temp_dir() . '/griffine_rc_tick_' . md5(__DIR__);
+    if (is_file($f) && time() - filemtime($f) < 60) return;
+    @touch($f);
+    try { $x = $conn->query("SELECT 1 FROM recommendations WHERE archived = 0 AND created_at < DATE_SUB(NOW(), INTERVAL validity_hours HOUR) LIMIT 1"); if ($x && $x->num_rows) cleanupExpiredRecommendations($conn); } catch (Throwable $e) {}
 }
 
 // بيبني نص إشعار كامل بكل بيانات التوصية (مش عنوان عام) عشان يظهر في إشعار الموبايل نفسه
@@ -654,13 +666,13 @@ function webpush_encrypt_payload($payload, $p256dhB64Url, $authB64Url){
 }
 
 // بيبعت إشعار push فعلي لاشتراك واحد (endpoint معين)
-function send_single_push($conn, $endpoint, $p256dh, $auth, $title, $body, $url){
+function send_single_push($conn, $endpoint, $p256dh, $auth, $title, $body, $url, $image = null){
     $vapid = get_vapid_keys($conn);
     $urlParts = parse_url($endpoint);
     $audience = $urlParts['scheme'] . '://' . $urlParts['host'];
     $jwt = build_vapid_jwt($audience, 'mailto:info@griffine.store', $vapid['privateKey']);
 
-    $payload = json_encode(['title' => $title, 'body' => $body, 'url' => $url]);
+    $payload = json_encode(['title' => $title, 'body' => $body, 'url' => $url] + ($image ? ['image' => $image] : []));   // الإصدار 129: صورة الرسم في الإشعار (أندرويد / كروم)
     $encryptedBody = webpush_encrypt_payload($payload, $p256dh, $auth);
 
     $headers = [
@@ -684,7 +696,7 @@ function send_single_push($conn, $endpoint, $p256dh, $auth, $title, $body, $url)
 }
 
 // بيبعت إشعار لكل اشتراكات owner_key معينة (زائر بعينه، أو 'admin')
-function send_web_push($conn, $ownerKey, $title, $body, $url = '/index.php'){
+function send_web_push($conn, $ownerKey, $title, $body, $url = '/index.php', $image = null){
     $stmt = $conn->prepare("SELECT id, endpoint, p256dh, auth FROM push_subscriptions WHERE owner_key = ?");
     $stmt->bind_param("s", $ownerKey);
     $stmt->execute();
@@ -692,7 +704,7 @@ function send_web_push($conn, $ownerKey, $title, $body, $url = '/index.php'){
     $sent = 0;
     while ($row = $result->fetch_assoc()) {
         try {
-            $status = send_single_push($conn, $row['endpoint'], $row['p256dh'], $row['auth'], $title, $body, $url);
+            $status = send_single_push($conn, $row['endpoint'], $row['p256dh'], $row['auth'], $title, $body, $url, $image);
             if ($status === 404 || $status === 410) {
                 // الاشتراك ده مبقاش موجود (المستخدم ألغى الإذن أو غيّر جهاز) - نمسحه
                 $del = $conn->prepare("DELETE FROM push_subscriptions WHERE id = ?");
@@ -711,7 +723,7 @@ function send_web_push($conn, $ownerKey, $title, $body, $url = '/index.php'){
 // بيبعت إشعار لكل الأجهزة اللي فعّلت الإشعارات على الموقع (عدا المدير نفسه) - مستخدمة لتوصيات الشراء
 // ملحوظة: النظام الحالي بيسجل الإشعار تحت مفتاح واحد لكل زائر/متصفح (مش لكل حساب عميل مسجّل تحديدًا)
 // يعني ده بيوصل لأي حد فعّل إشعارات الموقع، مش بالضرورة كل عميل مسجّل حساب
-function broadcast_web_push_to_customers($conn, $title, $body, $url = '/index.php', $market = null){
+function broadcast_web_push_to_customers($conn, $title, $body, $url = '/index.php', $market = null, $image = null){
     // التوصيات محتوى مدفوع: الإشعار بتفاصيلها بيوصل بس للأجهزة المربوطة بحساب اشتراكه شغال
     $hasEmailCol = ($c = @$conn->query("SHOW COLUMNS FROM push_subscriptions LIKE 'account_email'")) && $c->num_rows > 0;
     if (!$hasEmailCol) return 0;
@@ -723,7 +735,7 @@ function broadcast_web_push_to_customers($conn, $title, $body, $url = '/index.ph
         if (!$checked[$em]) continue;
         // توصية سوق معيّن بتوصل بس لحسابات السوق ده
         if ($market !== null && function_exists('mc_account_market') && mc_account_market($conn, $em) !== $market) continue;
-        $sent += send_web_push($conn, $row['owner_key'], $title, $body, $url);
+        $sent += send_web_push($conn, $row['owner_key'], $title, $body, $url, $image);
     }
     return $sent;
 }

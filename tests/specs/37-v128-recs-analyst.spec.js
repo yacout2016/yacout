@@ -27,21 +27,21 @@ const CUST = { email: 'paytest@example.com', pass: process.env.GT_CUSTOMER_PASS 
   // 2) الاقتراح + الحسابات + التحقق
   await a.click('#rcSuggest');
   const s3 = await a.evaluate(() => ({ from: +rcFrom.value, to: +rcTo.value, t: [+rcT1.value, +rcT2.value, +rcT3.value], p: [+rcT1p.value, +rcT2p.value, +rcT3p.value], s: +rcS1.value, sum: rcPctSum.textContent, g1: rcT1g.textContent, rr: rcRR.textContent }));
-  check('«املأ الاقتراح»: منطقة شراء + أهداف أعلى منها (50/25/25) + وقف تحتها', s3.from > 0 && s3.to >= s3.from && s3.t.every(x => x > s3.to) && s3.p.join() === '50,25,25' && s3.s < s3.from && s3.sum === '100%', JSON.stringify(s3));
+  check('«انقل المستويات»: منطقة شراء + أهداف أعلى منها (40/30/30 — الإصدار 129) + وقف تحتها', s3.from > 0 && s3.to >= s3.from && s3.t.every(x => x > s3.to) && s3.p.join() === '40,30,30' && s3.s < s3.from && s3.sum === '100%', JSON.stringify(s3));
   check('حساب فوري: نسبة كل هدف من الدخول + العائد للمخاطرة', /^\+\d/.test(s3.g1) && /1 : \d/.test(s3.rr), s3.g1 + ' / ' + s3.rr);
   await a.fill('#rcT3p', '10'); const bad = await a.evaluate(async () => { const r = await apiPost('/recs_api.php', { action: 'send', type: 'buy', symbol: 'COMI', stockName: 'x', market: 'مصر', timeframe: 'month', from: rcFrom.value, to: rcTo.value, t1: rcT1.value, t1pct: 50, t2: rcT2.value, t2pct: 25, t3: rcT3.value, t3pct: 10, stop1: rcS1.value, chApp: '1' }); return r.message; });
   check('مجموع نسب البيع لازم 100% (السيرفر بيرفض 85%)', /100%/.test(bad || ''), bad);
-  await a.fill('#rcT3p', '25');
-  await a.check('#rcTwo'); await a.fill('#rcS2', String((s3.s * 0.97).toFixed(3))); await a.fill('#rcS1p', '50'); await a.fill('#rcS2p', '50');
+  await a.fill('#rcT3p', '30');
+  await a.check('#rcStop3Mode'); await a.fill('#rcS2', String((s3.s * 0.97).toFixed(3))); await a.fill('#rcS3', String((s3.s * 0.94).toFixed(3))); await a.fill('#rcS1p', '50'); await a.fill('#rcS2p', '30'); await a.fill('#rcS3p', '20');
   await a.fill('#rcNote', 'الدخول على مرحلتين مع تأكيد الاختراق'); await a.fill('#rcAnalyst', 'محلل الاختبار');
   const pv = await a.evaluate(() => ({ t: document.getElementById('rcPreview').textContent.replace(/\s+/g, ' '), tp: document.querySelectorAll('#rcPreview .rc-tp').length, sl: document.querySelectorAll('#rcPreview .rc-sl').length }));
-  check('المعاينة: الكود + الشراء من/إلى + 3 نقاط بيع بنسبها (باقي الكمية) + وقفين + الملاحظة + المحلل', pv.tp === 3 && pv.sl === 2 && /COMI/.test(pv.t) && /باقي الكمية/.test(pv.t) && /بيع 50%/.test(pv.t) && /مرحلتين/.test(pv.t) && /محلل الاختبار/.test(pv.t), pv.t.slice(0, 200));
+  check('المعاينة: الكود + الشراء من/إلى + 3 نقاط بيع بنسبها (باقي الكمية) + وقف 3 مراحل + الملاحظة + المحلل', pv.tp === 3 && pv.sl === 3 && /COMI/.test(pv.t) && /باقي الكمية/.test(pv.t) && /بيع 50%/.test(pv.t) && /مرحلتين/.test(pv.t) && /محلل الاختبار/.test(pv.t), pv.t.slice(0, 200));
 
   // 3) الإرسال: إشعار المنصة + الإيميل في الطابور ← بيتبعت على دفعات
   await a.click('#rcSend'); await a.waitForFunction(() => /اتبعتت/.test(rcMsg.textContent), null, { timeout: 30000 }).catch(() => {});
   const sent = await a.evaluate(() => rcMsg.textContent);
   const row = q("SELECT CONCAT_WS('|', rec_type, timeframe, currency, resistance1_pct, resistance2_pct, resistance3_pct, stop1_pct, stop2_pct, analyst_name, channels) FROM recommendations WHERE symbol='COMI' ORDER BY id DESC LIMIT 1").trim();
-  check('الإرسال ← التوصية اتحفظت بكل البيانات (النوع / المدة / العملة / النسب / الوقفين / المحلل / القنوات)', /اتبعتت/.test(sent) && /^buy\|month\|EGP\|50\.00\|25\.00\|25\.00\|50\.00\|50\.00\|محلل الاختبار\|app,email$/.test(row), row + ' — ' + sent);
+  check('الإرسال ← التوصية اتحفظت بكل البيانات (النوع / المدة / العملة / النسب / الوقف / المحلل / القنوات)', /اتبعتت/.test(sent) && /^buy\|month\|EGP\|40\.00\|30\.00\|30\.00\|50\.00\|30\.00\|محلل الاختبار\|app,email$/.test(row), row + ' — ' + sent);
   const al = q(`SELECT CONCAT(title, '§', body) FROM user_alerts WHERE account_email='${CUST.email}' ORDER BY id DESC LIMIT 1`);
   check('المشترك جاله إشعار على المنصة بالرسالة المنسّقة', /توصية شراء/.test(al) && /نقطة بيع 1/.test(al) && /باقي الكمية/.test(al) && /وقف الخسارة 2/.test(al) && /ملاحظة المحلل/.test(al), al.slice(0, 160));
   await a.waitForFunction(() => /خلص/.test((document.getElementById('rcProg') || {}).textContent || ''), null, { timeout: 60000 }).catch(() => {});

@@ -1,5 +1,5 @@
 /* ============================================================ */
-/* GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 128) */
+/* GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 129) */
 /* كل تحديثات قاعدة البيانات في ملف واحد. */
 /* آمن تشغّله أي عدد من المرات: بيضيف الناقص بس ومبيمسحش أي بيانات. */
 /* الاستخدام (الأفضل): phpMyAdmin ← اختار قاعدة البيانات ← تبويب Import (استيراد) ← اختار الملف ← Go */
@@ -74,6 +74,7 @@
 /* الإصدار 126: مفيش تغييرات في قاعدة البيانات (تنبيهات الرئيسية على الجوال من غير تمرير داخلي - الصفحة كانت بتهنّج وقت السحب). */
 /* الإصدار 127: جدول user_ai_access (الذكاء الاصطناعي لكل مشترك: الشاشات + المدفوع + الحد اليومي) + عمود subscription_plans.includes_ai + باقة «برو سنوي» 3000. الذكاء المدفوع مقفول افتراضيًا (ai_paid_on في site_config). */
 /* الإصدار 128: «توصية شراء / بيع» للمحللين — أعمدة جديدة في recommendations (النوع / المدة / الأهداف بنسب / وقف على مرحلتين / ملاحظة / القنوات) + جدول recommendation_updates (رسائل المتابعة) + جدول rec_outbox (طابور الإيميل والواتساب). */
+/* الإصدار 129: شاشة المحلل الاحترافية — أعمدة جديدة في recommendations (وقف خسارة 3 مراحل / الرسم البياني وفيبوناتشي / رأي بصيرة AI / المؤشرات / المرفقات / تنبيه الانتهاء) + المسمّى الوظيفي «محلل مالي». نصوص الشاشة في site_config (recs_cfg) - مفيش جدول. */
 /* ============================================================ */
 
 /* الإصدار 85: ترميز الاتصال UTF-8 عشان النصوص العربي اللي بتتضاف من الملف (زي المسميات الوظيفية) تتحفظ صح */
@@ -970,4 +971,13 @@ CREATE TABLE IF NOT EXISTS rec_outbox (
   KEY idx_ro_status (status, id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-SELECT 'GRIFFINE database is up to date (v128)' AS result;
+/* الإصدار 129: وقف الخسارة على 3 مراحل + الرسم البياني وفيبوناتشي (صور على السيرفر برابط سري) + رأي بصيرة AI + المؤشرات المختارة + المرفقات + انتهاء الصلاحية */
+ALTER TABLE recommendations ADD COLUMN IF NOT EXISTS stop3 DECIMAL(14,4) NULL, ADD COLUMN IF NOT EXISTS stop3_pct DECIMAL(6,2) NULL,
+  ADD COLUMN IF NOT EXISTS img_key VARCHAR(40) NULL, ADD COLUMN IF NOT EXISTS attach VARCHAR(60) NULL, ADD COLUMN IF NOT EXISTS ai_text TEXT NULL, ADD COLUMN IF NOT EXISTS indicators TEXT NULL,
+  ADD COLUMN IF NOT EXISTS expired_notified TINYINT(1) NOT NULL DEFAULT 0;
+ALTER TABLE recommendations ADD INDEX IF NOT EXISTS idx_rec_active (archived, created_at);
+
+/* الإصدار 129: المسمّى الوظيفي «محلل مالي» (إرسال التوصيات — وتغيير الاسم الظاهر صلاحية منفصلة الأدمن بيفتحها لو حب) */
+INSERT IGNORE INTO job_titles (title_key, label, default_perms, sort_order) VALUES ('financial_analyst', 'محلل مالي', '["manage_recommendations"]', 6);
+
+SELECT 'GRIFFINE database is up to date (v129)' AS result;

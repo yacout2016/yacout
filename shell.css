@@ -1288,8 +1288,32 @@ body.g-shell #app button.wl-del, button.wl-del{ padding:5px 9px !important; min-
 .g-ai .g-np-vis{ max-width:230px; }
 
 /* الإصدار 128: «توصية شراء / بيع» — مساحة عمل المحلل + كارت التوصية */
-.rc-work{ display:grid; grid-template-columns:minmax(0, 1.6fr) minmax(0, 1fr); gap:14px; align-items:start; }
-.rc-side{ position:sticky; top:76px; }
+.rc-work{ display:grid; grid-template-columns:minmax(0, 1.12fr) minmax(0, 1fr); gap:14px; align-items:start; }
+/* الإصدار 129: يمين = السهم والسعر المحوري والرسم — شمال = رسالة التوصية جنبه */
+.rc-ph{ margin:0 0 10px; font-size:16px; }
+.rc-symtools{ display:flex; gap:8px; flex-wrap:wrap; } body.g-shell #app .rc-symtools button{ width:auto !important; margin:0 !important; }
+body.g-shell #app .rc-scanbtn, .rc-scanbtn{ background:#C9A227 !important; color:#111 !important; border:0 !important; font-weight:700; }
+body.g-shell #app .rc-trbtn, .rc-trbtn{ background:#059669 !important; color:#fff !important; border:0 !important; font-weight:800; }
+#rcSide{ margin-top:10px; }
+.rc-indbar{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:8px; } .rc-indbar select{ width:auto !important; min-width:180px; margin:0 !important; }
+.rc-indchips{ display:flex; gap:6px; flex-wrap:wrap; }
+body.g-shell #app .rc-indchip, .rc-indchip{ width:auto !important; margin:0 !important; min-height:0 !important; padding:3px 10px !important; font-size:12px !important; border-radius:99px !important; background:#0F3D6E !important; color:#fff !important; border:0 !important; box-shadow:none !important; }
+.rc-chart{ border:1px solid var(--gs-border,#E5E7EB); border-radius:12px; overflow:hidden; background:#fff; }
+.rc-chart svg, .rc-cimg svg{ display:block; width:100%; height:auto; }
+.rc-cross, .rc-inds{ display:flex; flex-direction:column; gap:4px; margin:8px 0; }
+.rc-xn{ font-size:12.5px; padding:5px 9px; border-radius:8px; background:var(--gs-surface-2,#F8FAFC); border:1px solid var(--gs-border,#EEF1F5); }
+.rc-fibh{ margin:12px 0 6px; font-size:13.5px; }
+.rc-valrow{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; } .rc-valrow select{ flex:1; min-width:160px; margin:0 !important; }
+.rc-longtag{ display:inline-block; font-size:12px; font-weight:800; padding:3px 10px; border-radius:99px; background:#FFF4D6; color:#8A6D10; border:1px solid #F0DC9A; }
+.rc-exptag{ display:inline-block; font-size:12px; font-weight:800; padding:3px 10px; border-radius:99px; background:#E5E7EB; color:#374151; }
+.rc-card.rc-expired{ opacity:.72; border-inline-start-color:#9CA3AF !important; }
+.rc-stopmode{ display:flex; gap:14px; flex-wrap:wrap; margin-bottom:6px; }
+#rcStopMore .rc-grid{ margin-top:6px; }
+.rc-locked{ background:var(--gs-surface-2,#F1F5F9) !important; cursor:not-allowed; }
+.rc-cimg{ margin:8px 0; border:1px solid var(--gs-border,#E5E7EB); border-radius:10px; overflow:hidden; background:#fff; } .rc-cimg img{ display:block; width:100%; height:auto; }
+.rc-ai{ margin-top:8px; padding:8px 10px; border-radius:10px; background:#F6F3FF; border:1px solid #E1D8FF; font-size:13px; color:#1F2937; } .rc-ai div{ margin-top:2px; }
+.rc-upd-exp{ color:var(--gs-muted,#64748B); }
+.rc-cfglink{ margin:-4px 0 8px; }
 .rc-type{ display:flex; gap:6px; background:var(--gs-surface-2,#F8FAFC); border:1px solid var(--gs-border,#E5E7EB); border-radius:12px; padding:4px; margin-bottom:12px; }
 body.g-shell #app .rc-type button, .rc-type button{ flex:1; margin:0 !important; width:auto !important; background:transparent !important; color:var(--gs-muted,#64748B) !important; border:0 !important; box-shadow:none !important; font-weight:700; padding:9px !important; border-radius:9px !important; }
 body.g-shell #app .rc-type button.on[data-t="buy"]{ background:#059669 !important; color:#fff !important; }
@@ -1310,8 +1334,11 @@ body.g-shell #app .rc-send, .rc-send{ background:#C9A227 !important; color:#111 
 .rc-progbar{ height:8px; background:var(--gs-surface-2,#EEF0F3); border-radius:99px; overflow:hidden; margin:8px 0 2px; } .rc-progbar i{ display:block; height:100%; background:#C9A227; }
 .rc-side-empty{ color:var(--gs-muted,#64748B); font-size:13px; padding:20px 4px; text-align:center; }
 .rc-quote .rc-sym{ font-size:18px; } .rc-px b{ font-size:22px; } .rc-quote{ margin-bottom:8px; }
-.rc-side h4{ margin:10px 0 6px; font-size:13.5px; }
-.rc-lvs{ display:grid; gap:4px; margin-bottom:6px; }
+#rcSide h4{ margin:10px 0 6px; font-size:13.5px; }
+.rc-lvs{ display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); gap:4px; margin-bottom:6px; }
+body.g-shell #app .rc-lvs .rc-lv, .rc-lvs .rc-lv{ flex-direction:column !important; justify-content:center; text-align:center; padding:5px 2px !important; font-size:11.5px; gap:1px; border-inline-start-width:1px !important; }
+.rc-lvs .rc-lv.r{ background:#E5F5EE !important; color:#065F46 !important; } .rc-lvs .rc-lv.s{ background:#FBEAEA !important; color:#991B1B !important; } .rc-lvs .rc-lv.p{ background:#FFF4D6 !important; color:#8A6D10 !important; }
+@media (max-width:520px){ .rc-lvs{ grid-template-columns:repeat(4, minmax(0, 1fr)); } }
 body.g-shell #app .rc-lv, .rc-lv{ display:flex !important; align-items:center; min-height:0 !important; height:auto !important; line-height:1.4 !important; justify-content:space-between; width:100% !important; margin:0 !important; padding:6px 10px !important; font-size:12.5px; font-weight:600; border-radius:8px !important; box-shadow:none !important; border:1px solid var(--gs-border,#E5E7EB) !important; background:var(--gs-surface,#fff) !important; color:var(--gs-text,#111) !important; }
 .rc-lv.r{ border-inline-start:4px solid #DC2626 !important; } .rc-lv.s{ border-inline-start:4px solid #059669 !important; } .rc-lv.p{ border-inline-start:4px solid #C9A227 !important; }
 .rc-tools{ display:flex; gap:6px; flex-wrap:wrap; margin:10px 0; } body.g-shell #app .rc-tools button{ width:auto !important; margin:0 !important; }
@@ -1332,7 +1359,7 @@ body.g-shell #app .rc-lv, .rc-lv{ display:flex !important; align-items:center; m
 .rc-upds{ margin-top:10px; border-top:1px dashed var(--gs-border,#E5E7EB); padding-top:6px; } .rc-upd{ font-size:13px; padding:5px 0; }
 .rc-loghead{ display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin:20px 0 8px; }
 .rc-log{ border-inline-start:4px solid #059669 !important; margin-bottom:8px; } .rc-log.rc-sell{ border-inline-start-color:#DC2626 !important; }
-@media (max-width:900px){ .rc-work{ grid-template-columns:1fr; } .rc-side{ position:static; } }
+@media (max-width:900px){ .rc-work{ grid-template-columns:1fr; } }
 @media (max-width:640px){ .rc-grid{ grid-template-columns:1fr 1fr; } }
 /* الإصدار 128: إعدادات ميزان محفظتك */
 .mz-adm{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:4px 14px; } .mz-adm h3, .mz-adm .u-check, .mz-adm textarea, .mz-adm > label{ grid-column:1 / -1; }

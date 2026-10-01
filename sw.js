@@ -2,23 +2,23 @@
 // 1) إشعارات Push حقيقية (زي ما كانت)
 // 2) تشغيل كتطبيق: تخزين ملفات الواجهة الثابتة + صفحة "غير متصل" لما الإنترنت يقطع
 // ملحوظة: طلبات الـ API (ملفات .php) مش بتتخزن أبدًا - البيانات المالية لازم تيجي من السيرفر دايمًا
-const VERSION = 'griffine-v128';
+const VERSION = 'griffine-v129';
 const STATIC_ASSETS = [
   '/offline.html',
-  '/shell.css?v=128',
-  '/shell.js?v=128',
-  '/emergency.js?v=128',
-  '/studio.js?v=128',
-  '/landing.js?v=128',
-  '/landing.css?v=128',
-  '/basira.js?v=128',
-  '/basira.css?v=128',
-  '/mizan.js?v=128',
-  '/mizan.css?v=128',
-  '/mizanai.js?v=128',
-  '/mizanai.css?v=128',
-  '/griffine-logo-light.webp?v=128',
-  '/griffine-logo-dark.webp?v=128',
+  '/shell.css?v=129',
+  '/shell.js?v=129',
+  '/emergency.js?v=129',
+  '/studio.js?v=129',
+  '/landing.js?v=129',
+  '/landing.css?v=129',
+  '/basira.js?v=129',
+  '/basira.css?v=129',
+  '/mizan.js?v=129',
+  '/mizan.css?v=129',
+  '/mizanai.js?v=129',
+  '/mizanai.css?v=129',
+  '/griffine-logo-light.webp?v=129',
+  '/griffine-logo-dark.webp?v=129',
   '/icon-192.png',
   '/icon-512.png',
   '/manifest.json'
@@ -73,6 +73,7 @@ self.addEventListener('push', function(event) {
     dir: 'rtl',
     lang: 'ar',
   };
+  if (data.image) options.image = data.image;   // الإصدار 129: صورة رسم التوصية (أندرويد / كروم)
   event.waitUntil(self.registration.showNotification(data.title || 'GRIFFINE', options));
 });
 
