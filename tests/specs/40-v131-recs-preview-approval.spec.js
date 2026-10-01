@@ -90,6 +90,15 @@ const AN = { email: 'analyst131@example.com', pass: 'Test12345an' };   // حسا
   await fill(z, 'اختبار 131 مباشر'); await z.click('#rcSend'); await z.waitForFunction(() => /اتبعتت —/.test(rcMsg.textContent), null, { timeout: 30000 }).catch(() => {});
   check('اللي معاه صلاحية «مراجعة واعتماد التوصيات» توصيته بتتبعت على طول', q("SELECT status FROM recommendations WHERE note = 'اختبار 131 مباشر' ORDER BY id DESC LIMIT 1") === 'active');
   check('الصلاحية الجديدة ظاهرة في قائمة الصلاحيات', await a.evaluate(async () => JSON.stringify(await apiGet('/staff_list.php').catch(() => ({}))).includes('rec_approve')));
+  // الإصدار 132: صلاحية المحلل «توصياته لازم الأدمن يوافق عليها» (حتى والموافقة العامة مقفولة — وحتى لو معاه «مُراجِع»)
+  q("REPLACE INTO site_config (config_key, config_value) VALUES ('recs_cfg', '')"); q(`INSERT IGNORE INTO staff_permissions (staff_id, permission_key) VALUES (${sid}, 'rec_needs_review')`);
+  await fill(z, 'اختبار 131 مراجعة المحلل'); const ui2 = await z.evaluate(() => rcSend.textContent);
+  await z.click('#rcSend'); await z.waitForFunction(() => /للمراجعة/.test(rcMsg.textContent), null, { timeout: 30000 }).catch(() => {});
+  const nr = q("SELECT CONCAT(id, '|', status) FROM recommendations WHERE note = 'اختبار 131 مراجعة المحلل' ORDER BY id DESC LIMIT 1").split('|');
+  check('الإصدار 132: محلل عليه «توصياته لازم الأدمن يوافق عليها» ← بتروح للمراجعة حتى لو معاه «مُراجِع» والموافقة العامة مقفولة', /للمراجعة/.test(ui2) && nr[1] === 'pending', ui2 + ' ' + nr.join('|'));
+  const self = await z.evaluate(async (id) => apiPost('/recs_api.php', { action: 'publish', id }), nr[0]);
+  check('المحلل اللي معاه «مُراجِع» مايقدرش يوافق على توصيته هو', !self.success && /بنفسك/.test(self.message || ''), self.message);
+  q(`DELETE FROM staff_permissions WHERE staff_id = ${sid} AND permission_key = 'rec_needs_review'`);
   // الموافقة مقفولة ← المحلل بيبعت على طول
   q("REPLACE INTO site_config (config_key, config_value) VALUES ('recs_cfg', '')"); q(`DELETE FROM staff_permissions WHERE staff_id = ${sid} AND permission_key = 'rec_approve'`);
   await fill(z, 'اختبار 131 من غير موافقة'); await z.click('#rcSend'); await z.waitForFunction(() => /اتبعتت —/.test(rcMsg.textContent), null, { timeout: 30000 }).catch(() => {});

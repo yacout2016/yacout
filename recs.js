@@ -109,7 +109,7 @@
             ${meta.waOn ? '<label class="u-check"><input type="checkbox" id="rcChWa"> 🟢 واتساب (رسالة بسيطة)</label>' : ''}</div>
           <h3 class="rc-h">${E(C.t_preview)}</h3>
           <div id="rcPreview"></div>
-          ${meta.approvalOn && !meta.canApprove ? `<div class="rc-pendnote">⏳ ${E(C.t_pending_note)}</div>` : ''}
+          ${meta.approvalOn ? `<div class="rc-pendnote">⏳ ${E(C.t_pending_note)}</div>` : ''}
           <div class="rc-row"><button type="button" class="secondary rc-pvbtn" id="rcPreviewBtn">${E(C.t_btn_preview)}</button><button type="button" class="secondary" id="rcDraft">${E(C.t_btn_draft)}</button>
             <button type="button" class="rc-send" id="rcSend">${E(C.t_send_buy)}</button><span id="rcMsg" class="u-note"></span></div>
           <div id="rcProg" hidden></div>
@@ -187,7 +187,7 @@
     document.querySelectorAll('.rc-pc').forEach(x => { x.hidden = !buy; }); $('rcPctTh').hidden = !buy;
     if (!buy) { $('rcStop1Mode').checked = true; }
     setStopMode(true);
-    $('rcSend').textContent = META.approvalOn && !META.canApprove ? C.t_send_review : (buy ? C.t_send_buy : C.t_send_sell);
+    $('rcSend').textContent = META.approvalOn ? C.t_send_review : (buy ? C.t_send_buy : C.t_send_sell);
     paint();
   }
   // وقف الخسارة: مرحلة واحدة (كسر أول دعم — 100%) أو 3 مراحل (S1 / S2 / S3 بنسب)
@@ -431,7 +431,7 @@
   async function send(mode){
     const msg = $('rcMsg');
     if (!LV) return toast('اكتب كود سهم صحيح الأول', 'err');
-    const o = formObj(), review = META.approvalOn && !META.canApprove;
+    const o = formObj(), review = !!META.approvalOn;
     const chk = { chApp: $('rcChApp').checked, chEmail: $('rcChEmail').checked, chWa: $('rcChWa') && $('rcChWa').checked };
     if (!chk.chApp && !chk.chEmail && !chk.chWa) return toast('اختار قناة إرسال واحدة على الأقل', 'err');
     if (mode === 'send' && o.attach.includes('ai') && !o.aiText) { if (!await gConfirm('رأي بصيرة AI لسه ما وصلش — تبعت من غيره؟')) return; }
@@ -535,8 +535,8 @@
     const btn = (k, l, cls) => `<button class="small ${cls || 'secondary'} u-wa" data-rc-${k}="${E(r.id)}">${l}</button>`;
     const acts = [btn('pv', '👁 معاينة'),
       r.status === 'active' ? btn('upd', '➕ إرسال تحديث') : '',
-      r.status === 'draft' && (mine || canAppr) ? btn('pub', META && META.approvalOn && !canAppr ? '📨 إرسال للمراجعة' : '📢 إرسال', '') : '',
-      r.status === 'pending' && canAppr ? btn('pub', '✅ موافقة وإرسال', '') + ' ' + btn('rej', '❌ رفض', 'danger') : '',
+      r.status === 'draft' && (mine || canAppr) ? btn('pub', META && META.approvalOn ? '📨 إرسال للمراجعة' : '📢 إرسال', '') : '',
+      r.status === 'pending' && canAppr && (!mine || window.__isSuperAdmin) ? btn('pub', '✅ موافقة وإرسال', '') + ' ' + btn('rej', '❌ رفض', 'danger') : '',
       pre && (mine || canAppr) ? btn('trash', '🗑 حذف', 'danger') : '',
       can ? btn('del', '🗑️ إلغاء', 'danger') : ''].filter(Boolean).join(' ');
     return `<div class="section-card rc-log rc-${r.type || 'buy'}${pre ? ' rc-log-pre' : ''}" data-st="${E(r.status)}"><div class="u-row"><div><b>${r.type === 'sell' ? '📉 بيع' : '📈 شراء'} — ${E(r.stockName)} (${E(r.symbol)})</b> <span class="${st[1]} u-fs12">${st[0]}</span>${r.long ? ` <span class="rc-longtag">${E(CFG.t_long_term || 'طويلة المدى')}</span>` : ''} <span class="g-mkt-tag">🌍 ${E(r.market || 'مصر')}</span></div>

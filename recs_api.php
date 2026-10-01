@@ -48,7 +48,7 @@ try {
         rc_out(["success" => true, "markets" => array_map(fn($m) => ['name' => $m, 'ccy' => rc_ccy($m)], $mk), "waOn" => np_wa_on($conn), "tf" => array_map(fn($k, $v) => ['k' => $k, 'l' => $v[0]], array_keys(RC_TF), RC_TF),
             "valid" => array_map(fn($h) => ['h' => $h, 'l' => rc_valid_label($h), 'long' => rc_is_long($conn, $h)], RC_VALID), "kinds" => array_map(fn($k, $v) => ['k' => $k, 'l' => $v], array_keys(RC_KINDS), RC_KINDS), "queue" => (int)$conn->query("SELECT COUNT(*) FROM rec_outbox WHERE status = 0")->fetch_row()[0],
             "cfg" => rc_cfg($conn), "ind" => RC_IND, "analystName" => rc_registered_name($conn, $email), "canRename" => rc_can_rename($conn),
-            "approvalOn" => !empty(rc_cfg($conn)['approval_on']), "canApprove" => rc_can_approve($conn)]);
+            "approvalOn" => rc_need_approval($conn), "canApprove" => rc_can_approve($conn)]);   // الإصدار 132: approvalOn = توصيات المستخدم ده محتاجة موافقة
     }
     if ($action === 'levels') {
         @set_time_limit(60);
@@ -142,7 +142,8 @@ try {
                 if (!$mine && !$appr) rc_out(["success" => false, "message" => "المسودة دي بتاعة محلل تاني."]);
                 if (rc_need_approval($conn)) { $u = $conn->prepare("UPDATE recommendations SET status = 'pending' WHERE id = ? AND status = 'draft'"); $u->bind_param("i", $id); $u->execute(); $u->close();
                     rc_notify_approvers($conn, $r, $email); rc_out(["success" => true, "status" => 'pending']); }
-            } elseif ($r['status'] === 'pending') { if (!$appr) rc_out(["success" => false, "message" => "الموافقة محتاجة صلاحية «مراجعة واعتماد التوصيات»."]); }
+            } elseif ($r['status'] === 'pending') { if (!$appr) rc_out(["success" => false, "message" => "الموافقة محتاجة صلاحية «مُراجِع التوصيات»."]);
+                if ($mine && !rc_is_super()) rc_out(["success" => false, "message" => "مينفعش توافق على توصيتك بنفسك — لازم مُراجِع تاني أو الأدمن."]); }
             else rc_out(["success" => false, "message" => "التوصية دي اتبعتت أو اتقفلت قبل كده."]);
             $d = rc_publish($conn, $id, $email);
             if ($d === null) rc_out(["success" => false, "message" => "التوصية اتغيّرت حالتها — حدّث الصفحة."]);

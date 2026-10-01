@@ -253,7 +253,8 @@ function getAllPermissionKeys(){
         'edit_site_design'      => 'تنسيق محتوى الموقع (بدون بيانات جوهرية)',
         'view_reports'          => 'مشاهدة التقارير والإحصائيات',
         'manage_recommendations'=> 'إرسال ومراجعة توصيات الشراء للعملاء',
-        'rec_approve'           => 'مراجعة واعتماد توصيات المحللين قبل إرسالها للمشتركين (الإصدار 131)',
+        'rec_needs_review'      => '⏳ توصياته لازم الأدمن يوافق عليها قبل ما تتبعت للمشتركين (للمحلل المالي — الإصدار 132)',
+        'rec_approve'           => '✅ مُراجِع التوصيات: يوافق على توصيات المحللين أو يرفضها (للأدمن / مدير الموقع — مش للمحلل)',
         'rec_custom_analyst_name'=> 'تغيير اسم المحلل الظاهر في التوصية (كتابة اسم آخر) — من غيرها التوصية بتتبعت باسمه المسجّل (الإصدار 129)',
         'manage_testimonials'   => 'مشاهدة وإدارة آراء العملاء (حذف التجاوزات) - الإصدار 85',
         'manage_content'        => 'إدارة المقالات (نشر وتعديل وحذف)',
@@ -272,7 +273,7 @@ function defaultJobTitlesSeed(){
         'customer_service' => ['خدمة عملاء', ['view_chat','reply_chat']],
         'sales'            => ['مندوب مبيعات', ['manage_subscribers','view_chat','reply_chat','view_reports','manage_recommendations']],
         'accounts'         => ['مدير حسابات', ['manage_subscribers','manage_plans','manage_reminders','view_reports']],
-        'financial_analyst'=> ['محلل مالي', ['manage_recommendations']],   // الإصدار 129
+        'financial_analyst'=> ['محلل مالي', ['manage_recommendations', 'rec_needs_review']],   // الإصدار 129 (132: توصياته بتتراجع افتراضيًا)
     ];
 }
 function jobTitlesTable(){

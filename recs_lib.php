@@ -74,7 +74,17 @@ function rc_registered_name($conn, $email){
 }
 /* الإصدار 131: موافقة الأدمن قبل الإرسال */
 function rc_can_approve($conn){ return in_array('rec_approve', getCurrentUserPermissions($conn), true); }
-function rc_need_approval($conn){ return !empty(rc_cfg($conn)['approval_on']) && !rc_can_approve($conn); }
+/* الإصدار 132: التوصية محتاجة موافقة لو:
+   - المحلل نفسه عليه صلاحية «توصياته لازم الأدمن يوافق عليها» (حتى لو معاه صلاحية المُراجِع — مايوافقش على نفسه)
+   - أو «موافقة الأدمن قبل الإرسال» شغالة للكل وهو مش مُراجِع
+   الأدمن الرئيسي بس توصياته بتتبعت على طول دايمًا */
+function rc_is_super(){ return strtolower((string)($_SESSION['user_email'] ?? '')) === strtolower(ADMIN_EMAIL); }
+function rc_need_approval($conn){
+    if (rc_is_super()) return false;
+    $p = getCurrentUserPermissions($conn);
+    if (in_array('rec_needs_review', $p, true)) return true;
+    return !empty(rc_cfg($conn)['approval_on']) && !in_array('rec_approve', $p, true);
+}
 function rc_row($conn, $id){ $st = $conn->prepare("SELECT * FROM recommendations WHERE id = ?"); $st->bind_param("i", $id); $st->execute(); $r = $st->get_result()->fetch_assoc(); $st->close(); return $r ?: null; }
 function rc_notify_users($conn, $emails, $title, $body, $sym = '', $mkt = 'مصر'){
     foreach (array_unique(array_filter(array_map('strtolower', $emails))) as $e) {

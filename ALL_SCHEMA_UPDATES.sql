@@ -1,4 +1,4 @@
-/* GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 131) — كل التحديثات، آمن يتشغل أكتر من مرة. الصقه كله في تبويب SQL ← Go */
+/* GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 132) — كل التحديثات، آمن يتشغل أكتر من مرة. الصقه كله في تبويب SQL ← Go */
 /* v69: جدول login_attempts (حماية من تخمين كلمات المرور). */
 /* v71: مفيش تغييرات في قاعدة البيانات (إصلاحات واجهة فقط: ال… */
 /* v72: جدول ui_customizations (استوديو التصميم) + جدول email… */
@@ -61,6 +61,7 @@
 /* v129: شاشة المحلل الاحترافية — أعمدة جديدة في recommendatio… */
 /* v130: «ميزان GRIFFINE AI» — العوائد السنوية لكل أصل بتتحدث… */
 /* v131: «توصية شراء / بيع» — معاينة قبل الإرسال (إشعار / إيمي… */
+/* v132: صلاحية «توصياته لازم الأدمن يوافق عليها» للمحلل + تصحيح الصلاحية القديمة */
 /* v85: ترميز الاتصال UTF-8 عشان النصوص العربي اللي بتتضاف من… */
 SET NAMES utf8mb4;
 CREATE TABLE IF NOT EXISTS users (
@@ -822,4 +823,8 @@ CREATE TABLE IF NOT EXISTS mizan_rates_log (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ALTER TABLE recommendations ADD COLUMN IF NOT EXISTS approved_by VARCHAR(190) NULL, ADD COLUMN IF NOT EXISTS approved_at DATETIME NULL, ADD COLUMN IF NOT EXISTS reject_reason VARCHAR(300) NULL;
 ALTER TABLE recommendations ADD INDEX IF NOT EXISTS idx_rec_status (status, id);
-SELECT 'GRIFFINE database is up to date (v131)' AS result;
+UPDATE job_titles SET default_perms = '["manage_recommendations","rec_needs_review"]' WHERE title_key = 'financial_analyst' AND default_perms = '["manage_recommendations"]';
+INSERT IGNORE INTO staff_permissions (staff_id, permission_key) SELECT sp.staff_id, 'rec_needs_review' FROM staff_permissions sp JOIN staff_members s ON s.id = sp.staff_id WHERE sp.permission_key = 'rec_approve' AND s.job_title = 'financial_analyst' AND NOT EXISTS (SELECT 1 FROM site_config WHERE config_key = 'mig_132_rec');
+DELETE sp FROM staff_permissions sp JOIN staff_members s ON s.id = sp.staff_id WHERE sp.permission_key = 'rec_approve' AND s.job_title = 'financial_analyst' AND NOT EXISTS (SELECT 1 FROM site_config WHERE config_key = 'mig_132_rec');
+INSERT IGNORE INTO site_config (config_key, config_value) VALUES ('mig_132_rec', '1');
+SELECT 'GRIFFINE database is up to date (v132)' AS result;
