@@ -155,7 +155,12 @@
           <div class="wide"><label for="mzaAExM">الأصول</label>${msBox('mzaAEx', 'الأصول')}</div>
           <div><label for="mzaAExp">نسبة المصاريف / الطوارئ</label><select id="mzaAExp"><option value="0">من غير</option><option value="5">5%</option><option value="10" selected>10%</option><option value="15">15%</option></select></div>
         </div>
-        <details class="u-mt10"><summary class="u-fs12">⚙️ العوائد السنوية المتوقعة لكل أصل (افتراضات تقدر تعدّلها)</summary><div class="mza-grid u-mt10" id="mzaRates">${ASSETS.filter(a => a.k !== 'expenses').map(a => `<div><label>${a.ic} ${E(a.n)} (% سنويًا)</label><input type="number" step="0.5" data-rate="${a.k}" value="${RATES[a.k] ?? 0}"></div>`).join('')}</div></details>
+        <div class="mza-rates" id="mzaRatesBox">
+          <div class="mza-rhead"><b>📈 العوائد السنوية المتوقعة لكل أصل ${gTipI('تلقائي: الأرقام بتتحدث أونلاين مجانًا كل شهر (مؤشر البورصة / سعر الذهب / سعر الفائدة من البنك المركزي). «حدّث الآن» بيجيب أحدث أرقام. يدوي: انت بتكتب نسبك وتفضل ثابتة ومحفوظة على حسابك.')}</b>
+            ${seg('mzaRMode', [['auto', '🔄 تلقائي أونلاين'], ['manual', '✍️ يدوي']], 'auto')}<button type="button" class="secondary small mza-rnow" id="mzaRNow">⟳ حدّث الآن</button></div>
+          <div class="mza-rinfo u-fs12" id="mzaRInfo">جارٍ تحميل أحدث العوائد…</div>
+          <div class="mza-grid u-mt10" id="mzaRates">${ASSETS.filter(a => a.k !== 'expenses').map(a => `<div class="mza-rf" id="mzaRf-${a.k}"><label for="mzaR-${a.k}">${a.ic} ${E(a.n)} (% سنويًا)</label><input id="mzaR-${a.k}" type="number" step="0.5" data-rate="${a.k}" value="${RATES[a.k] ?? ''}"><small class="mza-rsrc" id="mzaRs-${a.k}"></small></div>`).join('')}</div>
+        </div>
         <div class="mza-actions"><button type="button" class="secondary small mza-clear" data-f="assets">🧹 تفريغ الخانات</button><button type="button" class="mza-go" id="mzaAGo">✨ وزّع واحسب النمو</button></div>
       </div>
       <div class="bs-card mza-form" id="mzaF-check" hidden>
@@ -189,7 +194,7 @@
     wireSeg('mzaAType', (v) => { document.getElementById('mzaAMonW').hidden = v !== 'monthly'; document.getElementById('mzaAAmtL').textContent = v === 'monthly' ? 'مبلغ البداية (اختياري)' : 'المبلغ'; const a = document.getElementById('mzaAAmt'); if (v === 'monthly' && +a.value === 100000) a.value = 0; });
     msWire('mzaSEx'); msWire('mzaAEx');
     msFill('mzaAEx', ASSETS.filter(a => a.k !== 'expenses').map(a => [a.k, a.ic + ' ' + a.n]));
-    document.getElementById('mzaRates').addEventListener('input', (e) => { const k = e.target.dataset.rate; if (k) RATES[k] = +e.target.value || 0; });
+    wireRates(tok);
     const sm = document.getElementById('mzaSMkt'), cm = document.getElementById('mzaCMkt');
     const paintEx = async () => { const pop = document.querySelector('#mzaSEx .mza-ms-pop'); pop.innerHTML = '<span class="u-muted u-fs12">جارٍ تحميل قطاعات البورصة وتحليل أكبر شركاتها…</span>';
       try { const S = await loadSectors(sm.value); if (tok && screenStale(tok)) return; msFill('mzaSEx', S.map(s => [s.k, s.n, s.why])); }
@@ -274,6 +279,66 @@
       steps: ['ابدأ خطة DCA أو Grid لكل شركة مرشحة من الزرار جنبها', 'ادخل على مراحل خلال شهر أو اتنين', 'راجع التوزيع كل 3 شهور'] };
   }
 
+  /* ---------- الإصدار 130: العوائد السنوية أونلاين (تلقائي كل شهر / حدّث الآن / يدوي محفوظ على الحساب) ---------- */
+  let LIVE = null, RU = { mode: 'auto', rates: {} }, RMKT = '', rSaveT = null;
+  const RKEYS = () => ASSETS.filter(a => a.k !== 'expenses').map(a => a.k);
+  const fmtD = (d) => d ? String(d).slice(0, 10) : '—';
+  async function loadRates(market, now){
+    const info = document.getElementById('mzaRInfo'); if (info) info.textContent = now ? '⏳ بندوّر على أحدث الأرقام أونلاين…' : 'جارٍ تحميل أحدث العوائد…';
+    const r = await apiGet('/mizanai_api.php?action=rates&market=' + encodeURIComponent(market) + (now ? '&now=1' : '')).catch(() => null);
+    if (!document.getElementById('mzaRates')) return null;
+    if (!r || !r.success) { if (info) info.textContent = (r && r.message) || 'تعذّر تحميل العوائد أونلاين — الأرقام الحالية افتراضية وتقدر تعدّلها.'; return r; }
+    RMKT = r.market; LIVE = r.live; RU = { mode: r.user.mode, rates: Object.assign({}, r.user.rates || {}) };
+    if (now && RU.mode !== 'auto') { RU.mode = 'auto'; saveRates(true); }
+    applyRates(); return r;
+  }
+  function applyRates(){
+    const auto = RU.mode !== 'manual', L = (LIVE && LIVE.rates) || {}, S = (LIVE && LIVE.src) || {};
+    document.querySelectorAll('#mzaRMode button').forEach(b => b.classList.toggle('on', b.dataset.v === (auto ? 'auto' : 'manual')));
+    RKEYS().forEach(k => {
+      const live = L[k] != null ? +L[k] : null, mine = RU.rates[k] != null ? +RU.rates[k] : null;
+      const v = auto ? (live != null ? live : mine) : (mine != null ? mine : live);
+      RATES[k] = v; const inp = document.getElementById('mzaR-' + k), src = document.getElementById('mzaRs-' + k), box = document.getElementById('mzaRf-' + k);
+      if (inp && document.activeElement !== inp) inp.value = v == null ? '' : v;
+      if (inp) inp.placeholder = v == null ? 'اكتبها يدوي' : '';
+      const miss = v == null;
+      if (box) { box.classList.toggle('mza-miss', miss); if (!miss) box.classList.remove('mza-need'); }
+      if (src) src.textContent = miss ? '⚠️ مش متاحة في البحث الأونلاين — اكتبها يدوي' : !auto ? '✍️ يدوي — محفوظة على حسابك' : live != null ? '🔄 ' + (S[k] || 'أونلاين') : '✍️ كتبتها انت (مش متاحة أونلاين)';
+    });
+    const info = document.getElementById('mzaRInfo'); if (!info) return;
+    const nm = (LIVE && LIVE.missing || []).length;
+    info.innerHTML = auto ? `🔄 <b>تلقائي:</b> بتتحدث أونلاين مجانًا كل ${LIVE ? LIVE.autoDays : 30} يوم — آخر تحديث <b class="n">${E(fmtD(LIVE && LIVE.at))}</b>${LIVE && LIVE.next ? ` — التحديث الجاي <b class="n">${E(LIVE.next)}</b>` : ''}${nm ? ` — <span class="neg">${nm} نسبة مش متاحة أونلاين: اكتبها يدوي</span>` : ''}`
+      : `✍️ <b>يدوي:</b> نسبك ثابتة ومحفوظة على حسابك لحد ما تغيّرها — اضغط «⟳ حدّث الآن» أو «تلقائي» عشان ترجع للأرقام الأونلاين.`;
+  }
+  function saveRates(now){
+    clearTimeout(rSaveT);
+    const go = () => apiPost('/mizanai_api.php', { action: 'user_rates', market: RMKT || 'مصر', mode: RU.mode, rates: JSON.stringify(RU.rates) }).catch(() => null);
+    if (now) return go(); rSaveT = setTimeout(go, 700);
+  }
+  function wireRates(tok){
+    const mk = document.getElementById('mzaAMkt');
+    wireSeg('mzaRMode', (v) => {
+      if (v === 'manual') { RKEYS().forEach(k => { if (RATES[k] != null) RU.rates[k] = RATES[k]; }); RU.mode = 'manual'; }
+      else { RU.mode = 'auto'; RKEYS().forEach(k => { if (LIVE && LIVE.rates && LIVE.rates[k] != null) delete RU.rates[k]; }); }
+      applyRates(); saveRates(true);
+    });
+    document.getElementById('mzaRates').addEventListener('input', (e) => {
+      const k = e.target.dataset.rate; if (!k) return; const v = e.target.value === '' ? null : +e.target.value;
+      if (RU.mode !== 'manual' && LIVE && LIVE.rates && LIVE.rates[k] != null) {   // تعديل رقم أونلاين ← الوضع بيتحول يدوي (بكل الأرقام الحالية)
+        RKEYS().forEach(x => { if (RATES[x] != null) RU.rates[x] = RATES[x]; }); RU.mode = 'manual'; toast('اتحولت للوضع اليدوي — نسبك هتفضل ثابتة ومحفوظة على حسابك');
+      }
+      if (v == null) delete RU.rates[k]; else RU.rates[k] = v;
+      RATES[k] = v; applyRates(); saveRates();
+    });
+    document.getElementById('mzaRNow').onclick = async () => {
+      const b = document.getElementById('mzaRNow'); b.disabled = true;
+      const r = await loadRates(mk.value, true); b.disabled = false;
+      if (r && r.success) toast(r.live.fresh ? 'اتحدثت العوائد من النت ✓' : r.live.todayDone ? 'العوائد اتحدثت النهارده بالفعل — دي أحدث أرقام' : 'دي أحدث أرقام متاحة');
+    };
+    mk.addEventListener('change', () => loadRates(mk.value));
+    loadRates(mk.value);
+  }
+
   /* ---------- 2) الأصول ---------- */
   async function allocAssets(tok){
     const type = segVal('mzaAType'), amt = Math.max(0, +document.getElementById('mzaAAmt').value || 0), mon = type === 'monthly' ? Math.max(0, +document.getElementById('mzaAMon').value || 0) : 0;
@@ -282,6 +347,11 @@
     const ex = msExcluded('mzaAEx', ASSETS.filter(a => a.k !== 'expenses').map(a => a.k));
     const base = Object.assign({}, CFG.profiles[r] || {}); ex.forEach(k => delete base[k]);
     const t = Object.values(base).reduce((a, b) => a + b, 0); if (!t) return toast('سيب أصل واحد على الأقل', 'err');
+    // الإصدار 130: أصل عائده مش متاح أونلاين ومتكتبش يدوي ← لازم المستثمر يكتبه
+    const miss = Object.keys(base).filter(k => base[k] > 0 && (RATES[k] == null || RATES[k] === '' || isNaN(RATES[k])));
+    if (miss.length) { const a = ASSETS.find(x => x.k === miss[0]); miss.forEach(k => { const f = document.getElementById('mzaRf-' + k); if (f) f.classList.add('mza-miss', 'mza-need'); });
+      const i = document.getElementById('mzaR-' + miss[0]); if (i) { i.scrollIntoView({ behavior: 'smooth', block: 'center' }); i.focus(); }
+      return toast(`اكتب العائد السنوي لـ «${a ? a.n : miss[0]}» — مش متاح في البحث الأونلاين`, 'err'); }
     const list = Object.keys(base).filter(k => base[k] > 0).map(k => Object.assign({}, ASSETS.find(a => a.k === k), { p: base[k] / t * (100 - expP) }));
     if (expP) list.push(Object.assign({}, ASSETS.find(a => a.k === 'expenses'), { p: expP }));
     list.forEach(a => a.p = Math.round(a.p * 10) / 10);
@@ -546,7 +616,9 @@
         <div><label for="mzaa_secs">أقصى عدد قطاعات تتحلل</label><input type="number" id="mzaa_secs" min="4" max="20" value="${c.sectors_max}"></div>
         <div><label for="mzaa_per">شركات مرشحة لكل قطاع</label><input type="number" id="mzaa_per" min="1" max="5" value="${c.per_sector}"></div>
       </div>
-      <h3>العوائد السنوية الافتراضية لكل أصل (%)</h3>
+      <h3>🔄 تحديث العوائد أونلاين (مجاني) — الإصدار 130</h3>
+      <div id="mzaRatesAdm"><div class="gs-skel" style="height:120px"></div></div>
+      <h3>العوائد المبدئية لكل أصل (%) <small class="u-muted u-fs12">— بتظهر بس لحد ما الأرقام الأونلاين تتحمّل</small></h3>
       <div class="section-card mza-adm">${A.map(a => `<div><label>${a.ic} ${E(a.n)}</label><input type="number" step="0.5" data-rate="${a.k}" value="${c.rates[a.k]}"></div>`).join('')}</div>
       <h3>نسب الأصول لكل مستوى مخاطرة (%)</h3>
       <div class="section-card u-ox"><table class="std-table g-no-enh"><thead><tr><th>الأصل</th><th>محافظ</th><th>متوازن</th><th>مغامر</th></tr></thead><tbody>${A.map(a => `<tr><td>${a.ic} ${E(a.n)}</td>${['low', 'mid', 'high'].map(rk => `<td><input type="number" min="0" max="100" step="1" data-prof="${rk}|${a.k}" value="${c.profiles[rk][a.k]}" style="max-width:90px"></td>`).join('')}</tr>`).join('')}</tbody></table></div>
@@ -562,5 +634,41 @@
       v('mzaaMsg').textContent = s && s.success ? '✅ اتحفظت' : ((s && s.message) || 'تعذّر الحفظ'); v('mzaaMsg').className = 'u-fs12 ' + (s && s.success ? 'pos' : 'neg');
     };
     v('mzaaReset').onclick = async () => { const s = await apiPost('/mizanai_api.php', { action: 'admin_save', config: 'null' }).catch(() => null); if (s && s.success) window.renderAdminMizanAi(); };
+    adminRates(__tok);
   };
+  // الإصدار 130: إعدادات تحديث العوائد أونلاين + آخر أرقام لكل سوق + «حدّث الآن» + سجل التحديثات
+  async function adminRates(tok){
+    const box = document.getElementById('mzaRatesAdm'); if (!box) return;
+    const r = await apiGet('/mizanai_api.php?action=admin_rates_get').catch(() => null);
+    if ((tok && screenStale(tok)) || !document.getElementById('mzaRatesAdm')) return;
+    if (!r || !r.success) { box.innerHTML = `<div class="error">${E((r && r.message) || 'تعذّر التحميل')}</div>`; return; }
+    const c = r.config, A = ASSETS.filter(a => a.k !== 'expenses'), nm = (k) => { const a = ASSETS.find(x => x.k === k); return a ? a.ic + ' ' + a.n : k; };
+    const num = (id, l, val, tip) => `<div><label for="${id}">${E(l)} ${tip ? gTipI(tip) : ''}</label><input id="${id}" type="number" step="0.5" value="${E(val)}"></div>`;
+    const TR = { auto: 'تلقائي', now: 'حدّث الآن (مستثمر)', admin: 'الأدمن' };
+    box.innerHTML = `${r.ready ? '' : '<div class="error">شغّل ALL_SCHEMA_UPDATES.sql (الإصدار 130) أولًا.</div>'}
+      <div class="info">كل الأرقام من مصادر مجانية: مؤشر البورصة (الأسهم وصناديق الأسهم) — سعر الذهب بالعملة المحلية — سعر الفائدة من صفحة البنك المركزي ± الفروق اللي تحت. أي رقم مش متاح بيتطلب من المستثمر يكتبه يدوي. «حدّث الآن» عند المستثمر بيعمل بحث جديد مرة واحدة في اليوم لكل سوق.</div>
+      <div class="section-card mza-adm">
+        ${num('mzr_days', 'التحديث التلقائي كل (يوم)', c.auto_days)}${num('mzr_fee', 'مصاريف صناديق الأسهم % (بتتخصم من عائد المؤشر)', c.fund_fee)}
+        ${num('mzr_re', 'تقدير عائد العقار % (فاضي = المستثمر يكتبه)', c.re_est, 'مفيش مصدر مجاني موثوق لعائد العقار')}
+        ${num('mzr_cds', 'الشهادات = سعر الفائدة ±', c.sp_cds)}${num('mzr_sav', 'حساب التوفير = سعر الفائدة ±', c.sp_savings)}${num('mzr_daily', 'الحساب اليومي = سعر الفائدة ±', c.sp_daily)}
+        ${num('mzr_money', 'الصناديق النقدية = سعر الفائدة ±', c.sp_money)}${num('mzr_fixed', 'صناديق الدخل الثابت = سعر الفائدة ±', c.sp_fixed)}
+      </div>
+      <div class="section-card u-ox"><table class="std-table g-no-enh mzr-mk"><thead><tr><th>السوق</th><th>رمز المؤشر</th><th>صفحة البنك المركزي</th><th>الكلمة جنب سعر الفائدة</th><th>سعر فائدة احتياطي %</th><th>آخر أرقام</th><th></th></tr></thead><tbody>
+        ${r.markets.map(m => { const x = c.markets[m] || {}, L = r.live[m]; return `<tr data-m="${E(m)}"><td><b>${E(m)}</b></td><td><input data-f="index" dir="ltr" value="${E(x.index || '')}"></td><td><input data-f="url" dir="ltr" value="${E(x.url || '')}" placeholder="https://..."></td><td><input data-f="kw" dir="ltr" value="${E(x.kw || '')}"></td><td><input data-f="fb" type="number" step="0.25" value="${E(x.fb || '')}" placeholder="لو الصفحة ماتفتحتش"></td>
+          <td class="u-fs12">${L ? `${E(L.at)}${L.policy != null ? ` — فائدة ${L.policy}%` : ''}<br>${A.map(a => `${nm(a.k)}: <b class="n">${L.rates[a.k] == null ? '—' : L.rates[a.k] + '%'}</b>`).join(' · ')}` : '<span class="u-muted">لسه ما اتحدثش</span>'}</td>
+          <td><button type="button" class="small u-wa" data-now="${E(m)}">⟳ حدّث الآن</button></td></tr>`; }).join('')}</tbody></table></div>
+      <div class="mza-actions"><button type="button" id="mzrSave">💾 حفظ إعدادات التحديث</button><button type="button" class="secondary" id="mzrReset">↩ الافتراضي</button><span id="mzrMsg" class="u-fs12"></span></div>
+      <h4>📜 سجل التحديثات</h4>
+      <div class="section-card u-ox">${r.log.length ? `<table class="std-table g-no-enh"><thead><tr><th>الوقت</th><th>السوق</th><th>بواسطة</th><th>التغيير</th></tr></thead><tbody>${r.log.map(l => `<tr><td class="n">${E(l.at)}</td><td>${E(l.market)}</td><td>${E(TR[l.trigger] || l.trigger)}${l.by ? `<br><small>${E(l.by)}</small>` : ''}</td><td class="u-fs12">${A.map(a => { const o = l.old ? l.old[a.k] : null, n = l.new ? l.new[a.k] : null; return o === n ? '' : `${nm(a.k)}: ${o == null ? '—' : o} ← <b>${n == null ? '—' : n}</b>`; }).filter(Boolean).join(' · ') || 'من غير تغيير'}</td></tr>`).join('')}</tbody></table>` : '<span class="u-muted u-fs12">لسه مفيش تحديثات.</span>'}</div>`;
+    const g = (id) => +document.getElementById(id).value;
+    document.getElementById('mzrSave').onclick = async () => {
+      const markets = {}; box.querySelectorAll('tr[data-m]').forEach(tr => { const o = {}; tr.querySelectorAll('[data-f]').forEach(i => o[i.dataset.f] = i.value.trim()); markets[tr.dataset.m] = o; });
+      const cfg = { auto_days: g('mzr_days'), fund_fee: g('mzr_fee'), re_est: document.getElementById('mzr_re').value.trim(), sp_cds: g('mzr_cds'), sp_savings: g('mzr_sav'), sp_daily: g('mzr_daily'), sp_money: g('mzr_money'), sp_fixed: g('mzr_fixed'), markets };
+      const s = await apiPost('/mizanai_api.php', { action: 'admin_rates_save', config: JSON.stringify(cfg) }).catch(() => null);
+      const m = document.getElementById('mzrMsg'); m.textContent = s && s.success ? '✅ اتحفظت' : ((s && s.message) || 'تعذّر الحفظ'); m.className = 'u-fs12 ' + (s && s.success ? 'pos' : 'neg');
+    };
+    document.getElementById('mzrReset').onclick = async () => { if (!await gConfirm('رجوع إعدادات التحديث للافتراضي؟')) return; await apiPost('/mizanai_api.php', { action: 'admin_rates_save', config: 'null' }).catch(() => null); adminRates(); };
+    box.querySelectorAll('[data-now]').forEach(b => b.onclick = async () => { b.disabled = true; b.textContent = '⏳'; const x = await apiPost('/mizanai_api.php', { action: 'admin_rates_now', market: b.dataset.now }).catch(() => null);
+      toast(x && x.success ? `اتحدثت عوائد ${b.dataset.now} ✓${x.missing.length ? ` — ${x.missing.length} نسبة مش متاحة` : ''}` : ((x && x.message) || 'تعذّر التحديث'), x && x.success ? 'ok' : 'err'); adminRates(); });
+  }
 })();

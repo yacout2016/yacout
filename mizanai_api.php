@@ -8,6 +8,10 @@
    POST action=save mode, title, data / delete id (سلة المحذوفات) / share id
    GET  action=shared&t=             ← دراسة متشاركة (للقراءة بس - من غير تسجيل دخول)
    GET  action=admin_get / POST admin_save ← لوحة التحكم (صلاحية تعديل تصميم الموقع)
+   الإصدار 130 — العوائد السنوية أونلاين (مجاني):
+   GET  action=rates&market=&now=1   ← أرقام السوق (بتتحدث تلقائي كل شهر — now=1: «حدّث الآن» مرة في اليوم لكل سوق) + أرقام المستثمر المحفوظة
+   POST action=user_rates market, mode (auto|manual), rates ← حفظ وضع / أرقام المستثمر على حسابه
+   GET  action=admin_rates_get / POST admin_rates_save config / POST admin_rates_now market ← لوحة التحكم
    ===================================================================== */
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
@@ -18,6 +22,7 @@ require_once __DIR__ . '/security_lib.php';
 require_once __DIR__ . '/markets_lib.php';
 require_once __DIR__ . '/mizanai_lib.php';
 require_once __DIR__ . '/trash_lib.php';
+require_once __DIR__ . '/mizanai_rates_lib.php';   // الإصدار 130
 function mza_out($a){ echo json_encode($a, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE); exit(); }
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 $isPost = $_SERVER['REQUEST_METHOD'] === 'POST';
@@ -51,6 +56,26 @@ try {
             site_config_set($conn, 'mizanai_cfg', json_encode($out, JSON_UNESCAPED_UNICODE), $email);
             mza_out(["success" => true, "config" => mza_cfg($conn)]);
         }
+        // الإصدار 130: العوائد أونلاين
+        if ($action === 'admin_rates_get') {
+            $log = []; try { $res = $conn->query("SELECT market, old_rates, new_rates, sources, trigger_kind, created_by, created_at FROM mizan_rates_log ORDER BY id DESC LIMIT 15");
+                while ($r = $res->fetch_assoc()) $log[] = ['market' => $r['market'], 'old' => json_decode((string)$r['old_rates'], true), 'new' => json_decode((string)$r['new_rates'], true), 'trigger' => $r['trigger_kind'], 'by' => $r['created_by'], 'at' => $r['created_at']]; } catch (Throwable $e) {}
+            $mk = mc_active($conn) ?: ['مصر']; $live = mr_live_all($conn); $L = [];
+            foreach ($mk as $m) { $x = $live[$m] ?? null; $L[$m] = $x ? ['rates' => $x['rates'], 'src' => $x['src'], 'policy' => $x['policy'] ?? null, 'at' => date('Y-m-d H:i', (int)$x['at'])] : null; }
+            mza_out(["success" => true, "config" => mr_cfg($conn), "defaults" => mr_defaults(), "markets" => $mk, "live" => $L, "log" => $log, "ready" => mr_ready($conn)]);
+        }
+        if ($action === 'admin_rates_save' && $isPost) {
+            $raw = (string)($_POST['config'] ?? '');
+            if ($raw === 'null') { site_config_set($conn, 'mizanai_rates_cfg', '', $email); mza_out(["success" => true]); }
+            $in = json_decode($raw, true); if (!is_array($in)) mza_out(["success" => false, "message" => "بيانات غير صحيحة."]);
+            site_config_set($conn, 'mizanai_rates_cfg', json_encode($in, JSON_UNESCAPED_UNICODE), $email);
+            mza_out(["success" => true, "config" => mr_cfg($conn)]);
+        }
+        if ($action === 'admin_rates_now' && $isPost) {
+            $m = (string)($_POST['market'] ?? ''); if (!mc_valid($m)) mza_out(["success" => false, "message" => "سوق غير معروف."]);
+            if (!mr_ready($conn)) mza_out(["success" => false, "message" => "شغّل ALL_SCHEMA_UPDATES.sql (الإصدار 130) أولًا."]);
+            mza_out(["success" => true] + mr_get($conn, $m, true, 'admin', $email));
+        }
         mza_out(["success" => false, "message" => "طلب غير معروف."]);
     }
 
@@ -63,6 +88,19 @@ try {
     if ($action === 'config') {
         mza_out(["success" => true, "config" => ['name' => $cfg['name'], 'disclaimer' => $cfg['disclaimer'], 'rates' => $cfg['rates'], 'profiles' => $cfg['profiles'], 'shareOn' => !empty($cfg['share_on']),
             'aiReady' => !empty($cfg['ai_on']) && ai_paid_key($conn) !== ''], "ready" => mza_ready($conn)]);
+    }
+    // الإصدار 130: العوائد السنوية أونلاين (مجاني لكل المشتركين) + أرقام المستثمر المحفوظة على حسابه
+    if ($action === 'rates') {
+        $m = (string)($_GET['market'] ?? 'مصر'); if (!mc_valid($m)) $m = 'مصر';
+        if (!mr_ready($conn)) mza_out(["success" => false, "message" => "شغّل ALL_SCHEMA_UPDATES.sql (الإصدار 130) أولًا."]);
+        $now = ($_GET['now'] ?? '') === '1';
+        mza_out(["success" => true, "market" => $m, "live" => mr_get($conn, $m, $now, $now ? 'now' : 'auto', $email), "user" => mr_user_get($conn, $email, $m)]);
+    }
+    if ($action === 'user_rates' && $isPost) {
+        $m = (string)($_POST['market'] ?? ''); if (!mc_valid($m)) mza_out(["success" => false, "message" => "سوق غير معروف."]);
+        if (!mr_ready($conn)) mza_out(["success" => false, "message" => "شغّل ALL_SCHEMA_UPDATES.sql (الإصدار 130) أولًا."]);
+        $in = json_decode((string)($_POST['rates'] ?? '{}'), true);
+        mza_out(["success" => true, "user" => mr_user_save($conn, $email, $m, (string)($_POST['mode'] ?? 'auto'), is_array($in) ? $in : [])]);
     }
     if ($action === 'sectors') {
         @set_time_limit(180);

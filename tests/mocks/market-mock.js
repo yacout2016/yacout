@@ -44,5 +44,12 @@ http.createServer((req, res) => { let body = ''; req.on('data', c => body += c);
     const v = c.map((_, i) => i === c.length - 1 ? 3000 : 1000);   // حجم آخر يوم 3 أضعاف المتوسط
     return send({ chart: { result: [{ meta: { currency: 'EGP', longName: ym[1] + ' Co' }, timestamp: ts, indicators: { quote: [{ high: c.map(x => x * 1.01), low: c.map(x => x * 0.99), close: c, volume: v }] } }] } });
   }
+  // الإصدار 130: عوائد «ميزان GRIFFINE AI» أونلاين — مؤشر البورصة / الذهب / سعر الدولار شهري 5 سنين + صفحة البنك المركزي
+  const dp = decodeURIComponent(u.pathname);
+  const MONTHLY = { '/^CASE30': [100, 0.20], '/GC=F': [1800, 0.10], '/EGP=X': [30, 0.08] };
+  if (MONTHLY[dp]) { const [p0, g] = MONTHLY[dp], n = 61, now = Math.floor(Date.now() / 1000), ts = [], c = [];
+    for (let i = 0; i < n; i++) { ts.push(now - (n - 1 - i) * 30.44 * 86400); c.push(+(p0 * Math.pow(1 + g, i / 12)).toFixed(4)); }
+    return send({ chart: { result: [{ meta: { currency: 'USD' }, timestamp: ts.map(Math.round), indicators: { quote: [{ close: c }] } }] } }); }
+  if (dp === '/cbe') { res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }); return res.end('<html><body><h2>Key Policy Rates</h2><table><tr><td>Overnight Deposit Rate</td><td>22.00%</td></tr><tr><td>Overnight Lending Rate</td><td>23.00%</td></tr></table></body></html>'); }
   send({ chart: { result: null } });
 }); }).listen(8098, () => console.log('market mock 8098'));

@@ -110,3 +110,13 @@ body.g-shell #app .mza-seg2 button, .mza-seg2 button{ display:flex !important; f
 #mzaSCapC{ margin-top:6px; }
 .mza-seg2 button{ min-width:0; }
 @media (max-width:640px){ .mza-seg-s{ white-space:normal; font-size:10px; line-height:1.3; text-align:center; } .mza-seg2 button{ font-size:12.5px !important; } }
+/* الإصدار 130: العوائد السنوية أونلاين (تلقائي / حدّث الآن / يدوي) */
+.mza-rates{ margin-top:12px; padding:12px; border:1px solid var(--gs-border,#E5E7EB); border-radius:12px; background:var(--gs-surface-2,#F8FAFC); }
+.mza-rhead{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; } .mza-rhead > b{ font-size:14px; margin-inline-end:auto; }
+.mza-rhead .mza-seg{ width:auto; } body.g-shell #app .mza-rnow{ width:auto !important; margin:0 !important; }
+.mza-rinfo{ margin-top:6px; color:var(--gs-muted,#64748B); line-height:1.8; }
+.mza-rsrc{ display:block; font-size:11px; color:var(--gs-muted,#64748B); margin-top:3px; line-height:1.5; }
+.mza-rf.mza-miss input{ border-color:#F59E0B !important; background:#FFFBEB !important; }
+.mza-rf.mza-miss .mza-rsrc{ color:#B45309; font-weight:700; }
+.mza-rf.mza-need input{ border-color:#DC2626 !important; box-shadow:0 0 0 3px rgba(220,38,38,.15) !important; }
+.mzr-mk input{ min-width:110px; margin:0 !important; }
