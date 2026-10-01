@@ -18,7 +18,7 @@ const { check, summary, launch, page, loginAdmin, q } = require('../lib');
       await a.evaluate(() => { try { localStorage.removeItem('gs_hidecols_v1'); } catch (e) {} }); await a.waitForTimeout(600);
       await a.click('#wlTable thead th:nth-child(4) .g-colx'); await a.waitForTimeout(300);
       const h = await a.evaluate(() => { const s = document.querySelector('.g-hcshow'); return { vis: !!(s && s.offsetParent), hidden: getComputedStyle(document.querySelector('#wlTable thead th:nth-child(4)')).display === 'none' }; });
-      if (h.vis) { await a.click('.g-hcshow'); await a.waitForTimeout(300); }
+      if (h.vis) { await a.click('.g-hcshow'); await a.click('.g-hcmenu [data-hc="all"]'); await a.waitForTimeout(300); }
       const back = await a.evaluate(() => getComputedStyle(document.querySelector('#wlTable thead th:nth-child(4)')).display !== 'none');
       check('قائمة المتابعة: بعد إخفاء عمود يظهر زرار «إظهار الأعمدة المخفية» ويرجّعه', h.vis && h.hidden && back, JSON.stringify({ ...h, back }));
       await a.evaluate(() => { try { localStorage.removeItem('gs_hidecols_v1'); } catch (e) {} });
