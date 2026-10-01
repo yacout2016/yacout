@@ -19,6 +19,19 @@ try {
     if (!$email) { http_response_code(401); mz_out(["success" => false, "message" => "سجّل الدخول أولًا."]); }
     $isAdmin = !empty($_SESSION['is_admin']);
     session_write_close();
+    // الإصدار 128: لوحة التحكم — إعدادات «ميزان محفظتك AI» (صلاحية تعديل تصميم الموقع)
+    if ($isAdmin && in_array($_POST['action'] ?? $_GET['action'] ?? '', ['admin_get', 'admin_save'], true)) {
+        if (!in_array('edit_site_design', getCurrentUserPermissions($conn), true)) mz_out(["success" => false, "message" => "غير مصرح — صلاحية تعديل تصميم الموقع مطلوبة."]);
+        if (($_GET['action'] ?? '') === 'admin_get') mz_out(["success" => true, "config" => mz_cfg($conn), "defaults" => mz_defaults()]);
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') mz_out(["success" => false, "message" => "طلب غير صحيح."]);
+        requireCsrf();
+        $raw = (string)($_POST['config'] ?? '');
+        if ($raw === 'null') { site_config_set($conn, 'mizan_cfg', '', $email); mz_out(["success" => true, "config" => mz_cfg($conn)]); }
+        $in = json_decode($raw, true); if (!is_array($in)) mz_out(["success" => false, "message" => "بيانات غير صحيحة."]);
+        $out = []; foreach (mz_defaults() as $k => $v) if (array_key_exists($k, $in)) $out[$k] = $in[$k];
+        site_config_set($conn, 'mizan_cfg', json_encode($out, JSON_UNESCAPED_UNICODE), $email);
+        mz_out(["success" => true, "config" => mz_cfg($conn)]);
+    }
     ai_set_user($email, $isAdmin);   // الإصدار 127
     if (!ai_screen_ok($conn, $email, 'mizan', $isAdmin)) mz_out(["success" => false, "hidden" => true, "message" => "الشاشة غير متاحة لحسابك."]);
     if (!$isAdmin && !hasActiveSubscription($conn, $email)) mz_out(["success" => false, "requiresSubscription" => true, "message" => "تقرير ميزان متاح للمشتركين فقط."]);

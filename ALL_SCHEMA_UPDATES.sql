@@ -1,5 +1,5 @@
 /* ============================================================ */
-/* GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 127) */
+/* GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 128) */
 /* كل تحديثات قاعدة البيانات في ملف واحد. */
 /* آمن تشغّله أي عدد من المرات: بيضيف الناقص بس ومبيمسحش أي بيانات. */
 /* الاستخدام (الأفضل): phpMyAdmin ← اختار قاعدة البيانات ← تبويب Import (استيراد) ← اختار الملف ← Go */
@@ -73,6 +73,7 @@
 /* الإصدار 125: مفيش تغييرات في قاعدة البيانات (عناوين الجداول مختصرة + علامة (!) بالشرح في كل الموقع + النسبة تحت محافظ / متوازن / مغامر + أقصى نسبة لقطاع بتتكتب باليد). */
 /* الإصدار 126: مفيش تغييرات في قاعدة البيانات (تنبيهات الرئيسية على الجوال من غير تمرير داخلي - الصفحة كانت بتهنّج وقت السحب). */
 /* الإصدار 127: جدول user_ai_access (الذكاء الاصطناعي لكل مشترك: الشاشات + المدفوع + الحد اليومي) + عمود subscription_plans.includes_ai + باقة «برو سنوي» 3000. الذكاء المدفوع مقفول افتراضيًا (ai_paid_on في site_config). */
+/* الإصدار 128: «توصية شراء / بيع» للمحللين — أعمدة جديدة في recommendations (النوع / المدة / الأهداف بنسب / وقف على مرحلتين / ملاحظة / القنوات) + جدول recommendation_updates (رسائل المتابعة) + جدول rec_outbox (طابور الإيميل والواتساب). */
 /* ============================================================ */
 
 /* الإصدار 85: ترميز الاتصال UTF-8 عشان النصوص العربي اللي بتتضاف من الملف (زي المسميات الوظيفية) تتحفظ صح */
@@ -937,4 +938,36 @@ INSERT INTO subscription_plans (id, name, amount, period_label, duration_days, b
     '["كل مزايا الخطة السنوية","بصيرة AI — تحليل الأسهم بالذكاء الاصطناعي","ميزان محفظتك AI","ميزان GRIFFINE AI — توزيع الاستثمار","أولوية في الدعم"]', 1, 4, 1
   FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM subscription_plans WHERE id = 'pro_yearly');
 
-SELECT 'GRIFFINE database is up to date (v127)' AS result;
+/* الإصدار 128: «توصية شراء / بيع» — نوع التوصية + المدة + العملة + المحوري + وقف الخسارة على مرحلتين + نسبة البيع + ملاحظة المحلل + قنوات الإرسال */
+ALTER TABLE recommendations ADD COLUMN IF NOT EXISTS rec_type VARCHAR(6) NOT NULL DEFAULT 'buy', ADD COLUMN IF NOT EXISTS timeframe VARCHAR(8) NULL, ADD COLUMN IF NOT EXISTS currency VARCHAR(8) NULL,
+  ADD COLUMN IF NOT EXISTS pivot DECIMAL(14,4) NULL, ADD COLUMN IF NOT EXISTS last_price DECIMAL(14,4) NULL,
+  ADD COLUMN IF NOT EXISTS stop1 DECIMAL(14,4) NULL, ADD COLUMN IF NOT EXISTS stop1_pct DECIMAL(6,2) NULL, ADD COLUMN IF NOT EXISTS stop2 DECIMAL(14,4) NULL, ADD COLUMN IF NOT EXISTS stop2_pct DECIMAL(6,2) NULL,
+  ADD COLUMN IF NOT EXISTS sell_pct DECIMAL(6,2) NULL, ADD COLUMN IF NOT EXISTS note TEXT NULL, ADD COLUMN IF NOT EXISTS channels VARCHAR(20) NULL, ADD COLUMN IF NOT EXISTS analyst_name VARCHAR(120) NULL;
+ALTER TABLE recommendations MODIFY COLUMN IF EXISTS buy_from DECIMAL(14,4) NOT NULL, MODIFY COLUMN IF EXISTS buy_to DECIMAL(14,4) NOT NULL;
+
+/* الإصدار 128: رسائل المتابعة لنفس التوصية (تحقق هدف / تعديل وقف / إغلاق / ملاحظة) */
+CREATE TABLE IF NOT EXISTS recommendation_updates (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  rec_id INT NOT NULL,
+  kind VARCHAR(10) NOT NULL DEFAULT 'note',
+  message TEXT NOT NULL,
+  created_by VARCHAR(190) NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_ru_rec (rec_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+/* الإصدار 128: طابور إرسال التوصيات بالإيميل والواتساب (بيتبعت على دفعات — 0 مستني / 1 اتبعت / 2 فشل) */
+CREATE TABLE IF NOT EXISTS rec_outbox (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  rec_id INT NOT NULL,
+  upd_id INT NULL,
+  account_email VARCHAR(190) NOT NULL,
+  channel VARCHAR(6) NOT NULL,
+  status TINYINT(1) NOT NULL DEFAULT 0,
+  error VARCHAR(255) NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  sent_at DATETIME NULL,
+  KEY idx_ro_status (status, id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+SELECT 'GRIFFINE database is up to date (v128)' AS result;

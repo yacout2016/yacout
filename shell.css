@@ -1282,3 +1282,54 @@ body.g-shell #app button.wl-del, button.wl-del{ padding:5px 9px !important; min-
 .ai-state.on{ border-inline-start-color:#D4AF37 !important; }
 .ai-state .ai-big{ font-size:17px; margin-bottom:6px; }
 .g-ai .g-np-vis{ max-width:230px; }
+
+/* الإصدار 128: «توصية شراء / بيع» — مساحة عمل المحلل + كارت التوصية */
+.rc-work{ display:grid; grid-template-columns:minmax(0, 1.6fr) minmax(0, 1fr); gap:14px; align-items:start; }
+.rc-side{ position:sticky; top:76px; }
+.rc-type{ display:flex; gap:6px; background:var(--gs-surface-2,#F8FAFC); border:1px solid var(--gs-border,#E5E7EB); border-radius:12px; padding:4px; margin-bottom:12px; }
+body.g-shell #app .rc-type button, .rc-type button{ flex:1; margin:0 !important; width:auto !important; background:transparent !important; color:var(--gs-muted,#64748B) !important; border:0 !important; box-shadow:none !important; font-weight:700; padding:9px !important; border-radius:9px !important; }
+body.g-shell #app .rc-type button.on[data-t="buy"]{ background:#059669 !important; color:#fff !important; }
+body.g-shell #app .rc-type button.on[data-t="sell"]{ background:#DC2626 !important; color:#fff !important; }
+.rc-grid{ display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px 12px; }
+.rc-grid .wide{ grid-column:1 / -1; }
+.rc-grid label{ font-size:12.5px; }
+.rc-h{ font-size:14.5px; margin:16px 0 6px; padding-top:10px; border-top:1px dashed var(--gs-border,#E5E7EB); }
+.rc-row{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:8px; }
+body.g-shell #app .rc-row button{ width:auto !important; margin:0 !important; }
+table.rc-tg{ width:100%; border-collapse:collapse; }
+table.rc-tg th, table.rc-tg td{ padding:4px 6px; text-align:start; font-size:12.5px; }
+table.rc-tg input{ margin:0 !important; }
+.rc-loss{ align-self:end; padding-bottom:10px; color:var(--gs-neg,#DC2626); font-weight:700; font-size:12.5px; }
+.rc-rr{ margin-top:8px; font-size:13px; }
+.rc-ch{ display:flex; gap:10px; flex-wrap:wrap; }
+body.g-shell #app .rc-send, .rc-send{ background:#C9A227 !important; color:#111 !important; font-weight:800; }
+.rc-progbar{ height:8px; background:var(--gs-surface-2,#EEF0F3); border-radius:99px; overflow:hidden; margin:8px 0 2px; } .rc-progbar i{ display:block; height:100%; background:#C9A227; }
+.rc-side-empty{ color:var(--gs-muted,#64748B); font-size:13px; padding:20px 4px; text-align:center; }
+.rc-quote .rc-sym{ font-size:18px; } .rc-px b{ font-size:22px; } .rc-quote{ margin-bottom:8px; }
+.rc-side h4{ margin:10px 0 6px; font-size:13.5px; }
+.rc-lvs{ display:grid; gap:4px; margin-bottom:6px; }
+body.g-shell #app .rc-lv, .rc-lv{ display:flex !important; align-items:center; min-height:0 !important; height:auto !important; line-height:1.4 !important; justify-content:space-between; width:100% !important; margin:0 !important; padding:6px 10px !important; font-size:12.5px; font-weight:600; border-radius:8px !important; box-shadow:none !important; border:1px solid var(--gs-border,#E5E7EB) !important; background:var(--gs-surface,#fff) !important; color:var(--gs-text,#111) !important; }
+.rc-lv.r{ border-inline-start:4px solid #DC2626 !important; } .rc-lv.s{ border-inline-start:4px solid #059669 !important; } .rc-lv.p{ border-inline-start:4px solid #C9A227 !important; }
+.rc-tools{ display:flex; gap:6px; flex-wrap:wrap; margin:10px 0; } body.g-shell #app .rc-tools button{ width:auto !important; margin:0 !important; }
+.rc-bs{ border:1px solid var(--gs-border,#E5E7EB); border-radius:10px; padding:8px 10px; font-size:13px; } .rc-hz{ display:flex; gap:8px; flex-wrap:wrap; font-size:12px; margin:4px 0; }
+.rc-ov{ position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:9000; display:grid; place-items:center; padding:16px; }
+.rc-dlg{ background:var(--gs-surface,#fff); color:var(--gs-text,#111); border-radius:14px; padding:16px; width:min(520px, 100%); max-height:88vh; overflow:auto; box-shadow:0 20px 50px rgba(0,0,0,.3); }
+.rc-dlg.rc-find{ width:min(760px, 100%); }
+.rc-card{ border:1px solid var(--gs-border,#E5E7EB); border-radius:14px; padding:12px 14px; margin-bottom:12px; background:var(--gs-surface,#fff); border-inline-start:5px solid #059669; }
+.rc-card.rc-sell{ border-inline-start-color:#DC2626; }
+.rc-card-h{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; } .rc-card-h .rc-sym{ font-size:18px; } .rc-name{ color:var(--gs-muted,#64748B); }
+.rc-badge{ font-size:12px; font-weight:800; padding:3px 10px; border-radius:99px; background:#D1FAE5; color:#065F46; } .rc-sell .rc-badge{ background:#FEE2E2; color:#991B1B; }
+.rc-meta{ font-size:12px; color:var(--gs-muted,#64748B); margin:2px 0 8px; }
+.rc-line{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:5px 0; border-top:1px solid var(--gs-border,#F1F5F9); font-size:13.5px; }
+.rc-line b{ font-size:14.5px; } .rc-pct{ margin-inline-start:auto; color:var(--gs-muted,#64748B); font-size:12.5px; }
+.rc-sub{ font-weight:700; margin-top:6px; font-size:13px; } .rc-tp b{ color:#059669; } .rc-sl b{ color:#DC2626; }
+.rc-note{ margin-top:8px; padding:8px 10px; border-radius:10px; background:var(--gs-surface-2,#F8FAFC); font-size:13px; }
+.rc-foot{ margin-top:8px; font-size:11.5px; color:var(--gs-muted,#64748B); }
+.rc-upds{ margin-top:10px; border-top:1px dashed var(--gs-border,#E5E7EB); padding-top:6px; } .rc-upd{ font-size:13px; padding:5px 0; }
+.rc-loghead{ display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin:20px 0 8px; }
+.rc-log{ border-inline-start:4px solid #059669 !important; margin-bottom:8px; } .rc-log.rc-sell{ border-inline-start-color:#DC2626 !important; }
+@media (max-width:900px){ .rc-work{ grid-template-columns:1fr; } .rc-side{ position:static; } }
+@media (max-width:640px){ .rc-grid{ grid-template-columns:1fr 1fr; } }
+/* الإصدار 128: إعدادات ميزان محفظتك */
+.mz-adm{ display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:4px 14px; } .mz-adm h3, .mz-adm .u-check, .mz-adm textarea, .mz-adm > label{ grid-column:1 / -1; }
+@media (max-width:640px){ .mz-adm{ grid-template-columns:1fr; } }

@@ -190,6 +190,39 @@ function mzPrint(R){
     ${(ai.moves || []).length ? `<h2>خطوات مقترحة</h2><ul>${ai.moves.map(m => `<li>${m.s ? '<b>' + e(m.s) + '</b> ' : ''}${e(m.t)}</li>`).join('')}</ul>` : ''}
     <h2>إعادة التوازن بالأرقام</h2><ul>${R.moves.map(m => `<li>${e(m.t)}</li>`).join('')}</ul>
     ${(ai.candidates || []).length ? `<h2>شركات مرشحة للتنويع</h2><ul>${ai.candidates.map(c => `<li><b>${e(c.s)}</b> ${e(c.n)} — ${e(c.r)}</li>`).join('')}</ul>` : ''}
-    <div class="disc">⚠️ ${e((R.config && R.config.disclaimer) || '')}</div></body></html>`);
+    <div class="disc">⚠️ ${e((R.cfg && R.cfg.disclaimer) || (R.config && R.config.disclaimer) || '')}</div></body></html>`);
   w.document.close(); if (typeof gReportReady === 'function') gReportReady(w);
 }
+
+/* الإصدار 128: لوحة التحكم ← «ميزان محفظتك AI» — كل قواعد النسب المقترحة والتنبيهات بقت بتتعدّل من هنا */
+async function renderAdminMizan(){
+  const __tok = screenToken(); pushNav(() => renderAdminMizan()); window.__lastPageKey = 'admin_mizan';
+  const r = await apiGet('/mizan_api.php?action=admin_get').catch(() => null);
+  if (screenStale(__tok)) return;
+  if (!r || !r.success) { app.innerHTML = `<div class="container"><div class="section-card error">${mzE((r && r.message) || 'غير مصرح')}</div></div>`; return; }
+  const c = r.config, d = r.defaults;
+  const F = [
+    ['h', 'العرض'], ['name', 'اسم الشاشة', 'text'], ['disclaimer', 'التنويه أسفل التقرير', 'area'], ['ai_on', 'استخدام رأي الذكاء الاصطناعي (لو المدفوع مفعّل من «الذكاء الاصطناعي») — وإلا محرك GRIFFINE المجاني', 'bool'],
+    ['h', 'النسبة المقترحة لكل سهم'], ['min_target', 'أقل نسبة مقترحة لأي سهم %', 'num'],
+    ['sector_cap', 'أقصى نسبة للقطاع الواحد %', 'num'], ['def_sector_cap', 'أقصى نسبة للقطاع الدفاعي (بنوك / أغذية / مرافق / اتصالات / أدوية) %', 'num'], ['def_bonus', 'زيادة السهم في قطاع دفاعي (نقاط)', 'num'],
+    ['vol_high', 'تذبذب سنوي عالي فوق %', 'num'], ['vol_high_cut', '— بيقلل النسبة (نقاط)', 'num'], ['vol_vhigh', 'تذبذب سنوي عالي جدًا فوق %', 'num'], ['vol_vhigh_cut', '— بيقلل النسبة (نقاط)', 'num'],
+    ['vol_calm', 'سهم هادي: تذبذب أقل من %', 'num'], ['vol_calm_bonus', '— بيزوّد النسبة (نقاط)', 'num'], ['corr_thr', 'سهمين بيتحركوا مع بعض: ارتباط من (0–1)', 'num'], ['corr_cut', '— بيقلل نسبة كل واحد (نقاط)', 'num'],
+    ['h', 'التنبيهات'], ['over_warn', 'تنبيه لو السهم فوق النسبة المقترحة بـ (نقاط)', 'num'], ['over_neg', 'تنبيه أحمر لو فوقها بـ (نقاط)', 'num'], ['dominant', 'قطاع مسيطر لو وصل %', 'num'],
+    ['hhi_bad', 'تنويع ضعيف لو مؤشر التركّز HHI أكبر من', 'num'], ['hhi_good', 'تنويع ممتاز لو HHI أقل من', 'num'], ['vol_port', 'تذبذب المحفظة عالي لو وصل % سنويًا', 'num'], ['loss_alert', 'تنبيه خسارة غير محققة كبيرة لو السهم نازل %', 'num'],
+  ];
+  const row = ([k, l, t]) => k === 'h' ? `<h3 class="u-mt14">${l}</h3>` : t === 'bool' ? `<label class="u-check"><input type="checkbox" data-k="${k}" ${c[k] ? 'checked' : ''}> ${mzE(l)}</label>`
+    : t === 'area' ? `<label>${mzE(l)}</label><textarea data-k="${k}" rows="2">${mzE(c[k])}</textarea>` : `<div class="mz-adm-f"><label>${mzE(l)} <small class="u-muted">(الافتراضي ${mzE(d[k])})</small></label><input data-k="${k}" ${t === 'num' ? 'type="number" step="any" dir="ltr"' : ''} value="${mzE(c[k])}"></div>`;
+  app.innerHTML = `<div class="container"><div class="u-row"><h2>⚖️ ميزان محفظتك AI — الإعدادات</h2><button class="secondary u-wa" id="mzaBack">← لوحة التحكم</button></div>
+    <div class="info">الأرقام دي هي قواعد «النسبة المقترحة» لكل سهم وتنبيهات التنويع اللي بتظهر للمشترك في ميزان محفظتك وفي ملاحظات التركّز في خططه. إخفاء الشاشة عن العملاء من «الصلاحيات والإعدادات الإلزامية»، والمدفوع / المجاني من «🤖 الذكاء الاصطناعي».</div>
+    <div class="section-card mz-adm">${F.map(row).join('')}</div>
+    <div class="u-row" style="justify-content:flex-start;gap:8px"><button class="u-wa" id="mzSaveCfg">💾 حفظ</button><button class="secondary u-wa" id="mzResetCfg">↺ رجوع للافتراضي</button><span class="u-note" id="mzCfgMsg"></span></div></div>`;
+  document.getElementById('mzaBack').onclick = () => goAdminHome();
+  const msg = (t) => { document.getElementById('mzCfgMsg').textContent = t; };
+  document.getElementById('mzSaveCfg').onclick = async () => {
+    const o = {}; app.querySelectorAll('[data-k]').forEach(i => { const k = i.dataset.k; o[k] = i.type === 'checkbox' ? i.checked : (i.type === 'number' ? +i.value : i.value); });
+    const x = await apiPost('/mizan_api.php', { action: 'admin_save', config: JSON.stringify(o) }).catch(() => null);
+    msg(x && x.success ? 'تم الحفظ ✓' : ((x && x.message) || 'تعذّر الحفظ')); if (x && x.success) GShell.toast('تم حفظ إعدادات ميزان محفظتك ✓', 'ok');
+  };
+  document.getElementById('mzResetCfg').onclick = async () => { if (!await gConfirm('رجوع كل الإعدادات للافتراضي؟')) return; const x = await apiPost('/mizan_api.php', { action: 'admin_save', config: 'null' }).catch(() => null); if (x && x.success) renderAdminMizan(); };
+}
+window.renderAdminMizan = renderAdminMizan;

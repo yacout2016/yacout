@@ -99,22 +99,36 @@ function mz_metrics($conn, $cfg, $positions){
    2) القطاع الدفاعي (بنوك / سلع استهلاكية / مرافق / اتصالات / أدوية) +5 ، والتذبذب العالي بينزّل الحد (فوق 40%: −5 ، فوق 60%: −10) والهادي (أقل من 20%) +3
    3) القطاع الواحد يُفضّل ميعدّيش 40% (الدفاعي 45%) لو المحفظة فيها أكتر من قطاع ← أسهم القطاع الزايد حدها بينزل بالنسبة
    4) سهمين ارتباطهم فوق 0.8 ← كأنهم مركز واحد (حد كل واحد −5) */
+/* الإصدار 128: إعدادات «ميزان محفظتك AI» من لوحة التحكم (كانت أرقام ثابتة في الكود) */
+function mz_defaults(){
+    return ['name' => 'ميزان محفظتك AI', 'disclaimer' => 'تحليل آلي تعليمي لتنويع محفظتك الفعلية — مش نصيحة استثمارية، والقرار قرارك.', 'ai_on' => true,
+        'sector_cap' => 40, 'def_sector_cap' => 45, 'def_bonus' => 5, 'vol_high' => 40, 'vol_high_cut' => 5, 'vol_vhigh' => 60, 'vol_vhigh_cut' => 10, 'vol_calm' => 20, 'vol_calm_bonus' => 3,
+        'corr_thr' => 0.8, 'corr_cut' => 5, 'min_target' => 5, 'over_warn' => 5, 'over_neg' => 15, 'loss_alert' => 20, 'hhi_bad' => 0.3, 'hhi_good' => 0.2, 'vol_port' => 35, 'dominant' => 50, 'pool_max' => 60];
+}
+function mz_cfg($conn = null){
+    static $c = null; if ($c !== null && $conn === null) return $c;
+    $d = mz_defaults();
+    if ($conn) { $j = json_decode(site_config_get($conn, 'mizan_cfg') ?: 'null', true);
+        if (is_array($j)) foreach ($d as $k => $v) if (array_key_exists($k, $j)) $d[$k] = is_bool($v) ? !empty($j[$k]) : (is_string($v) ? mb_substr((string)$j[$k], 0, 600) : max(0, min(100, (float)$j[$k]))); }
+    return $c = $d;
+}
 const MZ_DEFENSIVE = ['البنوك', 'الخدمات المالية', 'السلع الاستهلاكية', 'الأغذية', 'المشروبات', 'المرافق', 'الكهرباء', 'المياه', 'توزيع الغاز', 'الاتصالات', 'الأدوية', 'الخدمات الطبية', 'المستشفيات'];   // الإصدار 123: أسماء القطاعات المستقلة
 function mz_rule_targets($M){
     $H = $M['holdings']; $n = $M['n']; $out = [];
     if ($n < 2) { foreach ($H as $h) $out[$h['s']] = ['t' => 100, 'r' => 'سهم واحد — التنويع بيبدأ بإضافة أسهم في قطاعات تانية.']; return $out; }
     $base = 100 / $n; $tol = $n <= 2 ? 15 : ($n <= 3 ? 12 : ($n <= 6 ? 10 : 5));
     $multiSec = count($M['sectors']) >= 2;
-    $corr = []; foreach ($M['pairs'] as $p) if ($p['c'] >= 0.8) { $corr[$p['a']] = $p['b']; $corr[$p['b']] = $p['a']; }
+    $corr = []; foreach ($M['pairs'] as $p) if ($p['c'] >= mz_cfg()['corr_thr']) { $corr[$p['a']] = $p['b']; $corr[$p['b']] = $p['a']; }
     foreach ($H as $h) {
         $t = $base + $tol; $why = ['الوزن المتساوي لـ ' . $n . ' أسهم ' . round($base) . '% + هامش ' . $tol];
         $def = in_array($h['sector'], MZ_DEFENSIVE, true);
-        if ($def) { $t += 5; $why[] = 'قطاع دفاعي (+5)'; }
-        if ($h['vol'] !== null) { if ($h['vol'] > 60) { $t -= 10; $why[] = 'تذبذب عالي جدًا (−10)'; } elseif ($h['vol'] > 40) { $t -= 5; $why[] = 'تذبذب عالي (−5)'; } elseif ($h['vol'] < 20) { $t += 3; $why[] = 'سهم هادي (+3)'; } }
-        if (isset($corr[$h['s']])) { $t -= 5; $why[] = 'بيتحرك مع ' . $corr[$h['s']] . ' (−5)'; }
-        $sw = $M['sectors'][$h['sector']] ?? 0; $sc = $def ? 45 : 40;
+        $C = mz_cfg();
+        if ($def) { $t += $C['def_bonus']; $why[] = 'قطاع دفاعي (+' . $C['def_bonus'] . ')'; }
+        if ($h['vol'] !== null) { if ($h['vol'] > $C['vol_vhigh']) { $t -= $C['vol_vhigh_cut']; $why[] = 'تذبذب عالي جدًا (−' . $C['vol_vhigh_cut'] . ')'; } elseif ($h['vol'] > $C['vol_high']) { $t -= $C['vol_high_cut']; $why[] = 'تذبذب عالي (−' . $C['vol_high_cut'] . ')'; } elseif ($h['vol'] < $C['vol_calm']) { $t += $C['vol_calm_bonus']; $why[] = 'سهم هادي (+' . $C['vol_calm_bonus'] . ')'; } }
+        if (isset($corr[$h['s']])) { $t -= $C['corr_cut']; $why[] = 'بيتحرك مع ' . $corr[$h['s']] . ' (−' . $C['corr_cut'] . ')'; }
+        $sw = $M['sectors'][$h['sector']] ?? 0; $sc = $def ? $C['def_sector_cap'] : $C['sector_cap'];
         if ($multiSec && $sw > $sc + 0.5) { $cut = $h['w'] * $sc / $sw; if ($cut < $t) { $t = $cut; $why[] = 'قطاع «' . $h['sector'] . '» ' . round($sw) . '% والمفضّل ' . $sc . '% كحد أقصى'; } }
-        $out[$h['s']] = ['t' => (int)round(max(5, min(100, $t))), 'r' => implode(' • ', $why)];
+        $out[$h['s']] = ['t' => (int)round(max($C['min_target'], min(100, $t))), 'r' => implode(' • ', $why)];
     }
     return $out;
 }
@@ -124,26 +138,26 @@ function mz_apply_targets(&$M, $T, $src){
 
 function mz_rules($M){
     $f = fn($v) => number_format($v, 2, '.', ','); $f0 = fn($v) => number_format($v, 0, '.', ',');
-    $A = []; $H = $M['holdings']; $n = $M['n'];
+    $A = []; $H = $M['holdings']; $n = $M['n']; $C = mz_cfg();
     // الإصدار 117: كل سهم ليه نسبة مقترحة (من الذكاء الاصطناعي أو القواعد) - مفيش رقم ثابت لكل الأسهم
     $cap = $n >= 2 ? (int)round(100 / $n) : 100;   // الوزن المتساوي (للعرض بس)
     $tg = fn($h) => $h['target'] ?? 100;
     if ($n === 1) $A[] = ['k' => 'neg', 't' => 'سهم واحد بس', 'd' => 'المحفظة كلها في ' . $H[0]['s'] . ' — أي خبر سلبي عن الشركة يأثر على 100% من استثمارك.'];
-    foreach ($H as $h) if ($n > 1 && $h['w'] > $tg($h) + 5) $A[] = ['k' => $h['w'] > $tg($h) + 15 ? 'neg' : 'warn', 't' => $h['s'] . ' فوق النسبة المقترحة', 'd' => 'نسبته ' . $f($h['w']) . '% والنسبة المقترحة ليه حسب ميزان المحفظة ' . $tg($h) . '% — يُفضّل تنزل لـ ' . $tg($h) . '% تدريجيًا. (' . ($h['tReason'] ?? '') . ')'];
-    if ($M['hhi'] > 0.3 && $n > 1) $A[] = ['k' => 'neg', 't' => 'تنويع ضعيف', 'd' => 'مؤشر التركّز HHI = ' . $f($M['hhi']) . ' ← المحفظة كأنها ' . $f($M['effN']) . ' سهم بس فعليًا.'];
-    elseif ($n > 1 && $M['hhi'] <= 0.2) $A[] = ['k' => 'pos', 't' => 'توزيع الأوزان كويس', 'd' => 'HHI = ' . $f($M['hhi']) . ' (أقل من 0.2 ممتاز) — عدد الأسهم الفعلي ' . $f($M['effN']) . '.'];
+    foreach ($H as $h) if ($n > 1 && $h['w'] > $tg($h) + $C['over_warn']) $A[] = ['k' => $h['w'] > $tg($h) + $C['over_neg'] ? 'neg' : 'warn', 't' => $h['s'] . ' فوق النسبة المقترحة', 'd' => 'نسبته ' . $f($h['w']) . '% والنسبة المقترحة ليه حسب ميزان المحفظة ' . $tg($h) . '% — يُفضّل تنزل لـ ' . $tg($h) . '% تدريجيًا. (' . ($h['tReason'] ?? '') . ')'];
+    if ($M['hhi'] > $C['hhi_bad'] && $n > 1) $A[] = ['k' => 'neg', 't' => 'تنويع ضعيف', 'd' => 'مؤشر التركّز HHI = ' . $f($M['hhi']) . ' ← المحفظة كأنها ' . $f($M['effN']) . ' سهم بس فعليًا.'];
+    elseif ($n > 1 && $M['hhi'] <= $C['hhi_good']) $A[] = ['k' => 'pos', 't' => 'توزيع الأوزان كويس', 'd' => 'HHI = ' . $f($M['hhi']) . ' (أقل من 0.2 ممتاز) — عدد الأسهم الفعلي ' . $f($M['effN']) . '.'];
     $ms = array_key_first($M['sectors']); $msw = $M['sectors'][$ms] ?? 0;
     if ($n > 1 && count($M['sectors']) === 1) $A[] = ['k' => 'neg', 't' => 'كل الأسهم في قطاع واحد', 'd' => 'كل المحفظة في «' . $ms . '» — التنويع بين أسهم نفس القطاع أضعف بكتير من التنويع بين قطاعات.'];
-    elseif ($msw >= 50) $A[] = ['k' => 'warn', 't' => 'قطاع مسيطر', 'd' => '«' . $ms . '» = ' . $f($msw) . '% من المحفظة.'];
-    foreach (array_slice(array_values(array_filter($M['pairs'], fn($p) => $p['c'] >= 0.8)), 0, 2) as $p) $A[] = ['k' => 'warn', 't' => 'سهمين بيتحركوا مع بعض', 'd' => $p['a'] . ' و ' . $p['b'] . ' ارتباطهم ' . $f($p['c']) . ' — وجودهم مع بعض مش بيضيف تنويع حقيقي.'];
-    if ($M['volP'] !== null && $M['volP'] >= 35) $A[] = ['k' => 'warn', 't' => 'تذبذب المحفظة عالي', 'd' => 'التذبذب السنوي ' . $f($M['volP']) . '% — ممكن القيمة تتحرك بقوة في شهور قليلة.'];
+    elseif ($msw >= $C['dominant']) $A[] = ['k' => 'warn', 't' => 'قطاع مسيطر', 'd' => '«' . $ms . '» = ' . $f($msw) . '% من المحفظة.'];
+    foreach (array_slice(array_values(array_filter($M['pairs'], fn($p) => $p['c'] >= $C['corr_thr'])), 0, 2) as $p) $A[] = ['k' => 'warn', 't' => 'سهمين بيتحركوا مع بعض', 'd' => $p['a'] . ' و ' . $p['b'] . ' ارتباطهم ' . $f($p['c']) . ' — وجودهم مع بعض مش بيضيف تنويع حقيقي.'];
+    if ($M['volP'] !== null && $M['volP'] >= $C['vol_port']) $A[] = ['k' => 'warn', 't' => 'تذبذب المحفظة عالي', 'd' => 'التذبذب السنوي ' . $f($M['volP']) . '% — ممكن القيمة تتحرك بقوة في شهور قليلة.'];
     if ($M['divRatio'] !== null && $M['divRatio'] >= 1.25) $A[] = ['k' => 'pos', 't' => 'التنويع بيقلل المخاطرة فعلًا', 'd' => 'نسبة التنويع ' . $f($M['divRatio']) . ' ← تذبذب المحفظة أقل من متوسط تذبذب أسهمها.'];
-    foreach ($H as $h) if ($h['pnlPct'] <= -20) $A[] = ['k' => 'warn', 't' => $h['s'] . ': خسارة غير محققة كبيرة', 'd' => 'نازل ' . $f(abs($h['pnlPct'])) . '% عن متوسط تكلفتك — راجع مستويات الخطة والمبلغ المرصود ليها.'];
+    foreach ($H as $h) if ($h['pnlPct'] <= -$C['loss_alert']) $A[] = ['k' => 'warn', 't' => $h['s'] . ': خسارة غير محققة كبيرة', 'd' => 'نازل ' . $f(abs($h['pnlPct'])) . '% عن متوسط تكلفتك — راجع مستويات الخطة والمبلغ المرصود ليها.'];
     // إعادة التوازن
     $moves = []; $free = 0;
-    foreach ($H as $h) if ($n > 1 && $h['w'] > $tg($h) + 5) { $amt = ($h['w'] - $tg($h)) / 100 * $M['total']; $free += $amt; $moves[] = ['s' => $h['s'], 'k' => 'reduce', 'amt' => $amt, 't' => 'خفّف ' . $h['s'] . ' بحوالي ' . $f0($amt) . ' (من ' . $f($h['w']) . '% للنسبة المقترحة ' . $tg($h) . '%) — مثلًا بتقليل المبلغ المرصود لخطته أو البيع الجزئي عند هدف ربح.']; }
+    foreach ($H as $h) if ($n > 1 && $h['w'] > $tg($h) + $C['over_warn']) { $amt = ($h['w'] - $tg($h)) / 100 * $M['total']; $free += $amt; $moves[] = ['s' => $h['s'], 'k' => 'reduce', 'amt' => $amt, 't' => 'خفّف ' . $h['s'] . ' بحوالي ' . $f0($amt) . ' (من ' . $f($h['w']) . '% للنسبة المقترحة ' . $tg($h) . '%) — مثلًا بتقليل المبلغ المرصود لخطته أو البيع الجزئي عند هدف ربح.']; }
     if ($free > 0) {
-        $low = array_values(array_filter($H, fn($h) => $h['w'] < $tg($h) - 5));
+        $low = array_values(array_filter($H, fn($h) => $h['w'] < $tg($h) - $C['over_warn']));
         usort($low, fn($a, $b) => $a['w'] <=> $b['w']);
         $tgt = array_slice($low, 0, 2);
         foreach ($tgt as $h) { $amt = $free / count($tgt); $moves[] = ['s' => $h['s'], 'k' => 'add', 'amt' => $amt, 't' => 'وجّه حوالي ' . $f0($amt) . ' للسهم الأقل وزنًا ' . $h['s'] . ' (' . $f($h['w']) . '%) بزيادة المبلغ المرصود لخطته.']; }
@@ -227,8 +241,8 @@ function mz_rule_text($M, $R, $pool){
 }
 
 function mz_analyze($conn, $email, $positions, $ccy, $fresh = false){
-    $cfg = bs_cfg($conn);
-    $sig = md5(json_encode([$email, $positions, $ccy, $cfg, ai_tier($conn) . md5(site_config_get($conn, 'basira_ai_key'))]));   // الإصدار 127: المدفوع والمجاني منفصلين
+    $cfg = bs_cfg($conn); $MC = mz_cfg($conn); if (empty($MC['ai_on'])) $cfg['ai_on'] = false;
+    $sig = md5(json_encode([$email, $positions, $ccy, $cfg, $MC, ai_tier($conn) . md5(site_config_get($conn, 'basira_ai_key'))]));   // الإصدار 127: المدفوع والمجاني منفصلين
     $f = opp_cache_dir() . '/' . md5("mz2|$sig") . '.json';
     if (!$fresh && is_file($f) && time() - filemtime($f) < $cfg['cache_min'] * 60 && ($j = json_decode((string)@file_get_contents($f), true))) { $j['cached'] = true; return $j; }
     $M = mz_metrics($conn, $cfg, $positions);
@@ -239,7 +253,7 @@ function mz_analyze($conn, $email, $positions, $ccy, $fresh = false){
     if (!$ai || isset($ai['error'])) { $aiErr = $ai['error'] ?? ''; $ai = mz_rule_text($M, $R, $pool); $ai['auto'] = true; }
     elseif (!empty($ai['targets'])) { mz_apply_targets($M, $ai['targets'], 'ai'); $R = mz_rules($M); }   // النسب من الذكاء الاصطناعي ← التنبيهات وإعادة التوازن عليها
     unset($ai['targets']);
-    $out = ['ok' => true, 'ccy' => $ccy, 'at' => gmdate('c'), 'm' => $M, 'alerts' => $R['alerts'], 'moves' => $R['moves'], 'cap' => $R['cap'], 'ai' => $ai, 'aiErr' => $aiErr,
+    $out = ['ok' => true, 'cfg' => ['name' => $MC['name'], 'disclaimer' => $MC['disclaimer']], 'ccy' => $ccy, 'at' => gmdate('c'), 'm' => $M, 'alerts' => $R['alerts'], 'moves' => $R['moves'], 'cap' => $R['cap'], 'ai' => $ai, 'aiErr' => $aiErr,
         'config' => ['name' => $cfg['name'], 'disclaimer' => $cfg['disclaimer']]];
     @file_put_contents($f, json_encode($out, JSON_UNESCAPED_UNICODE));
     return $out;
@@ -248,8 +262,8 @@ function mz_analyze($conn, $email, $positions, $ccy, $fresh = false){
 /* الإصدار 117: النسب المقترحة للرئيسية (ملحوظة التركّز) - من آخر تحليل ميزان متخزّن (فيه رأي الذكاء الاصطناعي)
    ولو مفيش ← بالقواعد (من غير طلب ذكاء اصطناعي جديد) ومتخزنة 30 دقيقة */
 function mz_limits($conn, $email, $positions, $ccy){
-    $cfg = bs_cfg($conn);
-    $sig = md5(json_encode([$email, $positions, $ccy, $cfg, ai_tier($conn) . md5(site_config_get($conn, 'basira_ai_key'))]));   // الإصدار 127: المدفوع والمجاني منفصلين
+    $cfg = bs_cfg($conn); $MC = mz_cfg($conn); if (empty($MC['ai_on'])) $cfg['ai_on'] = false;   // نفس مفتاح تخزين mz_analyze
+    $sig = md5(json_encode([$email, $positions, $ccy, $cfg, $MC, ai_tier($conn) . md5(site_config_get($conn, 'basira_ai_key'))]));   // الإصدار 127: المدفوع والمجاني منفصلين
     $f = opp_cache_dir() . '/' . md5("mz2|$sig") . '.json';
     $lf = null; $M = null;
     if (is_file($f) && ($j = json_decode((string)@file_get_contents($f), true)) && !empty($j['m'])) $M = $j['m'];

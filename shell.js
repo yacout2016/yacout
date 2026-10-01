@@ -50,7 +50,7 @@
      ===================================================================== */
 
   // رقم الإصدار - بيظهر في شاشة "حسابي" (غيّره مع ?v= في index.php و VERSION في sw.js)
-  const APP_VERSION = 127;
+  const APP_VERSION = 128;
 
   /* الاستعلامات المتكررة (الدردشة/التوصيات/قائمة المتابعة) - استعلام متكيّف (الإصدار 89)
      - بتقف لما التبويب يكون مخفي أو الموبايل مقفول
@@ -1660,7 +1660,7 @@
     ['المسميات الوظيفية', 'renderJobTitlesPage'],
     ['القائمة السوداء', 'renderBlacklist'],
     ['إدارة الباقات', 'renderPlansManagementPage'],
-    ['توصيات الشراء (إدارة)', 'renderRecommendationsAdminPage'],
+    ['توصية شراء / بيع (المحللين)', 'renderRecommendationsAdminPage'],
     ['الدردشة الفورية (إدارة)', 'renderChatAdminPage'],
     ['تنسيق الموقع', 'renderSiteDesignPage'],
     ['نصوص الشاشات', 'renderSiteTextsAdminPage'],

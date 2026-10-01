@@ -25,7 +25,7 @@ function adminNavButtonsHtml(){
       { id:'goPlansMgmtBtn', perm:'manage_plans', icon:'💳', label:'إدارة الخطط والأسعار' },
       { id:'goReportsBtn', perm:'view_reports', icon:'📊', label:'التقارير' },
       { id:'goTradesBtn', perm:'view_reports', icon:'📈', label:'تقرير الصفقات (شراء / بيع / أرباح العملاء)' },
-      { id:'goRecommendationsBtn', perm:'manage_recommendations', icon:'📢', label:'توصيات الشراء' },
+      { id:'goRecommendationsBtn', perm:'manage_recommendations', icon:'📢', label:'توصية شراء / بيع (المحللين)' },
     ]},
     { title: 'الإدارة والصلاحيات', items: [
       { id:'goSettingsBtn', perm:'manage_admin_settings', icon:'⚙️', label:'الصلاحيات والإعدادات الإلزامية' },
@@ -37,7 +37,8 @@ function adminNavButtonsHtml(){
     { title: 'المحتوى والتنسيق', items: [
       { id:'goLandingBtn', perm:'edit_site_design', icon:'🏁', label:'صفحة اللاندينج (واجهة الموقع قبل الدخول)' },
       { id:'goBasiraBtn', perm:'edit_site_design', icon:'🔮', label:'تحليلات بصيرة AI' },
-      { id:'goMizanAiBtn', perm:'edit_site_design', icon:'⚖️', label:'ميزان GRIFFINE AI' },
+      { id:'goMizanBtn', perm:'edit_site_design', icon:'⚖️', label:'ميزان محفظتك AI (النسب المقترحة والتنبيهات)' },
+      { id:'goMizanAiBtn', perm:'edit_site_design', icon:'🧭', label:'ميزان GRIFFINE AI' },
       { id:'goStudioBtn', perm:'edit_site_design', icon:'🖌️', label:'استوديو التصميم (الثيمات وتعديل أي شاشة)' },
       { id:'goSiteDesignBtn', perm:'edit_site_design', icon:'🎨', label:'تنسيق الموقع' },
       { id:'goSiteTextsBtn', perm:'manage_site_content', icon:'📝', label:'نصوص شاشات الموقع' },
@@ -80,6 +81,7 @@ function wireAdminNavButtons(){
     goLandingBtn: () => renderAdminLandingPage(),       // الإصدار 108 (landing-admin.js)
     goBasiraBtn: () => renderAdminBasira(),             // الإصدار 114 (basira.js)
     goMizanAiBtn: () => renderAdminMizanAi(),           // الإصدار 122 (mizanai.js)
+    goMizanBtn: () => renderAdminMizan(),               // الإصدار 128 (mizan.js)
     goBlacklistBtn: renderBlacklist,
     goArchiveBtn: renderArchivedCustomers,
     goStaffBtn: renderStaffManagementPage,
@@ -1782,7 +1784,7 @@ const BG_SCREENS = [
   {v:'admin_reports', l:'📊 التقارير والإحصائيات', fn:'renderAdminReportsPage'},
   {v:'trades_report', l:'📈 تقرير الصفقات', fn:'renderTradesReportPage'},
   {v:'chat_faq', l:'💡 المساعد الذكي في الشات', fn:'renderFaqAdminPage'},
-  {v:'recommendations_admin', l:'📢 توصيات الشراء', fn:'renderRecommendationsAdminPage'},
+  {v:'recommendations_admin', l:'📢 توصية شراء / بيع', fn:'renderRecommendationsAdminPage'},
   {v:'recommendations_customer', l:'📢 التوصيات', fn:'renderRecommendationsCustomerPage'},
   {v:'content_admin', l:'📰 آراء العملاء والمقالات', fn:'renderContentAdminPage'},
   {v:'site_texts_admin', l:'📝 تعديل نصوص شاشات الموقع', fn:'renderSiteTextsAdminPage'},
@@ -2309,205 +2311,7 @@ async function renderAdminReportsPage(){
   app.querySelectorAll('#mktSummary tr[data-mkt]').forEach(tr => tr.addEventListener('click', () => { try { localStorage.setItem('gs_admin_market', tr.dataset.mkt); } catch(e){} rerender(); }));
 }
 
-/* ================== توصيات الشراء - لوحة الأدمن/الموظف ================== */
-async function renderRecommendationsAdminPage(){
-  const __tok = screenToken();   // الإصدار 88
-  pushNav(() => renderRecommendationsAdminPage());
-  const email = await getSession();
-  if(!email) return renderLogin();
-  if(!window.__isAdmin) return renderHome();
-  if(!hasPermission('manage_recommendations')) return renderAdminHub();
-
-  if (window.__recLogTick) { clearInterval(window.__recLogTick); window.__recLogTick = null; }
-
-  const logRes = await getRecommendationsLog();
-  let recs = (logRes && logRes.success) ? logRes.recommendations : [];
-
-  if (screenStale(__tok)) return; app.innerHTML = `<div class="container wide">${logoHeader()}
-    <div class="topbar">
-      <div>${pageTitle('recommendations_admin','📢 توصيات الشراء')}</div>
-      ${adminNavButtonsHtml()}
-    </div>
-    <div class="info">أي توصية تضيفها هنا تصل كإشعار كامل التفاصيل لكل زوار الموقع الذين فعّلوا الإشعارات، وتظهر في شاشة "📢 التوصيات" المنفصلة عن الشات لدى كل عميل — للعرض فقط. لكل توصية مدة صلاحية تحددها أنت وقت الإرسال، ثم تُغلق تلقائيًا. يمكنك إلغاء أي توصية أرسلتها بنفسك في أي وقت قبل انتهاء مدتها.</div>
-
-    <h2>إضافة توصية جديدة</h2>
-    <div class="section-card">
-      <form id="addRecForm">
-        <div class="grid2">
-          <div><label>كود السهم</label><input type="text" id="rec_symbol" required placeholder="مثال: COMI"></div>
-          <div><label>اسم السهم</label><input type="text" id="rec_name" required placeholder="مثال: البنك التجاري الدولي"></div>
-        </div>
-        <div class="grid2">
-          <div><label>نقطة الشراء من</label><input type="number" step="any" id="rec_buyFrom" required></div>
-          <div><label>نقطة الشراء إلى</label><input type="number" step="any" id="rec_buyTo" required></div>
-        </div>
-        <label>السوق (التوصية بتظهر وبتوصل كإشعار لحسابات السوق ده بس)</label>
-        <select id="rec_market" data-g-mkt="skip">${(() => { const a = window.__acct, mk = a && a.markets ? Object.keys(a.markets) : ['مصر'], cur = gAdminMarket() || 'مصر'; return mk.map(m => `<option value="${escapeHtml(m)}" ${m === cur ? 'selected' : ''}>${escapeHtml(m)}${a && a.markets[m] && !a.markets[m].active ? ' (غير مفعّل)' : ''}</option>`).join(''); })()}</select>
-        <label>مدة صلاحية التوصية (بعدها تتقفل تلقائيًا ومتظهرش للعميل)</label>
-        <select id="rec_validity">
-          <option value="24">24 ساعة</option>
-          <option value="48">48 ساعة</option>
-          <option value="72">72 ساعة</option>
-          <option value="168">أسبوع (168 ساعة)</option>
-        </select>
-        <h3 class="u-mt12">نقاط المقاومة (الخروج/جني الأرباح)</h3>
-        ${[1,2,3].map(i=>`<div class="grid2">
-          <div><label>المقاومة ${i}</label><input type="number" step="any" id="rec_r${i}"></div>
-          <div><label>نسبة الخروج عندها %</label><input type="number" step="any" id="rec_r${i}p" placeholder="مثال: 33"></div>
-        </div>`).join('')}
-        <h3 class="u-mt12">نقاط الدعم / التعزيز</h3>
-        <div class="grid2">
-          <div><label>الدعم 1</label><input type="number" step="any" id="rec_s1"></div>
-          <div><label>الدعم 2</label><input type="number" step="any" id="rec_s2"></div>
-        </div>
-        <label>الدعم 3</label><input type="number" step="any" id="rec_s3">
-        <button type="submit" class="u-mt12">📢 إرسال التوصية</button>
-      </form>
-      <div id="addRecResult"></div>
-    </div>
-
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:20px;">
-      <h2 class="u-m0">سجل التوصيات (<span id="recCount">${recs.length}</span>)</h2>
-      ${gAdminMarketBarHtml('recMarketF')}
-      <button class="secondary small u-wa" id="clearNowBtn">🗑️ إلغاء كل النشطة الآن</button>
-    </div>
-    <div class="section-card" id="recListWrap"></div>
-  </div>`;
-
-  wireAdminNavButtons();
-
-  const statusInfo = {
-    active:    { label: 'نشطة',  color: 'var(--green)' },
-    cancelled: { label: 'أُلغيت', color: '#c0392b' },
-    expired:   { label: 'انتهت',  color: '#888' },
-  };
-
-  function remainingLabel(createdAt, validityHours){
-    const expiresAt = new Date(createdAt.replace(' ', 'T')).getTime() + validityHours*3600*1000;
-    const diffMs = expiresAt - Date.now();
-    if (diffMs <= 0) return 'انتهت المدة';
-    const h = Math.floor(diffMs/3600000), m = Math.floor((diffMs%3600000)/60000);
-    return `متبقي ${h} س ${m} د`;
-  }
-
-  function renderList(){
-    const mf = gAdminMarket(), shown = mf ? recs.filter(r => (r.market || 'مصر') === mf) : recs;
-    document.getElementById('recCount').textContent = shown.length;
-    document.getElementById('recListWrap').innerHTML = shown.length ? shown.map(r=>{
-      const canCancel = r.status === 'active' && (window.__isSuperAdmin || (r.createdBy && r.createdBy.toLowerCase() === email.toLowerCase()));
-      const st = statusInfo[r.status] || statusInfo.active;
-      const timeInfo = r.status === 'active' ? remainingLabel(r.createdAt, r.validityHours) : `أُغلقت: ${formatDateAr(r.archivedAt)}`;
-      return `<div class="section-card" style="margin-bottom:10px;border-inline-start:4px solid ${st.color};">
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
-          <div><strong>${escapeHtml(r.stockName)} (${escapeHtml(r.symbol)})</strong> — شراء من ${r.buyFrom} إلى ${r.buyTo}
-            <span style="font-size:11px;font-weight:bold;color:${st.color};margin-inline-start:8px;">${escapeHtml(st.label)}</span>
-            <span class="g-mkt-tag">🌍 ${escapeHtml(r.market || 'مصر')}</span>
-          </div>
-          ${canCancel ? `<button class="small danger u-wa" data-gcall="__deleteRec" data-gargs="${gArgs([String(r.id)])}">🗑️ إلغاء الآن</button>` : ''}
-        </div>
-        <div style="font-size:12px;color:#888;margin-top:4px;">أُرسلت: ${formatDateAr(r.createdAt)} بواسطة ${escapeHtml(r.createdBy||'-')} — صلاحية ${r.validityHours} ساعة — <strong>${timeInfo}</strong></div>
-      </div>`;
-    }).join('') : '<p class="u-note">لا توجد أي توصيات في السجل بعد.</p>';
-  }
-  renderList();
-  gWireAdminMarket('recMarketF', renderList);
-  window.__recLogTick = setInterval(renderList, 60000); // تحديث العد التنازلي كل دقيقة
-
-  window.__deleteRec = async (id) => {
-    if (!await gConfirm('هل أنت متأكد من إلغاء هذه التوصية الآن؟ ستختفي فورًا لدى كل العملاء.')) return;
-    const r = await deleteRecommendation(id);
-    if (r.success) {
-      const fresh = await getRecommendationsLog();
-      if (fresh.success) { recs = fresh.recommendations; renderList(); }
-    } else {
-      alert(r.message || 'حصل خطأ');
-    }
-  };
-
-  document.getElementById('clearNowBtn').onclick = async () => {
-    if (!await gConfirm('هل أنت متأكد من إلغاء كل التوصيات النشطة الآن؟')) return;
-    const r = await clearRecommendationsNow();
-    if (r.success) {
-      const fresh = await getRecommendationsLog();
-      if (fresh.success) { recs = fresh.recommendations; renderList(); }
-    } else alert(r.message || 'حصل خطأ');
-  };
-
-  document.getElementById('addRecForm').onsubmit = async (e) => {
-    e.preventDefault();
-    const val = (id) => document.getElementById(id).value;
-    const data = {
-      symbol: val('rec_symbol').trim(), stockName: val('rec_name').trim(),
-      buyFrom: val('rec_buyFrom'), buyTo: val('rec_buyTo'),
-      validityHours: val('rec_validity'), market: val('rec_market'),
-      resistance1: val('rec_r1'), resistance1Pct: val('rec_r1p'),
-      resistance2: val('rec_r2'), resistance2Pct: val('rec_r2p'),
-      resistance3: val('rec_r3'), resistance3Pct: val('rec_r3p'),
-      support1: val('rec_s1'), support2: val('rec_s2'), support3: val('rec_s3'),
-    };
-    const r = await addRecommendation(data);
-    const resultEl = document.getElementById('addRecResult');
-    if (r.success) {
-      resultEl.innerHTML = '<div class="info u-mt8">✅ تم إرسال التوصية.</div>';
-      const keepMkt = val('rec_market'); document.getElementById('addRecForm').reset(); document.getElementById('rec_market').value = keepMkt;
-      const fresh = await getRecommendationsLog();
-      if (fresh.success) { recs = fresh.recommendations; renderList(); }
-    } else {
-      resultEl.innerHTML = `<div class="error u-mt8">${r.message || 'حصل خطأ'}</div>`;
-    }
-  };
-}
-
-/* ================== توصيات الشراء - شاشة العميل (عرض فقط، مفصولة عن الشات) ================== */
-async function renderRecommendationsCustomerPage(){
-  const __tok = screenToken();   // الإصدار 88
-  pushNav(() => renderRecommendationsCustomerPage());
-  const email = await getSession();
-  if(!email) return renderLogin();
-  if(!(await ensureAccess())) return;
-
-  if (window.__recPoll) { clearInterval(window.__recPoll); window.__recPoll = null; }
-
-  async function load(){
-    const res = await getRecommendations();
-    const recs = (res && res.success) ? res.recommendations : [];
-    const listEl = document.getElementById('recCustomerList');
-    if (!listEl) return;
-    listEl.innerHTML = recs.length ? recs.map(r=>{
-      const resistancesHtml = r.resistances.filter(x=>x.level!==null).map((x,i)=>
-        `<div>المقاومة ${i+1}: <strong>${x.level}</strong>${x.pct!==null?` — بيع ${x.pct}%`:''}</div>`).join('');
-      const supportsHtml = r.supports.filter(x=>x!==null).map((x,i)=>`<div>الدعم ${i+1}: <strong>${x}</strong></div>`).join('');
-      return `<div class="section-card" style="margin-bottom:12px;">
-        <div class="u-row">
-          <strong style="font-size:15px;color:var(--green-dark);">${escapeHtml(r.stockName)} (${escapeHtml(r.symbol)})</strong>
-          <span class="u-fs11 u-muted">${formatDateAr(r.createdAt)}</span>
-        </div>
-        <div class="u-mt6">نقطة الشراء: <strong>${r.buyFrom} - ${r.buyTo}</strong></div>
-        <div class="grid2 u-mt8">
-          <div><div class="section-title">المقاومة / الخروج</div>${resistancesHtml || '<span style="color:#888;font-size:12px;">-</span>'}</div>
-          <div><div class="section-title">الدعم / التعزيز</div>${supportsHtml || '<span style="color:#888;font-size:12px;">-</span>'}</div>
-        </div>
-        <button class="small" style="width:auto;margin-top:10px;" data-gcall="__useForPlan" data-gargs="${gArgs([String(r.symbol), r.buyFrom, 'مصر'])}">حوّل لخطة</button>
-      </div>`;
-    }).join('') : '<p class="u-note">لا توجد توصيات حاليًا.</p>';
-  }
-
-  if (screenStale(__tok)) return; app.innerHTML = `<div class="container">${logoHeader()}
-    <div class="topbar"><div>${pageTitle('recommendations_customer','📢 التوصيات')}</div><button class="secondary small" id="homeBtn">🏠 الشاشة الرئيسية</button></div>
-    <div class="info">شاشة عرض فقط للتوصيات التي تصلك من الفريق — ليست شاتًا، ولا يمكن الكتابة فيها.</div>
-    <div id="recCustomerList"></div>
-  </div>`;
-  document.getElementById('homeBtn').onclick=()=>{ if(window.__recPoll){clearInterval(window.__recPoll);window.__recPoll=null;} renderHome(); };
-
-  window.__useForPlan = (symbol, price, market) => {
-    if (window.__recPoll) { clearInterval(window.__recPoll); window.__recPoll = null; }
-    window.__prefillPlan = { symbol, price, market };
-    renderNewPlanForm();
-  };
-
-  await load();
-  window.__recPoll = setInterval(load, 30000); // تحديث تلقائي كل 30 ثانية
-}
+/* الإصدار 128: شاشة «توصية شراء / بيع» للمحلل وشاشة التوصيات للعميل اتنقلوا لـ recs.js */
 
 /* ================== لوحة إدارة المحتوى - آراء العملاء والمقالات (أدمن) ================== */
 async function renderContentAdminPage(){
