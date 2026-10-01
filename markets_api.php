@@ -102,7 +102,8 @@ try {
         rc_expire_tick($conn);   // الإصدار 129: التوصيات اللي صلاحيتها خلصت ← إشعار «انتهت»
         // الإصدار 91: dismissed = اتقفل من كارت الرئيسية (بيفضل موجود في شاشة التنبيهات لحد ما يتحذف)
         $hasDis = false; try { $c = $conn->query("SHOW COLUMNS FROM user_alerts LIKE 'dismissed'"); $hasDis = $c && $c->num_rows > 0; } catch (Throwable $e) {}
-        $st = $conn->prepare("SELECT id, title, body, symbol, market, is_read, " . ($hasDis ? "dismissed" : "0 AS dismissed") . ", created_at FROM user_alerts WHERE account_email = ? ORDER BY id DESC LIMIT 200");
+        $hasKind = false; try { $c = $conn->query("SHOW COLUMNS FROM user_alerts LIKE 'kind'"); $hasKind = $c && $c->num_rows > 0; } catch (Throwable $e) {}   // الإصدار 133: نوع الإشعار (لون التوصيات)
+        $st = $conn->prepare("SELECT id, title, body, symbol, market, is_read, " . ($hasDis ? "dismissed" : "0 AS dismissed") . ", " . ($hasKind ? "kind, rec_id" : "NULL AS kind, NULL AS rec_id") . ", created_at FROM user_alerts WHERE account_email = ? ORDER BY id DESC LIMIT 200");
         $st->bind_param("s", $email); $st->execute(); $res = $st->get_result();
         $list = []; $unread = 0;
         while ($r = $res->fetch_assoc()) { $r['id'] = (int)$r['id']; $r['is_read'] = (int)$r['is_read'] === 1; $r['dismissed'] = (int)$r['dismissed'] === 1; if (!$r['is_read']) $unread++; $list[] = $r; }

@@ -528,7 +528,7 @@
     } finally { pumping = false; }
   }
   function logCard(r, email){
-    const st = { active: ['نشطة', 'pos'], cancelled: ['أُلغيت', 'neg'], expired: ['⏰ انتهت', 'u-muted'], closed: ['اتقفلت', 'u-muted'], draft: ['💾 مسودة', 'u-muted'], pending: ['⏳ بانتظار الموافقة', 'rc-st-pend'], rejected: ['❌ مرفوضة', 'neg'] }[r.status] || ['نشطة', 'pos'];
+    const st = { active: ['✅ اتبعتت — نشطة', 'rc-chip rc-chip-ok'], cancelled: ['أُلغيت', 'rc-chip rc-chip-mut'], expired: ['⏰ انتهت', 'rc-chip rc-chip-mut'], closed: ['اتقفلت', 'rc-chip rc-chip-mut'], draft: ['💾 مسودة', 'rc-chip rc-chip-mut'], pending: ['⏳ بانتظار الموافقة', 'rc-chip rc-chip-pend'], rejected: ['❌ مرفوضة', 'rc-chip rc-chip-no'] }[r.status] || ['✅ اتبعتت — نشطة', 'rc-chip rc-chip-ok'];
     const mine = r.createdBy && r.createdBy.toLowerCase() === String(email).toLowerCase();
     const can = r.status === 'active' && (window.__isSuperAdmin || mine), canAppr = !!(META && META.canApprove);
     const pre = ['draft', 'pending', 'rejected'].includes(r.status);
@@ -539,7 +539,7 @@
       r.status === 'pending' && canAppr && (!mine || window.__isSuperAdmin) ? btn('pub', '✅ موافقة وإرسال', '') + ' ' + btn('rej', '❌ رفض', 'danger') : '',
       pre && (mine || canAppr) ? btn('trash', '🗑 حذف', 'danger') : '',
       can ? btn('del', '🗑️ إلغاء', 'danger') : ''].filter(Boolean).join(' ');
-    return `<div class="section-card rc-log rc-${r.type || 'buy'}${pre ? ' rc-log-pre' : ''}" data-st="${E(r.status)}"><div class="u-row"><div><b>${r.type === 'sell' ? '📉 بيع' : '📈 شراء'} — ${E(r.stockName)} (${E(r.symbol)})</b> <span class="${st[1]} u-fs12">${st[0]}</span>${r.long ? ` <span class="rc-longtag">${E(CFG.t_long_term || 'طويلة المدى')}</span>` : ''} <span class="g-mkt-tag">🌍 ${E(r.market || 'مصر')}</span></div>
+    return `<div class="section-card rc-log rc-${r.type || 'buy'}${pre ? ' rc-log-pre' : ''} rc-lst-${E(r.status || 'active')}" data-st="${E(r.status)}"><div class="u-row"><div><b>${r.type === 'sell' ? '📉 بيع' : '📈 شراء'} — ${E(r.stockName)} (${E(r.symbol)})</b> <span class="${st[1]} u-fs12">${st[0]}</span>${r.long ? ` <span class="rc-longtag">${E(CFG.t_long_term || 'طويلة المدى')}</span>` : ''} <span class="g-mkt-tag">🌍 ${E(r.market || 'مصر')}</span></div>
       <span class="rc-logacts">${acts}</span></div>
       <div class="u-fs12 u-muted">${r.type === 'sell' ? 'البيع' : 'الشراء'} ${N(r.buyFrom)} – ${N(r.buyTo)} — ${TFL[r.timeframe] || ''} — ${pre ? 'اتعملت' : 'أُرسلت'} ${formatDateAr(r.createdAt)} بواسطة ${E(r.analyst || '-')}${r.analyst && r.createdBy ? ` <small>(${E(r.createdBy)})</small>` : ''}${r.status === 'active' && r.expiresAt ? ` — تنتهي ${formatDateAr(r.expiresAt)}` : ''}${r.approvedBy && r.status === 'active' && r.approvedBy.toLowerCase() !== String(r.createdBy || '').toLowerCase() ? ` — وافق عليها ${E(r.approvedBy)}` : ''}${(r.updates || []).length ? ` — ${r.updates.length} تحديث` : ''}</div>
       ${r.status === 'rejected' && r.rejectReason ? `<div class="u-fs12 neg">سبب الرفض: ${E(r.rejectReason)}</div>` : ''}</div>`;
@@ -665,6 +665,7 @@
     const fib = opt.preview ? (att.includes('fib') && LAST_SVG.fib ? `<div class="rc-cimg">${LAST_SVG.fib}</div>` : '') : (r.fibUrl ? `<div class="rc-cimg"><img src="${E(r.fibUrl)}" alt="فيبوناتشي" loading="lazy"></div>` : '');
     const ind = (r.indicators || []).length ? `<div class="rc-inds">${r.indicators.map(x => `<span class="rc-xn"><b>${E(x.l)}</b>${x.v ? ' <span class="n">' + E(x.v) + '</span>' : ''}${x.n ? ' — ' + E(x.n) : ''}</span>`).join('')}</div>` : '';
     return `<div class="rc-card rc-${buy ? 'buy' : 'sell'}${expired ? ' rc-expired' : ''}">
+      <div class="rc-kindtag">${E(C.t_kind_label || '👨‍💼 توصية تعليمية سريعة من محلل مالي')}</div>
       <div class="rc-card-h"><span class="rc-badge">${buy ? '📈 توصية شراء' : '📉 توصية بيع'}</span><b class="n rc-sym">${E(r.symbol)}</b><span class="rc-name">${E(r.stockName)}</span>${r.long ? `<span class="rc-longtag">${E(C.t_long_term || '🕰️ توصية طويلة المدى')}</span>` : ''}${expired ? `<span class="rc-exptag">${E(C.t_expired_title || '⏰ انتهت صلاحية التوصية')}</span>` : ''}</div>
       <div class="rc-meta">${TFL[r.timeframe] ? 'المدة: ' + TFL[r.timeframe] + ' — ' : ''}${E(r.market || 'مصر')}${ccy ? ' (' + E(ccy) + ')' : ''}${r.expiresAt && !expired ? ' — صالحة حتى ' + formatDateAr(r.expiresAt) : ''}</div>
       ${chart}
@@ -723,6 +724,7 @@
       ['t_chart', 'عنوان الرسم البياني'], ['t_attach', 'عنوان المرفقات'], ['t_att_chart', 'مرفق الرسم'], ['t_att_ai', 'مرفق رأي بصيرة'], ['t_att_ind', 'مرفق المؤشرات'], ['t_att_fib', 'مرفق فيبوناتشي'],
       ['t_channels', 'عنوان قنوات الإرسال'], ['t_preview', 'عنوان المعاينة'], ['t_send_buy', 'زرار إرسال الشراء'], ['t_send_sell', 'زرار إرسال البيع'], ['t_analyst', 'كلمة «المحلل» في الرسالة'],
       ['t_btn_preview', 'زرار المعاينة قبل الإرسال'], ['t_btn_draft', 'زرار حفظ مسودة'], ['t_send_review', 'زرار الإرسال للمراجعة (لما الموافقة شغالة)'], ['t_pending_note', 'ملاحظة الموافقة عند المحلل', 'area'],
+      ['t_kind_label', 'علامة التوصية (فوق كارت التوصية وفي الإيميل)'], ['t_kind_short', 'وصف التوصية في العنوان (توصية شراء ... : اسم السهم)'],
       ['h', 'موافقة الأدمن قبل الإرسال'], ['approval_on', 'كل توصيات المحللين تروح للأدمن (أو اللي معاه صلاحية «مراجعة واعتماد التوصيات») يوافق عليها الأول، وبعدين تتبعت للمشتركين', 'bool'],
       ['h', 'الرسالة والإشعارات'], ['t_long_term', 'علامة التوصية طويلة المدى'], ['t_expired_title', 'عنوان إشعار انتهاء الصلاحية'], ['t_expired_body', 'نص إشعار انتهاء الصلاحية', 'area'],
       ['t_disclaimer', 'التنويه في آخر الرسالة', 'area'], ['t_team', 'الاسم لو المحلل مالوش اسم مسجّل'], ['t_email_cta', 'زرار الإيميل'], ['t_email_foot', 'آخر الإيميل', 'area'], ['t_wa_link', 'سطر اللينك في الواتساب'],

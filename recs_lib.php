@@ -48,6 +48,7 @@ function rc_defaults(){
         'entry_band' => 1, 'tp1' => 40, 'tp2' => 30, 'tp3' => 30, 'st1' => 50, 'st2' => 30, 'st3' => 20, 'long_hours' => 336,
         'att_chart' => true, 'att_ai' => true, 'att_ind' => true, 'att_fib' => false, 'ind_default' => 'sma20,sma50,rsi',
         // الإصدار 131: موافقة الأدمن قبل الإرسال (مقفولة افتراضيًا) + نصوص المعاينة
+        't_kind_label' => '👨‍💼 توصية تعليمية سريعة من محلل مالي', 't_kind_short' => 'تعليمية سريعة من محلل مالي',   // الإصدار 133
         'approval_on' => false, 't_btn_preview' => '👁 معاينة قبل الإرسال', 't_btn_draft' => '💾 حفظ مسودة', 't_send_review' => '📨 إرسال للمراجعة',
         't_pending_note' => 'موافقة الأدمن شغالة: التوصية هتروح للمراجعة الأول، وبعد الموافقة بتتبعت للمشتركين.',
     ];
@@ -86,10 +87,27 @@ function rc_need_approval($conn){
     return !empty(rc_cfg($conn)['approval_on']) && !in_array('rec_approve', $p, true);
 }
 function rc_row($conn, $id){ $st = $conn->prepare("SELECT * FROM recommendations WHERE id = ?"); $st->bind_param("i", $id); $st->execute(); $r = $st->get_result()->fetch_assoc(); $st->close(); return $r ?: null; }
-function rc_notify_users($conn, $emails, $title, $body, $sym = '', $mkt = 'مصر'){
+/* الإصدار 133: إشعار ملوّن (kind) في الرئيسية وشاشة التنبيهات + إيميل اختياري
+   kind: rec_review (محتاجة موافقة) / rec_ok (اتوافق عليها) / rec_no (اترفضت) / rec (توصية للمشتركين) / rec_exp (انتهت) */
+function rc_alert_cols($conn){ static $c = null; if ($c !== null) return $c; try { $x = $conn->query("SHOW COLUMNS FROM user_alerts LIKE 'kind'"); $c = $x && $x->num_rows > 0; } catch (Throwable $e) { $c = false; } return $c; }
+function rc_alert_insert($conn, $email, $title, $body, $sym, $mkt, $kind = null, $recId = null){
+    try {
+        if (rc_alert_cols($conn)) { $i = $conn->prepare("INSERT INTO user_alerts (account_email, title, body, symbol, market, kind, rec_id) VALUES (?, ?, ?, ?, ?, ?, ?)"); $i->bind_param("ssssssi", $email, $title, $body, $sym, $mkt, $kind, $recId); }
+        else { $i = $conn->prepare("INSERT INTO user_alerts (account_email, title, body, symbol, market) VALUES (?, ?, ?, ?, ?)"); $i->bind_param("sssss", $email, $title, $body, $sym, $mkt); }
+        $i->execute(); $i->close(); return true;
+    } catch (Throwable $x) { return false; }
+}
+function rc_notify_users($conn, $emails, $title, $body, $sym = '', $mkt = 'مصر', $kind = null, $recId = null, $mail = false, $lines = []){
     foreach (array_unique(array_filter(array_map('strtolower', $emails))) as $e) {
-        try { $i = $conn->prepare("INSERT INTO user_alerts (account_email, title, body, symbol, market) VALUES (?, ?, ?, ?, ?)"); $i->bind_param("sssss", $e, $title, $body, $sym, $mkt); $i->execute(); $i->close(); } catch (Throwable $x) {}
+        rc_alert_insert($conn, $e, $title, $body, $sym, $mkt, $kind, $recId);
+        if ($mail && function_exists('griffine_notify')) { try { griffine_notify($conn, $e, $title, $title, array_merge([$body], $lines), ['label' => 'افتح «توصية شراء / بيع»', 'url' => MAIL_SITE_URL . '/index.php'], 'recommendation_review'); } catch (Throwable $x) {} }
     }
+}
+/* المحللين: كل موظف شغال معاه «إرسال ومراجعة التوصيات» (بيوصلهم كل توصية اتبعتت عشان مايحصلش تكرار أو تضارب) */
+function rc_analysts($conn){
+    $out = [];
+    try { $res = $conn->query("SELECT LOWER(s.email) e FROM staff_members s JOIN staff_permissions p ON p.staff_id = s.id WHERE s.active = 1 AND p.permission_key = 'manage_recommendations'"); while ($x = $res->fetch_assoc()) $out[] = $x['e']; } catch (Throwable $e) {}
+    return array_values(array_unique($out));
 }
 /* اللي يقدر يوافق: الأدمن الرئيسي + أي موظف معاه «مراجعة واعتماد التوصيات» */
 function rc_approvers($conn){
@@ -98,8 +116,9 @@ function rc_approvers($conn){
     return array_values(array_unique($out));
 }
 function rc_notify_approvers($conn, $r, $by){
-    rc_notify_users($conn, array_diff(rc_approvers($conn), [strtolower($by)]), '⏳ توصية محتاجة موافقة — ' . $r['stock_name'] . ' (' . $r['symbol'] . ')',
-        'من ' . ($r['analyst_name'] ?: $by) . ' — افتح «توصية شراء / بيع» وراجعها قبل ما تتبعت للمشتركين.', $r['symbol'], $r['market'] ?? 'مصر');
+    $C = rc_cfg($conn);
+    rc_notify_users($conn, array_diff(rc_approvers($conn), [strtolower($by)]), '⏳ محتاجة موافقتك — ' . rc_title($r),
+        $C['t_kind_label'] . ' من ' . ($r['analyst_name'] ?: $by) . ' — راجعها ووافق عليها أو ارفضها قبل ما تتبعت للمشتركين.', $r['symbol'], $r['market'] ?? 'مصر', 'rec_review', (int)$r['id'], true, rc_lines($r));
 }
 /* نشر توصية (بعد الموافقة أو من المسودة): الصلاحية بتبدأ من وقت النشر + الإرسال على القنوات اللي المحلل اختارها */
 function rc_publish($conn, $id, $by){
@@ -110,7 +129,7 @@ function rc_publish($conn, $id, $by){
     $ch = ['app' => in_array('app', $chs, true), 'email' => in_array('email', $chs, true), 'wa' => in_array('wa', $chs, true)];
     $mkt = mc_valid($r['market'] ?? '') ? $r['market'] : 'مصر';
     $d = rc_dispatch($conn, $id, null, $mkt, rc_title($r), array_merge(rc_lines($r), rc_extra_lines($r)), $ch, $r['symbol'], true, rc_img_url($r, 'chart'));
-    if (strtolower((string)$r['created_by']) !== strtolower($by)) rc_notify_users($conn, [$r['created_by']], '✅ التوصية اتوافق عليها واتبعتت — ' . $r['stock_name'] . ' (' . $r['symbol'] . ')', 'وصلت لـ ' . $d['recipients'] . ' مشترك.', $r['symbol'], $mkt);
+    if (strtolower((string)$r['created_by']) !== strtolower($by)) rc_notify_users($conn, [$r['created_by']], '✅ اتوافق عليها واتبعتت — ' . rc_title($r), 'وافق عليها ' . $by . ' ووصلت لـ ' . $d['recipients'] . ' مشترك والمحللين.', $r['symbol'], $mkt, 'rec_ok', (int)$id, true);
     return $d;
 }
 /* الإصدار 131: شكل التوصية في الإشعار + الإيميل + الواتساب (نفس اللي بيتبعت بالظبط) */
@@ -219,7 +238,7 @@ function rc_lines($r){
     $L[] = $C['t_disclaimer'];
     return $L;
 }
-function rc_title($r){ return (($r['rec_type'] ?? 'buy') === 'sell' ? '📉 توصية بيع: ' : '📈 توصية شراء: ') . ($r['stock_name'] ?? '') . ' (' . ($r['symbol'] ?? '') . ')'; }
+function rc_title($r){ return (($r['rec_type'] ?? 'buy') === 'sell' ? '📉 توصية بيع ' : '📈 توصية شراء ') . rc_cfg()['t_kind_short'] . ': ' . ($r['stock_name'] ?? '') . ' (' . ($r['symbol'] ?? '') . ')'; }   // الإصدار 133: «تعليمية سريعة من محلل مالي»
 function rc_valid_label($h){ return RC_VALID_L[(int)$h] ?? ($h . ' ساعة'); }
 /* المؤشرات والرأي الإضافي (للإشعار جوه التطبيق — الإيميل ليه شكل خاص) */
 function rc_extra_lines($r){
@@ -260,13 +279,16 @@ function rc_recipients($conn, $market){
 }
 /* الإرسال: إشعار المنصة فورًا — والإيميل / الواتساب في الطابور (حسب اختيار المحلل + قنوات كل مشترك) */
 function rc_dispatch($conn, $recId, $updId, $market, $title, $lines, $channels, $symbol, $push = true, $image = null){
-    $body = implode("\n", $lines); $rcpt = rc_recipients($conn, $market); $app = 0; $queued = 0;
+    $body = implode("\n", $lines); $subs = rc_recipients($conn, $market); $app = 0; $queued = 0;
+    // الإصدار 133: التوصية بتوصل للمحللين كمان (عشان يبقى واضح إيه اللي اتبعت ومايحصلش تكرار أو تضارب)
+    $rcpt = array_values(array_unique(array_merge($subs, rc_analysts($conn), $push ? [strtolower(ADMIN_EMAIL)] : [])));
+    $kind = $updId ? ($push ? 'rec' : 'rec_exp') : 'rec';
     $waOn = np_wa_on($conn);
     $ins = $conn->prepare("INSERT INTO rec_outbox (rec_id, upd_id, account_email, channel) VALUES (?, ?, ?, ?)");
     foreach ($rcpt as $e) {
         $p = np_get($conn, $e);
         if (!empty($channels['app']) && $p['app']) {
-            try { $i = $conn->prepare("INSERT INTO user_alerts (account_email, title, body, symbol, market) VALUES (?, ?, ?, ?, ?)"); $i->bind_param("sssss", $e, $title, $body, $symbol, $market); $i->execute(); $i->close(); $app++; } catch (Throwable $x) {}
+            if (rc_alert_insert($conn, $e, $title, $body, $symbol, $market, $kind, (int)$recId)) $app++;
         }
         foreach (['email', 'wa'] as $ch) {
             if (empty($channels[$ch]) || !$p[$ch] || ($ch === 'wa' && !$waOn)) continue;
@@ -275,7 +297,7 @@ function rc_dispatch($conn, $recId, $updId, $market, $title, $lines, $channels, 
     }
     $ins->close();
     if ($push && !empty($channels['app']) && function_exists('broadcast_web_push_to_customers')) { try { broadcast_web_push_to_customers($conn, $title, mb_substr($body, 0, 400), '/index.php', $market, $image); } catch (Throwable $x) {} }
-    return ['recipients' => count($rcpt), 'app' => $app, 'queued' => $queued];
+    return ['recipients' => count($subs), 'analysts' => count($rcpt) - count($subs), 'app' => $app, 'queued' => $queued];
 }
 /* الطابور: بيبعت لحد $max رسالة (إيميل / واتساب) في الطلب الواحد */
 function rc_pump($conn, $max = 15){
@@ -342,6 +364,7 @@ function rc_email($conn, $r){
         . '<tr><td style="background:#0F172A;padding:16px 22px;border-bottom:3px solid #C9A227;"><table role="presentation" width="100%"><tr><td style="color:#C9A227;font-weight:800;letter-spacing:3px;font-size:18px;font-family:Arial,sans-serif;" dir="ltr" align="left">GRIFFINE</td><td align="right" style="color:#ffffff;font-size:13px;">' . $e($buy ? 'توصية شراء جديدة' : 'توصية بيع جديدة') . '</td></tr></table></td></tr>'
         . '<tr><td style="padding:18px 22px;"><span style="display:inline-block;background:' . ($buy ? '#E5F5EE;color:#13895A' : '#FBEAEA;color:#C63B3B') . ';font-size:12px;font-weight:700;padding:2px 10px;border-radius:6px;">' . $e($buy ? '📈 توصية شراء' : '📉 توصية بيع') . '</span>'
         . ($long ? ' <span style="display:inline-block;background:#FFF4D6;color:#8A6D10;font-size:12px;font-weight:700;padding:2px 10px;border-radius:6px;">' . $e($C['t_long_term']) . '</span>' : '')
+        . ' <span style="display:inline-block;background:#EDE9FE;color:#5B21B6;font-size:12px;font-weight:700;padding:2px 10px;border-radius:6px;">' . $e($C['t_kind_label']) . '</span>'
         . '<div style="font-size:21px;font-weight:700;margin:8px 0 2px;">' . $e($r['stock_name']) . ' <span dir="ltr" style="color:#6B7280;font-size:16px;">' . $e($r['symbol']) . '</span></div>'
         . '<div style="color:#6B7280;font-size:13px;">' . $e(($r['market'] ?? 'مصر') . ' · المدة: ' . (RC_TF[$r['timeframe'] ?? 'day'][0] ?? 'يومي') . ' · صالحة ' . rc_valid_label((int)$r['validity_hours'])) . ($r['last_price'] !== null ? ' · آخر سعر <b dir="ltr">' . $e($n($r['last_price'])) . '</b> ' . $e($ccy) : '') . '</div></td></tr>'
         . $body

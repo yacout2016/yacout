@@ -68,19 +68,35 @@ const AN = { email: 'analyst131@example.com', pass: 'Test12345an' };   // حسا
   await z.click('#rcSend'); await z.waitForFunction(() => /للمراجعة/.test(rcMsg.textContent), null, { timeout: 30000 }).catch(() => {});
   const pr = q("SELECT CONCAT(id, '|', status, '|', archived) FROM recommendations WHERE note = 'اختبار 131 مراجعة' ORDER BY id DESC LIMIT 1").split('|');
   check('المحلل بعت ← «بانتظار الموافقة» (مش ظاهرة للمشتركين ومفيش إشعار ليهم)', pr[1] === 'pending' && pr[2] === '1' && q(`SELECT COUNT(*) FROM user_alerts WHERE id > ${alerts0} AND account_email = '${CUST.email}'`) === '0', pr.join('|'));
-  check('الأدمن جاله إشعار «توصية محتاجة موافقة»', +q(`SELECT COUNT(*) FROM user_alerts WHERE id > ${alerts0} AND account_email = 'top72026@gmail.com' AND title LIKE '%محتاجة موافقة%'`) === 1);
+  check('الأدمن جاله إشعار «محتاجة موافقتك» بلون مميز (rec_review) + عنوان «توصية تعليمية سريعة من محلل مالي» + إيميل (الإصدار 133)',
+    +q(`SELECT COUNT(*) FROM user_alerts WHERE id > ${alerts0} AND account_email = 'top72026@gmail.com' AND title LIKE '%محتاجة موافقتك%' AND title LIKE '%تعليمية سريعة من محلل مالي%' AND kind = 'rec_review' AND rec_id = ${pr[0]}`) === 1
+    && +q(`SELECT COUNT(*) FROM email_log WHERE to_email = 'top72026@gmail.com' AND subject LIKE '%محتاجة موافقتك%' AND created_at > DATE_SUB(NOW(), INTERVAL 5 MINUTE)`) >= 1);
+  await a.evaluate(() => renderHome()); await a.waitForSelector('.gs-alert-row.gs-k-rec_review', { timeout: 15000 }).catch(() => {});
+  const hm = await a.evaluate(() => { const r = document.querySelector('.gs-alert-row.gs-k-rec_review'); return r ? { tag: (r.querySelector('.gs-rk') || {}).textContent, btn: (r.querySelector('[data-reck]') || {}).textContent, bl: getComputedStyle(r).borderInlineStartColor } : null; });
+  check('الرئيسية: إشعار المراجعة في كارت التنبيهات (زي إشعارات الخطط) بلون مختلف + «👀 مراجعة الآن»', hm && /محتاجة موافقتك/.test(hm.tag) && /مراجعة الآن/.test(hm.btn), JSON.stringify(hm));
+  if (hm) { await a.click('.gs-alert-row.gs-k-rec_review [data-reck]'); await a.waitForSelector(`[data-rc-pub="${pr[0]}"]`, { timeout: 15000 }).catch(() => {}); }
+  check('«مراجعة الآن» ← بيفتح «توصية شراء / بيع» والتوصية فوق', await a.evaluate((id) => !!document.querySelector(`[data-rc-pub="${id}"]`) && document.querySelector('#recListWrap .rc-log').classList.contains('rc-lst-pending'), pr[0]));
   await a.evaluate(() => renderRecommendationsAdminPage()); await a.waitForSelector(`[data-rc-pub="${pr[0]}"]`, { timeout: 15000 }).catch(() => {});
   const ap = await a.evaluate((id) => { const k = document.querySelector(`[data-rc-pub="${id}"]`); const c = k && k.closest('.rc-log'); return { badge: (document.getElementById('recPendBadge') || {}).textContent, t: c ? c.textContent : '', rej: !!(c && c.querySelector('[data-rc-rej]')), first: document.querySelector('#recListWrap .rc-log') === c }; }, pr[0]);
   check('الأدمن: «⏳ بانتظار الموافقة» فوق السجل + «موافقة وإرسال» و«رفض»', /بانتظار الموافقة/.test(ap.badge) && /موافقة وإرسال/.test(ap.t) && ap.rej && ap.first, JSON.stringify(ap).slice(0, 160));
   await a.click(`[data-rc-pub="${pr[0]}"]`); await a.waitForTimeout(1500);
   const after = q(`SELECT CONCAT(status, '|', archived, '|', approved_by) FROM recommendations WHERE id = ${pr[0]}`);
   check('«موافقة وإرسال» ← التوصية اتبعتت للمشتركين (وصلت إشعار) + اتسجّل مين وافق', /^active\|0\|top72026@gmail\.com$/i.test(after) && +q(`SELECT COUNT(*) FROM user_alerts WHERE id > ${alerts0} AND account_email = '${CUST.email}' AND title LIKE '%توصية شراء%'`) === 1, after);
-  check('المحلل جاله إشعار «اتوافق عليها واتبعتت»', +q(`SELECT COUNT(*) FROM user_alerts WHERE id > ${alerts0} AND account_email = '${AN.email}' AND title LIKE '%اتوافق عليها%'`) === 1);
+  check('المحلل جاله إشعار «اتوافق عليها واتبعتت» (أخضر rec_ok) + إيميل', +q(`SELECT COUNT(*) FROM user_alerts WHERE id > ${alerts0} AND account_email = '${AN.email}' AND title LIKE '%اتوافق عليها%' AND kind = 'rec_ok'`) === 1
+    && +q(`SELECT COUNT(*) FROM email_log WHERE to_email = '${AN.email}' AND subject LIKE '%اتوافق عليها%' AND created_at > DATE_SUB(NOW(), INTERVAL 5 MINUTE)`) >= 1);
+  check('التوصية بعد الموافقة وصلت للمشتركين وللمحللين كمان (إشعار «توصية تعليمية سريعة من محلل مالي» بلون مميز)', +q(`SELECT COUNT(*) FROM user_alerts WHERE id > ${alerts0} AND account_email = '${AN.email}' AND kind = 'rec' AND rec_id = ${pr[0]}`) === 1
+    && +q(`SELECT COUNT(*) FROM user_alerts WHERE id > ${alerts0} AND account_email = '${CUST.email}' AND kind = 'rec' AND title LIKE '%تعليمية سريعة من محلل مالي%'`) === 1);
+  await a.waitForTimeout(300); await a.evaluate(() => window.__rcReload && window.__rcReload()); await a.waitForTimeout(1000);
+  check('سجل المحلل: اللي اتبعتت لونها أخضر «✅ اتبعتت»', await a.evaluate((id) => { const c = document.querySelector(`[data-rc-pv="${id}"]`); const k = c && c.closest('.rc-log'); return !!k && k.classList.contains('rc-lst-active') && /اتبعتت/.test(k.querySelector('.rc-chip-ok').textContent); }, pr[0]));
   // رفض بسبب
   await fill(z, 'اختبار 131 رفض'); await z.click('#rcSend'); await z.waitForFunction(() => /للمراجعة/.test(rcMsg.textContent), null, { timeout: 30000 }).catch(() => {});
   const rj = q("SELECT id FROM recommendations WHERE note = 'اختبار 131 رفض' ORDER BY id DESC LIMIT 1");
   await a.evaluate(() => renderRecommendationsAdminPage()); await a.waitForSelector(`[data-rc-rej="${rj}"]`, { timeout: 15000 }).catch(() => {});
   await a.click(`[data-rc-rej="${rj}"]`); await a.waitForTimeout(1200);
+  const others = q(`SELECT COUNT(*) FROM user_alerts WHERE kind = 'rec_no' AND rec_id = ${rj} AND account_email <> '${AN.email}'`);
+  check('الرفض بيوصل للمحلل صاحب التوصية بس (أحمر rec_no + إيميل) ومش لباقي المحللين', +q(`SELECT COUNT(*) FROM user_alerts WHERE kind = 'rec_no' AND rec_id = ${rj} AND account_email = '${AN.email}'`) === 1 && others === '0'
+    && +q(`SELECT COUNT(*) FROM email_log WHERE to_email = '${AN.email}' AND subject LIKE '%اترفضت%' AND created_at > DATE_SUB(NOW(), INTERVAL 5 MINUTE)`) >= 1, others);
+  check('سجل المحلل: المرفوضة لونها أحمر وسبب الرفض تحتها', await a.evaluate((id) => { window.__rcReload && window.__rcReload(); return true; }, rj) && await a.waitForFunction((id) => { const c = document.querySelector(`[data-rc-pv="${id}"]`); const k = c && c.closest('.rc-log'); return !!k && k.classList.contains('rc-lst-rejected') && /سبب الرفض/.test(k.textContent); }, rj, { timeout: 10000 }).then(() => true).catch(() => false));
   check('«رفض» ← التوصية مرفوضة بالسبب والمحلل جاله الإشعار بالسبب', q(`SELECT CONCAT(status, '|', reject_reason) FROM recommendations WHERE id = ${rj}`) === 'rejected|المستويات محتاجة مراجعة'
     && +q(`SELECT COUNT(*) FROM user_alerts WHERE account_email = '${AN.email}' AND title LIKE '%اترفضت%' AND body LIKE '%المستويات محتاجة مراجعة%'`) >= 1);
   const ownBad = await z.evaluate(async (id) => apiPost('/recs_api.php', { action: 'publish', id }), rj);

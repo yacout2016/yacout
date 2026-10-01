@@ -1394,3 +1394,18 @@ body.g-shell .rc-pvtabs button.on, .rc-pvtabs button.on{ background:#0F3D6E !imp
 .rc-pendbadge{ font-size:12.5px; font-weight:800; padding:3px 10px; border-radius:99px; background:#FEF3C7; color:#92400E; }
 .rc-st-pend{ color:#B45309; font-weight:700; } .rc-log-pre{ border-style:dashed !important; }
 .rc-logacts{ display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; } body.g-shell #app .rc-logacts button{ margin:0 !important; }
+/* الإصدار 133: ألوان إشعارات وتوصيات المحللين (في الرئيسية + شاشة التنبيهات + سجل المحلل) */
+.gs-rk{ display:inline-block; font-size:11.5px; font-weight:800; padding:2px 9px; border-radius:99px; margin-bottom:4px; }
+.gs-rk-rec_review{ background:#FEF3C7; color:#92400E; } .gs-rk-rec_ok{ background:#D1FAE5; color:#065F46; } .gs-rk-rec_no{ background:#FEE2E2; color:#991B1B; } .gs-rk-rec{ background:#EDE9FE; color:#5B21B6; } .gs-rk-rec_exp{ background:#E5E7EB; color:#374151; }
+.gs-alert-row.gs-k-rec_review, .gs-notif.gs-k-rec_review{ border-inline-start:4px solid #F59E0B !important; background:rgba(245,158,11,.07) !important; }
+.gs-alert-row.gs-k-rec_ok, .gs-notif.gs-k-rec_ok{ border-inline-start:4px solid #059669 !important; background:rgba(5,150,105,.07) !important; }
+.gs-alert-row.gs-k-rec_no, .gs-notif.gs-k-rec_no{ border-inline-start:4px solid #DC2626 !important; background:rgba(220,38,38,.07) !important; }
+.gs-alert-row.gs-k-rec, .gs-notif.gs-k-rec{ border-inline-start:4px solid #7C3AED !important; background:rgba(124,58,237,.06) !important; }
+.gs-alert-row.gs-k-rec_exp, .gs-notif.gs-k-rec_exp{ border-inline-start:4px solid #9CA3AF !important; }
+.rc-chip{ display:inline-block; font-size:12px; font-weight:800; padding:2px 10px; border-radius:99px; }
+.rc-chip-ok{ background:#D1FAE5; color:#065F46; } .rc-chip-no{ background:#FEE2E2; color:#991B1B; } .rc-chip-pend{ background:#FEF3C7; color:#92400E; } .rc-chip-mut{ background:#E5E7EB; color:#374151; }
+.rc-log.rc-lst-active{ border-inline-start:5px solid #059669 !important; background:linear-gradient(90deg, transparent, rgba(5,150,105,.06)) !important; }
+.rc-log.rc-lst-rejected{ border-inline-start:5px solid #DC2626 !important; background:linear-gradient(90deg, transparent, rgba(220,38,38,.07)) !important; }
+.rc-log.rc-lst-pending{ border-inline-start:5px solid #F59E0B !important; background:linear-gradient(90deg, transparent, rgba(245,158,11,.08)) !important; }
+.rc-log.rc-lst-draft{ border-inline-start:5px solid #9CA3AF !important; }
+.rc-kindtag{ display:inline-block; font-size:12px; font-weight:800; padding:3px 10px; border-radius:8px; background:#EDE9FE; color:#5B21B6; margin-bottom:6px; }

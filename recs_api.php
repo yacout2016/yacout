@@ -154,7 +154,7 @@ try {
             if ($r['status'] !== 'pending') rc_out(["success" => false, "message" => "التوصية مش بانتظار الموافقة."]);
             $why = mb_substr(trim((string)($_POST['reason'] ?? '')), 0, 300);
             $u = $conn->prepare("UPDATE recommendations SET status = 'rejected', reject_reason = ?, approved_by = ?, approved_at = NOW() WHERE id = ? AND status = 'pending'"); $u->bind_param("ssi", $why, $email, $id); $u->execute(); $u->close();
-            rc_notify_users($conn, [$r['created_by']], '❌ التوصية اترفضت — ' . $r['stock_name'] . ' (' . $r['symbol'] . ')', ($why !== '' ? 'السبب: ' . $why : 'راجعها وابعتها تاني.'), $r['symbol'], $r['market'] ?? 'مصر');
+            rc_notify_users($conn, [$r['created_by']], '❌ اترفضت — ' . rc_title($r), ($why !== '' ? 'سبب الرفض: ' . $why : 'راجعها وابعتها تاني.') . ' — رفضها ' . $email, $r['symbol'], $r['market'] ?? 'مصر', 'rec_no', $id, true);
             rc_out(["success" => true, "status" => 'rejected']);
         }
         // trash: المسودة / المرفوضة / اللي بانتظار الموافقة بس (المرسلة ليها «إلغاء» و«إغلاق»)

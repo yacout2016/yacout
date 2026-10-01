@@ -212,6 +212,11 @@ function mkLimitList(box, n){
   };
   fit(); setTimeout(fit, 350); try { document.fonts && document.fonts.ready.then(fit); } catch(e){}
 }
+// الإصدار 133: إشعارات توصيات المحللين — لون وعلامة لكل نوع + زرار يفتح الشاشة المناسبة
+const MK_REC_KIND = { rec_review: ['⏳ توصية محلل مالي — محتاجة موافقتك', '👀 مراجعة الآن'], rec_ok: ['✅ اتوافق عليها واتبعتت', '📢 عرض التوصيات'], rec_no: ['❌ اترفضت — راجع سبب الرفض', '✏️ افتح التوصيات'], rec: ['👨‍💼 توصية تعليمية سريعة من محلل مالي', '📢 عرض التوصية'], rec_exp: ['⏰ توصية انتهت صلاحيتها', '📢 التوصيات'] };
+function mkRecTag(a){ const k = MK_REC_KIND[a.kind]; return k ? `<span class="gs-rk gs-rk-${a.kind}">${escapeHtml(k[0])}</span>` : ''; }
+function mkRecBtn(a, cls){ const k = MK_REC_KIND[a.kind]; return k ? `<button type="button" class="${cls || 'gs-link'}" data-reck="${escapeHtml(a.kind)}">${escapeHtml(k[1])}</button>` : ''; }
+function mkOpenRec(kind){ if (window.__isAdmin && typeof hasPermission === 'function' && hasPermission('manage_recommendations')) renderRecommendationsAdminPage(); else renderRecommendationsCustomerPage(); }
 // الإصدار 91: التنبيهات بتفضل في الرئيسية لحد ما تقفلها (✕) - وبعدها بتفضل في شاشة التنبيهات
 async function mkAlertsCard(el){
   if (!el) return;
@@ -228,16 +233,17 @@ async function mkAlertsCard(el){
   const list = mobile ? all.slice(0, 3) : all;
   el.innerHTML = list.length ? `<div class="section-card gs-alert-card"><div class="u-row"><strong>🔔 تنبيهات الأسعار (${all.length})</strong>
       <span><button type="button" class="gs-link" id="gsAlertsCloseAll">إغلاق الكل</button> · <button type="button" class="gs-link" id="gsAlertsAll">عرض الكل${mobile && all.length > list.length ? ` (${all.length})` : ''}</button></span></div>
-    <div class="gs-alert-list${mobile ? ' gs-alert-compact' : ''}">${list.map(a => `<div class="gs-alert-row${a.is_read ? '' : ' unread'}" data-aid="${a.id}">
+    <div class="gs-alert-list${mobile ? ' gs-alert-compact' : ''}">${list.map(a => `<div class="gs-alert-row${a.is_read ? '' : ' unread'}${a.kind ? ' gs-k-' + escapeHtml(a.kind) : ''}" data-aid="${a.id}">
       <button type="button" class="gs-alert-x" data-dis="${a.id}" aria-label="إغلاق" title="إغلاق (يبقى في شاشة التنبيهات)">✕</button>
-      <b>${escapeHtml(a.title)}</b><div>${escapeHtml(a.body || '')}</div>
-      <small class="u-muted">${escapeHtml(formatDateTimeAr(a.created_at))}</small>${a.symbol ? ` · <button type="button" class="gs-link" data-sym="${escapeHtml(a.symbol)}" data-mkt="${escapeHtml(a.market || 'مصر')}">صفحة السهم</button>${planOf(a.symbol) ? ` · <button type="button" class="gs-link" data-plan-sym="${escapeHtml(String(a.symbol).toUpperCase())}" data-plan-kind="${planOf(a.symbol)}">خطة السهم (${planOf(a.symbol)})</button>` : ''}` : ''}</div>`).join('')}</div></div>` : '';
+      ${mkRecTag(a)}<b>${escapeHtml(a.title)}</b><div>${escapeHtml(a.body || '')}</div>
+      <small class="u-muted">${escapeHtml(formatDateTimeAr(a.created_at))}</small>${a.kind && MK_REC_KIND[a.kind] ? ' · ' + mkRecBtn(a) : ''}${a.symbol ? ` · <button type="button" class="gs-link" data-sym="${escapeHtml(a.symbol)}" data-mkt="${escapeHtml(a.market || 'مصر')}">صفحة السهم</button>${planOf(a.symbol) ? ` · <button type="button" class="gs-link" data-plan-sym="${escapeHtml(String(a.symbol).toUpperCase())}" data-plan-kind="${planOf(a.symbol)}">خطة السهم (${planOf(a.symbol)})</button>` : ''}` : ''}</div>`).join('')}</div></div>` : '';
   if (!mobile) mkLimitList(el.querySelector('.gs-alert-list'), 5);
   else el.querySelectorAll('.gs-alert-compact .gs-alert-row > div').forEach(d => d.onclick = () => d.classList.toggle('open'));
   const b = document.getElementById('gsAlertsAll'); if (b) b.onclick = () => renderAlertsPage();
   const ca = document.getElementById('gsAlertsCloseAll'); if (ca) ca.onclick = async () => { await MK.post({ action:'alert_dismiss', all:'1' }); mkAlertsCard(el); };
   el.querySelectorAll('[data-dis]').forEach(x => x.onclick = async (ev) => { ev.stopPropagation(); await MK.post({ action:'alert_dismiss', id: x.dataset.dis }); mkAlertsCard(el); });
   el.querySelectorAll('[data-sym]').forEach(x => x.onclick = () => renderStockPage(x.dataset.sym, x.dataset.mkt));
+  el.querySelectorAll('[data-reck]').forEach(x => x.onclick = () => mkOpenRec(x.dataset.reck));
   el.querySelectorAll('[data-plan-sym]').forEach(x => x.onclick = () => { if (x.dataset.planKind === 'Grid') renderGridPlanDetail(x.dataset.planSym); else renderPlanDetail(x.dataset.planSym); });
 }
 function mkUpdateAlertBadge(){
@@ -295,9 +301,9 @@ async function renderAlertsPage(){
     </div>
     <div class="section-title u-mt14">سجل الإشعارات (${r.success ? r.alerts.length : 0})</div>
     <div class="info">تصلك هنا أيضًا تنبيهات مستويات خططك (سعر الشراء التالي وهدف البيع). الحذف ينقل الإشعار إلى سلة المحذوفات.</div>
-    ${r.success && r.alerts.length ? `<div class="gs-notif-list">${r.alerts.map(a => `<div class="section-card gs-notif${a.is_read ? ' read' : ''}"><div class="u-row"><b>${escapeHtml(a.title)}</b>
+    ${r.success && r.alerts.length ? `<div class="gs-notif-list">${r.alerts.map(a => `<div class="section-card gs-notif${a.is_read ? ' read' : ''}${a.kind ? ' gs-k-' + escapeHtml(a.kind) : ''}">${mkRecTag(a)}<div class="u-row"><b>${escapeHtml(a.title)}</b>
         <span><small class="u-muted">${escapeHtml(formatDateTimeAr(a.created_at))}</small> <button type="button" class="small danger u-wa" data-ndel="${a.id}" title="حذف (ينتقل إلى سلة المحذوفات)">🗑️</button></span></div>
-      <div class="u-fs13" style="line-height:1.9;">${escapeHtml(a.body || '')}</div>${a.symbol ? `<button type="button" class="small secondary u-wa u-mt6" data-sym="${escapeHtml(a.symbol)}" data-mkt="${escapeHtml(a.market || 'مصر')}">📈 صفحة السهم</button>` : ''}</div>`).join('')}</div>`
+      <div class="u-fs13" style="line-height:1.9;">${escapeHtml(a.body || '')}</div>${a.kind && MK_REC_KIND[a.kind] ? mkRecBtn(a, 'small u-wa u-mt6') + ' ' : ''}${a.symbol ? `<button type="button" class="small secondary u-wa u-mt6" data-sym="${escapeHtml(a.symbol)}" data-mkt="${escapeHtml(a.market || 'مصر')}">📈 صفحة السهم</button>` : ''}</div>`).join('')}</div>`
       : '<div class="section-card u-muted">لا توجد إشعارات.</div>'}</div>`;
   const reload = () => { window.__navSilent = true; try { renderAlertsPage(); } finally { window.__navSilent = false; } };
   const mkt = document.getElementById('caMkt'), ccy = document.getElementById('caCcy');
@@ -329,6 +335,7 @@ async function renderAlertsPage(){
     const x = await MK.post({ action:'alert_delete', id: b.dataset.ndel }); if (x.success) { GShell.toast('نُقل الإشعار إلى سلة المحذوفات', 'ok'); reload(); }
   });
   app.querySelectorAll('[data-sym]').forEach(b => b.onclick = () => renderStockPage(b.dataset.sym, b.dataset.mkt));
+  app.querySelectorAll('[data-reck]').forEach(b => b.onclick = () => mkOpenRec(b.dataset.reck));   // الإصدار 133
   if (r.success && r.unread) { await MK.post({ action: 'alerts_read' }); window.__mkUnread = 0; mkUpdateAlertBadge(); }
 }
 

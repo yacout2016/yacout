@@ -1,4 +1,4 @@
-/* GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 132) — كل التحديثات، آمن يتشغل أكتر من مرة. الصقه كله في تبويب SQL ← Go */
+/* GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 133) — كل التحديثات، آمن يتشغل أكتر من مرة. الصقه كله في تبويب SQL ← Go */
 /* v69: جدول login_attempts (حماية من تخمين كلمات المرور). */
 /* v71: مفيش تغييرات في قاعدة البيانات (إصلاحات واجهة فقط: ال… */
 /* v72: جدول ui_customizations (استوديو التصميم) + جدول email… */
@@ -62,6 +62,7 @@
 /* v130: «ميزان GRIFFINE AI» — العوائد السنوية لكل أصل بتتحدث… */
 /* v131: «توصية شراء / بيع» — معاينة قبل الإرسال (إشعار / إيمي… */
 /* v132: صلاحية «توصياته لازم الأدمن يوافق عليها» للمحلل + تصحيح الصلاحية القديمة */
+/* v133: نوع الإشعار (kind / rec_id) في user_alerts لألوان إشعارات التوصيات */
 /* v85: ترميز الاتصال UTF-8 عشان النصوص العربي اللي بتتضاف من… */
 SET NAMES utf8mb4;
 CREATE TABLE IF NOT EXISTS users (
@@ -827,4 +828,6 @@ UPDATE job_titles SET default_perms = '["manage_recommendations","rec_needs_revi
 INSERT IGNORE INTO staff_permissions (staff_id, permission_key) SELECT sp.staff_id, 'rec_needs_review' FROM staff_permissions sp JOIN staff_members s ON s.id = sp.staff_id WHERE sp.permission_key = 'rec_approve' AND s.job_title = 'financial_analyst' AND NOT EXISTS (SELECT 1 FROM site_config WHERE config_key = 'mig_132_rec');
 DELETE sp FROM staff_permissions sp JOIN staff_members s ON s.id = sp.staff_id WHERE sp.permission_key = 'rec_approve' AND s.job_title = 'financial_analyst' AND NOT EXISTS (SELECT 1 FROM site_config WHERE config_key = 'mig_132_rec');
 INSERT IGNORE INTO site_config (config_key, config_value) VALUES ('mig_132_rec', '1');
-SELECT 'GRIFFINE database is up to date (v132)' AS result;
+ALTER TABLE user_alerts ADD COLUMN IF NOT EXISTS kind VARCHAR(16) NULL, ADD COLUMN IF NOT EXISTS rec_id INT NULL;
+ALTER TABLE user_alerts MODIFY COLUMN title VARCHAR(255) NOT NULL;
+SELECT 'GRIFFINE database is up to date (v133)' AS result;
