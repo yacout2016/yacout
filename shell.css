@@ -1271,3 +1271,8 @@ body.g-shell #app button.wl-del, button.wl-del{ padding:5px 9px !important; min-
 .g-tip{ display:inline-flex; align-items:center; justify-content:center; width:14px; height:14px; border-radius:50%; border:1.2px solid currentColor; font-size:9.5px; font-weight:800; line-height:1; font-style:normal; opacity:.6; cursor:help; vertical-align:middle; margin-inline-start:3px; user-select:none; -webkit-touch-callout:none; flex:0 0 auto; }
 .g-tip:hover, .g-tip:focus-visible{ opacity:1; color:#D4AF37; outline:none; }
 @media print{ .g-tip{ display:none !important; } }
+
+/* الإصدار 126: تنبيهات الرئيسية على الجوال — من غير تمرير داخلي، كل تنبيه سطرين (لمسة تفتح الباقي) */
+.gs-alert-list.gs-alert-compact{ overflow:visible !important; max-height:none !important; overscroll-behavior:auto !important; }
+.gs-alert-compact .gs-alert-row > div{ display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; cursor:pointer; }
+.gs-alert-compact .gs-alert-row > div.open{ display:block; -webkit-line-clamp:unset; overflow:visible; }

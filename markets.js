@@ -221,14 +221,19 @@ async function mkAlertsCard(el){
   if (!el.isConnected) return;
   const planOf = (sym) => { sym = String(sym || '').toUpperCase(); return plans && plans[sym] ? 'DCA' : grids && grids[sym] ? 'Grid' : ''; };
   window.__mkUnread = r.success ? r.unread : 0; mkUpdateAlertBadge();
-  const list = r.success ? r.alerts.filter(a => !a.dismissed) : [];
-  el.innerHTML = list.length ? `<div class="section-card gs-alert-card"><div class="u-row"><strong>🔔 تنبيهات الأسعار (${list.length})</strong>
-      <span><button type="button" class="gs-link" id="gsAlertsCloseAll">إغلاق الكل</button> · <button type="button" class="gs-link" id="gsAlertsAll">عرض الكل</button></span></div>
-    <div class="gs-alert-list">${list.map(a => `<div class="gs-alert-row${a.is_read ? '' : ' unread'}" data-aid="${a.id}">
+  const all = r.success ? r.alerts.filter(a => !a.dismissed) : [];
+  /* الإصدار 126: على الجوال مفيش صندوق تمرير جوه الرئيسية (كان بياخد 92% من الشاشة ويمسك السحب فالصفحة تهنّج)
+     ← آخر 3 تنبيهات بس، كل تنبيه سطرين والباقي بيظهر بلمسة، و«عرض الكل» يفتح شاشة التنبيهات */
+  const mobile = window.matchMedia && window.matchMedia('(max-width: 640px)').matches;
+  const list = mobile ? all.slice(0, 3) : all;
+  el.innerHTML = list.length ? `<div class="section-card gs-alert-card"><div class="u-row"><strong>🔔 تنبيهات الأسعار (${all.length})</strong>
+      <span><button type="button" class="gs-link" id="gsAlertsCloseAll">إغلاق الكل</button> · <button type="button" class="gs-link" id="gsAlertsAll">عرض الكل${mobile && all.length > list.length ? ` (${all.length})` : ''}</button></span></div>
+    <div class="gs-alert-list${mobile ? ' gs-alert-compact' : ''}">${list.map(a => `<div class="gs-alert-row${a.is_read ? '' : ' unread'}" data-aid="${a.id}">
       <button type="button" class="gs-alert-x" data-dis="${a.id}" aria-label="إغلاق" title="إغلاق (يبقى في شاشة التنبيهات)">✕</button>
       <b>${escapeHtml(a.title)}</b><div>${escapeHtml(a.body || '')}</div>
       <small class="u-muted">${escapeHtml(formatDateTimeAr(a.created_at))}</small>${a.symbol ? ` · <button type="button" class="gs-link" data-sym="${escapeHtml(a.symbol)}" data-mkt="${escapeHtml(a.market || 'مصر')}">صفحة السهم</button>${planOf(a.symbol) ? ` · <button type="button" class="gs-link" data-plan-sym="${escapeHtml(String(a.symbol).toUpperCase())}" data-plan-kind="${planOf(a.symbol)}">خطة السهم (${planOf(a.symbol)})</button>` : ''}` : ''}</div>`).join('')}</div></div>` : '';
-  mkLimitList(el.querySelector('.gs-alert-list'), 5);
+  if (!mobile) mkLimitList(el.querySelector('.gs-alert-list'), 5);
+  else el.querySelectorAll('.gs-alert-compact .gs-alert-row > div').forEach(d => d.onclick = () => d.classList.toggle('open'));
   const b = document.getElementById('gsAlertsAll'); if (b) b.onclick = () => renderAlertsPage();
   const ca = document.getElementById('gsAlertsCloseAll'); if (ca) ca.onclick = async () => { await MK.post({ action:'alert_dismiss', all:'1' }); mkAlertsCard(el); };
   el.querySelectorAll('[data-dis]').forEach(x => x.onclick = async (ev) => { ev.stopPropagation(); await MK.post({ action:'alert_dismiss', id: x.dataset.dis }); mkAlertsCard(el); });
