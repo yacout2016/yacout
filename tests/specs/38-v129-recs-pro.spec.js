@@ -65,6 +65,20 @@ const AN = { email: 'analyst129@example.com', pass: 'Test12345an' };   // حسا
   await a.waitForFunction(() => /خلص/.test((document.getElementById('rcProg') || {}).textContent || ''), null, { timeout: 60000 }).catch(() => {});
   check('الإيميل الاحترافي اتبعت من الطابور', /^0\/[1-9]/.test(q(`SELECT CONCAT(SUM(status=0), '/', COUNT(*)) FROM rec_outbox WHERE rec_id=${row[0]} AND channel='email'`)));
 
+  // 5ب) الإصدار 130: «مسح السوق» = نفس مسح بصيرة بنفس اللون — كل البورصة حسب المدة + صاعد / هابط / محايد
+  const scanBg = await a.evaluate(() => getComputedStyle(document.getElementById('rcBtnScan')).backgroundImage);
+  await a.selectOption('#rcTf', '3m'); await a.waitForTimeout(400); await a.click('#rcBtnScan');
+  await a.waitForFunction(() => /اكتمل المسح/.test((document.getElementById('rcScTxt') || {}).textContent || ''), null, { timeout: 90000 }).catch(() => {});
+  const sc = await a.evaluate(() => { const c = {}; document.querySelectorAll('#rcScDir button').forEach(b => c[b.dataset.d] = +b.querySelector('b').textContent);
+    return { hz: (document.querySelector('#rcScHz .on') || {}).dataset?.k, th: rcScHzTh.textContent, c, head: document.querySelector('.rc-scanhead').textContent, cls: !!document.querySelector('.rc-scan .bs-scan .bs-go') }; });
+  check('«مسح السوق» بنفس لون بصيرة + بيفتح نفس شاشة المسح على كل البورصة بالمدة المختارة (3 شهور)', /gradient/.test(scanBg) && sc.cls && sc.hz === '3m' && /3 شهور/.test(sc.th) && sc.c.all >= 5, JSON.stringify(sc) + ' ' + scanBg.slice(0, 40));
+  check('المسح بيجيب الصاعد والهابط والمحايد (عشان توصية بيع أو إغلاق توصية)', sc.c.up >= 1 && sc.c.down >= 1 && sc.c.up + sc.c.down + sc.c.flat === sc.c.all, JSON.stringify(sc.c));
+  await a.click('#rcScDir button[data-d="down"]');
+  const dn = await a.evaluate(() => [...document.querySelectorAll('#rcScBody [data-pick]')].map(b => b.dataset.pick + ':' + b.textContent.trim()));
+  await a.click('#rcScBody [data-pick="DROPX"]', { timeout: 5000 }).catch(async () => { await a.evaluate(() => { const o = document.querySelector('.rc-ov'); if (o) o.remove(); }); }); await a.waitForSelector('.rc-lv', { timeout: 30000 }).catch(() => {});
+  const pk = await a.evaluate(() => ({ sym: rcSym.value, type: (document.querySelector('#rcType .on') || {}).dataset?.t, ov: !!document.querySelector('.rc-scan') }));
+  check('«هابط» ← السهم النازل + «توصية بيع» بتحطه في التوصية وتحوّلها بيع', dn.some(x => /^DROPX:توصية بيع/.test(x)) && pk.sym === 'DROPX' && pk.type === 'sell' && !pk.ov, JSON.stringify({ dn, pk }));
+
   // 6) العميل: الكارت بالرسم والمرفقات ← انتهاء الصلاحية ← إشعار «انتهت» مرة واحدة
   const c = await page(b, { width: 390, height: 844 });
   await c.evaluate(async ([e, pw]) => { await apiPost('/login.php', { email: e, password: pw }); invalidateSessionCache(); await getSession(); await refreshTopNav(); }, [CUST.email, CUST.pass]);

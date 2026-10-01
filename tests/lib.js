@@ -23,5 +23,7 @@ async function loginAdmin(p){
   await p.evaluate(async ([e, pw]) => { await apiPost('/login.php', { email: e, password: pw }); invalidateSessionCache(); await getSession(); await refreshTopNav(); }, [ADMIN, ADMIN_PASS]);
 }
 // الإصدار 100: الحذف التلقائي للرموز الغلط متوقف في قاعدة الاختبار (بيانات الاختبار فيها رموز وهمية) - اختبار 15 بيجرّبه لوحده
+// الإصدار 130: عوائد «ميزان GRIFFINE AI» أونلاين من السيرفر التجريبي (صفحة البنك المركزي + تقدير عقار) — اختبار 39 بيظبط إعداداته بنفسه
+try { q(`REPLACE INTO site_config (config_key, config_value) VALUES ('mizanai_rates_cfg', '{"re_est":"18","markets":{"مصر":{"index":"^CASE30","url":"http://127.0.0.1:8098/cbe","kw":"Overnight Deposit","fb":""}}}'), ('mizanai_live', '')`); } catch(e){}
 try { q("REPLACE INTO site_config (config_key, config_value) VALUES ('symbols_clean_at', '9999999999')"); q("DELETE FROM symbol_checks WHERE banned = 1 AND symbol NOT LIKE 'BAD%'"); } catch(e){}
 module.exports = { BASE, ADMIN, check, summary, q, launch, page, loginAdmin };

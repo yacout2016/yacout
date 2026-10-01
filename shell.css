@@ -1292,7 +1292,24 @@ body.g-shell #app button.wl-del, button.wl-del{ padding:5px 9px !important; min-
 /* الإصدار 129: يمين = السهم والسعر المحوري والرسم — شمال = رسالة التوصية جنبه */
 .rc-ph{ margin:0 0 10px; font-size:16px; }
 .rc-symtools{ display:flex; gap:8px; flex-wrap:wrap; } body.g-shell #app .rc-symtools button{ width:auto !important; margin:0 !important; }
-body.g-shell #app .rc-scanbtn, .rc-scanbtn{ background:#C9A227 !important; color:#111 !important; border:0 !important; font-weight:700; }
+body.g-shell #app .rc-scanbtn, .rc-scanbtn{ background:linear-gradient(135deg,#2563EB,#7C3AED) !important; color:#fff !important; border:0 !important; font-weight:700; box-shadow:0 6px 16px -8px rgba(79,70,229,.8) !important; }   /* نفس لون «مسح السوق» في بصيرة */
+.rc-dlg.rc-scan{ width:min(1040px, 100%); padding:0; overflow:auto; }
+.rc-scan > .bs-card{ margin:12px; } .rc-scan .rc-dirtabs{ margin:0 12px; }
+.rc-scanhead{ display:flex; align-items:center; justify-content:space-between; gap:8px; padding:12px 16px; color:#fff; font-weight:800; background:linear-gradient(135deg,#1D4ED8,#6D28D9); position:sticky; top:0; z-index:2; }
+.rc-scanhead button.rc-x{ all:unset; cursor:pointer; width:auto !important; height:auto !important; min-height:0 !important; margin:0 !important; padding:2px 10px !important; border-radius:8px !important; background:rgba(255,255,255,.14) !important; color:#fff !important; font-size:16px !important; line-height:1.4 !important; box-shadow:none !important; border:0 !important; }
+.rc-scanhead button.rc-x:hover{ background:rgba(255,255,255,.28) !important; }
+.rc-dirtabs{ display:flex; gap:6px; flex-wrap:wrap; }
+body.g-shell .rc-dirtabs button, .rc-dirtabs button{ width:auto !important; margin:0 !important; min-height:0 !important; padding:6px 14px !important; border-radius:99px !important; font-weight:700; font-size:13px; background:var(--gs-surface-2,#F1F5F9) !important; color:var(--gs-text,#111) !important; border:1px solid var(--gs-border,#E5E7EB) !important; box-shadow:none !important; }
+body.g-shell .rc-dirtabs button.on, .rc-dirtabs button.on{ background:#0F3D6E !important; color:#fff !important; border-color:#0F3D6E !important; }
+body.g-shell .rc-dirtabs button.rc-dir-up.on{ background:#059669 !important; border-color:#059669 !important; } body.g-shell .rc-dirtabs button.rc-dir-down.on{ background:#DC2626 !important; border-color:#DC2626 !important; } body.g-shell .rc-dirtabs button.rc-dir-flat.on{ background:#64748B !important; border-color:#64748B !important; }
+.rc-scan .bs-scbody{ overflow-x:auto; }
+table.bs-sctable.rc-sctable{ table-layout:auto !important; width:100%; }
+.rc-sctable td, .rc-sctable th{ white-space:normal; overflow:visible !important; text-overflow:clip !important; padding:8px 6px !important; } .rc-sctable td small{ display:block; } .rc-sctable .n, .rc-sctable .bs-chip{ white-space:nowrap; }
+body.g-shell .rc-sctable td:last-child button, .rc-sctable td:last-child button{ min-height:0 !important; padding:5px 10px !important; font-size:12px !important; }
+@media (max-width:1200px){ .rc-sctable th:nth-child(7), .rc-sctable td:nth-child(7){ display:none; } }
+.rc-sctable td:last-child button{ width:auto !important; margin:0 !important; white-space:nowrap; }
+@media (max-width:640px){ .rc-sctable th:nth-child(3), .rc-sctable td:nth-child(3), .rc-sctable th:nth-child(7), .rc-sctable td:nth-child(7), .rc-sctable th:nth-child(8), .rc-sctable td:nth-child(8){ display:none; } .rc-sctable td, .rc-sctable th{ padding:6px 4px !important; font-size:12px; } }
+.rc-actb{ display:inline-block; font-size:11px; font-weight:700; padding:1px 6px; border-radius:6px; background:#FEF3C7; color:#92400E; }
 body.g-shell #app .rc-trbtn, .rc-trbtn{ background:#059669 !important; color:#fff !important; border:0 !important; font-weight:800; }
 #rcSide{ margin-top:10px; }
 .rc-indbar{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:8px; } .rc-indbar select{ width:auto !important; min-width:180px; margin:0 !important; }

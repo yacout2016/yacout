@@ -120,6 +120,7 @@
     if ($('rcCfgLink')) $('rcCfgLink').onclick = () => renderAdminRecsCfg();
     wireForm(__tok);
     const renderList = () => {
+      window.__rcActiveSyms = recs.filter(r => r.status === 'active').map(r => r.symbol);
       const mf = gAdminMarket(), shown = mf ? recs.filter(r => (r.market || 'مصر') === mf) : recs;
       $('recCount').textContent = shown.length;
       $('recListWrap').innerHTML = shown.length ? shown.map(r => logCard(r, email)).join('') : '<div class="section-card u-note">لا توجد توصيات في السجل بعد.</div>';
@@ -484,18 +485,77 @@
     $('rcBsFull').onclick = () => { if (typeof renderBasira === 'function') renderBasira(sym, mkt); };
     paint();
   }
+  // الإصدار 130: «مسح السوق» = نفس مسح بصيرة (نفس الشكل والألوان) — كل البورصة أو قطاع، حسب المدة المختارة،
+  // وبيجيب الصاعد والهابط والمحايد (الهابط مهم لتوصية بيع أو لإغلاق توصية شغالة)
+  const SC_HZ = [['day', 'يوم'], ['week', 'أسبوع'], ['month', 'شهر'], ['3m', '3 شهور'], ['6m', '6 شهور'], ['year', 'سنة']];
+  const TF2HZ = { day: 'day', week: 'week', month: 'month', '3m': '3m', '6m': '6m', year: 'year' };
+  const dirOf = (u) => u >= 58 ? 'up' : u <= 42 ? 'down' : 'flat';
   async function findOpp(mkt){
+    const S = { items: [], total: 0, run: 0, hz: TF2HZ[$('rcTf').value] || 'week', dir: 'all', market: mkt };
+    const active = new Set((window.__rcActiveSyms || []).map(x => String(x).toUpperCase()));
     const ov = document.createElement('div'); ov.className = 'rc-ov';
-    ov.innerHTML = `<div class="rc-dlg rc-find" role="dialog" aria-label="مسح السوق"><h3>📡 مسح سوق ${E(mkt)} — مترتب حسب درجة بصيرة واحتمال الصعود</h3><div id="rcFindBody"><div class="gs-skel" style="height:220px"></div></div>
-      <div class="rc-row"><button type="button" class="secondary" id="rcFindClose">إغلاق</button></div></div>`;
+    ov.innerHTML = `<div class="rc-dlg rc-find rc-scan" role="dialog" aria-label="مسح السوق">
+      <div class="rc-scanhead">📊 مسح السوق — الصاعد والهابط والمحايد <button type="button" class="rc-x" id="rcFindClose" aria-label="إغلاق">✕</button></div>
+      <div class="bs-card bs-scan"><div class="bs-scrow">
+        <div><label for="rcScMkt">البورصة</label><select id="rcScMkt" data-g-mkt="skip">${(META.markets || []).map(m => `<option value="${E(m.name)}" ${m.name === mkt ? 'selected' : ''}>${E(m.name)}</option>`).join('')}</select></div>
+        <div><label for="rcScSec">القطاع</label><select id="rcScSec"><option value="">كل البورصة</option></select></div>
+        <div><label>المتوقع خلال ${gTipI('بتتحدد تلقائي من «المدة» اللي في التوصية — وتقدر تغيّرها هنا')}</label><div class="bs-seg" id="rcScHz">${SC_HZ.map(([k, l]) => `<button type="button" data-k="${k}" class="${k === S.hz ? 'on' : ''}">${l}</button>`).join('')}</div></div>
+        <div class="bs-scbtns"><button type="button" class="bs-go" id="rcScGo">📊 ابدأ المسح</button><button type="button" class="secondary small" id="rcScStop" hidden>⏹ إيقاف</button></div>
+      </div>
+      <div class="bs-scprog" id="rcScProg" hidden><div class="bs-scbar"><i id="rcScBar"></i></div><small id="rcScTxt"></small></div>
+      <small class="u-muted bs-scnote">نفس محرك بصيرة (12 مؤشر + التقاطعات + الدعم والمقاومة + التذبذب) على كل أسهم البورصة. «هبوط محتمل» مناسب لتوصية بيع أو لإغلاق توصية شغالة على السهم.</small></div>
+      <div class="rc-dirtabs" id="rcScDir"></div>
+      <div class="bs-card" id="rcScRes" hidden><div class="bs-scbody"><table class="bs-sctable g-no-enh rc-sctable"><thead><tr><th>#</th><th>السهم</th><th>القطاع</th><th>آخر سعر</th><th id="rcScHzTh">احتمال الصعود</th><th>الاتجاه</th><th>المتوقع</th><th>بصيرة</th><th></th></tr></thead><tbody id="rcScBody"></tbody></table></div></div>
+    </div>`;
     document.body.appendChild(ov);
-    const close = () => ov.remove(); ov.addEventListener('click', (e) => { if (e.target === ov) close(); }); $('rcFindClose').onclick = close;
-    const r = await apiGet('/basira_api.php?action=scan&market=' + encodeURIComponent(mkt) + '&offset=0&limit=15').catch(() => null);
-    const body = $('rcFindBody'); if (!body) return;
-    if (!r || !r.success) { body.innerHTML = `<div class="neg">${E((r && r.message) || 'المسح مش متاح دلوقتي')}</div>`; return; }
-    const it = (r.items || []).slice().sort((x, y) => ((y.score || 0) - (x.score || 0)));
-    body.innerHTML = it.length ? `<table class="std-table g-no-enh rc-ftab"><thead><tr><th>السهم</th><th>القطاع</th><th>آخر سعر</th><th>بصيرة</th><th></th></tr></thead><tbody>${it.map(x => `<tr><td><b class="n">${E(x.symbol)}</b> <small>${E(x.ar || x.name)}</small></td><td>${E(x.sector)}</td><td class="n">${N(x.last)}</td><td class="n">${x.score != null ? x.score : '—'}</td><td><button type="button" class="small u-wa" data-pick="${E(x.symbol)}">اختيار</button></td></tr>`).join('')}</tbody></table>` : '<div class="u-muted">مفيش نتايج.</div>';
-    body.querySelectorAll('[data-pick]').forEach(b => b.onclick = () => { $('rcSym').value = b.dataset.pick; $('rcName').value = ''; $('rcName').dataset.auto = '1'; close(); loadLevels(); });
+    const close = () => { S.run++; ov.remove(); }; ov.addEventListener('click', (e) => { if (e.target === ov) close(); }); $('rcFindClose').onclick = close;
+    const hzL = () => (SC_HZ.find(h => h[0] === S.hz) || [0, ''])[1];
+    const upOf = (x) => (x.hz && x.hz[S.hz] ? x.hz[S.hz].up : 50);
+    const paint = () => {
+      const all = S.items.slice().sort((a, b) => upOf(b) - upOf(a) || (b.score || 0) - (a.score || 0)), cnt = { all: all.length, up: 0, down: 0, flat: 0 };
+      all.forEach(x => cnt[dirOf(upOf(x))]++);
+      $('rcScDir').innerHTML = [['all', 'الكل'], ['up', '🟢 صاعد'], ['down', '🔴 هابط'], ['flat', '⚪ محايد']].map(([k, l]) => `<button type="button" data-d="${k}" class="rc-dir-${k}${S.dir === k ? ' on' : ''}">${l} <b class="n">${cnt[k]}</b></button>`).join('');
+      $('rcScHzTh').textContent = `احتمال الصعود (${hzL()})`;
+      let L = S.dir === 'all' ? all : all.filter(x => dirOf(upOf(x)) === S.dir); if (S.dir === 'down') L = L.slice().reverse();
+      $('rcScBody').innerHTML = L.map((x, i) => { const h = (x.hz || {})[S.hz] || {}, u = h.up == null ? 50 : h.up, d = dirOf(u), v = d === 'up' ? 'pos' : d === 'down' ? 'neg' : 'neu', act = active.has(String(x.symbol).toUpperCase());
+        return `<tr><td class="n">${i + 1}</td><td><b class="n">${E(x.symbol)}</b>${act ? ' <span class="rc-actb" title="فيه توصية شغالة على السهم ده">📢 توصية شغالة</span>' : ''}<small class="bs-scname">${E(x.ar || x.name)}</small></td>
+          <td><span class="bs-scsec">${E(x.sector)}</span></td><td><span class="n">${N(x.last, 2)}</span><small class="n ${x.chg >= 0 ? 'pos' : 'neg'}">${P(x.chg)}</small></td>
+          <td><div class="bs-scup"><div class="bs-scbar sm"><i class="${v}" style="width:${u}%"></i></div><b class="n ${v}">${u}%</b></div></td>
+          <td><span class="bs-chip ${v === 'pos' ? 'bs-c-pos' : v === 'neg' ? 'bs-c-neg' : 'bs-c-neu'}">${d === 'up' ? 'صعود محتمل' : d === 'down' ? 'هبوط محتمل' : 'عرضي'}</span></td>
+          <td class="n">${h.lo != null ? N(h.lo, 2) + ' — ' + N(h.hi, 2) : '—'}</td><td class="n">${x.score != null ? x.score : '—'}</td>
+          <td><button type="button" class="small u-wa" data-pick="${E(x.symbol)}" data-d="${d}">${d === 'down' ? 'توصية بيع' : 'اختيار'}</button></td></tr>`; }).join('') || `<tr><td colspan="9" class="u-muted">${S.items.length ? 'مفيش أسهم في الاتجاه ده.' : 'دوس «ابدأ المسح».'}</td></tr>`;
+    };
+    $('rcScDir').onclick = (e) => { const b = e.target.closest('[data-d]'); if (!b) return; S.dir = b.dataset.d; paint(); };
+    $('rcScHz').onclick = (e) => { const b = e.target.closest('[data-k]'); if (!b) return; S.hz = b.dataset.k; $('rcScHz').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); paint(); };
+    $('rcScBody').onclick = (e) => { const b = e.target.closest('[data-pick]'); if (!b) return;
+      if (b.dataset.d === 'down' && TYPE !== 'sell') { const t = $('rcType').querySelector('button[data-t="sell"]'); if (t) t.click(); }
+      if (b.dataset.d === 'up' && TYPE !== 'buy') { const t = $('rcType').querySelector('button[data-t="buy"]'); if (t) t.click(); }
+      if ($('rcMkt').value !== S.market && [...$('rcMkt').options].some(o => o.value === S.market)) $('rcMkt').value = S.market;
+      $('rcSym').value = b.dataset.pick; $('rcName').value = ''; $('rcName').dataset.auto = '1'; close(); loadLevels(); };
+    const loadSecs = async () => { const sec = $('rcScSec'); sec.innerHTML = '<option value="">كل البورصة</option>';
+      const r = await apiGet(`/basira_api.php?action=scan&market=${encodeURIComponent($('rcScMkt').value)}&limit=0`).catch(() => null);
+      if (!document.body.contains(ov)) return;
+      if (r && r.success) sec.innerHTML = `<option value="">كل البورصة (${r.total} سهم)</option>` + r.sectors.map(x => `<option value="${E(x.name)}">${E(x.name)} (${x.n})</option>`).join('');
+      else if (r && r.message) $('rcScTxt').textContent = r.message, $('rcScProg').hidden = false; };
+    $('rcScMkt').onchange = () => { S.run++; loadSecs(); };
+    const done = (m) => { $('rcScStop').hidden = true; $('rcScGo').disabled = false; if (m) $('rcScTxt').textContent = m; };
+    $('rcScStop').onclick = () => { S.run++; done('اتوقف المسح — النتايج اللي اتحللت ظاهرة تحت.'); };
+    $('rcScGo').onclick = async () => {
+      const my = ++S.run, market = $('rcScMkt').value, sector = $('rcScSec').value; S.items = []; S.market = market;
+      $('rcScGo').disabled = true; $('rcScStop').hidden = false; $('rcScProg').hidden = false; $('rcScRes').hidden = false; $('rcScBar').style.width = '0%'; $('rcScTxt').textContent = 'جارٍ تحميل قائمة الأسهم…'; paint();
+      let off = 0, fails = 0;
+      while (true) {
+        const r = await apiGet(`/basira_api.php?action=scan&market=${encodeURIComponent(market)}&sector=${encodeURIComponent(sector)}&offset=${off}&limit=10`).catch(() => null);
+        if (my !== S.run || !document.body.contains(ov)) return;
+        if (!r || !r.success) { if (++fails > 2) return done((r && r.message) || 'تعذّر إكمال المسح — حاول تاني.'); continue; }
+        S.items = S.items.concat(r.items.filter(x => x.ok)); off += r.items.length;
+        $('rcScBar').style.width = (r.total ? Math.min(100, off / r.total * 100) : 100).toFixed(1) + '%'; $('rcScTxt').textContent = `تم تحليل ${off} من ${r.total} سهم…`; paint();
+        if (!r.items.length || off >= r.total) break;
+      }
+      done(`✅ اكتمل المسح: ${S.items.length} سهم — مترتبين حسب احتمال الصعود خلال ${hzL()}.`);
+    };
+    await loadSecs();
+    $('rcScGo').click();   // المسح بيبدأ على طول على كل البورصة بالمدة المختارة
   }
 
   /* ============ كارت التوصية (المعاينة + شاشة العميل) ============ */

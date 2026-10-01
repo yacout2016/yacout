@@ -468,7 +468,7 @@ function bs_scan_item($conn, $sym, $market){
     if (is_file($full) && time() - filemtime($full) < $cfg['cache_min'] * 60 && ($j = json_decode((string)@file_get_contents($full), true)) && !empty($j['ok'])) $A = $j + ['src' => ($j['ai']['source'] ?? '') === 'ai' ? 'ai' : 'rules'];
     else {
         $f = opp_cache_dir() . '/' . md5("bsscan118|$sym|$market") . '.json';
-        if (is_file($f) && time() - filemtime($f) < max(60, $cfg['cache_min']) * 60 && ($j = json_decode((string)@file_get_contents($f), true))) return $j;
+        if (is_file($f) && time() - filemtime($f) < max(60, $cfg['cache_min']) * 60 && ($j = json_decode((string)@file_get_contents($f), true))) return bs_add_day($j);
         $A = bs_compute($sym, $market);
         if (empty($A['ok'])) { $o = ['ok' => false]; @file_put_contents($f, json_encode($o)); return $o; }
         $A['src'] = 'rules';
@@ -476,8 +476,17 @@ function bs_scan_item($conn, $sym, $market){
     $hz = []; foreach ($A['horizons'] as $h) $hz[$h['key']] = ['up' => (int)$h['up'], 'lo' => $h['lo'] ?? null, 'hi' => $h['hi'] ?? null, 'v' => $h['verdict'] ?? ''];
     $o = ['ok' => true, 'score' => (int)$A['score'], 'last' => $A['last'], 'chg' => $A['chg'], 'y1' => $A['y1'] ?? null, 'vol' => $A['vol'] ?? null, 'hz' => $hz, 'src' => $A['src'],
         's1' => $A['levels']['s1'] ?? null, 'r1' => $A['levels']['r1'] ?? null, 'pos' => $A['pos'] ?? 0, 'neg' => $A['neg'] ?? 0];
-    if (!isset($f)) return $o;
+    if (!isset($f)) return bs_add_day($o);
     @file_put_contents($f, json_encode($o, JSON_UNESCAPED_UNICODE));
+    return bs_add_day($o);
+}
+/* الإصدار 130: توقع «يوم» لمسح السوق في شاشة المحلل — من توقع الأسبوع + حركة النهارده + التذبذب اليومي */
+function bs_add_day($o){
+    if (empty($o['ok']) || isset($o['hz']['day']) || !isset($o['hz']['week'])) return $o;
+    $w = (int)$o['hz']['week']['up']; $chg = (float)($o['chg'] ?? 0);
+    $up = (int)max(10, min(90, round(50 + ($w - 50) * 1.15 + max(-4, min(4, $chg)))));
+    $sig = max(0.002, (float)($o['vol'] ?? 2) / 100); $last = (float)($o['last'] ?? 0);   // vol = التذبذب اليومي %
+    $o['hz'] = ['day' => ['up' => $up, 'lo' => $last ? round($last * exp(-$sig * (1.1 - ($up - 50) / 120)), 4) : null, 'hi' => $last ? round($last * exp($sig * (1.1 + ($up - 50) / 120)), 4) : null, 'v' => $up >= 58 ? 'شراء' : ($up <= 42 ? 'بيع' : 'تعادل')]] + $o['hz'];
     return $o;
 }
 
