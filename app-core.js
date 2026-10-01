@@ -3,7 +3,7 @@
    (اتفصل من griffine.js - كل الملفات بتتحمّل بالترتيب في index.php وبتشارك نفس المتغيرات العامة)
    ===================================================================== */
 /* GRIFFINE — كود الواجهة الأساسي (اتفصل من index.php في الإصدار 68) */
-const GRIFFINE_LOGO_B64 = location.origin + '/griffine-logo-light.webp?v=124';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
+const GRIFFINE_LOGO_B64 = location.origin + '/griffine-logo-light.webp?v=125';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
 /* ================== حسابات مساعدة ================== */
 function daysBetween(isoStart, isoEnd){
   if(!isoStart) return null;
@@ -361,15 +361,20 @@ const G_UTIL_CSS = ".u-wa{ width:auto !important; } .u-w100{ width:100% !importa
    ← لما تقف على الكود (ضغطة طويلة بالصباع أو الماوس فوقه) اسم الشركة بيظهر في فقاعة صغيرة. العنصر: data-coname="الاسم" */
 (function(){
   let tip = null, hideT = null, pressT = null, suppress = false;
-  const show = (el) => { const n = el.getAttribute('data-coname'); if (!n) return;
+  const show = (el) => { const n = el.getAttribute('data-coname') || el.getAttribute('data-tip'); if (!n) return;
     if (!tip) { tip = document.createElement('div'); tip.className = 'g-cotip'; tip.setAttribute('role', 'tooltip'); document.body.appendChild(tip); }
     tip.textContent = n; tip.hidden = false; const r = el.getBoundingClientRect();
     tip.style.top = Math.max(8, r.top - tip.offsetHeight - 8) + 'px';
     tip.style.left = Math.min(window.innerWidth - tip.offsetWidth - 8, Math.max(8, r.left + r.width / 2 - tip.offsetWidth / 2)) + 'px';
     clearTimeout(hideT); hideT = setTimeout(hide, 2600); };
   const hide = () => { if (tip) tip.hidden = true; };
-  document.addEventListener('mouseover', (e) => { const el = e.target.closest && e.target.closest('[data-coname]'); if (el) show(el); });
-  document.addEventListener('mouseout', (e) => { const el = e.target.closest && e.target.closest('[data-coname]'); if (el && !el.contains(e.relatedTarget)) hide(); });
+  const TIPS = '[data-coname], .g-tip[data-tip]';
+  document.addEventListener('mouseover', (e) => { const el = e.target.closest && e.target.closest(TIPS); if (el) show(el); });
+  document.addEventListener('mouseout', (e) => { const el = e.target.closest && e.target.closest(TIPS); if (el && !el.contains(e.relatedTarget)) hide(); });
+  // الإصدار 125: علامة (!) الصغيرة — ضغطة / لمسة بتعرض الشرح، وجوه عنوان جدول مبتعملش ترتيب
+  document.addEventListener('click', (e) => { const el = e.target.closest && e.target.closest('.g-tip[data-tip]'); if (!el) return; show(el); if (el.closest('th')) { e.stopPropagation(); e.preventDefault(); } }, true);
+  document.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('g-tip')) { e.preventDefault(); show(e.target); } });
+  document.addEventListener('focusin', (e) => { if (e.target.classList && e.target.classList.contains('g-tip')) show(e.target); });
   document.addEventListener('touchstart', (e) => { const el = e.target.closest && e.target.closest('[data-coname]'); if (!el) return; suppress = false;
     pressT = setTimeout(() => { suppress = true; show(el); }, 420); }, { passive: true });
   const cancel = () => clearTimeout(pressT);
@@ -379,9 +384,61 @@ const G_UTIL_CSS = ".u-wa{ width:auto !important; } .u-w100{ width:100% !importa
   document.addEventListener('contextmenu', (e) => { if (e.target.closest && e.target.closest('[data-coname]')) e.preventDefault(); });
   window.addEventListener('scroll', hide, { passive: true });
 })();
+/* الإصدار 125: قاعدة الموقع كله — العنوان مختصر جدًا وجنبه علامة (!) صغيرة في دايرة، والوقوف عليها بيعرض التفاصيل */
+function gTipI(text){ return `<span class="g-tip" tabindex="0" role="button" aria-label="${escapeHtml(String(text))}" data-tip="${escapeHtml(String(text))}">!</span>`; }
+const G_HEAD_TIPS = {
+  'ربح محقق (مراكز مفتوحة)': ['محقق', 'ربح محقق من بيع جزء من المراكز اللي لسه مفتوحة'],
+  'تكلفة المراكز المفتوحة': ['تكلفة المفتوح', 'إجمالي تكلفة الكميات اللي لسه ماتباعتش'],
+  'العائد السنوي المفترض': ['العائد', 'العائد السنوي المتوقع للأصل — افتراض تقدر تعدّله'],
+  'ربح/خسارة على آخر سعر': ['ر/خ الآن', 'الربح أو الخسارة لو بعت دلوقتي بآخر سعر'],
+  'متوسط التكلفة تراكمي': ['م. التكلفة', 'متوسط تكلفة السهم بعد كل الشراءات لحد المستوى ده'],
+  'ربح الصفقات المغلقة': ['ربح المغلق', 'إجمالي الربح من الصفقات اللي اتقفلت'],
+  'الربح المحقق تراكمي': ['محقق تراكمي', 'مجموع الربح المحقق لحد المستوى ده'],
+  'إيراد الشهر الحالي': ['إيراد الشهر', 'الإيراد من أول الشهر الحالي'],
+  'تاريخ ووقت الإغلاق': ['الإغلاق', 'تاريخ ووقت قفل الصفقة'],
+  'رأس المال المستخدم': ['المستخدم', 'الجزء من رأس مال الخطة اللي اتصرف فعلًا في الشراء'],
+  'عوامل سلبية ومخاطر': ['السلبيات', 'العوامل السلبية والمخاطر'],
+  'المشتركين النشطين': ['النشطين', 'المشتركين اللي اشتراكهم شغال'],
+  'الكلمات المفتاحية': ['الكلمات', 'الكلمات المفتاحية اللي بيتعرف بيها السؤال'],
+  'الكمية الإرشادية': ['الكمية', 'الكمية المقترحة للشراء في المستوى ده'],
+  'هدف البيع تراكمي': ['الهدف', 'سعر البيع المستهدف على متوسط التكلفة التراكمي'],
+  'تاريخ غلق الصفقة': ['الإغلاق', 'تاريخ قفل الصفقة'],
+  'النسبة المقترحة': ['المقترح', 'الوزن المقترح للسهم في المحفظة (بالذكاء الاصطناعي أو القواعد)'],
+  'عدد صفقات مغلقة': ['المغلقة', 'عدد الصفقات اللي اتقفلت'],
+  'متوسط سعر البيع': ['م. البيع', 'متوسط سعر البيع الفعلي'],
+  'الكمية المتبقية': ['المتبقي', 'الكمية اللي لسه في إيدك'],
+  'عمليات بيع فعلي': ['البيع', 'عمليات البيع اللي اتنفذت فعلًا'],
+  'الأيام المنقضية': ['الأيام', 'عدد الأيام من بداية الخطة'],
+  'القيمة الحالية': ['القيمة', 'قيمة المركز بآخر سعر'],
+  'الكمية المباعة': ['المباع', 'الكمية اللي اتباعت'],
+  'المتبقي تراكمي': ['المتبقي', 'المتبقي من رأس المال لحد المستوى ده'],
+  'المستوى المخطط': ['المستوى', 'المستوى المخطط في الخطة'],
+  'النطاق المتوقع': ['النطاق', 'نطاق السعر المتوقع'],
+  'من جزء الأسهم': ['النسبة', 'نسبة القطاع من جزء الأسهم'],
+  'احتمال الصعود': ['↑ صعود', 'احتمال إن السعر يطلع في الفترة المختارة'],
+  'احتمال الهبوط': ['↓ هبوط', 'احتمال إن السعر ينزل في الفترة المختارة'],
+  'سعر شراء فعلي': ['شراء فعلي', 'السعر اللي اشتريت بيه فعلًا'],
+  'درجة بصيرة': ['بصيرة', 'درجة تحليل بصيرة AI من 100 (المؤشرات + الاتجاه + احتمال الصعود)'],
+  'درجة الاتجاه': ['الاتجاه', 'درجة قوة الاتجاه من 100'],
+  'المبلغ الشهري': ['شهريًا', 'المبلغ الشهري لكل بند'],
+};
+function gShortHeads(table){
+  if (!table || !table.tHead || table.dataset.gShort) return; table.dataset.gShort = '1';
+  Array.from(table.tHead.querySelectorAll('th')).forEach(th => {
+    if (th.querySelector('.g-tip')) return;
+    const tn = Array.from(th.childNodes).find(n => n.nodeType === 3 && n.textContent.trim()); if (!tn) return;
+    const full = tn.textContent.trim(); let m = G_HEAD_TIPS[full];
+    if (!m && /^القيمة بعد /.test(full)) m = ['القيمة', full];
+    if (!m) return;
+    tn.textContent = m[0] + ' '; th.setAttribute('data-full', full);
+    tn.after(document.createRange().createContextualFragment(gTipI(m[1])));
+  });
+}
+window.gShortHeads = gShortHeads; window.gTipI = gTipI;
 function gLabelCells(table){
   if (!table || !table.tHead || !table.tHead.rows[0]) return;
-  const heads = Array.from(table.tHead.rows[0].cells).map(c => { const t = Array.from(c.childNodes).filter(n => n.nodeType === 3 || (n.nodeType === 1 && !n.matches('button, i, .g-colx'))).map(n => n.textContent).join(' '); return t.replace(/[✕⇅↑↓▲▼]/g, '').replace(/\s+/g, ' ').trim(); });
+  gShortHeads(table);
+  const heads = Array.from(table.tHead.rows[0].cells).map(c => { const t = Array.from(c.childNodes).filter(n => n.nodeType === 3 || (n.nodeType === 1 && !n.matches('button, i, .g-colx, .g-tip'))).map(n => n.textContent).join(' '); return t.replace(/[✕⇅↑↓▲▼]/g, '').replace(/\s+/g, ' ').trim(); });
   table.querySelectorAll('tbody tr, tfoot tr').forEach(tr => Array.from(tr.cells).forEach((td, i) => { if (heads[i] && !td.hasAttribute('data-label')) td.setAttribute('data-label', heads[i]); }));
   table.classList.add('g-cards');
 }
@@ -1252,9 +1309,9 @@ async function renderAccessExpired(sub){
 }
 
 const app = document.getElementById('app');
-const TOP7_LOGO_B64 = location.origin + '/top7-logo-light.webp?v=124';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
-const GRIFFINE_LOGO_DARK_B64 = location.origin + '/griffine-logo-dark.webp?v=124';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
-const TOP7_LOGO_DARK_B64 = location.origin + '/top7-logo-dark.webp?v=124';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
+const TOP7_LOGO_B64 = location.origin + '/top7-logo-light.webp?v=125';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
+const GRIFFINE_LOGO_DARK_B64 = location.origin + '/griffine-logo-dark.webp?v=125';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
+const TOP7_LOGO_DARK_B64 = location.origin + '/top7-logo-dark.webp?v=125';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
 /* الوضع الحالي (فاتح/ليلي) - الإصدار 71: بيتقري من الصفحة نفسها (data-theme) مش من التخزين بس،
    عشان الشعار يطلع صح حتى لو المتصفح مانع التخزين (وضع التصفح الخفي)
    (السكربت الصغير في index.php بيحط data-theme من التخزين قبل تحميل أي ملف، فالاتنين دايمًا متطابقين) */

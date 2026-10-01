@@ -19,7 +19,7 @@ const { check, summary, launch, page, loginAdmin } = require('../lib');
   });
   const T = (id) => a.evaluate((id) => {
     const t = document.getElementById(id);
-    const heads = [...t.tHead.rows[0].cells].map(c => c.childNodes[0] ? c.childNodes[0].textContent.trim() : '');
+    const heads = [...t.tHead.rows[0].cells].map(c => c.getAttribute('data-full') || (c.childNodes[0] ? c.childNodes[0].textContent.trim() : ''));   // الإصدار 125: العنوان المختصر ← الاسم الكامل في data-full
     const nums = [...t.querySelectorAll('td.glv-n')].map(c => c.textContent.trim());
     const bad = nums.filter(x => x !== '—' && !/^\d{4}-\d{2}-\d{2}$/.test(x) && !/^[+\-−]?[\d,]+(\.\d{2})?$/.test(x));
     return { heads, bad, boxes: t.querySelectorAll('.trade-group, .sell-line, .info, .success-banner, input').length - t.querySelectorAll('.g-filter-row input').length };

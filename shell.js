@@ -50,7 +50,7 @@
      ===================================================================== */
 
   // رقم الإصدار - بيظهر في شاشة "حسابي" (غيّره مع ?v= في index.php و VERSION في sw.js)
-  const APP_VERSION = 124;
+  const APP_VERSION = 125;
 
   /* الاستعلامات المتكررة (الدردشة/التوصيات/قائمة المتابعة) - استعلام متكيّف (الإصدار 89)
      - بتقف لما التبويب يكون مخفي أو الموبايل مقفول
@@ -872,6 +872,7 @@
   const isTotalRow = (r) => /^(الإجمالي|الاجمالي|المجموع|الإجمالى)/.test(T_NORM(r.cells[0] && r.cells[0].textContent)) || r.classList.contains('g-total');
   function enhanceTables(root){
     root.querySelectorAll('table').forEach(t => {
+      if (window.gShortHeads && !t.closest('.chat-msg')) window.gShortHeads(t);   // الإصدار 125: عناوين مختصرة + (!) للتفاصيل
       if (t.dataset.gEnh || t.classList.contains('g-no-enh') || t.closest('.g-no-enh, .gs-alert-list, .chat-msg')) return;
       const { head, body } = tableParts(t);
       if (!head || head.cells.length < 2) return;

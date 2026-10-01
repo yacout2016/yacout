@@ -49,7 +49,26 @@
     if (r && r.success) { SEC[market] = r.sectors; return r.sectors; }
     throw new Error((r && r.message) || 'تعذّر جلب قطاعات البورصة.');
   }
-  const seg = (id, opts, on) => `<div class="mza-seg" id="${id}">${opts.map(([v, l]) => `<button type="button" data-v="${v}" class="${v === on ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+  // الإصدار 125: كل اختيار ممكن يكون تحته سطر صغير (النسبة) + علامة (!) بالشرح
+  const seg = (id, opts, on) => `<div class="mza-seg${opts.some(o => o[2]) ? ' mza-seg2' : ''}" id="${id}">${opts.map(([v, l, sub, tip]) => `<button type="button" data-v="${v}" class="${v === on ? 'on' : ''}"><span class="mza-seg-l">${l}${tip ? gTipI(tip) : ''}</span>${sub != null ? `<small class="mza-seg-s">${sub}</small>` : ''}</button>`).join('')}</div>`;
+  // نص القاعدة لكل مستوى مخاطرة في كل وضع
+  function riskOpts(mode){
+    if (mode === 'stocks') { const c = capVal(); return [
+      ['low', 'محافظ', `حد ${Math.min(c, 25)}% للقطاع`, `محافظ: أقصى ${Math.min(c, 25)}% لأي قطاع واحد (25% أو أقل لو اخترت أقل) ← توزيع متقارب على قطاعات أكتر، وبيختار أهدى شركتين في كل قطاع (أقل تذبذب).`],
+      ['mid', 'متوازن', `حد ${c}% للقطاع`, `متوازن: أقصى نسبة لأي قطاع = اللي اخترتها في «أقصى نسبة لقطاع واحد» (${c}%) ← الوزن حسب درجة بصيرة واتجاه القطاع، و3 شركات في كل قطاع.`],
+      ['high', 'مغامر', `حد ${Math.min(100, c + 10)}% للقطاع`, `مغامر: أقصى نسبة لأي قطاع = اختيارك + 10% (${Math.min(100, c + 10)}%) ← تركيز أكبر على القطاعات الأقوى والصاعدة، وبيختار الشركات الأعلى في احتمال الصعود.`]]; }
+    if (mode === 'assets') { const P = (CFG && CFG.profiles) || {}, st = (r) => { const p = P[r] || {}, t = Object.values(p).reduce((a, b) => a + b, 0) || 1; return Math.round(((p.stocks || 0) + (p.equity_funds || 0)) / t * 100); };
+      return [['low', 'محافظ', `أسهم ${st('low')}%`, `محافظ: الأسهم وصناديق الأسهم حوالي ${st('low')}% بس، والباقي في أصول بعائد ثابت (شهادات، حسابات بنكية، صناديق نقدية ودخل ثابت) + عقار وذهب.`],
+        ['mid', 'متوازن', `أسهم ${st('mid')}%`, `متوازن: الأسهم وصناديق الأسهم حوالي ${st('mid')}%، والباقي موزّع بين العائد الثابت والعقار والذهب.`],
+        ['high', 'مغامر', `أسهم ${st('high')}%`, `مغامر: الأسهم وصناديق الأسهم حوالي ${st('high')}% عشان نمو أعلى على المدى الطويل — مع تذبذب أكبر.`]]; }
+    return [['low', 'محافظ', 'حد 25% للبند', 'محافظ: المقترح إن مفيش بند يعدّي 25% من المحفظة، والأسهم كلها حوالي 30% أو أقل.'],
+      ['mid', 'متوازن', 'حد 30% للبند', 'متوازن: المقترح إن مفيش بند يعدّي 30%، والأسهم كلها حوالي 55%.'],
+      ['high', 'مغامر', 'حد 35% للبند', 'مغامر: المقترح إن مفيش بند يعدّي 35%، والأسهم ممكن توصل حوالي 75%.']];
+  }
+  // أقصى نسبة لقطاع واحد: 25 / 30 / 40 أو أي نسبة يكتبها (5 – 100)
+  function capVal(){ const s = document.getElementById('mzaSCap'); if (!s) return 30; if (s.value !== 'custom') return +s.value || 30;
+    const v = Math.round(+(document.getElementById('mzaSCapC') || {}).value || 0); return Math.max(5, Math.min(100, v || 30)); }
+  function paintRiskSubs(){ const o = riskOpts('stocks'); o.forEach(([v, , sub, tip]) => { const b = document.querySelector(`#mzaSRisk button[data-v="${v}"]`); if (!b) return; b.querySelector('.mza-seg-s').textContent = sub; const t = b.querySelector('.g-tip'); if (t) { t.dataset.tip = tip; t.setAttribute('aria-label', tip); } }); }
   const segVal = (id) => { const b = document.querySelector(`#${id} .on`); return b ? b.dataset.v : ''; };
   /* الإصدار 123: اختيار القطاعات / الأصول المطلوبة أو المستثناة من قوائم منسدلة (بدل زراير كتير بتاخد مساحة)
      القائمة الأولى: كل / المطلوبة بس / استثني ← التانية بتفتح قائمة فيها كل قطاع لوحده بعلامة صح */
@@ -117,10 +136,11 @@
           <div><label for="mzaSAmt">المبلغ اللي عايز تستثمره في الأسهم</label><input id="mzaSAmt" type="number" min="1000" step="1000" value="100000"></div>
           <div><label for="mzaSMkt">البورصة</label><select id="mzaSMkt">${mk.map(x => `<option>${E(x)}</option>`).join('')}</select></div>
           <div><label for="mzaSHz">مدة الاستثمار</label><select id="mzaSHz"><option value="3">3 شهور</option><option value="6">6 شهور</option><option value="12" selected>سنة</option><option value="36">3 سنين</option></select></div>
-          <div><label>مستوى المخاطرة</label>${seg('mzaSRisk', [['low', 'محافظ'], ['mid', 'متوازن'], ['high', 'مغامر']], 'mid')}</div>
+          <div><label>مستوى المخاطرة</label>${seg('mzaSRisk', riskOpts('stocks'), 'mid')}</div>
           <div class="wide"><label for="mzaSExM">القطاعات</label>${msBox('mzaSEx', 'القطاعات')}</div>
           <div><label for="mzaSMax">أقصى عدد قطاعات</label><select id="mzaSMax"><option>4</option><option selected>6</option><option>8</option></select></div>
-          <div><label for="mzaSCap">أقصى نسبة لقطاع واحد</label><select id="mzaSCap"><option value="25">25%</option><option value="30" selected>30%</option><option value="40">40%</option></select></div>
+          <div><label for="mzaSCap">أقصى نسبة لقطاع ${gTipI('أكبر نسبة ممكن تتحط في قطاع واحد. اختار 25 / 30 / 40 أو «نسبة أخرى» واكتب اللي انت عايزه (من 5% لـ 100%)')}</label><select id="mzaSCap"><option value="25">25%</option><option value="30" selected>30%</option><option value="40">40%</option><option value="custom">نسبة أخرى…</option></select>
+            <input id="mzaSCapC" type="number" min="5" max="100" step="5" placeholder="اكتب النسبة % (مثلًا 60)" aria-label="أقصى نسبة لقطاع واحد %" hidden></div>
         </div>
         <div class="mza-actions"><button type="button" class="secondary small mza-clear" data-f="stocks">🧹 تفريغ الخانات</button><button type="button" class="mza-go" id="mzaSGo">✨ وزّع بالذكاء الاصطناعي</button><span class="u-muted u-fs12">بيستخدم: اتجاه كل قطاع + مؤشرات أكبر شركاته (بصيرة) + مستوى المخاطرة اللي اخترته</span></div>
       </div>
@@ -131,7 +151,7 @@
           <div id="mzaAMonW" hidden><label for="mzaAMon">المبلغ الشهري</label><input id="mzaAMon" type="number" min="100" step="100" value="5000"></div>
           <div><label for="mzaAHz">المدة</label><select id="mzaAHz"><option value="1">شهر</option><option value="6">6 شهور</option><option value="12" selected>سنة</option><option value="36">3 سنين</option><option value="60">5 سنين</option></select></div>
           <div><label for="mzaAMkt">بورصة قطاعات الأسهم</label><select id="mzaAMkt">${mk.map(x => `<option>${E(x)}</option>`).join('')}</select></div>
-          <div><label>مستوى المخاطرة</label>${seg('mzaARisk', [['low', 'محافظ'], ['mid', 'متوازن'], ['high', 'مغامر']], 'mid')}</div>
+          <div><label>مستوى المخاطرة</label>${seg('mzaARisk', riskOpts('assets'), 'mid')}</div>
           <div class="wide"><label for="mzaAExM">الأصول</label>${msBox('mzaAEx', 'الأصول')}</div>
           <div><label for="mzaAExp">نسبة المصاريف / الطوارئ</label><select id="mzaAExp"><option value="0">من غير</option><option value="5">5%</option><option value="10" selected>10%</option><option value="15">15%</option></select></div>
         </div>
@@ -140,7 +160,7 @@
       </div>
       <div class="bs-card mza-form" id="mzaF-check" hidden>
         <div class="mz-note">اكتب استثماراتك الحالية (قطاع أسهم أو نوع أصل + المبلغ). الأداة بتحسب التركيز والخطورة وبتقترح إعادة توزيع. <button type="button" class="gs-link" id="mzaToPort">لتحليل أسهم خططك الفعلية افتح «ميزان محفظتك AI» ↗</button></div>
-        <div class="mza-grid"><div><label for="mzaCMkt">بورصة قطاعات الأسهم</label><select id="mzaCMkt">${mk.map(x => `<option>${E(x)}</option>`).join('')}</select></div><div><label>مستوى المخاطرة</label>${seg('mzaCRisk', [['low', 'محافظ'], ['mid', 'متوازن'], ['high', 'مغامر']], 'mid')}</div></div>
+        <div class="mza-grid"><div><label for="mzaCMkt">بورصة قطاعات الأسهم</label><select id="mzaCMkt">${mk.map(x => `<option>${E(x)}</option>`).join('')}</select></div><div><label>مستوى المخاطرة</label>${seg('mzaCRisk', riskOpts('check'), 'mid')}</div></div>
         <div class="mza-rows" id="mzaCRows"><span class="u-muted u-fs12">جارٍ تحميل القطاعات…</span></div>
         <div class="mza-actions"><button type="button" class="secondary small" id="mzaCAdd">+ إضافة بند</button><button type="button" class="secondary small mza-clear" data-f="check">🧹 تفريغ الخانات</button><button type="button" class="mza-go" id="mzaCGo">🩺 افحص توزيعتي</button></div>
       </div>
@@ -163,6 +183,9 @@
   function wireForms(tok){
     document.querySelectorAll('.mza-mode').forEach(b => b.onclick = () => showMode(b.dataset.m));
     ['mzaSRisk', 'mzaARisk', 'mzaCRisk'].forEach(id => wireSeg(id));
+    const capS = document.getElementById('mzaSCap'), capC = document.getElementById('mzaSCapC');
+    capS.onchange = () => { capC.hidden = capS.value !== 'custom'; if (!capC.hidden) { if (!capC.value) capC.value = 60; capC.focus(); } paintRiskSubs(); };
+    capC.oninput = paintRiskSubs;
     wireSeg('mzaAType', (v) => { document.getElementById('mzaAMonW').hidden = v !== 'monthly'; document.getElementById('mzaAAmtL').textContent = v === 'monthly' ? 'مبلغ البداية (اختياري)' : 'المبلغ'; const a = document.getElementById('mzaAAmt'); if (v === 'monthly' && +a.value === 100000) a.value = 0; });
     msWire('mzaSEx'); msWire('mzaAEx');
     msFill('mzaAEx', ASSETS.filter(a => a.k !== 'expenses').map(a => [a.k, a.ic + ' ' + a.n]));
@@ -186,6 +209,7 @@
       f.querySelectorAll('input[type=number]:not([data-rate])').forEach(i => { i.value = ''; });
       f.querySelectorAll('.mza-ms').forEach(x => msClear(x.id));
       if (b.dataset.f === 'check') { const box = document.getElementById('mzaCRows'); box.innerHTML = ''; addRow('', 0); }
+      if (b.dataset.f === 'stocks') { const cs = document.getElementById('mzaSCap'); cs.value = '30'; cs.onchange(); }
       const o = document.getElementById('mzaOut'); if (o) o.innerHTML = ''; LAST = null; LAST_ID = null;
       const first = f.querySelector('input[type=number]'); if (first) first.focus();
       toast('اتفرّغت الخانات');
@@ -211,14 +235,14 @@
   /* ---------- 1) قطاعات الأسهم ---------- */
   async function allocStocks(tok){
     const amt = Math.max(0, +document.getElementById('mzaSAmt').value || 0), market = document.getElementById('mzaSMkt').value;
-    const max = +document.getElementById('mzaSMax').value, cap = +document.getElementById('mzaSCap').value / 100, r = segVal('mzaSRisk'), hz = +document.getElementById('mzaSHz').value;
+    const max = +document.getElementById('mzaSMax').value, cap = capVal() / 100, r = segVal('mzaSRisk'), hz = +document.getElementById('mzaSHz').value;
     if (amt < 1000) return toast('اكتب مبلغ 1,000 على الأقل', 'err');
     const done = loading(['قراءة قطاعات البورصة وأكبر شركاتها', 'تقييم كل شركة بمحرك بصيرة (المؤشرات + احتمال الصعود + التذبذب)', 'حساب التوزيع حسب المخاطرة وحدود التركيز', 'الذكاء الاصطناعي بيكتب الرأي']);
     let S; try { S = await loadSectors(market); } catch(e){ done(); return toast(e.message, 'err'); }
     if (tok && screenStale(tok)) return;
     const ex = msExcluded('mzaSEx', S.map(s => s.k));
     // الإصدار 123: المخاطرة بتأثر فعلًا — محافظ: حد أقصى أقل لكل قطاع (تنويع أكتر) / مغامر: تركيز أعلى على القطاعات الأقوى
-    const capR = r === 'low' ? Math.min(cap, 0.25) : r === 'high' ? Math.min(0.6, cap + 0.1) : cap;
+    const capR = r === 'low' ? Math.min(cap, 0.25) : r === 'high' ? Math.min(1, cap + 0.1) : cap;
     const list = splitSectors(S.filter(s => !ex.has(s.k)), r, max, capR);
     if (!list.length) { done(); return toast('استثنيت كل القطاعات — سيب قطاع واحد على الأقل', 'err'); }
     list.forEach(s => { s.amt = amt * s.p / 100; const cos = (r === 'low' ? s.co.slice().sort((x, y) => (x.vol || 0) - (y.vol || 0)).slice(0, 2) : r === 'high' ? s.co.slice().sort((x, y) => (y.up || 0) - (x.up || 0)).slice(0, 3) : s.co.slice(0, 3)), tw = cos.reduce((a, c) => a + Math.max(1, c.score), 0); s.pick = cos.map(c => Object.assign({}, c, { amt: s.amt * Math.max(1, c.score) / tw })); });
