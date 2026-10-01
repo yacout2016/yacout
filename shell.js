@@ -927,7 +927,8 @@
       const bar = document.createElement('div'); bar.className = 'g-tbar'; bar.setAttribute('data-html2canvas-ignore', '');
       bar.innerHTML = `<input type="search" class="g-tsearch" placeholder="بحث في الجدول..." aria-label="بحث في الجدول"><span class="g-tcount"></span>`;
       const wrap = t.closest('.gs-tscroll') || t;
-      const old = wrap.previousElementSibling; if (old && old.classList.contains('g-tbar')) old.remove();   // شريط جدول قديم اتبدّل
+      const old = wrap.previousElementSibling;
+      if (old && old.classList.contains('g-tbar')) { const hc = old.querySelector('.g-hcbox'); if (hc) bar.insertBefore(hc, bar.firstChild); old.remove(); }   // شريط جدول قديم اتبدّل — الإصدار 128: زرار «إظهار الأعمدة المخفية» بيتنقل للشريط الجديد بدل ما يضيع
       wrap.parentNode.insertBefore(bar, wrap);
       const q = bar.querySelector('.g-tsearch'), cnt = bar.querySelector('.g-tcount');
       const apply = () => {

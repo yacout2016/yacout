@@ -14,6 +14,14 @@ const { check, summary, launch, page, loginAdmin, q } = require('../lib');
     check(`${tag}: زرار «تحليل ↗» جنب كل سهم في قائمة المتابعة`, r.btns.length === 2 && r.btns.every(x => x === 'تحليل ↗') && r.vis, JSON.stringify(r.btns));
     check(`${tag}: الجدول جوه عرض الصفحة (مفيش تمرير يمين وشمال)`, r.sx <= 1 && r.page <= 1 && r.tw <= r.cw + 1, JSON.stringify(r));
     if (tag === 'كمبيوتر') {
+      // الإصدار 128: إخفاء عمود ← زرار «إظهار الأعمدة المخفية» لازم يفضل ظاهر ويرجّع العمود
+      await a.evaluate(() => { try { localStorage.removeItem('gs_hidecols_v1'); } catch (e) {} }); await a.waitForTimeout(600);
+      await a.click('#wlTable thead th:nth-child(4) .g-colx'); await a.waitForTimeout(300);
+      const h = await a.evaluate(() => { const s = document.querySelector('.g-hcshow'); return { vis: !!(s && s.offsetParent), hidden: getComputedStyle(document.querySelector('#wlTable thead th:nth-child(4)')).display === 'none' }; });
+      if (h.vis) { await a.click('.g-hcshow'); await a.waitForTimeout(300); }
+      const back = await a.evaluate(() => getComputedStyle(document.querySelector('#wlTable thead th:nth-child(4)')).display !== 'none');
+      check('قائمة المتابعة: بعد إخفاء عمود يظهر زرار «إظهار الأعمدة المخفية» ويرجّعه', h.vis && h.hidden && back, JSON.stringify({ ...h, back }));
+      await a.evaluate(() => { try { localStorage.removeItem('gs_hidecols_v1'); } catch (e) {} });
       await a.click('#wlRows .wl-bs[data-bs="HRHO"]'); await a.waitForSelector('.bs-hero', { timeout: 40000 }).catch(() => {});
       const d = await a.evaluate(() => ({ sym: (document.getElementById('bsSym') || {}).value, hero: !!document.querySelector('.bs-hero'), title: (document.querySelector('.bs-hero') || {}).textContent || '' }));
       check('الضغط على «تحليل» بيفتح تحليل السهم في بصيرة مباشرة', d.sym === 'HRHO' && d.hero, JSON.stringify({ sym: d.sym, hero: d.hero }));

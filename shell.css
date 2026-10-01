@@ -1224,8 +1224,12 @@ html[data-theme="dark"] .g-watch .g-watch-it{ background:var(--gs-surface-2, #1B
 .wl-card .gs-tscroll{ overflow-x:hidden !important; }
 table.wl-table{ table-layout:fixed; width:100% !important; min-width:0 !important; }
 table.wl-table th, table.wl-table td{ white-space:normal !important; overflow:hidden; text-overflow:ellipsis; padding:9px 8px !important; vertical-align:middle; word-break:break-word; }
-table.wl-table .wl-c-sym{ width:auto; } table.wl-table .wl-c-px{ width:17%; } table.wl-table .wl-c-chg{ width:16%; } table.wl-table .wl-c-hl{ width:15%; }
-table.wl-table .wl-c-act{ width:96px; } table.wl-table .wl-c-del{ width:48px; }
+table.wl-table .wl-c-sym{ width:30%; } table.wl-table .wl-c-px{ width:18%; } table.wl-table .wl-c-chg{ width:16%; } table.wl-table .wl-c-hl{ width:16%; }
+table.wl-table .wl-c-act{ width:110px; } table.wl-table .wl-c-del{ width:60px; }
+/* الإصدار 128: زرار الحذف مبيتقصّش + اسم الشركة سطر واحد بنقط بدل ما يتكسّر حرف حرف في الشاشات المتوسطة */
+table.wl-table td:last-child{ overflow:visible; text-align:center; } table.wl-table td:last-child .wl-del{ min-width:0 !important; padding:4px 10px !important; }
+table.wl-table td:first-child > div{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; word-break:normal; }
+table.wl-table td:first-child .gs-link{ word-break:normal; white-space:nowrap; }
 table.wl-table input{ width:100% !important; min-width:0 !important; box-sizing:border-box; }
 .wl-hl small{ display:block; opacity:.7; font-size:11.5px; }
 body.g-shell #app button.wl-bs, button.wl-bs{ width:auto !important; margin:0 !important; min-height:0 !important; padding:6px 10px !important; border-radius:10px !important; font-size:12.5px !important; font-weight:700; white-space:nowrap;
