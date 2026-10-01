@@ -27,12 +27,14 @@ http.createServer((req, res) => { let body = ''; req.on('data', c => body += c);
   if (/\/scan$/.test(u.pathname)) { const j = JSON.parse(body || '{}');
     // الإصدار 101: قائمة كل أسهم البورصة (من غير tickers)
     const SECT0 = { COMI: 'Finance', HRHO: 'Finance', TMGH: 'Industrial Services', CRVX: 'Health Technology', DROPX: 'Retail Trade' };
+    // الإصدار 123: الصناعة (industry) ← كل قطاع مستقل (البنوك / الخدمات المالية غير المصرفية / المقاولات / الأدوية / تجارة التجزئة)
+    const IND = { COMI: 'Major Banks', HRHO: 'Regional Banks', TMGH: 'Engineering & Construction', CRVX: 'Pharmaceuticals: Major', DROPX: 'Specialty Stores' };
     if (!j.symbols || !j.symbols.tickers) { const cols = j.columns || ['name', 'description', 'close'];   // الإصدار 118: الأعمدة حسب الطلب (القطاع + القيمة السوقية)
-      return send({ totalCount: Object.keys(prices).length, data: Object.keys(prices).sort().map(sym => ({ s: 'EGX:' + sym, d: cols.map(c => ({ name: sym, description: sym + ' Co', close: prices[sym], sector: SECT0[sym] || 'Miscellaneous', market_cap_basic: prices[sym] * 1e6 })[c] ?? null) })) }); }
+      return send({ totalCount: Object.keys(prices).length, data: Object.keys(prices).sort().map(sym => ({ s: 'EGX:' + sym, d: cols.map(c => ({ name: sym, description: sym + ' Co', close: prices[sym], sector: SECT0[sym] || 'Miscellaneous', industry: IND[sym] || '', market_cap_basic: prices[sym] * 1e6 })[c] ?? null) })) }); }
     const t = j.symbols.tickers[0]; const sym = t.split(':')[1]; const p = prices[sym];
     if (!p) return send({ data: [] });
     const SECT = { COMI: 'Finance', HRHO: 'Finance', TMGH: 'Industrial Services', CRVX: 'Health Technology', DROPX: 'Retail Trade' };
-    const vals = { sector: SECT[sym] || 'Miscellaneous', description: sym + ' Co', close: p, change_abs: 1, high: p * 1.02, low: p * 0.98, currency: 'EGP', update_mode: 'delayed_streaming_900', 'High.1M': p * 1.1, 'Low.1M': p * 0.9, 'High.3M': p * 1.2, 'Low.3M': p * 0.8 };
+    const vals = { sector: SECT[sym] || 'Miscellaneous', industry: ({ COMI: 'Major Banks', HRHO: 'Regional Banks', TMGH: 'Engineering & Construction', CRVX: 'Pharmaceuticals: Major', DROPX: 'Specialty Stores' })[sym] || '', description: sym + ' Co', close: p, change_abs: 1, high: p * 1.02, low: p * 0.98, currency: 'EGP', update_mode: 'delayed_streaming_900', 'High.1M': p * 1.1, 'Low.1M': p * 0.9, 'High.3M': p * 1.2, 'Low.3M': p * 0.8 };
     return send({ data: [{ s: t, d: j.columns.map(c => vals[c] ?? p) }] }); }
   // Yahoo chart (الإصدار 91): أسعار إغلاق يومية لآخر 400 يوم - خط من 70% لحد السعر الحالي
   const ym = u.pathname.match(/^\/([A-Z0-9-]+)\.CA$/);

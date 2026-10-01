@@ -132,7 +132,7 @@ function mzPaint(body, R){
 
     <h2 class="mz-sec-title"><span class="ic">📋</span> أسهم المحفظة</h2>
     <div class="bs-card u-ox"><table class="mz-table"><thead><tr><th>السهم</th><th>القطاع</th><th>الخطة</th><th>الوزن</th><th>النسبة المقترحة</th><th>القيمة</th><th>الربح/الخسارة</th><th>التذبذب</th><th>عائد سنة</th><th>أقصى تراجع</th><th></th></tr></thead><tbody>
-      ${H.map((h, i) => `<tr><td><b class="n" title="${mzE(h.name || '')}">${mzE(h.s)}</b>${h.name ? `<br><small class="u-muted">${mzE(h.name)}</small>` : ''}</td><td>${mzE(h.sector)}</td><td><span class="bs-chip bs-c-neu">${mzE(h.t)}</span></td>
+      ${H.map((h, i) => `<tr><td><b class="n"${h.name ? ` data-coname="${mzE(h.name)}"` : ''}>${mzE(h.s)}</b>${h.name ? `<small class="u-muted g-coname"><br>${mzE(h.name)}</small>` : ''}</td><td>${mzE(h.sector)}</td><td><span class="bs-chip bs-c-neu">${mzE(h.t)}</span></td>
         <td><div class="mz-wcell"><div class="mz-bar"><i style="width:${Math.min(100, h.w)}%;background:${h.target != null && h.w > h.target + 5 ? 'var(--gs-neg,#DC2626)' : MZ_COLORS[i % MZ_COLORS.length]}"></i></div><b class="n">${mzN(h.w, 1)}%</b></div></td>
         <td class="mz-tgt" title="${mzE(h.tReason || '')}"><b class="n ${h.target != null && h.w > h.target + 5 ? 'neg' : 'pos'}">${h.target != null ? h.target + '%' : '—'}</b> <span class="bs-chip ${h.tSrc === 'ai' ? 'bs-c-gold' : 'bs-c-neu'}">${h.tSrc === 'ai' ? '🤖 AI' : 'قواعد'}</span>${h.tReason ? `<br><small class="u-muted mz-why">${mzE(h.tReason)}</small>` : ''}</td>
         <td class="mz-num">${mzN(h.value)}</td><td class="mz-num ${h.pnl >= 0 ? 'pos' : 'neg'}">${mzP(h.pnlPct)}</td><td class="mz-num">${h.vol == null ? '—' : mzN(h.vol) + '%'}</td>

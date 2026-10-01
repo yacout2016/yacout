@@ -87,3 +87,18 @@ body.g-shell #app button.mza-plan, button.mza-plan{ width:auto !important; margi
   .mz-sec-title{ font-size:16px; flex-wrap:wrap; }
   .mz-sec-title .bs-chip{ white-space:normal; font-size:11.5px; }
 }
+
+/* الإصدار 123: اختيار القطاعات / الأصول من قوائم منسدلة */
+.mza-pick{ display:flex; flex-direction:column; gap:8px; }
+.mza-ms{ position:relative; }
+body.g-shell #app .mza-ms-btn, .mza-ms-btn{ display:flex; align-items:center; justify-content:space-between; gap:8px; width:100% !important; margin:0 !important; text-align:start; background:var(--gs-surface-2,#F8FAFC); color:var(--gs-text,#111); border:1px solid var(--gs-border,#E5E7EB); border-radius:10px; padding:10px 12px; font-size:13px; font-weight:600; box-shadow:none; }
+.mza-ms-btn span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+.mza-ms-btn i{ font-style:normal; color:var(--gs-muted,#64748B); }
+.mza-ms-pop{ position:absolute; inset-inline:0; top:calc(100% + 4px); z-index:30; max-height:280px; overflow-y:auto; overscroll-behavior:contain; background:var(--gs-surface,#fff); border:1px solid var(--gs-border,#E5E7EB); border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.18); padding:6px; }
+.mza-ms-pop[hidden]{ display:none; }
+.mza-ms-opt{ display:flex; align-items:center; gap:10px; padding:9px 8px; border-radius:8px; cursor:pointer; font-size:13px; color:var(--gs-text,#111); }
+.mza-ms-opt:hover{ background:var(--gs-surface-2,#F8FAFC); }
+body.g-shell #app .mza-ms-opt input, .mza-ms-opt input{ width:18px !important; height:18px; margin:0 !important; flex:0 0 auto; accent-color:#D4AF37; }
+/* الإصدار 124: الكود بيظهر مكان الاسم على الموبايل بس */
+.mza-co-t .mza-co-sym{ display:none; }
+@media (max-width:640px){ .mza-co-t .mza-co-sym{ display:block; font-size:14px; } }

@@ -21,11 +21,11 @@ require_once __DIR__ . '/basira_lib.php';
 const MZ_SECTORS = BS_SECTORS;   // الإصدار 118: القائمة اتنقلت لـ basira_lib.php (بيستخدمها مسح السوق في بصيرة كمان)
 
 function mz_sector($sym, $market){
-    $f = opp_cache_dir() . '/' . md5("mzsec1|$sym|$market") . '.json';
+    $f = opp_cache_dir() . '/' . md5("mzsec123|$sym|$market") . '.json';
     if (is_file($f) && time() - filemtime($f) < 7 * 86400) { $j = json_decode((string)@file_get_contents($f), true); if (is_array($j)) return $j['s']; }
     $m = MQ_MARKETS[$market] ?? MQ_MARKETS['مصر']; $s = '';
-    foreach ($m[1] as $ex) { $r = tv_scan($m[0], "$ex:$sym", ['sector']); if ($r && is_string($r['sector'] ?? null) && $r['sector'] !== '') { $s = $r['sector']; break; } }
-    $ar = $s !== '' ? (MZ_SECTORS[$s] ?? $s) : 'غير محدد';
+    foreach ($m[1] as $ex) { $r = tv_scan($m[0], "$ex:$sym", ['sector', 'industry']); if ($r && is_string($r['sector'] ?? null) && $r['sector'] !== '') { $s = $r['sector']; $ind = (string)($r['industry'] ?? ''); break; } }
+    $ar = $s !== '' ? bs_sector_ar($s, $ind ?? '') : 'غير محدد';   // الإصدار 123: كل قطاع مستقل (من الصناعة)
     if ($s !== '') @file_put_contents($f, json_encode(['s' => $ar], JSON_UNESCAPED_UNICODE));
     return $ar;
 }
@@ -99,7 +99,7 @@ function mz_metrics($conn, $cfg, $positions){
    2) القطاع الدفاعي (بنوك / سلع استهلاكية / مرافق / اتصالات / أدوية) +5 ، والتذبذب العالي بينزّل الحد (فوق 40%: −5 ، فوق 60%: −10) والهادي (أقل من 20%) +3
    3) القطاع الواحد يُفضّل ميعدّيش 40% (الدفاعي 45%) لو المحفظة فيها أكتر من قطاع ← أسهم القطاع الزايد حدها بينزل بالنسبة
    4) سهمين ارتباطهم فوق 0.8 ← كأنهم مركز واحد (حد كل واحد −5) */
-const MZ_DEFENSIVE = ['المالية والبنوك', 'سلع استهلاكية', 'المرافق', 'الاتصالات', 'الأدوية والرعاية الصحية'];
+const MZ_DEFENSIVE = ['البنوك', 'الخدمات المالية', 'السلع الاستهلاكية', 'الأغذية', 'المشروبات', 'المرافق', 'الكهرباء', 'المياه', 'توزيع الغاز', 'الاتصالات', 'الأدوية', 'الخدمات الطبية', 'المستشفيات'];   // الإصدار 123: أسماء القطاعات المستقلة
 function mz_rule_targets($M){
     $H = $M['holdings']; $n = $M['n']; $out = [];
     if ($n < 2) { foreach ($H as $h) $out[$h['s']] = ['t' => 100, 'r' => 'سهم واحد — التنويع بيبدأ بإضافة أسهم في قطاعات تانية.']; return $out; }

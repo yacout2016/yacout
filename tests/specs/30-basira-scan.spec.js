@@ -9,7 +9,7 @@ const { check, summary, launch, page, loginAdmin, q } = require('../lib');
   check('بصيرة: تبويبين «تحليل سهم» و«مسح السوق — الأسهم المتوقع صعودها»', await a.evaluate(() => /تحليل سهم/.test(document.getElementById('bsTabOne').textContent) && /مسح السوق/.test(document.getElementById('bsTabScan').textContent)));
   await a.click('#bsTabScan'); await a.waitForFunction(() => document.querySelectorAll('#bsScSec option').length > 1, null, { timeout: 20000 }).catch(() => {});
   const ui = await a.evaluate(() => ({ one: document.getElementById('bsOneWrap').hidden, secs: [...document.querySelectorAll('#bsScSec option')].map(o => o.textContent), hz: [...document.querySelectorAll('#bsScHz button')].map(x => x.textContent), on: (document.querySelector('#bsScHz .on') || {}).textContent }));
-  check('المسح: قائمة القطاعات من السوق بالعربي (كل البورصة + المالية والبنوك)', ui.one && ui.secs[0].includes('كل البورصة') && ui.secs.some(x => /المالية والبنوك \(2\)/.test(x)), ui.secs.join(' | '));
+  check('المسح: قائمة القطاعات من السوق بالعربي (كل البورصة + البنوك)', ui.one && ui.secs[0].includes('كل البورصة') && ui.secs.some(x => /البنوك \(2\)/.test(x)), ui.secs.join(' | '));
   check('المسح: الفترات أسبوع / شهر / 3 شهور / 6 شهور / سنة (الافتراضي شهر)', ui.hz.join(',') === 'أسبوع,شهر,3 شهور,6 شهور,سنة' && ui.on === 'شهر', ui.hz.join(','));
 
   // كل البورصة
@@ -48,10 +48,10 @@ const { check, summary, launch, page, loginAdmin, q } = require('../lib');
   const col = await a.evaluate(() => ({ go: getComputedStyle(document.getElementById('bsScGo')).backgroundColor, tab: getComputedStyle(document.getElementById('bsTabScan')).backgroundImage, one: getComputedStyle(document.getElementById('bsTabOne')).backgroundImage }));
   check('زرار «ابدأ المسح» أصفر + تبويب «مسح السوق» بلون مختلف واضح', col.go === 'rgb(250, 204, 21)' && /gradient/.test(col.tab) && !/gradient/.test(col.one), JSON.stringify(col));
   // قطاع واحد
-  await a.selectOption('#bsScSec', 'المالية والبنوك'); await a.click('#bsScGo');
+  await a.selectOption('#bsScSec', 'البنوك'); await a.click('#bsScGo');
   await a.waitForFunction(() => /اكتمل المسح/.test((document.getElementById('bsScTxt') || {}).textContent || ''), null, { timeout: 60000 }).catch(() => {});
   rows = await rowsOf();
-  check('فلتر «المالية والبنوك» ← شركات القطاع بس (COMI + HRHO)', rows.length === 2 && rows.every(r => r.sec === 'المالية والبنوك') && rows.map(r => r.s).sort().join(',') === 'COMI,HRHO', JSON.stringify(rows));
+  check('فلتر «البنوك» ← شركات القطاع بس (COMI + HRHO)', rows.length === 2 && rows.every(r => r.sec === 'البنوك') && rows.map(r => r.s).sort().join(',') === 'COMI,HRHO', JSON.stringify(rows));
 
   // الضغط على سهم ← التحليل الكامل
   const pick = rows[0].s;

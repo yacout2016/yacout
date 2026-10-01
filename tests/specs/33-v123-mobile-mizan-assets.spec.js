@@ -5,7 +5,7 @@ const { check, summary, launch, page, loginAdmin, q, ADMIN } = require('../lib')
   q("DELETE FROM login_attempts");
   q("DELETE FROM site_config WHERE config_key IN ('basira_cfg','basira_ai_key','mizanai_cfg')");
   const b = await launch(); const a = await page(b, { width: 1366, height: 900 }); await loginAdmin(a);
-  await a.evaluate(() => renderMizanAi()); await a.waitForFunction(() => document.querySelectorAll('#mzaSEx button').length >= 3, null, { timeout: 90000 }).catch(() => {});
+  await a.evaluate(() => renderMizanAi()); await a.waitForFunction(() => document.querySelectorAll('#mzaSEx .mza-ms-opt').length >= 3, null, { timeout: 90000 }).catch(() => {});
 
   // 1) أزرار المخاطرة: الزرار المختار لونه بيتغير فعلًا + النتيجة بتختلف
   const bg = (sel) => a.evaluate((s) => getComputedStyle(document.querySelector(s)).backgroundColor, sel);
@@ -21,6 +21,9 @@ const { check, summary, launch, page, loginAdmin, q, ADMIN } = require('../lib')
   check('المخاطرة: «مغامر» بيدّي توزيع مختلف عن «محافظ»', lowRows !== hiRows || lowCos !== hiCos, lowRows.slice(0, 80) + ' ≠ ' + hiRows.slice(0, 80));
   check('المخاطرة: «مغامر» متسجّل في النتيجة', await a.evaluate(() => /مغامر/.test(document.getElementById('mzaAiWrap').textContent)));
 
+  // كل قطاع مستقل — مفيش قطاعين في اسم واحد
+  const secs = await a.evaluate(() => [...document.querySelectorAll('#mzaSEx .mza-ms-opt')].map(x => x.textContent.trim()));
+  check('القطاعات مستقلة (البنوك / المقاولات / الأدوية) — مفيش «المالية والبنوك» ولا «الخدمات الاستهلاكية والسياحة»', secs.includes('البنوك') && secs.includes('المقاولات') && secs.includes('الأدوية') && !secs.some(x => /المالية والبنوك|والسياحة|والرعاية/.test(x)), secs.join(' | '));
   // 2) زرار تفريغ الخانات
   await a.click('#mzaF-stocks .mza-clear');
   const cl = await a.evaluate(() => ({ amt: document.getElementById('mzaSAmt').value, out: document.getElementById('mzaOut').innerHTML.trim() }));
@@ -28,9 +31,18 @@ const { check, summary, launch, page, loginAdmin, q, ADMIN } = require('../lib')
 
   // 3) الأصول المنفصلة في التوزيع الشامل + جزء الأسهم على القطاعات
   await a.click('.mza-mode[data-m="assets"]');
-  const ex = await a.evaluate(() => [...document.querySelectorAll('#mzaAEx button')].map(x => x.textContent.trim()));
+  const ex = await a.evaluate(() => [...document.querySelectorAll('#mzaAEx .mza-ms-opt')].map(x => x.textContent.trim()));
   const need = ['حساب بنكي بعوائد يومية', 'حساب توفير بعوائد سنوية', 'صناديق نقدية', 'صناديق دخل ثابت', 'صناديق أسهم', 'عقار', 'ذهب', 'شهادات بنكية', 'أسهم'];
   check('توزيع شامل: كل الأصول منفصلة (يومي / توفير سنوي / نقدية / دخل ثابت / صناديق أسهم / عقار / ذهب / شهادات / أسهم)', need.every(n => ex.some(x => x.includes(n))), ex.join(' | '));
+  // القوائم المنسدلة: «المطلوبة بس» ← الأصول المختارة بس
+  await a.selectOption('#mzaAExM', 'only');
+  const popOpen = await a.evaluate(() => !document.querySelector('#mzaAEx .mza-ms-pop').hidden);
+  await a.click('#mzaAEx .mza-ms-opt:has-text("ذهب")'); await a.click('#mzaAEx .mza-ms-opt:has-text("شهادات بنكية")'); await a.click('body', { position: { x: 5, y: 5 } });
+  const lbl = await a.evaluate(() => document.querySelector('#mzaAEx .mza-ms-btn').textContent);
+  await a.click('#mzaAGo'); await a.waitForTimeout(1200);
+  const only = await a.evaluate(() => [...document.querySelectorAll('#mzaOut .mza-table')[0].tBodies[0].rows].map(r => r.cells[0].textContent.trim()));
+  check('قائمة منسدلة: «الأصول المطلوبة بس» ← ذهب + شهادات (+ الطوارئ) بس', popOpen && /2 مختار/.test(lbl) && only.length === 3 && only.some(x => /ذهب/.test(x)) && only.some(x => /شهادات/.test(x)), lbl + ' / ' + only.join(' | '));
+  await a.click('#mzaF-assets .mza-clear'); await a.fill('#mzaAAmt', '100000');
   await a.click('#mzaAGo'); await a.waitForSelector('.mza-grow', { timeout: 30000 }).catch(() => {});
   await a.waitForFunction(() => document.querySelectorAll('#mzaOut .mza-table').length >= 2, null, { timeout: 30000 }).catch(() => {});
   const as = await a.evaluate(() => { const t = [...document.querySelectorAll('#mzaOut .mza-table')]; const rows = t[0] ? [...t[0].tBodies[0].rows].map(r => ({ n: r.cells[0].textContent.trim(), p: parseFloat(r.cells[1].textContent) })) : [];
@@ -42,7 +54,7 @@ const { check, summary, launch, page, loginAdmin, q, ADMIN } = require('../lib')
   const midStocks = as.rows.find(r => /^📈/.test(r.n));
   check('توزيع شامل: «محافظ» نسبة الأسهم أقل من «متوازن»', midStocks && lowStocks < midStocks.p, lowStocks + ' < ' + (midStocks && midStocks.p));
   await a.click('#mzaF-assets .mza-clear');
-  check('«تفريغ الخانات» في التوزيع الشامل', await a.evaluate(() => document.getElementById('mzaAAmt').value === '' && !document.querySelector('#mzaAEx button.off') && !document.getElementById('mzaOut').innerHTML.trim()));
+  check('«تفريغ الخانات» في التوزيع الشامل', await a.evaluate(() => document.getElementById('mzaAAmt').value === '' && document.getElementById('mzaAExM').value === 'all' && !document.querySelector('#mzaAEx input:checked') && !document.getElementById('mzaOut').innerHTML.trim()));
 
   // 4) الفحص: كل الأصول + قطاعات الأسهم في القائمة
   await a.click('.mza-mode[data-m="check"]'); await a.waitForFunction(() => document.querySelectorAll('#mzaCRows .mza-row').length >= 3, null, { timeout: 30000 });
@@ -73,12 +85,24 @@ const { check, summary, launch, page, loginAdmin, q, ADMIN } = require('../lib')
 
   // 6) الموبايل: الجداول كروت (اسم الخانة جنب القيمة) من غير تمرير أفقي
   const m = await page(b, { width: 390, height: 844 }); await loginAdmin(m);
-  await m.evaluate(() => renderMizanAi()); await m.waitForFunction(() => document.querySelectorAll('#mzaSEx button').length >= 3, null, { timeout: 60000 }).catch(() => {});
+  await m.evaluate(() => renderMizanAi()); await m.waitForFunction(() => document.querySelectorAll('#mzaSEx .mza-ms-opt').length >= 3, null, { timeout: 60000 }).catch(() => {});
   await m.click('#mzaSRisk button[data-v="low"]'); await m.click('#mzaSGo'); await m.waitForSelector('#mzaOut .mza-table', { timeout: 30000 }).catch(() => {});
   const mc = await m.evaluate(() => { const t = document.querySelector('#mzaOut .mza-table'), td = t.tBodies[0].rows[0].cells[1];
     return { cards: t.classList.contains('g-cards'), head: getComputedStyle(t.tHead).display, lbl: td.getAttribute('data-label'), before: getComputedStyle(td, '::before').content, ov: document.documentElement.scrollWidth - window.innerWidth }; });
   check('الموبايل: جدول ميزان كروت + اسم كل خانة ظاهر جنب القيمة', mc.cards && mc.head === 'none' && mc.lbl === 'النسبة' && /النسبة/.test(mc.before), JSON.stringify(mc));
   check('الموبايل: مفيش تمرير أفقي', mc.ov <= 1, mc.ov);
+  // الإصدار 124: على الموبايل كود الشركة بس — الاسم بيظهر لما تقف عليه (ماوس / ضغطة طويلة)
+  const co = await m.evaluate(() => { const b = document.querySelector('.mza-co-open'), nm = b.querySelector('.g-coname'), sy = b.querySelector('.mza-co-sym');
+    return { name: getComputedStyle(nm).display, sym: getComputedStyle(sy).display, code: sy.textContent, coname: b.getAttribute('data-coname') }; });
+  check('الموبايل: الشركة المرشحة بالكود بس (الاسم مستخبي)', co.name === 'none' && co.sym !== 'none' && co.code && co.coname, JSON.stringify(co));
+  await m.evaluate(() => document.querySelector('.mza-co-open').scrollIntoView({ block: 'center' })); await m.waitForTimeout(300); await m.hover('.mza-co-open'); await m.waitForTimeout(200);
+  const tip = await m.evaluate(() => { const t = document.querySelector('.g-cotip'); return t && !t.hidden ? t.textContent : ''; });
+  check('الوقوف على الكود ← اسم الشركة بيظهر في فقاعة', tip && tip === co.coname, tip);
+  await m.evaluate(async () => { const r = await MK.get('action=watchlist'); for (const x of (r.items || [])) await MK.post({ action: 'watch_remove', id: x.id }); await MK.post({ action: 'watch_add', symbol: 'COMI', market: 'مصر' }); });
+  await m.evaluate(() => renderWatchlistPage()); await m.waitForSelector('#wlRows [data-coname]', { timeout: 20000 }).catch(() => {});
+  const wl = await m.evaluate(() => { const c = document.querySelector('#wlRows .g-coname'), d = document.querySelector('#wlRows [data-coname]'); return { hidden: c ? getComputedStyle(c).display === 'none' : false, n: d ? d.getAttribute('data-coname') : '' }; });
+  check('الموبايل: قائمة المتابعة بالكود بس + الاسم في data-coname', wl.hidden && /COMI/.test(wl.n || ''), JSON.stringify(wl));
+  await m.evaluate(async () => { const r = await MK.get('action=watchlist'); for (const x of (r.items || [])) await MK.post({ action: 'watch_remove', id: x.id }); });
   check('بدون أخطاء JavaScript', !a.__errors.length && !m.__errors.length, a.__errors[0] || m.__errors[0]);
   q("DELETE FROM site_config WHERE config_key IN ('basira_cfg','basira_ai_key','mizanai_cfg')");
   await b.close(); process.exit(summary() ? 1 : 0);

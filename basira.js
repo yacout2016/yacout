@@ -192,7 +192,7 @@
     const cnt = document.getElementById('bsScCount'); if (cnt) cnt.textContent = SCAN.items.length ? `${SCAN.items.length} سهم — اضغط على عنوان العمود للترتيب` : '';
     tb.innerHTML = L.map((x, i) => { const h = x.hz[SCAN.hz] || {}, u = h.up || 0, v = u >= 58 ? 'pos' : u <= 42 ? 'neg' : 'neu', ar = x.ar || gArName(x.symbol, SCAN.market);
       return `<tr class="bs-scr" data-s="${E(x.symbol)}" tabindex="0" title="${E(x.symbol)} — ${E(ar || x.name)}"><td data-col="n" class="n">${i + 1}</td>
-        <td data-col="sym"><b class="n">${E(x.symbol)}</b>${x.src === 'ai' ? ' <span class="bs-chip bs-c-gold" title="فيه تعديل الذكاء الاصطناعي">AI</span>' : ''}<small class="bs-scname">${E(ar || x.name)}</small></td>
+        <td data-col="sym"><b class="n" data-coname="${E(ar || x.name)}">${E(x.symbol)}</b>${x.src === 'ai' ? ' <span class="bs-chip bs-c-gold" title="فيه تعديل الذكاء الاصطناعي">AI</span>' : ''}<small class="bs-scname g-coname">${E(ar || x.name)}</small></td>
         <td data-col="sec"><span class="bs-scsec">${E(x.sector)}</span></td><td data-col="px"><span class="n">${n2(x.last)}</span><small class="n ${cls(x.chg)}">${pct(x.chg)}</small></td>
         <td data-col="up"><div class="bs-scup"><div class="bs-scbar sm"><i class="${v}" style="width:${u}%"></i></div><b class="n ${v}">${u}%</b></div></td>
         <td data-col="v"><span class="bs-chip ${v === 'pos' ? 'bs-c-pos' : v === 'neg' ? 'bs-c-neg' : 'bs-c-neu'}">${u >= 58 ? 'صعود محتمل' : u <= 42 ? 'هبوط محتمل' : 'عرضي'}</span></td>

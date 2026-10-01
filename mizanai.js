@@ -51,6 +51,30 @@
   }
   const seg = (id, opts, on) => `<div class="mza-seg" id="${id}">${opts.map(([v, l]) => `<button type="button" data-v="${v}" class="${v === on ? 'on' : ''}">${l}</button>`).join('')}</div>`;
   const segVal = (id) => { const b = document.querySelector(`#${id} .on`); return b ? b.dataset.v : ''; };
+  /* الإصدار 123: اختيار القطاعات / الأصول المطلوبة أو المستثناة من قوائم منسدلة (بدل زراير كتير بتاخد مساحة)
+     القائمة الأولى: كل / المطلوبة بس / استثني ← التانية بتفتح قائمة فيها كل قطاع لوحده بعلامة صح */
+  const msBox = (id, what) => `<div class="mza-pick"><select id="${id}M"><option value="all">كل ${what}</option><option value="only">${what} المطلوبة بس</option><option value="ex">استثني ${what}</option></select>
+    <div class="mza-ms" id="${id}" hidden><button type="button" class="mza-ms-btn" aria-haspopup="listbox" aria-expanded="false"><span>اختار من القائمة</span><i>▾</i></button><div class="mza-ms-pop" role="listbox" hidden><span class="u-muted u-fs12">جارٍ التحميل…</span></div></div></div>`;
+  function msFill(id, items){ const el = document.getElementById(id); if (!el) return; const was = new Set(msVals(id));
+    el.querySelector('.mza-ms-pop').innerHTML = items.map(([k, l, t]) => `<label class="mza-ms-opt"${t ? ` title="${E(t)}"` : ''}><input type="checkbox" value="${E(k)}"${was.has(k) ? ' checked' : ''}><span>${E(l)}</span></label>`).join('') || '<span class="u-muted u-fs12">لا يوجد</span>';
+    msLabel(id); }
+  const msVals = (id) => [...document.querySelectorAll(`#${id} .mza-ms-pop input:checked`)].map(i => i.value);
+  function msLabel(id){ const el = document.getElementById(id); if (!el) return; const names = [...el.querySelectorAll('.mza-ms-pop input:checked')].map(i => i.nextElementSibling.textContent);
+    el.querySelector('.mza-ms-btn span').textContent = names.length ? `${names.length} مختار: ${names.join('، ')}` : 'اختار من القائمة'; }
+  function msWire(id){ const el = document.getElementById(id), mode = document.getElementById(id + 'M'); if (!el || !mode) return;
+    const btn = el.querySelector('.mza-ms-btn'), pop = el.querySelector('.mza-ms-pop');
+    const open = (v) => { pop.hidden = !v; btn.setAttribute('aria-expanded', v ? 'true' : 'false'); };
+    mode.onchange = () => { el.hidden = mode.value === 'all'; if (mode.value !== 'all') open(true); else open(false); };
+    btn.onclick = (e) => { e.stopPropagation(); open(pop.hidden); };
+    pop.addEventListener('change', () => msLabel(id));
+    pop.addEventListener('click', (e) => e.stopPropagation());
+    const close = () => { if (!el.isConnected) return document.removeEventListener('click', close); open(false); };
+    document.addEventListener('click', close); }
+  // المستثنى فعليًا: «استثني» ← المختار / «المطلوبة بس» ← كل اللي مش مختار (ولو مفيش اختيار ← كله)
+  function msExcluded(id, allKeys){ const m = (document.getElementById(id + 'M') || {}).value || 'all', v = new Set(msVals(id));
+    if (m === 'ex') return v; if (m === 'only' && v.size) return new Set(allKeys.filter(k => !v.has(k))); return new Set(); }
+  function msClear(id){ const m = document.getElementById(id + 'M'); if (m) { m.value = 'all'; m.onchange && m.onchange(); }
+    document.querySelectorAll(`#${id} .mza-ms-pop input`).forEach(i => { i.checked = false; }); msLabel(id); }
   function wireSeg(id, cb){ const el = document.getElementById(id); if (!el) return; el.onclick = (e) => { const b = e.target.closest('button'); if (!b) return; el.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); if (cb) cb(b.dataset.v); }; }
   function gauge(score){ const a = Math.PI * (1 - score / 100), x = 75 + 62 * Math.cos(a), y = 82 - 62 * Math.sin(a), col = score >= 65 ? 'var(--gs-neg,#DC2626)' : score >= 45 ? '#D97706' : 'var(--gs-pos,#0E9F6E)';
     return `<path d="M13,82 A62,62 0 0 1 137,82" fill="none" stroke="var(--gs-surface-3,#E5E7EB)" stroke-width="12" stroke-linecap="round"/><path d="M13,82 A62,62 0 0 1 ${x.toFixed(1)},${y.toFixed(1)}" fill="none" stroke="${col}" stroke-width="12" stroke-linecap="round"/><text x="75" y="76" text-anchor="middle" font-size="22" font-weight="700" fill="currentColor">${score}</text><text x="75" y="90" text-anchor="middle" font-size="9" fill="currentColor" opacity=".6">من 100</text>`; }
@@ -94,7 +118,7 @@
           <div><label for="mzaSMkt">البورصة</label><select id="mzaSMkt">${mk.map(x => `<option>${E(x)}</option>`).join('')}</select></div>
           <div><label for="mzaSHz">مدة الاستثمار</label><select id="mzaSHz"><option value="3">3 شهور</option><option value="6">6 شهور</option><option value="12" selected>سنة</option><option value="36">3 سنين</option></select></div>
           <div><label>مستوى المخاطرة</label>${seg('mzaSRisk', [['low', 'محافظ'], ['mid', 'متوازن'], ['high', 'مغامر']], 'mid')}</div>
-          <div class="wide"><label>القطاعات (دوس على أي قطاع عشان تستثنيه)</label><div class="mza-ex" id="mzaSEx"><span class="u-muted u-fs12">جارٍ تحميل قطاعات البورصة…</span></div></div>
+          <div class="wide"><label for="mzaSExM">القطاعات</label>${msBox('mzaSEx', 'القطاعات')}</div>
           <div><label for="mzaSMax">أقصى عدد قطاعات</label><select id="mzaSMax"><option>4</option><option selected>6</option><option>8</option></select></div>
           <div><label for="mzaSCap">أقصى نسبة لقطاع واحد</label><select id="mzaSCap"><option value="25">25%</option><option value="30" selected>30%</option><option value="40">40%</option></select></div>
         </div>
@@ -108,7 +132,7 @@
           <div><label for="mzaAHz">المدة</label><select id="mzaAHz"><option value="1">شهر</option><option value="6">6 شهور</option><option value="12" selected>سنة</option><option value="36">3 سنين</option><option value="60">5 سنين</option></select></div>
           <div><label for="mzaAMkt">بورصة قطاعات الأسهم</label><select id="mzaAMkt">${mk.map(x => `<option>${E(x)}</option>`).join('')}</select></div>
           <div><label>مستوى المخاطرة</label>${seg('mzaARisk', [['low', 'محافظ'], ['mid', 'متوازن'], ['high', 'مغامر']], 'mid')}</div>
-          <div class="wide"><label>الأصول المسموح بيها (دوس عشان تستثني)</label><div class="mza-ex" id="mzaAEx">${ASSETS.filter(a => a.k !== 'expenses').map(a => `<button type="button" data-k="${a.k}">${a.ic} ${E(a.n)}</button>`).join('')}</div></div>
+          <div class="wide"><label for="mzaAExM">الأصول</label>${msBox('mzaAEx', 'الأصول')}</div>
           <div><label for="mzaAExp">نسبة المصاريف / الطوارئ</label><select id="mzaAExp"><option value="0">من غير</option><option value="5">5%</option><option value="10" selected>10%</option><option value="15">15%</option></select></div>
         </div>
         <details class="u-mt10"><summary class="u-fs12">⚙️ العوائد السنوية المتوقعة لكل أصل (افتراضات تقدر تعدّلها)</summary><div class="mza-grid u-mt10" id="mzaRates">${ASSETS.filter(a => a.k !== 'expenses').map(a => `<div><label>${a.ic} ${E(a.n)} (% سنويًا)</label><input type="number" step="0.5" data-rate="${a.k}" value="${RATES[a.k] ?? 0}"></div>`).join('')}</div></details>
@@ -140,13 +164,13 @@
     document.querySelectorAll('.mza-mode').forEach(b => b.onclick = () => showMode(b.dataset.m));
     ['mzaSRisk', 'mzaARisk', 'mzaCRisk'].forEach(id => wireSeg(id));
     wireSeg('mzaAType', (v) => { document.getElementById('mzaAMonW').hidden = v !== 'monthly'; document.getElementById('mzaAAmtL').textContent = v === 'monthly' ? 'مبلغ البداية (اختياري)' : 'المبلغ'; const a = document.getElementById('mzaAAmt'); if (v === 'monthly' && +a.value === 100000) a.value = 0; });
-    const toggle = (box) => box.addEventListener('click', (e) => { const b = e.target.closest('button[data-k]'); if (b) b.classList.toggle('off'); });
-    toggle(document.getElementById('mzaSEx')); toggle(document.getElementById('mzaAEx'));
+    msWire('mzaSEx'); msWire('mzaAEx');
+    msFill('mzaAEx', ASSETS.filter(a => a.k !== 'expenses').map(a => [a.k, a.ic + ' ' + a.n]));
     document.getElementById('mzaRates').addEventListener('input', (e) => { const k = e.target.dataset.rate; if (k) RATES[k] = +e.target.value || 0; });
     const sm = document.getElementById('mzaSMkt'), cm = document.getElementById('mzaCMkt');
-    const paintEx = async () => { const box = document.getElementById('mzaSEx'); box.innerHTML = '<span class="u-muted u-fs12">جارٍ تحميل قطاعات البورصة وتحليل أكبر شركاتها…</span>';
-      try { const S = await loadSectors(sm.value); if (tok && screenStale(tok)) return; box.innerHTML = S.map(s => `<button type="button" data-k="${E(s.k)}" title="${E(s.why)}">${E(s.n)}</button>`).join(''); }
-      catch(e){ box.innerHTML = `<span class="bs-err u-fs12">${E(e.message)}</span>`; } };
+    const paintEx = async () => { const pop = document.querySelector('#mzaSEx .mza-ms-pop'); pop.innerHTML = '<span class="u-muted u-fs12">جارٍ تحميل قطاعات البورصة وتحليل أكبر شركاتها…</span>';
+      try { const S = await loadSectors(sm.value); if (tok && screenStale(tok)) return; msFill('mzaSEx', S.map(s => [s.k, s.n, s.why])); }
+      catch(e){ pop.innerHTML = `<span class="bs-err u-fs12">${E(e.message)}</span>`; } };
     const paintRows = async () => { const box = document.getElementById('mzaCRows'); box.innerHTML = '<span class="u-muted u-fs12">جارٍ تحميل القطاعات…</span>';
       let S = []; try { S = await loadSectors(cm.value); } catch(e){}
       if (tok && screenStale(tok)) return;
@@ -160,7 +184,7 @@
     document.querySelectorAll('.mza-clear').forEach(b => b.onclick = () => {
       const f = document.getElementById('mzaF-' + b.dataset.f); if (!f) return;
       f.querySelectorAll('input[type=number]:not([data-rate])').forEach(i => { i.value = ''; });
-      f.querySelectorAll('.mza-ex button.off').forEach(x => x.classList.remove('off'));
+      f.querySelectorAll('.mza-ms').forEach(x => msClear(x.id));
       if (b.dataset.f === 'check') { const box = document.getElementById('mzaCRows'); box.innerHTML = ''; addRow('', 0); }
       const o = document.getElementById('mzaOut'); if (o) o.innerHTML = ''; LAST = null; LAST_ID = null;
       const first = f.querySelector('input[type=number]'); if (first) first.focus();
@@ -192,7 +216,7 @@
     const done = loading(['قراءة قطاعات البورصة وأكبر شركاتها', 'تقييم كل شركة بمحرك بصيرة (المؤشرات + احتمال الصعود + التذبذب)', 'حساب التوزيع حسب المخاطرة وحدود التركيز', 'الذكاء الاصطناعي بيكتب الرأي']);
     let S; try { S = await loadSectors(market); } catch(e){ done(); return toast(e.message, 'err'); }
     if (tok && screenStale(tok)) return;
-    const ex = new Set([...document.querySelectorAll('#mzaSEx button.off')].map(b => b.dataset.k));
+    const ex = msExcluded('mzaSEx', S.map(s => s.k));
     // الإصدار 123: المخاطرة بتأثر فعلًا — محافظ: حد أقصى أقل لكل قطاع (تنويع أكتر) / مغامر: تركيز أعلى على القطاعات الأقوى
     const capR = r === 'low' ? Math.min(cap, 0.25) : r === 'high' ? Math.min(0.6, cap + 0.1) : cap;
     const list = splitSectors(S.filter(s => !ex.has(s.k)), r, max, capR);
@@ -231,7 +255,7 @@
     const type = segVal('mzaAType'), amt = Math.max(0, +document.getElementById('mzaAAmt').value || 0), mon = type === 'monthly' ? Math.max(0, +document.getElementById('mzaAMon').value || 0) : 0;
     const hz = +document.getElementById('mzaAHz').value, expP = +document.getElementById('mzaAExp').value, r = segVal('mzaARisk');
     if (amt <= 0 && mon <= 0) return toast('اكتب مبلغ أو مبلغ شهري', 'err');
-    const ex = new Set([...document.querySelectorAll('#mzaAEx button.off')].map(b => b.dataset.k));
+    const ex = msExcluded('mzaAEx', ASSETS.filter(a => a.k !== 'expenses').map(a => a.k));
     const base = Object.assign({}, CFG.profiles[r] || {}); ex.forEach(k => delete base[k]);
     const t = Object.values(base).reduce((a, b) => a + b, 0); if (!t) return toast('سيب أصل واحد على الأقل', 'err');
     const list = Object.keys(base).filter(k => base[k] > 0).map(k => Object.assign({}, ASSETS.find(a => a.k === k), { p: base[k] / t * (100 - expP) }));
@@ -346,7 +370,7 @@
           </tbody><tfoot><tr><td>الإجمالي</td><td class="n">100%</td><td class="n">${f0(L.amt)}</td><td colspan="3"></td></tr></tfoot></table></div></div>
       <h2 class="mz-sec-title"><span class="ic">🏢</span> الشركات المرشحة في كل قطاع <span class="bs-chip bs-c-gold">دوس على أي شركة ← تحليلها الكامل في بصيرة</span></h2>
       <div class="mza-sectors">${L.list.map((s, i) => `<div class="mza-sc" style="--c:${COLORS[i % COLORS.length]}"><h4>${E(s.n)} <span class="bs-chip bs-c-gold">${s.p}%</span></h4><div class="mza-amt">المبلغ: <b class="n">${f0(s.amt)}</b> — اتجاه ${s.trend} — مخاطرة ${s.risk}</div><p>${E(s.why)}</p>
-        ${s.pick.map(c => `<div class="mza-co"><button type="button" class="mza-co-open" data-s="${E(c.s)}" title="${E(c.s)} — ${E(c.n)}"><span class="av">${E(c.s.slice(0, 6))}</span><span class="mza-co-t"><b>${E(c.n)}</b><small>درجة بصيرة ${c.score}/100 • احتمال الصعود خلال شهر ${c.up}% • خطة مقترحة: ${c.plan}</small></span><span class="mza-co-a"><b class="n">${f0(c.amt)}</b><span class="go">🔮 التفاصيل ↗</span></span></button>
+        ${s.pick.map(c => `<div class="mza-co"><button type="button" class="mza-co-open" data-s="${E(c.s)}" data-coname="${E(c.n)}"><span class="av">${E(c.s.slice(0, 6))}</span><span class="mza-co-t"><b class="g-coname">${E(c.n)}</b><b class="mza-co-sym">${E(c.s)}</b><small>درجة بصيرة ${c.score}/100 • احتمال الصعود خلال شهر ${c.up}% • خطة مقترحة: ${c.plan}</small></span><span class="mza-co-a"><b class="n">${f0(c.amt)}</b><span class="go">🔮 التفاصيل ↗</span></span></button>
           ${readOnly ? '' : `<button type="button" class="small mza-plan" data-s="${E(c.s)}" data-t="${c.plan}" data-a="${Math.round(c.amt)}" data-p="${c.last || ''}">+ ابدأ خطة ${c.plan}</button>`}</div>`).join('')}</div>`).join('')}</div>
       <div class="mz-note u-mt10">كل شركة ليها نوع خطة مقترح: <b>DCA</b> للشركات الأهدى على المدى الطويل (تعزيز متوسط مع الهبوط)، و<b>Grid</b> للأسهم المتذبذبة في نطاق (شراء وبيع على مستويات). المبلغ المقترح لكل شركة بيتحط كرأس مال الخطة.</div>`;
     } else if (L.mode === 'assets') {

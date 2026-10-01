@@ -113,10 +113,10 @@ const http = (u) => fetch(u).then(r => r.json());
   check('ميزان: النسب المالية (HHI + عدد الأسهم الفعلي + التذبذب + أقصى تراجع + الارتباط + نسبة التنويع)', ['HHI', 'عدد الأسهم الفعلي', 'التذبذب السنوي', 'أقصى تراجع', 'متوسط الارتباط', 'نسبة التنويع'].every(k => z1.kpis.some(x => x.includes(k))), z1.kpis.join('|'));
   const comi = (z1.rows.find(r => /^COMI/.test(r[0])) || []);
   check('ميزان: القيمة بسعر السوق (6 × 140 = 840 بعد البيع) مش آخر سعر شراء', comi[5] === '840.00', comi.join(' | '));
-  check('ميزان: القطاعات من السوق بالعربي (المالية والبنوك / الخدمات الصناعية)', z1.secs.includes('المالية والبنوك') && z1.secs.some(x => /الخدمات الصناعية/.test(x)), z1.secs.join('|'));
+  check('ميزان: القطاعات من السوق بالعربي (البنوك / المقاولات — كل قطاع مستقل)', z1.secs.includes('البنوك') && z1.secs.includes('المقاولات'), z1.secs.join('|'));
   check('ميزان: DCA + Grid لنفس القطاع متجمعين + كل سهم ليه نوع خطته', z1.rows.length === 3 && z1.rows.some(r => /^HRHO/.test(r[0]) && r[2] === 'Grid'), z1.rows.map(r => r[0] + ':' + r[2]).join(','));
   const tr = await a.evaluate(() => [...document.querySelectorAll('.mz-table tbody tr')].map(r => ({ s: r.cells[0].textContent.trim().slice(0, 4), t: (r.querySelector('.mz-tgt b') || {}).textContent, why: (r.querySelector('.mz-why') || {}).textContent || '' })));
-  check('ميزان من غير مفتاح: «النسبة المقترحة» لكل سهم بالقواعد + السبب (قطاع مسيطر ← COMI أقل من الوزن المتساوي+الهامش)', tr.length === 3 && tr.every(x => /^\d+%$/.test(x.t || '')) && /قطاع «المالية والبنوك»/.test((tr.find(x => x.s === 'COMI') || {}).why), JSON.stringify(tr));
+  check('ميزان من غير مفتاح: «النسبة المقترحة» لكل سهم بالقواعد + السبب (قطاع مسيطر ← COMI أقل من الوزن المتساوي+الهامش)', tr.length === 3 && tr.every(x => /^\d+%$/.test(x.t || '')) && /قطاع «البنوك»/.test((tr.find(x => x.s === 'COMI') || {}).why), JSON.stringify(tr));
   check('ميزان: التنبيه «فوق النسبة المقترحة» مع «يُفضّل تنزل لـ»', z1.alerts.some(x => /COMI فوق النسبة المقترحة/.test(x)));
   check('ميزان: من غير مفتاح ← «تحليل آلي» + تنبيهات + إعادة توازن بالأرقام', /تحليل آلي/.test(z1.chip || '') && z1.alerts.length > 0 && z1.moves.length > 0, (z1.chip || '') + ' / ' + z1.alerts.join('|'));
 

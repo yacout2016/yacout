@@ -380,26 +380,54 @@ function bs_quick($conn, $sym, $market){
 /* =====================================================================
    الإصدار 118: «مسح السوق» في بصيرة — كل أسهم البورصة (أو قطاع) مترتبة حسب احتمال الصعود في الفترة المختارة
    ===================================================================== */
+// الإصدار 123: كل قطاع مستقل — مفيش قطاعين مدموجين في اسم واحد (زي «الخدمات الاستهلاكية والسياحة» أو «المالية والبنوك»)
+//   القطاع بيتحدد من الصناعة (industry) الأول، ولو مش معروفة ← القطاع العام (sector)
 const BS_SECTORS = [
-    'Finance' => 'المالية والبنوك', 'Consumer Non-Durables' => 'سلع استهلاكية', 'Producer Manufacturing' => 'التصنيع',
-    'Non-Energy Minerals' => 'مواد البناء والمعادن', 'Process Industries' => 'الكيماويات والأسمدة', 'Utilities' => 'المرافق',
-    'Communications' => 'الاتصالات', 'Technology Services' => 'خدمات التكنولوجيا', 'Electronic Technology' => 'التكنولوجيا الإلكترونية',
-    'Health Technology' => 'الأدوية والرعاية الصحية', 'Health Services' => 'الخدمات الصحية', 'Retail Trade' => 'تجارة التجزئة',
-    'Distribution Services' => 'التوزيع', 'Transportation' => 'النقل', 'Industrial Services' => 'الخدمات الصناعية والمقاولات',
-    'Energy Minerals' => 'الطاقة والبترول', 'Consumer Services' => 'الخدمات الاستهلاكية والسياحة', 'Consumer Durables' => 'السلع المعمرة',
+    'Finance' => 'الخدمات المالية', 'Consumer Non-Durables' => 'السلع الاستهلاكية', 'Producer Manufacturing' => 'التصنيع',
+    'Non-Energy Minerals' => 'المعادن', 'Process Industries' => 'الصناعات التحويلية', 'Utilities' => 'المرافق',
+    'Communications' => 'الاتصالات', 'Technology Services' => 'خدمات التكنولوجيا', 'Electronic Technology' => 'الإلكترونيات',
+    'Health Technology' => 'الأدوية', 'Health Services' => 'الخدمات الطبية', 'Retail Trade' => 'تجارة التجزئة',
+    'Distribution Services' => 'التوزيع', 'Transportation' => 'النقل', 'Industrial Services' => 'الخدمات الصناعية',
+    'Energy Minerals' => 'البترول', 'Consumer Services' => 'الخدمات الاستهلاكية', 'Consumer Durables' => 'السلع المعمرة',
     'Commercial Services' => 'الخدمات التجارية', 'Miscellaneous' => 'متنوع', 'Government' => 'حكومي',
 ];
+const BS_INDUSTRIES = [
+    'Major Banks' => 'البنوك', 'Regional Banks' => 'البنوك', 'Savings Banks' => 'البنوك',
+    'Real Estate Development' => 'العقارات', 'Real Estate Investment Trusts' => 'العقارات',
+    'Life/Health Insurance' => 'التأمين', 'Property/Casualty Insurance' => 'التأمين', 'Multi-Line Insurance' => 'التأمين', 'Specialty Insurance' => 'التأمين', 'Insurance Brokers/Services' => 'التأمين',
+    'Investment Banks/Brokers' => 'الخدمات المالية غير المصرفية', 'Investment Managers' => 'الخدمات المالية غير المصرفية', 'Financial Conglomerates' => 'الخدمات المالية غير المصرفية',
+    'Finance/Rental/Leasing' => 'الخدمات المالية غير المصرفية', 'Investment Trusts/Mutual Funds' => 'الخدمات المالية غير المصرفية', 'Financial Publishing/Services' => 'الخدمات المالية غير المصرفية',
+    'Hotels/Resorts/Cruiselines' => 'السياحة', 'Restaurants' => 'المطاعم', 'Casinos/Gaming' => 'الترفيه', 'Movies/Entertainment' => 'الترفيه',
+    'Broadcasting' => 'الإعلام', 'Cable/Satellite TV' => 'الإعلام', 'Publishing: Newspapers' => 'الإعلام', 'Publishing: Books/Magazines' => 'الإعلام', 'Media Conglomerates' => 'الإعلام',
+    'Other Consumer Services' => 'التعليم', 'Engineering & Construction' => 'المقاولات', 'Homebuilding' => 'المقاولات',
+    'Oilfield Services/Equipment' => 'خدمات البترول', 'Contract Drilling' => 'خدمات البترول', 'Oil & Gas Pipelines' => 'خدمات البترول', 'Environmental Services' => 'الخدمات البيئية',
+    'Construction Materials' => 'مواد البناء', 'Steel' => 'الحديد', 'Aluminum' => 'المعادن', 'Other Metals/Minerals' => 'المعادن', 'Precious Metals' => 'المعادن',
+    'Chemicals: Agricultural' => 'الأسمدة', 'Chemicals: Major Diversified' => 'الكيماويات', 'Chemicals: Specialty' => 'الكيماويات', 'Industrial Specialties' => 'الكيماويات',
+    'Textiles' => 'المنسوجات', 'Pulp & Paper' => 'الورق', 'Containers/Packaging' => 'التغليف', 'Agricultural Commodities/Milling' => 'الزراعة',
+    'Food: Major Diversified' => 'الأغذية', 'Food: Specialty/Candy' => 'الأغذية', 'Food: Meat/Fish/Dairy' => 'الأغذية', 'Food Retail' => 'تجارة التجزئة',
+    'Beverages: Non-Alcoholic' => 'المشروبات', 'Beverages: Alcoholic' => 'المشروبات', 'Tobacco' => 'التبغ', 'Apparel/Footwear' => 'الملابس', 'Household/Personal Care' => 'العناية الشخصية',
+    'Oil Refining/Marketing' => 'تكرير البترول', 'Integrated Oil' => 'البترول', 'Oil & Gas Production' => 'البترول', 'Coal' => 'الفحم',
+    'Electric Utilities' => 'الكهرباء', 'Gas Distributors' => 'توزيع الغاز', 'Water Utilities' => 'المياه', 'Alternative Power Generation' => 'الطاقة المتجددة',
+    'Pharmaceuticals: Major' => 'الأدوية', 'Pharmaceuticals: Other' => 'الأدوية', 'Pharmaceuticals: Generic' => 'الأدوية', 'Medical Specialties' => 'المستلزمات الطبية',
+    'Hospital/Nursing Management' => 'المستشفيات', 'Medical/Nursing Services' => 'الخدمات الطبية', 'Services to the Health Industry' => 'الخدمات الطبية',
+    'Major Telecommunications' => 'الاتصالات', 'Wireless Telecommunications' => 'الاتصالات', 'Specialty Telecommunications' => 'الاتصالات',
+    'Marine Shipping' => 'الشحن البحري', 'Airlines' => 'الطيران', 'Air Freight/Couriers' => 'النقل', 'Trucking' => 'النقل', 'Railroads' => 'النقل', 'Other Transportation' => 'النقل',
+];
+function bs_sector_ar($sector, $industry = ''){
+    if (is_string($industry) && $industry !== '' && isset(BS_INDUSTRIES[$industry])) return BS_INDUSTRIES[$industry];
+    return is_string($sector) && $sector !== '' ? (BS_SECTORS[$sector] ?? $sector) : 'غير محدد';
+}
 
 /* قائمة أسهم البورصة بالقطاع (طلب واحد لـ TradingView ومتخزنة 12 ساعة) - مترتبة بالقيمة السوقية (الكبار الأول) */
 function bs_universe($conn, $market){
     $c = opp_mkt($market);
-    $f = opp_cache_dir() . '/' . md5('bsuni118|' . $market) . '.json';
+    $f = opp_cache_dir() . '/' . md5('bsuni123|' . $market) . '.json';
     if (is_file($f) && time() - filemtime($f) < 12 * 3600 && ($j = json_decode((string)@file_get_contents($f), true))) return $j;
     $out = [];
-    $r = mq_http(TV_SCAN_BASE . $c['screener'] . '/scan', ['filter' => [], 'columns' => ['name', 'description', 'close', 'sector', 'market_cap_basic'], 'range' => [0, 800], 'sort' => ['sortBy' => 'market_cap_basic', 'sortOrder' => 'desc']]);
+    $r = mq_http(TV_SCAN_BASE . $c['screener'] . '/scan', ['filter' => [], 'columns' => ['name', 'description', 'close', 'sector', 'market_cap_basic', 'industry'], 'range' => [0, 800], 'sort' => ['sortBy' => 'market_cap_basic', 'sortOrder' => 'desc']]);
     foreach (($r['data'] ?? []) as $row) {
         $d = $row['d'] ?? []; $sym = strtoupper((string)($d[0] ?? '')); if (!preg_match('/^[A-Z0-9.\-]{1,20}$/', $sym)) continue;
-        $sec = is_string($d[3] ?? null) && $d[3] !== '' ? (BS_SECTORS[$d[3]] ?? $d[3]) : 'غير محدد';
+        $sec = bs_sector_ar($d[3] ?? '', $d[5] ?? '');
         $out[] = ['s' => $sym, 'n' => (string)($d[1] ?? $sym), 'sec' => $sec, 'cap' => is_numeric($d[4] ?? null) ? (float)$d[4] : 0];
     }
     if (!$out) { foreach (opp_universe($conn, $market) as $u) $out[] = ['s' => $u['s'], 'n' => $u['n'], 'sec' => 'غير محدد', 'cap' => 0]; return $out; }

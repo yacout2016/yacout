@@ -11,13 +11,13 @@ const { check, summary, launch, page, loginAdmin, q, BASE } = require('../lib');
   const ks = await a.evaluate(() => [...document.querySelectorAll('.gs-sidebar > .gs-side-item')].filter(x => x.offsetParent !== null).map(x => ({ k: x.getAttribute('data-gs-key'), top: x.getBoundingClientRect().top })).sort((x, y) => x.top - y.top).map(x => x.k));
   check('القائمة: «ميزان GRIFFINE AI» قبل كشاف الأسهم على طول', ks.indexOf('mizanai') >= 0 && ks.indexOf('mizanai') + 1 === ks.indexOf('screener'), ks.join(','));
   await a.click('.gs-sidebar [data-gs-key="mizanai"]');
-  await a.waitForFunction(() => document.querySelectorAll('#mzaSEx button').length >= 3, null, { timeout: 90000 }).catch(() => {});
-  const f = await a.evaluate(() => ({ modes: [...document.querySelectorAll('.mza-mode b')].map(x => x.textContent), ex: [...document.querySelectorAll('#mzaSEx button')].map(x => x.textContent), title: document.querySelector('.mza-screen .bs-brand h1').textContent }));
+  await a.waitForFunction(() => document.querySelectorAll('#mzaSEx .mza-ms-opt').length >= 3, null, { timeout: 90000 }).catch(() => {});
+  const f = await a.evaluate(() => ({ modes: [...document.querySelectorAll('.mza-mode b')].map(x => x.textContent), ex: [...document.querySelectorAll('#mzaSEx .mza-ms-opt')].map(x => x.textContent.trim()), title: document.querySelector('.mza-screen .bs-brand h1').textContent }));
   check('الشاشة: «ميزان GRIFFINE AI» + الأوضاع التلاتة', /ميزان/.test(f.title) && f.modes.join('|') === 'توزيع على قطاعات الأسهم|توزيع شامل للأصول|فحص توزيعتي الحالية', f.modes.join('|'));
-  check('القطاعات من البورصة الحقيقية (محرك بصيرة) بالعربي', f.ex.includes('المالية والبنوك') && f.ex.length >= 3, f.ex.join(' | '));
+  check('القطاعات من البورصة الحقيقية (محرك بصيرة) بالعربي', f.ex.includes('البنوك') && f.ex.length >= 3, f.ex.join(' | '));
 
   // 1) قطاعات الأسهم (من غير مفتاح ← رأي بالقواعد)
-  await a.click('#mzaSEx button:has-text("تجارة التجزئة")');
+  await a.selectOption('#mzaSExM', 'ex'); await a.click('#mzaSEx .mza-ms-opt:has-text("تجارة التجزئة")'); await a.click('body', { position: { x: 5, y: 5 } });
   await a.fill('#mzaSAmt', '100000'); await a.click('#mzaSGo');
   await a.waitForSelector('.mza-sectors', { timeout: 60000 }).catch(() => {});
   const s1 = await a.evaluate(() => { const rows = [...document.querySelectorAll('#mzaOut .mza-table tbody tr')].map(r => ({ n: r.cells[0].textContent.trim(), p: parseFloat(r.cells[1].textContent.replace(/[^\d.]/g, '')), amt: r.cells[2].textContent.trim() }));
@@ -39,7 +39,7 @@ const { check, summary, launch, page, loginAdmin, q, BASE } = require('../lib');
   const pf = await a.evaluate((t) => t === 'Grid' ? { s: document.getElementById('g_symbol').value, c: document.getElementById('g_capital').value } : { s: document.getElementById('symbol').value, c: document.getElementById('capital').value }, plan.t);
   check('«ابدأ خطة» بيفتح نموذج الخطة بالسهم ورأس المال المقترح', pf.s === plan.s && +pf.c === +plan.a, JSON.stringify({ plan, pf }));
   // الشركة المرشحة ← بصيرة
-  await a.evaluate(() => renderMizanAi()); await a.waitForFunction(() => document.querySelectorAll('#mzaSEx button').length >= 3, null, { timeout: 60000 });
+  await a.evaluate(() => renderMizanAi()); await a.waitForFunction(() => document.querySelectorAll('#mzaSEx .mza-ms-opt').length >= 3, null, { timeout: 60000 });
   await a.click('#mzaSGo'); await a.waitForSelector('.mza-co-open', { timeout: 60000 });
   const co = await a.evaluate(() => document.querySelector('.mza-co-open').dataset.s);
   await a.click('.mza-co-open'); await a.waitForSelector('.bs-hero', { timeout: 40000 }).catch(() => {});
@@ -77,7 +77,7 @@ const { check, summary, launch, page, loginAdmin, q, BASE } = require('../lib');
 
   // موبايل
   const m = await page(b, { width: 390, height: 844 }); await loginAdmin(m);
-  await m.evaluate(() => renderMizanAi()); await m.waitForFunction(() => document.querySelectorAll('#mzaSEx button').length >= 3, null, { timeout: 60000 }).catch(() => {});
+  await m.evaluate(() => renderMizanAi()); await m.waitForFunction(() => document.querySelectorAll('#mzaSEx .mza-ms-opt').length >= 3, null, { timeout: 60000 }).catch(() => {});
   await m.click('#mzaSGo'); await m.waitForSelector('.mza-sectors', { timeout: 30000 }).catch(() => {});
   const ov = await m.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   check('الموبايل: مفيش تمرير أفقي', ov <= 1, ov);

@@ -51,7 +51,7 @@ function mza_ready($conn){
 /* إحصائيات القطاعات: أكبر القطاعات بالقيمة السوقية ← أكبر شركات كل قطاع ← محرك بصيرة لكل شركة */
 function mza_sectors($conn, $market){
     $cfg = mza_cfg($conn); $bcfg = bs_cfg($conn);
-    $f = opp_cache_dir() . '/' . md5('mza122|' . $market . '|' . $cfg['sectors_max'] . '|' . $cfg['per_sector']) . '.json';
+    $f = opp_cache_dir() . '/' . md5('mza123|' . $market . '|' . $cfg['sectors_max'] . '|' . $cfg['per_sector']) . '.json';
     if (is_file($f) && time() - filemtime($f) < 3600 && ($j = json_decode((string)@file_get_contents($f), true))) { $j['cached'] = true; return $j; }
     $U = bs_universe($conn, $market); $names = bs_names($bcfg);
     $by = [];

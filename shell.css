@@ -1258,3 +1258,11 @@ body.g-shell #app button.wl-del, button.wl-del{ padding:5px 9px !important; min-
   body.g-shell #app table.wl-table.g-cards button.wl-bs{ width:100% !important; padding:9px 10px !important; font-size:13.5px !important; }
   body.g-shell #app .wl-card{ background:transparent !important; border:0 !important; box-shadow:none !important; }
 }
+
+/* الإصدار 124: فقاعة اسم الشركة + على الموبايل الكود بس */
+.g-cotip{ position:fixed; z-index:9999; max-width:min(320px, calc(100vw - 16px)); background:#111827; color:#fff; font-size:12.5px; line-height:1.6; padding:6px 10px; border-radius:8px; box-shadow:0 6px 18px rgba(0,0,0,.3); pointer-events:none; }
+.g-cotip[hidden]{ display:none; }
+[data-coname]{ -webkit-touch-callout:none; }
+@media (max-width:640px){
+  body.g-shell #app .g-coname{ display:none !important; }
+}

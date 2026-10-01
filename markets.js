@@ -133,7 +133,7 @@ async function renderWatchlistPage(){
     const bsOk = typeof window.renderBasira === 'function' && (window.__isAdmin || !(window.GShell && GShell.settings && GShell.settings.hide_basira_screen === true));
     if (!r.success) { tb.innerHTML = `<tr><td colspan="6" class="error">${escapeHtml(r.message || '')}</td></tr>`; return; }
     tb.innerHTML = r.items.length ? r.items.map(x => `<tr>
-      <td><button type="button" class="gs-link" data-open="${escapeHtml(x.symbol)}" data-mkt="${escapeHtml(x.market)}" style="font-weight:800;">${escapeHtml(x.symbol)}</button><div style="font-size:11px;opacity:.7">${escapeHtml(x.name || '')} · ${escapeHtml(x.market)}</div></td>
+      <td><button type="button" class="gs-link" data-open="${escapeHtml(x.symbol)}" data-mkt="${escapeHtml(x.market)}" style="font-weight:800;"${x.name ? ` data-coname="${escapeHtml(x.name)}"` : ''}>${escapeHtml(x.symbol)}</button><div style="font-size:11px;opacity:.7">${x.name ? `<span class="g-coname">${escapeHtml(x.name)} · </span>` : ''}${escapeHtml(x.market)}</div></td>
       <td dir="ltr"><b>${x.ok ? MK.n(x.last, 4) : '—'}</b> <small>${escapeHtml(x.currency || '')}</small></td>
       <td>${x.ok ? mkChgHtml(x.last, x.prevClose) : '<small class="neg">لا توجد بيانات</small>'}</td>
       <td class="wl-hl"><span dir="ltr">${MK.n(x.high, 4)}</span><small dir="ltr">${MK.n(x.low, 4)}</small></td>
