@@ -67,7 +67,7 @@
           <div class="rc-type" id="rcType"><button type="button" data-t="buy" class="on">${E(C.t_buy_tab)}</button><button type="button" data-t="sell">${E(C.t_sell_tab)}</button></div>
           <div class="rc-grid">
             <div class="wide"><label for="rcValid">صلاحية التوصية ${gTipI('بعد المدة دي التوصية بتتقفل تلقائي ويوصل للمشتركين إشعار إنها انتهت')}</label>
-              <div class="rc-valrow"><select id="rcValid">${meta.valid.map(v => `<option value="${v.h}" data-long="${v.long ? 1 : 0}" ${v.h === 24 ? 'selected' : ''}>${E(v.l)}</option>`).join('')}</select><span class="rc-longtag" id="rcLong" hidden>${E(C.t_long_term)}</span></div></div>
+              <div class="rc-valrow"><select id="rcValid">${meta.valid.map(v => `<option value="${v.h}" data-long="${v.long ? 1 : 0}" ${v.h === 24 ? 'selected' : ''}>${E(v.l)}</option>`).join('')}</select><span class="rc-longtag rc-off" id="rcLong" aria-live="polite">${E(C.t_long_term)} ${gTipI('بتتفعل تلقائي من أول صلاحية ' + ((meta.valid.find(v => v.long) || {}).l || 'أسبوعين') + ' وطالع — وبتظهر للمشترك على التوصية')}</span></div></div>
           </div>
           <h3 class="rc-h" id="rcEntryH">${E(C.t_entry_buy)}</h3>
           <div class="rc-grid">
@@ -245,7 +245,7 @@
     const s1v = val('rcS1'); if (s1v && f && t && (buy ? s1v >= Math.min(f, t) : s1v <= Math.max(f, t))) rr += ` <span class="neg">⚠️ ${buy ? 'وقف الخسارة لازم يبقى أقل من منطقة الشراء' : 'سعر الفشل لازم يبقى أعلى من منطقة البيع'}</span>`;
     $('rcRR').innerHTML = rr;
     const lp = LV && LV.levels && LV.levels.p; $('rcBandNote').textContent = lp && f && t ? `الفرق بين حدود المنطقة ${P((t / f - 1) * 100).replace('+', '')} — والمحوري ${N(rd(lp))}` : '';
-    const opt = $('rcValid').selectedOptions[0]; $('rcLong').hidden = !(opt && opt.dataset.long === '1');
+    const opt = $('rcValid').selectedOptions[0]; $('rcLong').classList.toggle('rc-off', !(opt && opt.dataset.long === '1'));   // مطفية لحد ما المدة توصل «طويلة المدى»
     drawAll();
     $('rcPreview').innerHTML = cardHtml(formObj(), { preview: true });
   }

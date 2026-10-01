@@ -22,9 +22,9 @@ const AN = { email: 'analyst129@example.com', pass: 'Test12345an' };   // حسا
   check('الترتيب: السهم والسعر المحوري يمين + رسالة التوصية شمال جنبه', lay.right && lay.top && lay.sym, JSON.stringify(lay).slice(0, 120));
   check('جنب كود السهم: «تحليل السهم» + «مسح السوق»', /تحليل السهم/.test(lay.an) && /مسح السوق/.test(lay.sc), lay.an + ' / ' + lay.sc);
   check('الصلاحية: ساعة / 3 / 6 / 9 / 12 / 24 ساعة ... 3 أسابيع / شهر / 3 / 6 / 12 شهر', lay.valid.length === 15 && lay.valid[0] === 'ساعة' && lay.valid.includes('9 ساعات') && lay.valid.includes('3 أسابيع') && lay.valid.includes('6 شهور') && lay.valid[14] === '12 شهر', lay.valid.join('، '));
-  await a.selectOption('#rcValid', '168'); const l1 = await a.evaluate(() => rcLong.hidden);
-  await a.selectOption('#rcValid', '336'); const l2 = await a.evaluate(() => ({ h: rcLong.hidden, t: rcLong.textContent }));
-  check('اختيار «أسبوعين» ← يظهر جنبها «توصية طويلة المدى» (وأسبوع لأ)', l1 && !l2.h && /طويلة المدى/.test(l2.t), JSON.stringify(l2));
+  await a.selectOption('#rcValid', '168'); const l1 = await a.evaluate(() => ({ off: rcLong.classList.contains('rc-off'), vis: !!rcLong.offsetParent, tip: !!rcLong.querySelector('.g-tip') && /أسبوعين/.test(rcLong.querySelector('.g-tip').dataset.tip) }));
+  await a.selectOption('#rcValid', '336'); const l2 = await a.evaluate(() => ({ off: rcLong.classList.contains('rc-off'), t: rcLong.textContent }));
+  check('«توصية طويلة المدى» ظاهرة مطفية + علامة (!) بالشرح — ومن أول «أسبوعين» بتنوّر (الإصدار 130)', l1.off && l1.vis && l1.tip && !l2.off && /طويلة المدى/.test(l2.t), JSON.stringify([l1, l2]));
 
   // 3) السهم ← المستويات + الرسم + بصيرة
   await a.fill('#rcSym', 'COMI'); await a.waitForSelector('.rc-lv', { timeout: 30000 }).catch(() => {});
