@@ -142,6 +142,7 @@ async function renderWatchlistPage(){
       : '<tr><td colspan="6" style="padding:14px;color:#888;">قائمتك فارغة - أضف رمز سهم من الأعلى.</td></tr>';
     tb.querySelectorAll('[data-open]').forEach(b => b.onclick = () => renderStockPage(b.dataset.open, b.dataset.mkt));
     tb.querySelectorAll('[data-bs]').forEach(b => b.onclick = () => window.renderBasira(b.dataset.bs, b.dataset.mkt));   // الإصدار 121: تحليل السهم في بصيرة
+    if (typeof gLabelCells === 'function') gLabelCells(document.getElementById('wlTable'));   // الإصدار 123: كروت على الموبايل
     tb.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => { await MK.post({ action: 'watch_remove', id: +b.dataset.del }); load(); });
   };
   document.getElementById('wlAdd').onclick = async () => {
@@ -214,8 +215,11 @@ function mkLimitList(box, n){
 // الإصدار 91: التنبيهات بتفضل في الرئيسية لحد ما تقفلها (✕) - وبعدها بتفضل في شاشة التنبيهات
 async function mkAlertsCard(el){
   if (!el) return;
-  const r = await MK.get('action=alerts');
+  // الإصدار 123: زرار «خطة السهم» بيظهر بس لو عندك خطة DCA أو Grid على نفس السهم
+  const email = await getSession().catch(() => null);
+  const [r, plans, grids] = await Promise.all([MK.get('action=alerts'), email ? getPlans(email).catch(() => ({})) : {}, email ? getGridPlans(email).catch(() => ({})) : {}]);
   if (!el.isConnected) return;
+  const planOf = (sym) => { sym = String(sym || '').toUpperCase(); return plans && plans[sym] ? 'DCA' : grids && grids[sym] ? 'Grid' : ''; };
   window.__mkUnread = r.success ? r.unread : 0; mkUpdateAlertBadge();
   const list = r.success ? r.alerts.filter(a => !a.dismissed) : [];
   el.innerHTML = list.length ? `<div class="section-card gs-alert-card"><div class="u-row"><strong>🔔 تنبيهات الأسعار (${list.length})</strong>
@@ -223,12 +227,13 @@ async function mkAlertsCard(el){
     <div class="gs-alert-list">${list.map(a => `<div class="gs-alert-row${a.is_read ? '' : ' unread'}" data-aid="${a.id}">
       <button type="button" class="gs-alert-x" data-dis="${a.id}" aria-label="إغلاق" title="إغلاق (يبقى في شاشة التنبيهات)">✕</button>
       <b>${escapeHtml(a.title)}</b><div>${escapeHtml(a.body || '')}</div>
-      <small class="u-muted">${escapeHtml(formatDateTimeAr(a.created_at))}</small>${a.symbol ? ` · <button type="button" class="gs-link" data-sym="${escapeHtml(a.symbol)}" data-mkt="${escapeHtml(a.market || 'مصر')}">صفحة السهم</button>` : ''}</div>`).join('')}</div></div>` : '';
+      <small class="u-muted">${escapeHtml(formatDateTimeAr(a.created_at))}</small>${a.symbol ? ` · <button type="button" class="gs-link" data-sym="${escapeHtml(a.symbol)}" data-mkt="${escapeHtml(a.market || 'مصر')}">صفحة السهم</button>${planOf(a.symbol) ? ` · <button type="button" class="gs-link" data-plan-sym="${escapeHtml(String(a.symbol).toUpperCase())}" data-plan-kind="${planOf(a.symbol)}">خطة السهم (${planOf(a.symbol)})</button>` : ''}` : ''}</div>`).join('')}</div></div>` : '';
   mkLimitList(el.querySelector('.gs-alert-list'), 5);
   const b = document.getElementById('gsAlertsAll'); if (b) b.onclick = () => renderAlertsPage();
   const ca = document.getElementById('gsAlertsCloseAll'); if (ca) ca.onclick = async () => { await MK.post({ action:'alert_dismiss', all:'1' }); mkAlertsCard(el); };
   el.querySelectorAll('[data-dis]').forEach(x => x.onclick = async (ev) => { ev.stopPropagation(); await MK.post({ action:'alert_dismiss', id: x.dataset.dis }); mkAlertsCard(el); });
   el.querySelectorAll('[data-sym]').forEach(x => x.onclick = () => renderStockPage(x.dataset.sym, x.dataset.mkt));
+  el.querySelectorAll('[data-plan-sym]').forEach(x => x.onclick = () => { if (x.dataset.planKind === 'Grid') renderGridPlanDetail(x.dataset.planSym); else renderPlanDetail(x.dataset.planSym); });
 }
 function mkUpdateAlertBadge(){
   document.querySelectorAll('[data-gs-alerts-badge]').forEach(e => { e.textContent = window.__mkUnread || ''; e.style.display = window.__mkUnread ? '' : 'none'; });

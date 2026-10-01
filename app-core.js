@@ -3,7 +3,7 @@
    (اتفصل من griffine.js - كل الملفات بتتحمّل بالترتيب في index.php وبتشارك نفس المتغيرات العامة)
    ===================================================================== */
 /* GRIFFINE — كود الواجهة الأساسي (اتفصل من index.php في الإصدار 68) */
-const GRIFFINE_LOGO_B64 = location.origin + '/griffine-logo-light.webp?v=122';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
+const GRIFFINE_LOGO_B64 = location.origin + '/griffine-logo-light.webp?v=123';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
 /* ================== حسابات مساعدة ================== */
 function daysBetween(isoStart, isoEnd){
   if(!isoStart) return null;
@@ -355,6 +355,15 @@ function screenStale(t){ return !!(window.GShell && typeof GShell.seq === 'numbe
    ===================================================================== */
 // الإصدار 89: نفس أدوات shell.css (u-*) - نوافذ التقارير مبتحمّلش ملفات CSS الموقع
 const G_UTIL_CSS = ".u-wa{ width:auto !important; } .u-w100{ width:100% !important; } .u-m0{ margin:0 !important; } .u-mt0{ margin-top:0 !important; } .u-mt4{ margin-top:4px !important; } .u-mt6{ margin-top:6px !important; } .u-mt8{ margin-top:8px !important; } .u-mt10{ margin-top:10px !important; } .u-mt12{ margin-top:12px !important; } .u-mt14{ margin-top:14px !important; } .u-mt20{ margin-top:20px !important; } .u-mt24{ margin-top:24px !important; } .u-mb6{ margin-bottom:6px !important; } .u-mb8{ margin-bottom:8px !important; } .u-mb10{ margin-bottom:10px !important; } .u-bn{ border:none !important; } .u-tc{ text-align:center !important; } .u-ox{ overflow-x:auto; } .u-fs11{ font-size:11px !important; } .u-fs12{ font-size:12px !important; } .u-fs13{ font-size:13px !important; } .u-fs135{ font-size:13.5px !important; } .u-muted{ color:#888 !important; } .u-note{ color:#888 !important; font-size:13px !important; } .u-hint{ color:#888 !important; font-size:11.5px !important; } .u-danger{ color:#C0392B !important; } .u-pos{ color:#0E9F6E !important; } .u-neg{ color:#E02424 !important; } .u-row{ display:flex; justify-content:space-between; align-items:center; gap:8px; } .u-check{ display:flex; align-items:center; gap:5px; font-weight:normal; } .u-prose{ font-size:13.5px; line-height:1.8; white-space:pre-wrap; } .g-num{font-variant-numeric:tabular-nums;direction:ltr;unicode-bidi:isolate}";
+/* الإصدار 123: على الموبايل الجداول بتتحول لكروت (كل صف كارت: الاسم فوق + كل رقم تحت عنوانه)
+   الدالة بتكتب عنوان العمود على كل خانة (data-label) — والشكل نفسه من CSS (table.g-cards) */
+function gLabelCells(table){
+  if (!table || !table.tHead || !table.tHead.rows[0]) return;
+  const heads = Array.from(table.tHead.rows[0].cells).map(c => { const t = Array.from(c.childNodes).filter(n => n.nodeType === 3 || (n.nodeType === 1 && !n.matches('button, i, .g-colx'))).map(n => n.textContent).join(' '); return t.replace(/[✕⇅↑↓▲▼]/g, '').replace(/\s+/g, ' ').trim(); });
+  table.querySelectorAll('tbody tr, tfoot tr').forEach(tr => Array.from(tr.cells).forEach((td, i) => { if (heads[i] && !td.hasAttribute('data-label')) td.setAttribute('data-label', heads[i]); }));
+  table.classList.add('g-cards');
+}
+
 function gReportReady(w){
   try {
     const d = w.document;
@@ -1221,9 +1230,9 @@ async function renderAccessExpired(sub){
 }
 
 const app = document.getElementById('app');
-const TOP7_LOGO_B64 = location.origin + '/top7-logo-light.webp?v=122';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
-const GRIFFINE_LOGO_DARK_B64 = location.origin + '/griffine-logo-dark.webp?v=122';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
-const TOP7_LOGO_DARK_B64 = location.origin + '/top7-logo-dark.webp?v=122';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
+const TOP7_LOGO_B64 = location.origin + '/top7-logo-light.webp?v=123';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
+const GRIFFINE_LOGO_DARK_B64 = location.origin + '/griffine-logo-dark.webp?v=123';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
+const TOP7_LOGO_DARK_B64 = location.origin + '/top7-logo-dark.webp?v=123';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
 /* الوضع الحالي (فاتح/ليلي) - الإصدار 71: بيتقري من الصفحة نفسها (data-theme) مش من التخزين بس،
    عشان الشعار يطلع صح حتى لو المتصفح مانع التخزين (وضع التصفح الخفي)
    (السكربت الصغير في index.php بيحط data-theme من التخزين قبل تحميل أي ملف، فالاتنين دايمًا متطابقين) */

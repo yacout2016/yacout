@@ -165,6 +165,7 @@ function mzPaint(body, R){
     <div class="bs-disc bs-disc2"><span>⚠️</span><div>${mzE((R.config && R.config.disclaimer) || 'تحليل آلي تعليمي — مش نصيحة استثمارية.')} الأداء السابق لا يضمن النتائج المستقبلية.</div></div>`;
   const openBs = (s, m) => { if (typeof window.renderBasira === 'function') window.renderBasira(s, m); };
   body.querySelectorAll('.mz-bs, .mz-co').forEach(b => b.onclick = () => openBs(b.dataset.s, b.dataset.m));
+  if (typeof gLabelCells === 'function') body.querySelectorAll('table.mz-table').forEach(gLabelCells);   // الإصدار 123: كروت على الموبايل
 }
 
 function mzPrint(R){

@@ -21,15 +21,21 @@
   const MKTS = ['مصر', 'السعودية', 'الإمارات', 'قطر', 'الكويت'];
   const allowedMkts = () => { try { const a = window.gAllowedMarkets && window.gAllowedMarkets(); if (a && a.length) return a; } catch(e){} return MKTS; };
   const ASSETS = [
-    { k: 'stocks', n: 'أسهم (عبر خطط DCA / Grid)', ic: '📈', vol: 18, risk: 3 },
+    // الإصدار 123: كل أصل لوحده (الادخار منفصل عن الصناديق النقدية + أنواع الصناديق + الحسابات البنكية)
+    { k: 'stocks', n: 'أسهم (قطاعات البورصة عبر خطط DCA / Grid)', ic: '📈', vol: 18, risk: 3 },
+    { k: 'equity_funds', n: 'صناديق أسهم (دخل متغير)', ic: '📊', vol: 14, risk: 3 },
+    { k: 'fixed_funds', n: 'صناديق دخل ثابت', ic: '🧾', vol: 2, risk: 1 },
+    { k: 'money_funds', n: 'صناديق نقدية', ic: '💧', vol: 0.5, risk: 1 },
     { k: 'realestate', n: 'عقار', ic: '🏠', vol: 8, risk: 2 },
-    { k: 'cds', n: 'شهادات بنكية', ic: '📜', vol: 0.5, risk: 1 },
-    { k: 'savings', n: 'حساب ادخار / صناديق نقدية', ic: '🏦', vol: 1, risk: 1 },
     { k: 'gold', n: 'ذهب', ic: '🥇', vol: 12, risk: 2 },
-    { k: 'expenses', n: 'مصاريف / طوارئ (سيولة)', ic: '💵', vol: 0, risk: 0 },
+    { k: 'cds', n: 'شهادات بنكية', ic: '📜', vol: 0.5, risk: 1 },
+    { k: 'daily_bank', n: 'حساب بنكي بعوائد يومية', ic: '🏦', vol: 0.3, risk: 1 },
+    { k: 'savings', n: 'حساب توفير بعوائد سنوية', ic: '🐖', vol: 0.3, risk: 1 },
+    { k: 'expenses', n: 'مصاريف طوارئ (سيولة)', ic: '💵', vol: 0, risk: 0 },
   ];
   const RISKW = { 'منخفض': 1, 'متوسط': 2, 'مرتفع': 3 };
   const RL = { low: 'محافظ', mid: 'متوازن', high: 'مغامر' };
+  const CASH = new Set(['expenses', 'savings', 'daily_bank', 'money_funds']);
   let CFG = null, SEC = {}, MODE = 'stocks', LAST = null, LAST_ID = null, RATES = {};
 
   async function loadCfg(){
@@ -92,7 +98,7 @@
           <div><label for="mzaSMax">أقصى عدد قطاعات</label><select id="mzaSMax"><option>4</option><option selected>6</option><option>8</option></select></div>
           <div><label for="mzaSCap">أقصى نسبة لقطاع واحد</label><select id="mzaSCap"><option value="25">25%</option><option value="30" selected>30%</option><option value="40">40%</option></select></div>
         </div>
-        <div class="mza-actions"><button type="button" class="mza-go" id="mzaSGo">✨ وزّع بالذكاء الاصطناعي</button><span class="u-muted u-fs12">بيستخدم: اتجاه كل قطاع + مؤشرات أكبر شركاته (بصيرة) + مستوى المخاطرة اللي اخترته</span></div>
+        <div class="mza-actions"><button type="button" class="secondary small mza-clear" data-f="stocks">🧹 تفريغ الخانات</button><button type="button" class="mza-go" id="mzaSGo">✨ وزّع بالذكاء الاصطناعي</button><span class="u-muted u-fs12">بيستخدم: اتجاه كل قطاع + مؤشرات أكبر شركاته (بصيرة) + مستوى المخاطرة اللي اخترته</span></div>
       </div>
       <div class="bs-card mza-form" id="mzaF-assets" hidden>
         <div class="mza-grid">
@@ -100,18 +106,19 @@
           <div><label for="mzaAAmt" id="mzaAAmtL">المبلغ</label><input id="mzaAAmt" type="number" min="0" step="1000" value="100000"></div>
           <div id="mzaAMonW" hidden><label for="mzaAMon">المبلغ الشهري</label><input id="mzaAMon" type="number" min="100" step="100" value="5000"></div>
           <div><label for="mzaAHz">المدة</label><select id="mzaAHz"><option value="1">شهر</option><option value="6">6 شهور</option><option value="12" selected>سنة</option><option value="36">3 سنين</option><option value="60">5 سنين</option></select></div>
+          <div><label for="mzaAMkt">بورصة قطاعات الأسهم</label><select id="mzaAMkt">${mk.map(x => `<option>${E(x)}</option>`).join('')}</select></div>
           <div><label>مستوى المخاطرة</label>${seg('mzaARisk', [['low', 'محافظ'], ['mid', 'متوازن'], ['high', 'مغامر']], 'mid')}</div>
           <div class="wide"><label>الأصول المسموح بيها (دوس عشان تستثني)</label><div class="mza-ex" id="mzaAEx">${ASSETS.filter(a => a.k !== 'expenses').map(a => `<button type="button" data-k="${a.k}">${a.ic} ${E(a.n)}</button>`).join('')}</div></div>
           <div><label for="mzaAExp">نسبة المصاريف / الطوارئ</label><select id="mzaAExp"><option value="0">من غير</option><option value="5">5%</option><option value="10" selected>10%</option><option value="15">15%</option></select></div>
         </div>
         <details class="u-mt10"><summary class="u-fs12">⚙️ العوائد السنوية المتوقعة لكل أصل (افتراضات تقدر تعدّلها)</summary><div class="mza-grid u-mt10" id="mzaRates">${ASSETS.filter(a => a.k !== 'expenses').map(a => `<div><label>${a.ic} ${E(a.n)} (% سنويًا)</label><input type="number" step="0.5" data-rate="${a.k}" value="${RATES[a.k] ?? 0}"></div>`).join('')}</div></details>
-        <div class="mza-actions"><button type="button" class="mza-go" id="mzaAGo">✨ وزّع واحسب النمو</button></div>
+        <div class="mza-actions"><button type="button" class="secondary small mza-clear" data-f="assets">🧹 تفريغ الخانات</button><button type="button" class="mza-go" id="mzaAGo">✨ وزّع واحسب النمو</button></div>
       </div>
       <div class="bs-card mza-form" id="mzaF-check" hidden>
         <div class="mz-note">اكتب استثماراتك الحالية (قطاع أسهم أو نوع أصل + المبلغ). الأداة بتحسب التركيز والخطورة وبتقترح إعادة توزيع. <button type="button" class="gs-link" id="mzaToPort">لتحليل أسهم خططك الفعلية افتح «ميزان محفظتك AI» ↗</button></div>
         <div class="mza-grid"><div><label for="mzaCMkt">بورصة قطاعات الأسهم</label><select id="mzaCMkt">${mk.map(x => `<option>${E(x)}</option>`).join('')}</select></div><div><label>مستوى المخاطرة</label>${seg('mzaCRisk', [['low', 'محافظ'], ['mid', 'متوازن'], ['high', 'مغامر']], 'mid')}</div></div>
         <div class="mza-rows" id="mzaCRows"><span class="u-muted u-fs12">جارٍ تحميل القطاعات…</span></div>
-        <div class="mza-actions"><button type="button" class="secondary small" id="mzaCAdd">+ إضافة بند</button><button type="button" class="mza-go" id="mzaCGo">🩺 افحص توزيعتي</button></div>
+        <div class="mza-actions"><button type="button" class="secondary small" id="mzaCAdd">+ إضافة بند</button><button type="button" class="secondary small mza-clear" data-f="check">🧹 تفريغ الخانات</button><button type="button" class="mza-go" id="mzaCGo">🩺 افحص توزيعتي</button></div>
       </div>
       <div class="mza-loading" id="mzaLoading" hidden></div>
       <div id="mzaOut"></div>
@@ -149,6 +156,16 @@
     sm.onchange = paintEx; cm.onchange = paintRows;
     paintEx(); paintRows();
     document.getElementById('mzaCAdd').onclick = () => addRow('', 0);
+    // الإصدار 123: تفريغ الخانات — المبالغ فاضية + كل القطاعات/الأصول مسموحة + النتيجة تتمسح
+    document.querySelectorAll('.mza-clear').forEach(b => b.onclick = () => {
+      const f = document.getElementById('mzaF-' + b.dataset.f); if (!f) return;
+      f.querySelectorAll('input[type=number]:not([data-rate])').forEach(i => { i.value = ''; });
+      f.querySelectorAll('.mza-ex button.off').forEach(x => x.classList.remove('off'));
+      if (b.dataset.f === 'check') { const box = document.getElementById('mzaCRows'); box.innerHTML = ''; addRow('', 0); }
+      const o = document.getElementById('mzaOut'); if (o) o.innerHTML = ''; LAST = null; LAST_ID = null;
+      const first = f.querySelector('input[type=number]'); if (first) first.focus();
+      toast('اتفرّغت الخانات');
+    });
     document.getElementById('mzaToPort').onclick = () => { if (typeof renderDiversificationReport === 'function') renderDiversificationReport(); };
     document.getElementById('mzaSGo').onclick = () => allocStocks(tok);
     document.getElementById('mzaAGo').onclick = () => allocAssets(tok);
@@ -176,24 +193,32 @@
     let S; try { S = await loadSectors(market); } catch(e){ done(); return toast(e.message, 'err'); }
     if (tok && screenStale(tok)) return;
     const ex = new Set([...document.querySelectorAll('#mzaSEx button.off')].map(b => b.dataset.k));
-    let list = S.filter(s => !ex.has(s.k)).map(s => { let w = s.score; const rw = RISKW[s.risk] || 2;
-      if (r === 'low') w -= (rw - 1) * 8; if (r === 'high') w += (rw - 1) * 6 + (s.trend === 'صاعد' ? 5 : 0); if (s.trend === 'هابط') w -= 10; if (s.trend === 'صاعد') w += 4;
-      return Object.assign({}, s, { w: Math.max(3, w - 35) }); });
+    // الإصدار 123: المخاطرة بتأثر فعلًا — محافظ: حد أقصى أقل لكل قطاع (تنويع أكتر) / مغامر: تركيز أعلى على القطاعات الأقوى
+    const capR = r === 'low' ? Math.min(cap, 0.25) : r === 'high' ? Math.min(0.6, cap + 0.1) : cap;
+    const list = splitSectors(S.filter(s => !ex.has(s.k)), r, max, capR);
     if (!list.length) { done(); return toast('استثنيت كل القطاعات — سيب قطاع واحد على الأقل', 'err'); }
+    list.forEach(s => { s.amt = amt * s.p / 100; const cos = (r === 'low' ? s.co.slice().sort((x, y) => (x.vol || 0) - (y.vol || 0)).slice(0, 2) : r === 'high' ? s.co.slice().sort((x, y) => (y.up || 0) - (x.up || 0)).slice(0, 3) : s.co.slice(0, 3)), tw = cos.reduce((a, c) => a + Math.max(1, c.score), 0); s.pick = cos.map(c => Object.assign({}, c, { amt: s.amt * Math.max(1, c.score) / tw })); });
+    // العائد التقديري: من درجة القطاع (بصيرة) - افتراض تعليمي
+    const exp = list.reduce((a, s) => a + s.p / 100 * Math.max(-15, Math.min(35, (s.score - 45) * 0.8)), 0) * hz / 12;
+    const hh = list.reduce((a, s) => a + (s.p / 100) ** 2, 0), riskAvg = list.reduce((a, s) => a + s.p / 100 * (RISKW[s.risk] || 2), 0);
+    LAST = { mode: 'stocks', market, amt, risk: r, hz, max, cap: Math.round(capR * 100), ex: [...ex].map(k => (S.find(s => s.k === k) || {}).n).filter(Boolean), list, exp, hh, riskAvg, at: new Date().toISOString() };
+    LAST_ID = null;
+    LAST.rule = ruleStocks(LAST);
+    done(); renderOut(LAST, false); askAI(LAST, tok);
+  }
+  // وزن كل قطاع = درجة بصيرة ± مستوى المخاطرة والاتجاه ← أعلى max قطاع + حد أقصى cap لأي قطاع (مجموعهم 100%)
+  function splitSectors(S, r, max, cap){
+    let list = S.map(s => { let w = s.score; const rw = RISKW[s.risk] || 2;
+      if (r === 'low') w -= (rw - 1) * 8; if (r === 'high') w += (rw - 1) * 6 + (s.trend === 'صاعد' ? 5 : 0); if (s.trend === 'هابط') w -= 10; if (s.trend === 'صاعد') w += 4;
+      return Object.assign({}, s, { w: Math.pow(Math.max(3, w - 35), r === 'high' ? 1.6 : r === 'low' ? 0.6 : 1) }); });
+    if (!list.length) return list;
     list.sort((a, b) => b.w - a.w); list = list.slice(0, max);
     const capE = Math.max(cap, 1 / list.length);
     const tot = list.reduce((a, s) => a + s.w, 0); list.forEach(s => s.p = s.w / tot);
     for (let it = 0; it < 8; it++) { let extra = 0; list.forEach(s => { if (s.p > capE) { extra += s.p - capE; s.p = capE; } }); const free = list.filter(s => s.p < capE - 1e-9), ft = free.reduce((a, s) => a + s.p, 0); if (!extra || !ft) break; free.forEach(s => s.p += extra * s.p / ft); }
     list.forEach(s => { s.p = Math.round(s.p * 1000) / 10; });
     const diff = Math.round((100 - list.reduce((a, s) => a + s.p, 0)) * 10) / 10; list[0].p = Math.round((list[0].p + diff) * 10) / 10;
-    list.forEach(s => { s.amt = amt * s.p / 100; const cos = s.co.slice(0, r === 'low' ? 2 : 3), tw = cos.reduce((a, c) => a + Math.max(1, c.score), 0); s.pick = cos.map(c => Object.assign({}, c, { amt: s.amt * Math.max(1, c.score) / tw })); });
-    // العائد التقديري: من درجة القطاع (بصيرة) - افتراض تعليمي
-    const exp = list.reduce((a, s) => a + s.p / 100 * Math.max(-15, Math.min(35, (s.score - 45) * 0.8)), 0) * hz / 12;
-    const hh = list.reduce((a, s) => a + (s.p / 100) ** 2, 0), riskAvg = list.reduce((a, s) => a + s.p / 100 * (RISKW[s.risk] || 2), 0);
-    LAST = { mode: 'stocks', market, amt, risk: r, hz, max, cap: cap * 100, ex: [...ex].map(k => (S.find(s => s.k === k) || {}).n).filter(Boolean), list, exp, hh, riskAvg, at: new Date().toISOString() };
-    LAST_ID = null;
-    LAST.rule = ruleStocks(LAST);
-    done(); renderOut(LAST, false); askAI(LAST, tok);
+    return list;
   }
   function ruleStocks(L){
     return { summary: `بناءً على اتجاه قطاعات ${L.market} الحالي ومستوى المخاطرة «${RL[L.risk]}»، التوزيع بيركّز على القطاعات اللي بتجمع بين اتجاه ${L.list[0] ? L.list[0].trend : ''} ودرجة بصيرة أعلى (${L.list.slice(0, 2).map(s => s.n).join(' و')})، ومعاها قطاعات أهدى بتقلل التذبذب. ${L.ex.length ? `استثنينا ${L.ex.length} قطاع حسب طلبك وأعدنا توزيع نسبهم. ` : ''}متوسط مخاطرة التوزيع ${L.riskAvg < 1.6 ? 'منخفض' : L.riskAvg < 2.3 ? 'متوسط' : 'مرتفع'}، وأقصى قطاع واحد ${Math.max(...L.list.map(s => s.p))}%. يُفضّل الدخول على مراحل بخطط DCA بدل المبلغ كله مرة واحدة، ومراجعة التوزيع كل 3 شهور.`,
@@ -202,7 +227,7 @@
   }
 
   /* ---------- 2) الأصول ---------- */
-  function allocAssets(tok){
+  async function allocAssets(tok){
     const type = segVal('mzaAType'), amt = Math.max(0, +document.getElementById('mzaAAmt').value || 0), mon = type === 'monthly' ? Math.max(0, +document.getElementById('mzaAMon').value || 0) : 0;
     const hz = +document.getElementById('mzaAHz').value, expP = +document.getElementById('mzaAExp').value, r = segVal('mzaARisk');
     if (amt <= 0 && mon <= 0) return toast('اكتب مبلغ أو مبلغ شهري', 'err');
@@ -219,15 +244,19 @@
       const sum = (o) => Object.values(o).reduce((x, y) => x + y, 0);
       series.push({ m, base: sum(bal.base), low: sum(bal.low), high: sum(bal.high), per: Object.assign({}, bal.base) });
     }
-    LAST = { mode: 'assets', amt, mon, hz, expP, risk: r, ex: [...ex], list, S: series, invested: amt + mon * hz, rates: Object.assign({}, RATES), at: new Date().toISOString() };
+    // جزء الأسهم بيتوزع على قطاعات البورصة الحقيقية (بصيرة)
+    const st = list.find(a => a.k === 'stocks'), market = document.getElementById('mzaAMkt').value; let secs = [];
+    if (st && st.p > 0) { try { const SS = await loadSectors(market); if (tok && screenStale(tok)) return;
+      const base0 = (amt || mon) * st.p / 100; secs = splitSectors(SS, r, r === 'low' ? 4 : r === 'high' ? 7 : 6, 0.35).map(s => ({ n: s.n, p: s.p, amt: base0 * s.p / 100, trend: s.trend, risk: s.risk, score: s.score })); } catch(e){} }
+    LAST = { mode: 'assets', amt, mon, hz, expP, risk: r, ex: [...ex], list, S: series, invested: amt + mon * hz, rates: Object.assign({}, RATES), market, secs, at: new Date().toISOString() };
     LAST_ID = null; LAST.rule = ruleAssets(LAST);
     renderOut(LAST, false); askAI(LAST, tok);
   }
   function ruleAssets(L){
     const end = L.S[L.S.length - 1];
-    return { summary: `التوزيع بيوازن بين أصول بعائد ثابت (شهادات وادخار) بتحمي رأس المال، وأصول نمو (أسهم وعقار وذهب) بتحمي من التضخم على المدى الطويل، حسب مستوى المخاطرة «${RL[L.risk]}». ${L.mon ? 'التدفق الشهري بيستفيد من متوسط التكلفة (DCA) في الأسهم والذهب. ' : ''}${L.expP ? `سيبنا ${L.expP}% سيولة للمصاريف والطوارئ عشان متضطرش تبيع وقت هبوط. ` : ''}القيمة المتوقعة بعد ${hzLabel(L.hz)} حوالي ${f0(end.base)} في السيناريو الأساسي، وبين ${f0(end.low)} و${f0(end.high)} حسب أداء السوق.`,
+    return { summary: `التوزيع بيوازن بين أصول بعائد ثابت (شهادات وحسابات بنكية وصناديق نقدية ودخل ثابت) بتحمي رأس المال، وأصول نمو (أسهم وصناديق أسهم وعقار وذهب) بتحمي من التضخم على المدى الطويل، حسب مستوى المخاطرة «${RL[L.risk]}». ${L.mon ? 'التدفق الشهري بيستفيد من متوسط التكلفة (DCA) في الأسهم والذهب. ' : ''}${L.expP ? `سيبنا ${L.expP}% سيولة للمصاريف والطوارئ عشان متضطرش تبيع وقت هبوط. ` : ''}القيمة المتوقعة بعد ${hzLabel(L.hz)} حوالي ${f0(end.base)} في السيناريو الأساسي، وبين ${f0(end.low)} و${f0(end.high)} حسب أداء السوق.`,
       strengths: ['تنويع بين أصول بعائد ثابت وأصول نمو', 'حماية من التضخم بالعقار والذهب', 'سيولة للطوارئ'], risks: ['العوائد افتراضات ممكن تتغير', 'العقار صعب تسييله بسرعة', 'تغيّر أسعار الفائدة بيأثر على الشهادات والأسهم'],
-      steps: ['وزّع جزء الأسهم على القطاعات من الوضع الأول', 'ثبّت تحويل شهري تلقائي لو اخترت تدفقات شهرية', 'راجع النسب كل 3 شهور'] };
+      steps: [L.secs && L.secs.length ? `جزء الأسهم موزّع على ${L.secs.length} قطاعات في ${L.market} — للشركات المرشحة استخدم الوضع الأول` : 'وزّع جزء الأسهم على القطاعات من الوضع الأول', 'ثبّت تحويل شهري تلقائي لو اخترت تدفقات شهرية', 'راجع النسب كل 3 شهور'] };
   }
 
   /* ---------- 3) الفحص ---------- */
@@ -241,7 +270,7 @@
     const total = Object.values(agg).reduce((a, b) => a + b, 0);
     const items = Object.entries(agg).map(([k, v]) => { const [t, key] = k.split(':'); const src = t === 's' ? S.find(s => s.k === key) : ASSETS.find(a => a.k === key); if (!src) return null;
       const risk = t === 's' ? (RISKW[src.risk] || 2) + 0.5 : src.risk; return { k, t, key, n: t === 's' ? 'أسهم — ' + src.n : src.n, ic: t === 's' ? '📈' : src.ic, trend: t === 's' ? src.trend : '', v, p: v / total * 100, risk }; }).filter(Boolean).sort((a, b) => b.v - a.v);
-    const hhi = items.reduce((a, x) => a + (x.p / 100) ** 2, 0), stocksP = items.filter(x => x.t === 's').reduce((a, x) => a + x.p, 0), cash = items.filter(x => x.key === 'expenses' || x.key === 'savings').reduce((a, x) => a + x.p, 0);
+    const hhi = items.reduce((a, x) => a + (x.p / 100) ** 2, 0), stocksP = items.filter(x => x.t === 's').reduce((a, x) => a + x.p, 0), cash = items.filter(x => CASH.has(x.key)).reduce((a, x) => a + x.p, 0);
     const riskScore = Math.round(Math.min(100, items.reduce((a, x) => a + x.p * x.risk, 0) / 3.5 + hhi * 60));
     const maxP = r === 'low' ? 25 : r === 'high' ? 35 : 30, alerts = [];
     items.forEach(x => { if (x.p > maxP + 5) alerts.push({ k: 'neg', t: `تركيز عالي في ${x.n} (${f2(x.p)}%)`, d: `أي هبوط فيه هيأثر جامد على المحفظة كلها. المفضّل لمستوى «${RL[r]}» ميعدّيش حوالي ${maxP}%.` }); });
@@ -252,7 +281,7 @@
     if (stocksP > target + 15) alerts.push({ k: 'warn', t: `نسبة الأسهم ${f2(stocksP)}% عالية لمستوى «${RL[r]}»`, d: `المعتاد لمستوى المخاطرة ده حوالي ${target}% أو أقل.` });
     if (!alerts.length) alerts.push({ k: 'pos', t: 'توزيعتك متوازنة', d: 'مفيش مراكز خطورة واضحة — راجعها كل 3 شهور.' });
     const tgt = items.map(x => { let p = Math.min(x.p, maxP); if (x.trend === 'هابط') p *= 0.6; return Object.assign({}, x, { tp: p }); });
-    if (cash < 5) { const e = tgt.find(x => x.key === 'expenses'); if (e) e.tp = Math.max(e.tp, 8); else tgt.push({ k: 'a:expenses', t: 'a', key: 'expenses', n: 'مصاريف / طوارئ (سيولة)', ic: '💵', v: 0, p: 0, risk: 0, tp: 8 }); }
+    if (cash < 5) { const e = tgt.find(x => x.key === 'expenses'); if (e) e.tp = Math.max(e.tp, 8); else tgt.push({ k: 'a:expenses', t: 'a', key: 'expenses', n: 'مصاريف طوارئ (سيولة)', ic: '💵', v: 0, p: 0, risk: 0, tp: 8 }); }
     if (!tgt.some(x => x.key === 'cds') && r !== 'high') tgt.push({ k: 'a:cds', t: 'a', key: 'cds', n: 'شهادات بنكية', ic: '📜', v: 0, p: 0, risk: 1, tp: 10 });
     // المقترح: نسبة الأسهم كلها ميعدّيش المعتاد لمستوى المخاطرة (+10) + ولا بند يعدّي الحد الأقصى — والفرق بيروح للأصول الأهدى
     const isS = (x) => x.t === 's';
@@ -282,7 +311,7 @@
     if (L.mode === 'stocks') return { market: L.market, risk: RL[L.risk], horizon_months: L.hz, amount: Math.round(L.amt), expected_return_pct: +L.exp.toFixed(2), hhi: +L.hh.toFixed(3), excluded_sectors: L.ex,
       sectors: L.list.map(s => ({ sector: s.n, weight_pct: s.p, basira_score: s.score, trend: s.trend, risk: s.risk, up_prob_month: s.up, return_1y_pct: s.y1, companies: s.pick.map(c => c.s + ' ' + c.n + ' (' + c.score + ')') })) };
     if (L.mode === 'assets') { const end = L.S[L.S.length - 1]; return { risk: RL[L.risk], horizon_months: L.hz, lump: Math.round(L.amt), monthly: Math.round(L.mon), expenses_pct: L.expP, invested: Math.round(L.invested), value_base: Math.round(end.base), value_low: Math.round(end.low), value_high: Math.round(end.high),
-      assets: L.list.map(a => ({ asset: a.n, weight_pct: a.p, annual_rate_pct: L.rates[a.k] || 0 })) }; }
+      assets: L.list.map(a => ({ asset: a.n, weight_pct: a.p, annual_rate_pct: L.rates[a.k] || 0 })), stock_sectors: (L.secs || []).map(s => ({ sector: s.n, pct_of_stocks: s.p, trend: s.trend })) }; }
     return { risk: RL[L.risk], total: Math.round(L.total), risk_score: L.riskScore, hhi: +L.hhi.toFixed(3), stocks_pct: +L.stocksP.toFixed(1), cash_pct: +L.cash.toFixed(1), items: L.items.map(x => ({ item: x.n, pct: +x.p.toFixed(1), trend: x.trend })), suggested: L.tgt.map(x => ({ item: x.n, pct: x.tp })), alerts: L.alerts.map(a => a.t) };
   }
   async function askAI(L, tok){
@@ -328,7 +357,7 @@
           <div class="mza-glg"><span><i style="background:#D4AF37"></i> أساسي</span><span><i style="background:var(--gs-pos,#0E9F6E)"></i> متفائل</span><span><i style="background:var(--gs-neg,#DC2626)"></i> متشائم</span><span><i style="background:#94A3B8"></i> المستثمَر</span></div></div></div>
       <div class="bs-card u-mt10"><h3 class="mz-h">🧾 تفاصيل كل أصل</h3><table class="mza-table g-no-enh"><thead><tr><th>الأصل</th><th>النسبة</th><th>${L.mon ? 'المبلغ الشهري' : 'المبلغ'}</th><th>العائد السنوي المفترض</th><th>القيمة بعد ${hzLabel(L.hz)}</th><th>الربح</th><th>المخاطرة</th></tr></thead><tbody>
         ${L.list.map(a => { const inv = (L.amt + L.mon * L.hz) * a.p / 100, fv = end.per[a.k] || 0; return `<tr><td>${a.ic} ${E(a.n)}</td><td class="n">${a.p}%</td><td class="n">${f0((L.mon || L.amt) * a.p / 100)}</td><td class="n">${f2(L.rates[a.k] || 0)}%</td><td class="n">${f0(fv)}</td><td class="n ${fv - inv >= 0 ? 'pos' : 'neg'}">${fv - inv >= 0 ? '+' : ''}${f0(fv - inv)}</td><td><span class="bs-chip ${a.risk <= 1 ? 'bs-c-pos' : a.risk === 2 ? 'bs-c-gold' : 'bs-c-neg'}">${['بدون', 'منخفضة', 'متوسطة', 'مرتفعة'][a.risk]}</span></td></tr>`; }).join('')}
-        </tbody><tfoot><tr><td>الإجمالي</td><td class="n">100%</td><td class="n">${f0(L.mon || L.amt)}</td><td></td><td class="n">${f0(end.base)}</td><td class="n ${gain >= 0 ? 'pos' : 'neg'}">${gain >= 0 ? '+' : ''}${f0(gain)}</td><td></td></tr></tfoot></table>
+        </tbody><tfoot><tr><td>الإجمالي</td><td class="n">100%</td><td class="n">${f0(L.mon || L.amt)}</td><td></td><td class="n">${f0(end.base)}</td><td class="n ${gain >= 0 ? 'pos' : 'neg'}">${gain >= 0 ? '+' : ''}${f0(gain)}</td><td></td></tr></tfoot></table>${(L.secs || []).length ? `<h3 class="mz-h u-mt10">📈 توزيع جزء الأسهم على قطاعات ${E(L.market)}</h3><table class="mza-table g-no-enh"><thead><tr><th>القطاع</th><th>من جزء الأسهم</th><th>${L.mon ? 'المبلغ الشهري' : 'المبلغ'}</th><th>الاتجاه</th><th>المخاطرة</th><th>درجة بصيرة</th></tr></thead><tbody>${L.secs.map(s => `<tr><td>${E(s.n)}</td><td class="n">${s.p}%</td><td class="n">${f0(s.amt)}</td><td><span class="bs-chip ${s.trend === 'صاعد' ? 'bs-c-pos' : s.trend === 'هابط' ? 'bs-c-neg' : 'bs-c-neu'}">${E(s.trend)}</span></td><td><span class="bs-chip ${s.risk === 'منخفض' ? 'bs-c-pos' : s.risk === 'مرتفع' ? 'bs-c-neg' : 'bs-c-gold'}">${E(s.risk)}</span></td><td class="n">${s.score}</td></tr>`).join('')}</tbody></table>` : ''}
         ${!readOnly && L.list.some(a => a.k === 'stocks') ? `<div class="mz-note u-mt10">📊 جزء الأسهم (${L.list.find(a => a.k === 'stocks').p}%) تقدر توزّعه على القطاعات والشركات — <button type="button" class="small mza-to-stocks" id="mzaToStocks">وزّع جزء الأسهم على القطاعات ←</button></div>` : ''}</div>`;
     } else {
       const rc = L.riskScore >= 65 ? 'neg' : L.riskScore >= 45 ? 'warn' : 'pos';
@@ -354,6 +383,7 @@
       </div>
       ${readOnly ? '' : `<div class="mza-actions mza-outacts"><button type="button" class="mza-go" id="mzaSave">💾 حفظ الدراسة</button><button type="button" class="secondary small" id="mzaPdf">🖨 تقرير PDF</button><button type="button" class="secondary small" id="mzaShare">🔗 مشاركة</button><button type="button" class="secondary small" id="mzaEdit">✏️ تعديل المدخلات</button></div>`}`;
     out.innerHTML = html;
+    if (typeof gLabelCells === 'function') out.querySelectorAll('table.mza-table').forEach(gLabelCells);   // الإصدار 123: كروت على الموبايل
     out.querySelectorAll('.mza-co-open').forEach(b => b.onclick = () => { if (typeof window.renderBasira === 'function') window.renderBasira(b.dataset.s, L.market); });
     if (readOnly) return;
     out.querySelectorAll('.mza-plan').forEach(b => b.onclick = () => { const pf = { symbol: b.dataset.s, market: L.market, capital: +b.dataset.a || undefined, price: +b.dataset.p || undefined };

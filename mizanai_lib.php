@@ -19,11 +19,12 @@ function mza_defaults(){
     return [
         'name' => 'ميزان', 'disclaimer' => 'التوزيع ده دراسة آلية تعليمية معتمدة على تحليل السوق والمؤشرات والذكاء الاصطناعي، ومش نصيحة استثمارية. العوائد المتوقعة افتراضات ممكن متتحققش، والقرار قرارك.',
         'ai_on' => true, 'save_max' => 50, 'share_on' => true, 'sectors_max' => 12, 'per_sector' => 3,
-        'rates' => ['stocks' => 22, 'realestate' => 18, 'cds' => 19, 'savings' => 16, 'gold' => 15],
+        // الإصدار 123: أصول منفصلة (حساب بعائد يومي / توفير بعائد سنوي / صناديق نقدية / دخل ثابت / أسهم) - مجموع كل مستوى 100
+        'rates' => ['stocks' => 22, 'equity_funds' => 20, 'fixed_funds' => 18, 'money_funds' => 17, 'realestate' => 18, 'gold' => 15, 'cds' => 19, 'daily_bank' => 15, 'savings' => 16],
         'profiles' => [
-            'low'  => ['stocks' => 15, 'realestate' => 20, 'cds' => 35, 'savings' => 15, 'gold' => 15],
-            'mid'  => ['stocks' => 35, 'realestate' => 20, 'cds' => 20, 'savings' => 10, 'gold' => 15],
-            'high' => ['stocks' => 55, 'realestate' => 20, 'cds' => 10, 'savings' => 5, 'gold' => 10],
+            'low'  => ['stocks' => 5,  'equity_funds' => 5,  'fixed_funds' => 15, 'money_funds' => 15, 'realestate' => 10, 'gold' => 10, 'cds' => 25, 'daily_bank' => 5, 'savings' => 10],
+            'mid'  => ['stocks' => 20, 'equity_funds' => 10, 'fixed_funds' => 10, 'money_funds' => 8,  'realestate' => 15, 'gold' => 10, 'cds' => 15, 'daily_bank' => 4, 'savings' => 8],
+            'high' => ['stocks' => 40, 'equity_funds' => 15, 'fixed_funds' => 5,  'money_funds' => 5,  'realestate' => 15, 'gold' => 10, 'cds' => 5,  'daily_bank' => 2, 'savings' => 3],
         ],
     ];
 }
@@ -32,7 +33,7 @@ function mza_cfg($conn){
     $j = json_decode(site_config_get($conn, 'mizanai_cfg') ?: 'null', true);
     if (is_array($j)) foreach ($d as $k => $v) {
         if (!array_key_exists($k, $j)) continue;
-        if ($k === 'profiles') { foreach ($v as $r => $pv) if (is_array($j[$k][$r] ?? null)) foreach ($pv as $a => $x) if (isset($j[$k][$r][$a])) $d[$k][$r][$a] = max(0, min(100, (float)$j[$k][$r][$a])); }
+        if ($k === 'profiles') { foreach ($v as $r => $pv) if (is_array($j[$k][$r] ?? null) && isset($j[$k][$r]['money_funds'])) foreach ($pv as $a => $x) if (isset($j[$k][$r][$a])) $d[$k][$r][$a] = max(0, min(100, (float)$j[$k][$r][$a])); }
         elseif ($k === 'rates') { foreach ($v as $a => $x) if (isset($j[$k][$a])) $d[$k][$a] = max(-50, min(100, (float)$j[$k][$a])); }
         elseif (is_bool($v)) $d[$k] = !empty($j[$k]);
         elseif (is_int($v)) $d[$k] = (int)$j[$k];
