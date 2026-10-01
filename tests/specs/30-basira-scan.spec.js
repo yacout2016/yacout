@@ -4,6 +4,7 @@ const { check, summary, launch, page, loginAdmin, q } = require('../lib');
 (async () => {
   q("DELETE FROM login_attempts");
   q("DELETE FROM site_config WHERE config_key IN ('basira_cfg','basira_ai_key')");
+  q("REPLACE INTO site_config (config_key, config_value) VALUES ('ai_paid_on', '1')");   // الإصدار 127: المدفوع مقفول افتراضيًا ← الاختبارات اللي بتستخدم المفتاح بتفعّله
   const b = await launch(); const a = await page(b, { width: 1366, height: 900 }); await loginAdmin(a);
   await a.evaluate(() => renderBasira()); await a.waitForSelector('#bsTabScan', { timeout: 20000 }).catch(() => {});
   check('بصيرة: تبويبين «تحليل سهم» و«مسح السوق — الأسهم المتوقع صعودها»', await a.evaluate(() => /تحليل سهم/.test(document.getElementById('bsTabOne').textContent) && /مسح السوق/.test(document.getElementById('bsTabScan').textContent)));
@@ -79,5 +80,5 @@ const { check, summary, launch, page, loginAdmin, q } = require('../lib');
   const ov = await m.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   check('المسح على الموبايل: مفيش تمرير أفقي للصفحة', ov <= 1, ov);
   check('بدون أخطاء JavaScript', !a.__errors.length && !m.__errors.length, a.__errors[0] || m.__errors[0]);
-  await b.close(); process.exit(summary() ? 1 : 0);
+  q("DELETE FROM site_config WHERE config_key = 'ai_paid_on'"); await b.close(); process.exit(summary() ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(1); });

@@ -10,5 +10,8 @@ if (!isset($_SESSION['user_email'])) {
     exit();
 }
 
-echo json_encode(["success" => true, "settings" => getAllAdminSettings($conn)]);
+$settings = getAllAdminSettings($conn);
+// الإصدار 127: شاشات الذكاء الاصطناعي المقفولة لمشترك بعينه بتتعامل عنده كأنها مخفية
+if (empty($_SESSION['is_admin'])) { require_once __DIR__ . '/security_lib.php'; require_once __DIR__ . '/ai_access_lib.php'; $settings = ai_merge_hidden($conn, $_SESSION['user_email'], $settings); }
+echo json_encode(["success" => true, "settings" => $settings]);
 ?>

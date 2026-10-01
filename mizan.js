@@ -142,7 +142,7 @@ function mzPaint(body, R){
 
     ${R.alerts && R.alerts.length ? `<h2 class="mz-sec-title"><span class="ic">🚦</span> التنبيهات</h2><div class="bs-card mz-alerts">${R.alerts.map(a => `<div class="mz-al k-${a.k}"><span class="d">${a.k === 'pos' ? '✅' : a.k === 'neg' ? '⛔' : '⚠️'}</span><div><b>${mzE(a.t)}</b><small>${mzE(a.d)}</small></div></div>`).join('')}</div>` : ''}
 
-    <h2 class="mz-sec-title"><span class="ic">🤖</span> ${ai.auto ? 'الرأي الآلي' : 'رأي الذكاء الاصطناعي'}</h2>
+    <h2 class="mz-sec-title"><span class="ic">🤖</span> ${ai.auto ? 'تحليل محرك GRIFFINE' : 'رأي الذكاء الاصطناعي'}</h2>
     <div class="bs-card mz-ai"><p>${mzE(ai.summary)}</p>
       <div class="mz-two mz-two-flat"><div><b class="pos">نقاط القوة</b><ul>${(ai.strengths || []).map(x => `<li>${mzE(x)}</li>`).join('')}</ul></div><div><b class="neg">مخاطر تنتبه لها</b><ul>${(ai.risks || []).map(x => `<li>${mzE(x)}</li>`).join('')}</ul></div></div>
       ${aiMoves.length ? `<b>خطوات مقترحة</b><div class="mz-moves">${aiMoves.map(m => `<div class="mz-mv"><span>${mvIc[m.k] || '•'}</span>${m.s ? `<b class="n">${mzE(m.s)}</b>` : ''} ${mzE(m.t)}</div>`).join('')}</div>` : ''}
@@ -185,7 +185,7 @@ function mzPrint(R){
     ${M.holdings.map(h => `<tr><td><b>${e(h.s)}</b> ${e(h.name || '')}</td><td>${e(h.sector)}</td><td class="mz-num">${mzN(h.w, 1)}%</td><td class="mz-num">${h.target != null ? h.target + '%' : '—'}</td><td class="mz-num">${mzN(h.value)}</td><td class="mz-num ${h.pnl >= 0 ? 'pos' : 'neg'}">${mzP(h.pnlPct)}</td><td class="mz-num">${h.vol == null ? '—' : mzN(h.vol) + '%'}</td><td class="mz-num">${mzP(h.y1)}</td></tr>`).join('')}</tbody></table>
     <h2>التوزيع حسب القطاع</h2><table><tbody>${Object.entries(M.sectors).map(([s, v]) => `<tr><td>${e(s)}</td><td class="mz-num">${mzN(v, 1)}%</td></tr>`).join('')}</tbody></table>
     ${R.alerts.length ? `<h2>التنبيهات</h2><ul>${R.alerts.map(a => `<li class="${a.k === 'pos' ? 'pos' : a.k === 'neg' ? 'neg' : ''}"><b>${e(a.t)}:</b> ${e(a.d)}</li>`).join('')}</ul>` : ''}
-    <h2>${ai.auto ? 'الرأي الآلي' : 'رأي الذكاء الاصطناعي'}</h2><p>${e(ai.summary)}</p>
+    <h2>${ai.auto ? 'تحليل محرك GRIFFINE' : 'رأي الذكاء الاصطناعي'}</h2><p>${e(ai.summary)}</p>
     <table><thead><tr><th class="pos">نقاط القوة</th><th class="neg">المخاطر</th></tr></thead><tbody><tr><td><ul>${(ai.strengths || []).map(x => `<li>${e(x)}</li>`).join('')}</ul></td><td><ul>${(ai.risks || []).map(x => `<li>${e(x)}</li>`).join('')}</ul></td></tr></tbody></table>
     ${(ai.moves || []).length ? `<h2>خطوات مقترحة</h2><ul>${ai.moves.map(m => `<li>${m.s ? '<b>' + e(m.s) + '</b> ' : ''}${e(m.t)}</li>`).join('')}</ul>` : ''}
     <h2>إعادة التوازن بالأرقام</h2><ul>${R.moves.map(m => `<li>${e(m.t)}</li>`).join('')}</ul>

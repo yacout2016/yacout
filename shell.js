@@ -50,7 +50,7 @@
      ===================================================================== */
 
   // رقم الإصدار - بيظهر في شاشة "حسابي" (غيّره مع ?v= في index.php و VERSION في sw.js)
-  const APP_VERSION = 126;
+  const APP_VERSION = 127;
 
   /* الاستعلامات المتكررة (الدردشة/التوصيات/قائمة المتابعة) - استعلام متكيّف (الإصدار 89)
      - بتقف لما التبويب يكون مخفي أو الموبايل مقفول
@@ -714,7 +714,7 @@
     goChatAdminBtn:'chat', goContentBtn:'star', goSuggestionsAdminBtn:'bulb', goPlansMgmtBtn:'card', goReportsBtn:'report',
     goRecommendationsBtn:'megaphone', goStaffBtn:'user', goSettingsBtn:'settings', goEmergencyBtn:'shield', goAdsBtn:'megaphone', goBlacklistBtn:'shield', goSiteDesignBtn:'grid',
     goSiteTextsBtn:'news', goArchiveBtn:'receipt', goSubscribersBtn:'user', goExportScreensBtn:'report', goExportExcelBtn:'download',
-    goStudioBtn:'brush', goLandingBtn:'grid', goEmailCenterBtn:'mail', goTradesBtn:'trend', goHrBtn:'users', goJobTitlesBtn:'tag', goFaqBtn:'bulb'
+    goStudioBtn:'brush', goLandingBtn:'grid', goEmailCenterBtn:'mail', goAiBtn:'bulb', goTradesBtn:'trend', goHrBtn:'users', goJobTitlesBtn:'tag', goFaqBtn:'bulb'
   };
 
   let processing = false;

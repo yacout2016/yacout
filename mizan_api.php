@@ -19,6 +19,8 @@ try {
     if (!$email) { http_response_code(401); mz_out(["success" => false, "message" => "سجّل الدخول أولًا."]); }
     $isAdmin = !empty($_SESSION['is_admin']);
     session_write_close();
+    ai_set_user($email, $isAdmin);   // الإصدار 127
+    if (!ai_screen_ok($conn, $email, 'mizan', $isAdmin)) mz_out(["success" => false, "hidden" => true, "message" => "الشاشة غير متاحة لحسابك."]);
     if (!$isAdmin && !hasActiveSubscription($conn, $email)) mz_out(["success" => false, "requiresSubscription" => true, "message" => "تقرير ميزان متاح للمشتركين فقط."]);
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') mz_out(["success" => false, "message" => "طلب غير صحيح."]);
     requireCsrf();

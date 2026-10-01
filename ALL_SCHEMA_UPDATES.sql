@@ -1,5 +1,5 @@
 /* ============================================================ */
-/* GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 126) */
+/* GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 127) */
 /* كل تحديثات قاعدة البيانات في ملف واحد. */
 /* آمن تشغّله أي عدد من المرات: بيضيف الناقص بس ومبيمسحش أي بيانات. */
 /* الاستخدام (الأفضل): phpMyAdmin ← اختار قاعدة البيانات ← تبويب Import (استيراد) ← اختار الملف ← Go */
@@ -72,6 +72,7 @@
 /* الإصدار 124: مفيش تغييرات في قاعدة البيانات (كل قطاع مستقل بدل القطاعات المدموجة + اختيار القطاعات/الأصول من قوائم منسدلة + على الموبايل كود الشركة بس والاسم بيظهر لما تقف عليه). */
 /* الإصدار 125: مفيش تغييرات في قاعدة البيانات (عناوين الجداول مختصرة + علامة (!) بالشرح في كل الموقع + النسبة تحت محافظ / متوازن / مغامر + أقصى نسبة لقطاع بتتكتب باليد). */
 /* الإصدار 126: مفيش تغييرات في قاعدة البيانات (تنبيهات الرئيسية على الجوال من غير تمرير داخلي - الصفحة كانت بتهنّج وقت السحب). */
+/* الإصدار 127: جدول user_ai_access (الذكاء الاصطناعي لكل مشترك: الشاشات + المدفوع + الحد اليومي) + عمود subscription_plans.includes_ai + باقة «برو سنوي» 3000. الذكاء المدفوع مقفول افتراضيًا (ai_paid_on في site_config). */
 /* ============================================================ */
 
 /* الإصدار 85: ترميز الاتصال UTF-8 عشان النصوص العربي اللي بتتضاف من الملف (زي المسميات الوظيفية) تتحفظ صح */
@@ -916,4 +917,24 @@ CREATE TABLE IF NOT EXISTS mizan_studies (
   UNIQUE KEY uq_mz_share (share_token)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-SELECT 'GRIFFINE database is up to date (v126)' AS result;
+/* الإصدار 127: الذكاء الاصطناعي لكل مشترك — الشاشات التلاتة (تشغيل / إيقاف) + المدفوع (حسب الباقة / مفتوح / مقفول) + الحد اليومي للمدفوع (NULL = مفتوح) + عدّاد النهارده */
+CREATE TABLE IF NOT EXISTS user_ai_access (
+  account_email VARCHAR(190) NOT NULL PRIMARY KEY,
+  basira TINYINT(1) NOT NULL DEFAULT 1,
+  mizan TINYINT(1) NOT NULL DEFAULT 1,
+  mizanai TINYINT(1) NOT NULL DEFAULT 1,
+  paid TINYINT(1) NULL,
+  daily_limit INT NULL,
+  used_day DATE NULL,
+  used_count INT NOT NULL DEFAULT 0,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+/* الإصدار 127: الباقة الشاملة لخدمات الذكاء الاصطناعي (includes_ai) + باقة «برو سنوي» 3000 لو مش موجودة */
+ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS includes_ai TINYINT(1) NOT NULL DEFAULT 0;
+INSERT INTO subscription_plans (id, name, amount, period_label, duration_days, badge, save_note, features, is_active, sort_order, includes_ai)
+  SELECT 'pro_yearly', 'برو سنوي — شامل الذكاء الاصطناعي', 3000, 'سنويًا', 365, 'برو ✨', 'كل المزايا + خدمات الذكاء الاصطناعي والتحليل',
+    '["كل مزايا الخطة السنوية","بصيرة AI — تحليل الأسهم بالذكاء الاصطناعي","ميزان محفظتك AI","ميزان GRIFFINE AI — توزيع الاستثمار","أولوية في الدعم"]', 1, 4, 1
+  FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM subscription_plans WHERE id = 'pro_yearly');
+
+SELECT 'GRIFFINE database is up to date (v127)' AS result;

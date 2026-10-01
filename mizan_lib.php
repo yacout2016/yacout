@@ -172,9 +172,9 @@ function mz_pool($cfg, $M){
 }
 
 function mz_ai($conn, $cfg, $M, $R, $pool){
-    $key = site_config_get($conn, 'basira_ai_key');
+    $key = ai_paid_key($conn);   // الإصدار 127
     if (empty($cfg['ai_on']) || $key === '') return null;
-    if ($cfg['ai_daily_max'] > 0 && bs_ai_counter() >= $cfg['ai_daily_max']) return ['error' => 'وصلنا للحد اليومي لطلبات الذكاء الاصطناعي — التحليل اتكتب بالمحرك الآلي.'];
+    if ($cfg['ai_daily_max'] > 0 && bs_ai_counter() >= $cfg['ai_daily_max']) return !ai_user()['admin'] ? null : ['error' => 'وصلنا للحد اليومي لطلبات الذكاء الاصطناعي — التحليل اتكتب بالمحرك الآلي.'];
     $r2 = fn($v) => $v === null ? null : round($v, 2);
     $in = ['holdings' => array_map(fn($h) => ['symbol' => $h['s'], 'name' => $h['name'], 'market' => $h['m'], 'sector' => $h['sector'], 'plan_type' => $h['t'], 'weight_pct' => $r2($h['w']),
             'unrealized_pct' => $r2($h['pnlPct']), 'volatility_annual_pct' => $r2($h['vol']), 'return_1y_pct' => $r2($h['y1']), 'max_drawdown_1y_pct' => $r2($h['mdd'])], $M['holdings']),
@@ -193,7 +193,8 @@ function mz_ai($conn, $cfg, $M, $R, $pool){
         . 'market_view: جملتين عن أثر وضع السوق والقطاعات على المحفظة. targets: لكل سهم في المحفظة أقصى نسبة مناسبة من المحفظة (max_weight من 5 لـ 100) حسب قطاعه ونوعه وتذبذبه وارتباطه ووضع السوق الحالي، مع سبب قصير - ابدأ من rule_based_targets (القواعد المتعارف عليها لتوازن المحافظ) وعدّل بحد أقصى 25 نقطة لو السياق يستدعي؛ مفيش رقم ثابت لكل الأسهم. candidates: من 0 لـ 4 شركات من candidate_pool بس (بنفس الرمز) في قطاعات مش موجودة أو ضعيفة في المحفظة، مع سبب قصير.';
     bs_ai_counter(true);
     $r = bs_ai_call($key, $cfg['model'], $cfg['effort'], $system, "بيانات المحفظة (JSON):\n" . json_encode($in, JSON_UNESCAPED_UNICODE), 12000, mz_ai_schema());
-    if (!$r[0]) return ['error' => $r[1]];
+    if (!$r[0]) return ai_user()['admin'] ? ['error' => $r[1]] : null;
+    ai_count_use($conn);
     $o = $r[0]; $cl = fn($s, $n = 900) => mb_substr(trim(strip_tags((string)$s)), 0, $n);
     $list = fn($a) => array_values(array_slice(array_filter(array_map(fn($x) => $cl($x, 240), is_array($a) ? $a : [])), 0, 6));
     $held = array_column($M['holdings'], 's'); $ok = fn($s) => $s === '' || in_array($s, $held, true) || isset($pool[$s]);
@@ -227,7 +228,7 @@ function mz_rule_text($M, $R, $pool){
 
 function mz_analyze($conn, $email, $positions, $ccy, $fresh = false){
     $cfg = bs_cfg($conn);
-    $sig = md5(json_encode([$email, $positions, $ccy, $cfg, md5(site_config_get($conn, 'basira_ai_key'))]));
+    $sig = md5(json_encode([$email, $positions, $ccy, $cfg, ai_tier($conn) . md5(site_config_get($conn, 'basira_ai_key'))]));   // الإصدار 127: المدفوع والمجاني منفصلين
     $f = opp_cache_dir() . '/' . md5("mz2|$sig") . '.json';
     if (!$fresh && is_file($f) && time() - filemtime($f) < $cfg['cache_min'] * 60 && ($j = json_decode((string)@file_get_contents($f), true))) { $j['cached'] = true; return $j; }
     $M = mz_metrics($conn, $cfg, $positions);
@@ -248,7 +249,7 @@ function mz_analyze($conn, $email, $positions, $ccy, $fresh = false){
    ولو مفيش ← بالقواعد (من غير طلب ذكاء اصطناعي جديد) ومتخزنة 30 دقيقة */
 function mz_limits($conn, $email, $positions, $ccy){
     $cfg = bs_cfg($conn);
-    $sig = md5(json_encode([$email, $positions, $ccy, $cfg, md5(site_config_get($conn, 'basira_ai_key'))]));
+    $sig = md5(json_encode([$email, $positions, $ccy, $cfg, ai_tier($conn) . md5(site_config_get($conn, 'basira_ai_key'))]));   // الإصدار 127: المدفوع والمجاني منفصلين
     $f = opp_cache_dir() . '/' . md5("mz2|$sig") . '.json';
     $lf = null; $M = null;
     if (is_file($f) && ($j = json_decode((string)@file_get_contents($f), true)) && !empty($j['m'])) $M = $j['m'];

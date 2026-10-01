@@ -31,6 +31,7 @@ function adminNavButtonsHtml(){
       { id:'goSettingsBtn', perm:'manage_admin_settings', icon:'⚙️', label:'الصلاحيات والإعدادات الإلزامية' },
       { id:'goEmergencyBtn', perm:'manage_admin_settings', icon:'🚨', label:'الشاشات الطارئة (الصيانة / انقطاع النت / السيرفر / التحميل)' },
       { id:'goEmailCenterBtn', perm:'manage_admin_settings', icon:'📧', label:'مركز الإيميلات (اختبار وسجل الإرسال)' },
+      { id:'goAiBtn', perm:'manage_admin_settings', icon:'🤖', label:'الذكاء الاصطناعي (مجاني / مدفوع + حساب Claude)' },
       { id:'goBlacklistBtn', perm:'manage_blacklist', icon:'🚫', label:'القائمة السوداء' },
     ]},
     { title: 'المحتوى والتنسيق', items: [
@@ -87,6 +88,7 @@ function wireAdminNavButtons(){
     goSiteDesignBtn: renderSiteDesignPage,
     goStudioBtn: () => GStudio.openEditor(), // الإصدار 72: استوديو التصميم (studio.js)
     goEmailCenterBtn: () => GShell.renderEmailCenter(), // الإصدار 72: مركز الإيميلات (shell.js)
+    goAiBtn: () => renderAdminAi(),                     // الإصدار 127 (ai_access.js)
     goReportsBtn: renderAdminReportsPage,
     goTradesBtn: () => renderTradesReportPage(),
     goFaqBtn: () => renderFaqAdminPage(),
@@ -153,6 +155,7 @@ async function renderAdminSubscribers(){
   if(!hasPermission('manage_subscribers')) return renderAdminHub();
   let subscribers = await getAllSubscribers();
   await gNpLoad(true);   // الإصدار 101: قنوات الإشعارات لكل مشترك
+  if (typeof gAiLoad === 'function') await gAiLoad(true);   // الإصدار 127: الذكاء الاصطناعي لكل مشترك
   let emailChangeRequests = [];
   try {
     const ecRes = await apiGet('/admin_list_email_change_requests.php');
@@ -281,7 +284,7 @@ async function renderAdminSubscribers(){
   function renderTable(list){
     document.getElementById('subscribersTableWrap').innerHTML = list.length ? `<table data-g-rows="5" class="g-one-line">
       <thead><tr>
-        <th>الكود</th><th>الاسم</th><th>الهاتف</th><th>الإيميل</th><th>الخطة</th><th>بداية الخطة</th><th>تاريخ الانتهاء</th><th>قيمة السداد</th><th>طريقة السداد</th><th>الحالة</th><th>التذكيرات</th><th>صلاحيات خاصة</th><th>🔔 الإشعارات</th><th></th>
+        <th>الكود</th><th>الاسم</th><th>الهاتف</th><th>الإيميل</th><th>الخطة</th><th>بداية الخطة</th><th>تاريخ الانتهاء</th><th>قيمة السداد</th><th>طريقة السداد</th><th>الحالة</th><th>التذكيرات</th><th>صلاحيات خاصة</th><th>🔔 الإشعارات</th><th>🤖 الذكاء الاصطناعي</th><th></th>
       </tr></thead>
       <tbody>
         ${list.map(r=>{
@@ -307,14 +310,16 @@ async function renderAdminSubscribers(){
             ${r.planId==='trial' ? `<button class="small btn-lightgreen" style="width:auto;margin-bottom:4px;" data-gcall="__convertFree" data-gargs="${gArgs([String(r.id)])}">تحويل لباقة مدفوعة مجانًا</button>` : ''}
           </td>
           <td>${gNpCellHtml(r.accountEmail)}</td>
+          <td>${typeof gAiCellHtml === 'function' ? gAiCellHtml(r.accountEmail) : ''}</td>
           <td><button class="small danger u-wa" data-gcall="__deleteSubRow" data-gargs="${gArgs([String(r.id)])}">🗄️ أرشفة</button></td>
         </tr>`}).join('')}
         <tr style="font-weight:bold;background:#f0f4f2;">
-          <td colspan="7">الإجمالي</td><td>${fmtMoney(computeTotals(list))}</td><td colspan="6"></td>
+          <td colspan="7">الإجمالي</td><td>${fmtMoney(computeTotals(list))}</td><td colspan="7"></td>
         </tr>
       </tbody>
     </table>` : '<p class="u-note">لا يوجد مشتركين في هذه الفترة.</p>';
     gNpWire(document.getElementById('subscribersTableWrap'));
+    if (typeof gAiWire === 'function') gAiWire(document.getElementById('subscribersTableWrap'));   // الإصدار 127
 
     window.__viewProof = (id) => {
       const rec = list.find(x=>x.id===id) || subscribers.find(x=>x.id===id);
@@ -709,6 +714,7 @@ async function renderPlansManagementPage(){
         <textarea id="planFeaturesInput" rows="4" placeholder="ميزة 1&#10;ميزة 2&#10;ميزة 3"></textarea>
         <label>ترتيب الظهور (رقم أصغر = يظهر الأول)</label>
         <input type="number" id="planSortInput" value="0">
+        <label class="u-check u-mt8"><input type="checkbox" id="planAiInput"> ✨ باقة شاملة خدمات الذكاء الاصطناعي (برو) — مشتركينها بيستخدموا الـ AI المدفوع لو مفعّل من «الذكاء الاصطناعي»</label>
         <button type="submit" id="planFormSubmitBtn">حفظ الخطة</button>
         <button type="button" class="secondary" id="planFormCancelBtn" style="display:none;">إلغاء التعديل</button>
       </form>
@@ -739,7 +745,7 @@ async function renderPlansManagementPage(){
       <tbody>
         ${plans.map(p=>`<tr>
           <td>${escapeHtml(p.market || 'مصر')}</td>
-          <td>${escapeHtml(p.name)} ${p.badge?`<span class="tag" style="background:#e6f4ea;color:var(--green);">${escapeHtml(p.badge)}</span>`:''}</td>
+          <td>${escapeHtml(p.name)} ${p.includesAi ? '<span class="tag tag-done">✨ AI</span> ' : ''}${p.badge?`<span class="tag" style="background:#e6f4ea;color:var(--green);">${escapeHtml(p.badge)}</span>`:''}</td>
           <td>${p.amount===0?'مجانًا':fmtMoney(p.amount) + ' ' + ccyOfM(p.market)}</td>
           <td>${escapeHtml(p.periodLabel)} (${p.durationDays} يوم)</td>
           <td><span class="tag ${p.isActive?'tag-done':'tag-wait'}">${p.isActive?'مفعّلة':'موقوفة'}</span></td>
@@ -772,6 +778,7 @@ async function renderPlansManagementPage(){
     document.getElementById('planSaveNoteInput').value = p.saveNote || '';
     document.getElementById('planFeaturesInput').value = (p.features||[]).join('\n');
     document.getElementById('planSortInput').value = p.sortOrder || 0;
+    document.getElementById('planAiInput').checked = !!p.includesAi;
     document.getElementById('planFormSubmitBtn').textContent = 'حفظ التعديلات';
     document.getElementById('planFormCancelBtn').style.display = 'inline-block';
     window.scrollTo({top: document.getElementById('formTitle').offsetTop, behavior:'smooth'});
@@ -804,6 +811,7 @@ async function renderPlansManagementPage(){
       saveNote: document.getElementById('planSaveNoteInput').value.trim(),
       features: document.getElementById('planFeaturesInput').value.trim(),
       sortOrder: parseInt(document.getElementById('planSortInput').value) || 0,
+      includesAi: document.getElementById('planAiInput').checked ? '1' : '0',
     };
     const btn = document.getElementById('planFormSubmitBtn');
     btn.disabled = true;

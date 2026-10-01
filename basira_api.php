@@ -84,6 +84,8 @@ try {
     }
 
     // ---- المستخدم: الشاشة ممكن تتقفل من لوحة التحكم + للمشتركين بس
+    ai_set_user($email, $isAdmin);   // الإصدار 127: المدفوع / المجاني حسب المشترك
+    if (!ai_screen_ok($conn, $email, 'basira', $isAdmin)) bs_out(["success" => false, "hidden" => true, "message" => "الشاشة غير متاحة لحسابك."]);
     if (!$isAdmin && getAdminSetting($conn, 'hide_basira_screen', false)) bs_out(["success" => false, "hidden" => true, "message" => "الشاشة غير متاحة حاليًا."]);
     if (!$isAdmin && !hasActiveSubscription($conn, $email)) bs_out(["success" => false, "requiresSubscription" => true, "message" => "تحليلات بصيرة متاحة للمشتركين فقط."]);
     $cfg = bs_cfg($conn);
@@ -92,7 +94,7 @@ try {
         bs_out(["success" => true, "config" => ['name' => $cfg['name'], 'tagline' => $cfg['tagline'], 'disclaimer' => $cfg['disclaimer'], 'horizons' => $cfg['horizons'],
             'shareOn' => !empty($cfg['share_on']), 'plansOn' => !empty($cfg['plans_on']), 'newsOn' => !empty($cfg['news_on']), 'names' => bs_names($cfg),
             'scanOn' => !empty($cfg['scan_on']), 'scanMax' => $cfg['scan_max'],
-            'aiReady' => !empty($cfg['ai_on']) && site_config_get($conn, 'basira_ai_key') !== ''], "ready" => bs_ready($conn)]);
+            'aiReady' => !empty($cfg['ai_on']) && ai_paid_key($conn) !== ''], "ready" => bs_ready($conn)]);
     }
     if ($action === 'analyze') {
         @set_time_limit(150);

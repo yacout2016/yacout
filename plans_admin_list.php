@@ -26,6 +26,7 @@ while ($r = $result->fetch_assoc()) {
         "isActive" => (bool)$r['is_active'],
         "sortOrder" => (int)$r['sort_order'],
         "market" => $r['market'] ?? 'مصر',
+        "includesAi" => !empty($r['includes_ai']),   // الإصدار 127
     ];
 }
 echo json_encode(["success" => true, "plans" => $plans]);

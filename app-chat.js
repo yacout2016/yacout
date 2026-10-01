@@ -108,7 +108,7 @@ async function initChatWidget(sessionEmail){
     }
   }
   if (hasStarted) backgroundCheck();
-  window.__chatBgPoll = setInterval(backgroundCheck, 8000);
+  window.__chatBgPoll = setInterval(backgroundCheck, 25000);   // الإصدار 127: كان كل 8 ثواني لكل مشترك فاتح الموقع ← 25 ثانية (ضغط أقل على السيرفر)
 
   function renderEmailGate(){
     panel.innerHTML = `
@@ -219,7 +219,7 @@ async function initChatWidget(sessionEmail){
       if (wasNearBottom) body.scrollTop = body.scrollHeight;
     }
     await refreshMessages();
-    window.__chatPollInterval = setInterval(refreshMessages, 3000);
+    window.__chatPollInterval = setInterval(refreshMessages, 5000);   // الإصدار 127: الشات المفتوح كل 5 ثواني
 
     document.getElementById('chatFileInput').addEventListener('change', (e)=>{
       const file = e.target.files[0];
@@ -438,7 +438,7 @@ function initAdminBubble(bubble, panel){
     }
     await refresh();
     if (window.__chatQuickPoll) clearInterval(window.__chatQuickPoll);
-    window.__chatQuickPoll = setInterval(refresh, 3000);
+    window.__chatQuickPoll = setInterval(refresh, 5000);   // الإصدار 127
 
     async function doSend(){
       const text = document.getElementById('chatTextInput').value.trim();

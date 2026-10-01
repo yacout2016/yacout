@@ -57,6 +57,8 @@ function site_config_defaults(){
         'basira_cfg'           => '',
         'basira_ai_key'        => '',
         'mizanai_cfg'          => '',   // الإصدار 122: «ميزان GRIFFINE AI» - الإعدادات (JSON)
+        'ai_paid_on'           => '',   // الإصدار 127: الذكاء الاصطناعي المدفوع (فاضي = مقفول ← مجاني 100%)
+        'ai_account_email'     => '',   // الإصدار 127: إيميل حساب Claude (للتذكير — فاضي = Top72026@gmail.com)
         'bank_on_eg' => '0', 'bank_name_eg' => '', 'bank_holder_eg' => '', 'bank_iban_eg' => '', 'bank_note_eg' => '', 'extra_on_eg' => '0', 'extra_label_eg' => '', 'extra_details_eg' => '', 'paymob_on_eg' => '0',
         'bank_on_sa' => '0', 'bank_name_sa' => '', 'bank_holder_sa' => '', 'bank_iban_sa' => '', 'bank_note_sa' => '', 'extra_on_sa' => '0', 'extra_label_sa' => '', 'extra_details_sa' => '', 'paymob_on_sa' => '0',
         'bank_on_ae' => '0', 'bank_name_ae' => '', 'bank_holder_ae' => '', 'bank_iban_ae' => '', 'bank_note_ae' => '', 'extra_on_ae' => '0', 'extra_label_ae' => '', 'extra_details_ae' => '', 'paymob_on_ae' => '0',

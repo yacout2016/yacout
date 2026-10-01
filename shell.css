@@ -1276,3 +1276,9 @@ body.g-shell #app button.wl-del, button.wl-del{ padding:5px 9px !important; min-
 .gs-alert-list.gs-alert-compact{ overflow:visible !important; max-height:none !important; overscroll-behavior:auto !important; }
 .gs-alert-compact .gs-alert-row > div{ display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; cursor:pointer; }
 .gs-alert-compact .gs-alert-row > div.open{ display:block; -webkit-line-clamp:unset; overflow:visible; }
+
+/* الإصدار 127: شاشة الذكاء الاصطناعي في لوحة التحكم */
+.ai-state{ border-inline-start:5px solid #10B981 !important; }
+.ai-state.on{ border-inline-start-color:#D4AF37 !important; }
+.ai-state .ai-big{ font-size:17px; margin-bottom:6px; }
+.g-ai select{ width:auto !important; max-width:220px; font-size:12px; padding:4px 6px; margin:2px 0 !important; }

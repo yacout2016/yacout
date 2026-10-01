@@ -14,6 +14,7 @@
    ===================================================================== */
 require_once __DIR__ . '/quote_lib.php';
 require_once __DIR__ . '/opps_lib.php';
+require_once __DIR__ . '/ai_access_lib.php';   // الإصدار 127: المدفوع / المجاني لكل مشترك
 defined('BASIRA_NEWS_URL') || define('BASIRA_NEWS_URL', 'https://news.google.com/rss/search');
 defined('BASIRA_AI_URL')   || define('BASIRA_AI_URL', 'https://api.anthropic.com/v1/messages');
 
@@ -279,9 +280,9 @@ function bs_ai_call($key, $model, $effort, $system, $user, $maxTokens = 16000, $
     return [$o, '', $j['model'] ?? $model];
 }
 function bs_ai_opinion($conn, $cfg, $A, $news, $names){
-    $key = site_config_get($conn, 'basira_ai_key');
+    $key = ai_paid_key($conn);   // الإصدار 127: المدفوع مقفول أو المشترك مش مسموحله ← '' (المحرك المجاني)
     if (empty($cfg['ai_on']) || $key === '') return null;
-    if ($cfg['ai_daily_max'] > 0 && bs_ai_counter() >= $cfg['ai_daily_max']) return ['error' => 'وصلنا للحد اليومي لطلبات الذكاء الاصطناعي — الرأي اتكتب بالمحرك الآلي.'];
+    if ($cfg['ai_daily_max'] > 0 && bs_ai_counter() >= $cfg['ai_daily_max']) return ai_user()['admin'] ? ['error' => 'وصلنا للحد اليومي للموقع كله — الرأي اتكتب بالمحرك المجاني.'] : null;
     $sum = ['symbol' => $A['symbol'], 'name' => $names, 'market' => $A['market'], 'last_price' => round($A['last'], 4), 'change_today_pct' => round($A['chg'], 2),
         'change_1y_pct' => round($A['y1'], 2), 'daily_volatility_pct' => round($A['vol'], 2), 'high_22d' => round($A['hi22'], 4), 'low_22d' => round($A['lo22'], 4),
         'indicators' => array_map(fn($x) => ['name' => $x['name'], 'value' => $x['value'] === null ? null : round($x['value'], 2), 'signal' => $x['s'] > 0 ? 'positive' : ($x['s'] < 0 ? 'negative' : 'neutral'), 'note' => $x['note']], $A['inds']),
@@ -296,7 +297,8 @@ function bs_ai_opinion($conn, $cfg, $A, $news, $names){
         . 'news_summary: جملتين عن أثر الأخبار. market_view: جملتين عن موقف السوق العام من البيانات المتاحة.';
     bs_ai_counter(true);
     $r = bs_ai_call($key, $cfg['model'], $cfg['effort'], $system, "بيانات السهم (JSON):\n" . json_encode($sum, JSON_UNESCAPED_UNICODE));
-    if (!$r[0]) return ['error' => $r[1]];
+    if (!$r[0]) return ai_user()['admin'] ? ['error' => $r[1]] : null;   // المشترك مبيشوفش أخطاء — بيكمّل بالمجاني
+    ai_count_use($conn);
     $o = $r[0]; $cl = fn($s, $n = 900) => mb_substr(trim(strip_tags((string)$s)), 0, $n);
     $list = fn($a) => array_values(array_slice(array_filter(array_map(fn($x) => $cl($x, 220), is_array($a) ? $a : [])), 0, 6));
     $sc = fn($x) => ['prob' => max(0, min(100, (int)($x['prob'] ?? 0))), 'text' => $cl($x['text'] ?? '', 260)];
@@ -327,20 +329,43 @@ function bs_rule_opinion($A, $news){
         'bull' => ['prob' => $bull, 'text' => 'استهداف ' . $f($A['levels']['r2']) . ' لو اخترق ' . $f($A['levels']['r1'])],
         'base' => ['prob' => 100 - $bull - $bear, 'text' => 'تداول بين ' . $f($A['levels']['s1']) . ' و ' . $f($A['levels']['r1'])],
         'bear' => ['prob' => $bear, 'text' => 'ارتداد لـ ' . $f($A['levels']['s2']) . ' لو كسر ' . $f($A['levels']['s1'])],
-        'horizons' => [], 'news_summary' => $news ? "الأخبار: $pN إيجابي و $nN سلبي و " . (count($news) - $pN - $nN) . ' محايد.' : 'مفيش أخبار متاحة حاليًا.',
-        'market_view' => '', 'model' => null];
+        'horizons' => [], 'news_summary' => bs_rule_news($news, $pN, $nN),
+        'market_view' => bs_rule_view($A, $I), 'model' => null];
+}
+/* الإصدار 127: المحرك المجاني أقوى — ملخص الأخبار من العناوين نفسها + الموقف العام + مستويات تعليمية (دخول / وقف / أهداف) من الدعم والمقاومة والتذبذب */
+function bs_rule_news($news, $pN, $nN){
+    if (!$news) return 'مفيش أخبار متاحة حاليًا — التحليل معتمد على حركة السعر والمؤشرات بس.';
+    $tone = $pN > $nN ? 'الأخبار الأخيرة تميل للإيجابية' : ($nN > $pN ? 'الأخبار الأخيرة تميل للسلبية' : 'الأخبار الأخيرة متوازنة');
+    $tops = array_slice(array_map(fn($n) => '«' . mb_substr(trim((string)$n['t']), 0, 90) . '»', $news), 0, 2);
+    return "$tone ($pN إيجابي و $nN سلبي و " . (count($news) - $pN - $nN) . ' محايد). أبرزها: ' . implode(' — ', $tops) . '.';
+}
+function bs_rule_view($A, $I){
+    $f = fn($v) => number_format($v, 2, '.', ',');
+    $last = (float)($A['last'] ?? 0); $atr = (float)($A['atr'] ?? 0); $L = $A['levels'] ?? [];
+    if ($last <= 0 || empty($L['s1'])) return '';
+    $vol = (float)($A['vol'] ?? 0); $volW = $vol >= 3 ? 'تذبذب عالي' : ($vol >= 1.8 ? 'تذبذب متوسط' : 'تذبذب منخفض');
+    $rsi = $A['rsiNow'] ?? null; $rsiW = $rsi === null ? '' : ($rsi >= 70 ? ' ومؤشر RSI في منطقة تشبّع شرائي (' . round($rsi) . ') فالأفضل انتظار تهدئة' : ($rsi <= 30 ? ' ومؤشر RSI في منطقة تشبّع بيعي (' . round($rsi) . ') وده بيدّي فرصة ارتداد' : ''));
+    $y1 = (float)($A['y1'] ?? 0);
+    $stop = max(0, min((float)($L['s2'] ?? $last), $last - 2 * $atr));
+    $plan = $vol >= 2.5 ? 'خطة Grid (شراء وبيع على مستويات داخل النطاق)' : 'خطة DCA (تعزيز متوسط على مراحل)';
+    return 'السهم ' . ($y1 >= 0 ? 'كسبان' : 'خسران') . ' ' . $f(abs($y1)) . '% في سنة مع ' . $volW . ' (حوالي ' . $f($vol) . '% يوميًا)' . $rsiW . '. '
+        . 'مستويات تعليمية: منطقة دخول قريبة من ' . $f($L['s1']) . ' – ' . $f($last) . '، وقف خسارة تقديري تحت ' . $f($stop) . '، وأهداف ' . $f($L['r1']) . ' ثم ' . $f($L['r2'] ?? $L['r1']) . '. '
+        . 'الأنسب لطبيعة حركته: ' . $plan . '. (محرك GRIFFINE المجاني — مش نصيحة استثمارية)';
 }
 
 /* ---------- التحليل الكامل (بالتخزين المؤقت) ---------- */
 // ملف التخزين: بيتغير لو الأدمن غيّر أي إعداد أو المفتاح (فالتغيير يبان فورًا)
-function bs_cache_file($conn, $sym, $market){
+function bs_cache_file($conn, $sym, $market, $tierOverride = null){
     $cfg = bs_cfg($conn);
-    $sig = md5(json_encode([$cfg, md5(site_config_get($conn, 'basira_ai_key'))]));   // أي تعديل في الإعدادات أو المفتاح ← تحليل جديد
-    return opp_cache_dir() . '/' . md5("bs3|$sym|$market|$sig") . '.json';
+    $tier = $tierOverride ?? ai_tier($conn);   // الإصدار 127: المدفوع (p) والمجاني (f) كل واحد ليه ملف
+    $sig = md5(json_encode([$cfg, $tier === 'p' ? md5(site_config_get($conn, 'basira_ai_key')) : 'free']));   // أي تعديل في الإعدادات أو المفتاح ← تحليل جديد
+    return opp_cache_dir() . '/' . md5("bs3|$sym|$market|$tier|$sig") . '.json';
 }
 function bs_analyze($conn, $sym, $market, $arName = '', $fresh = false){
     $cfg = bs_cfg($conn);
     $f = bs_cache_file($conn, $sym, $market);
+    // المشترك المجاني بيستفيد ببلاش من تحليل مدفوع اتعمل للسهم ده في آخر ساعة (لو موجود)
+    if (ai_tier($conn) === 'f') { $fp = bs_cache_file($conn, $sym, $market, 'p'); if (is_file($fp) && time() - filemtime($fp) < $cfg['cache_min'] * 60 && ($j = json_decode((string)@file_get_contents($fp), true)) && !empty($j['ok'])) { $j['cached'] = true; return $j; } }
     if (is_file($f)) {
         $age = time() - filemtime($f);
         if ($age < $cfg['cache_min'] * 60 && !($fresh && $age > 600)) { $j = json_decode((string)@file_get_contents($f), true); if (is_array($j) && !empty($j['ok'])) { $j['cached'] = true; return $j; } }

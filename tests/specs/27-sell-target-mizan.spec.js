@@ -8,6 +8,7 @@ const http = (u) => fetch(u).then(r => r.json());
 (async () => {
   q("DELETE FROM login_attempts");
   q("DELETE FROM site_config WHERE config_key IN ('basira_cfg','basira_ai_key')");
+  q("REPLACE INTO site_config (config_key, config_value) VALUES ('ai_paid_on', '1')");   // الإصدار 127: المدفوع مقفول افتراضيًا ← الاختبارات اللي بتستخدم المفتاح بتفعّله
   // أسعار السيرفر متخزنة 5 دقايق (من اختبارات قبل كده) ← نمسحها عشان الأسعار الجديدة تتقري
   try { require('child_process').execSync('find /tmp/griffine_quotes -type f -delete'); } catch(e){}
   await http('http://127.0.0.1:8098/set?sym=COMI&price=140'); await http('http://127.0.0.1:8098/set?sym=HRHO&price=23'); await http('http://127.0.0.1:8098/set?sym=TMGH&price=55');
@@ -150,5 +151,5 @@ const http = (u) => fetch(u).then(r => r.json());
   }, old);
   q("DELETE FROM site_config WHERE config_key IN ('basira_cfg','basira_ai_key')");
   await http('http://127.0.0.1:8098/set?sym=COMI&price=80'); await http('http://127.0.0.1:8098/set?sym=HRHO&price=20');
-  await b.close(); process.exit(summary() ? 1 : 0);
+  q("DELETE FROM site_config WHERE config_key = 'ai_paid_on'"); await b.close(); process.exit(summary() ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(1); });

@@ -54,13 +54,15 @@ try {
         mza_out(["success" => false, "message" => "طلب غير معروف."]);
     }
 
+    ai_set_user($email, $isAdmin);   // الإصدار 127
+    if (!ai_screen_ok($conn, $email, 'mizanai', $isAdmin)) mza_out(["success" => false, "hidden" => true, "message" => "الشاشة غير متاحة لحسابك."]);
     if (!$isAdmin && getAdminSetting($conn, 'hide_mizanai_screen', false)) mza_out(["success" => false, "hidden" => true, "message" => "الشاشة غير متاحة حاليًا."]);
     if (!$isAdmin && !hasActiveSubscription($conn, $email)) mza_out(["success" => false, "requiresSubscription" => true, "message" => "ميزان GRIFFINE AI متاح للمشتركين فقط."]);
     $cfg = mza_cfg($conn);
 
     if ($action === 'config') {
         mza_out(["success" => true, "config" => ['name' => $cfg['name'], 'disclaimer' => $cfg['disclaimer'], 'rates' => $cfg['rates'], 'profiles' => $cfg['profiles'], 'shareOn' => !empty($cfg['share_on']),
-            'aiReady' => !empty($cfg['ai_on']) && site_config_get($conn, 'basira_ai_key') !== ''], "ready" => mza_ready($conn)]);
+            'aiReady' => !empty($cfg['ai_on']) && ai_paid_key($conn) !== ''], "ready" => mza_ready($conn)]);
     }
     if ($action === 'sectors') {
         @set_time_limit(180);
@@ -75,7 +77,7 @@ try {
         $sum = json_decode((string)($_POST['summary'] ?? ''), true);
         if (!is_array($sum) || strlen((string)$_POST['summary']) > 12000) mza_out(["success" => false, "message" => "بيانات غير صحيحة."]);
         $o = mza_ai($conn, $mode, $sum);
-        if (!$o || isset($o['error'])) mza_out(["success" => false, "message" => $o['error'] ?? 'الذكاء الاصطناعي مش متاح — الرأي بالمحرك الآلي.']);
+        if (!$o || isset($o['error'])) mza_out(["success" => false, "message" => $isAdmin ? ($o['error'] ?? 'الذكاء الاصطناعي المدفوع مش متاح — الرأي بالمحرك المجاني.') : '']);   // الإصدار 127: المشترك مبيشوفش رسائل الحدود
         mza_out(["success" => true, "ai" => $o]);
     }
     if (!mza_ready($conn)) mza_out(["success" => false, "message" => "شغّل ALL_SCHEMA_UPDATES.sql (الإصدار 122) أولًا عشان الحفظ يشتغل."]);

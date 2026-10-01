@@ -373,7 +373,7 @@
   }
   function aiBlock(L){
     const o = L.ai || L.rule || {}, isAi = !!L.ai;
-    return `<h2 class="mz-sec-title"><span class="ic">🤖</span> ${isAi ? 'رأي الذكاء الاصطناعي' : 'الرأي الآلي'} <span class="bs-chip ${isAi ? 'bs-c-gold' : 'bs-c-neu'}">${isAi ? '✨ AI' : '⚙️ قواعد'}</span></h2>
+    return `<h2 class="mz-sec-title"><span class="ic">🤖</span> ${isAi ? 'رأي الذكاء الاصطناعي' : 'تحليل محرك GRIFFINE'} <span class="bs-chip ${isAi ? 'bs-c-gold' : 'bs-c-neu'}">${isAi ? '✨ AI' : '⚙️ قواعد'}</span></h2>
       <div class="bs-card mz-ai" id="mzaAi"><p>${E(o.summary)}</p>
         <div class="mz-two mz-two-flat"><div><b class="pos">نقاط القوة</b><ul>${(o.strengths || []).map(x => `<li>${E(x)}</li>`).join('')}</ul></div><div><b class="neg">مخاطر تنتبه لها</b><ul>${(o.risks || []).map(x => `<li>${E(x)}</li>`).join('')}</ul></div></div>
         ${(o.steps || []).length ? `<b>خطوات التنفيذ</b><div class="mz-moves">${o.steps.map(x => `<div class="mz-mv"><span>✅</span><span>${E(x)}</span></div>`).join('')}</div>` : ''}
@@ -505,7 +505,7 @@
       .disc{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 12px;font-size:12px;margin:10px 0}p{line-height:1.8;font-size:13.5px}li{font-size:13px;margin-bottom:3px}</style></head><body>
       <h1>${E(CFG ? CFG.name : 'ميزان')} GRIFFINE AI — ${E(titleOf(L))}</h1><div style="color:#555;font-size:13px">${E(new Date(L.at).toLocaleString('ar-EG'))} — مستوى المخاطرة: ${RL[L.risk]}</div>
       <div class="disc">⚠️ ${E(CFG ? CFG.disclaimer : '')}</div>${kp ? `<div class="kv">${kp}</div>` : ''}<h2>الأرقام</h2>${tables}${extra}
-      <h2>${L.ai ? 'رأي الذكاء الاصطناعي' : 'الرأي الآلي'}</h2><p>${E(o.summary)}</p>
+      <h2>${L.ai ? 'رأي الذكاء الاصطناعي' : 'تحليل محرك GRIFFINE'}</h2><p>${E(o.summary)}</p>
       <table><thead><tr><th class="pos">نقاط القوة</th><th class="neg">المخاطر</th></tr></thead><tbody><tr><td><ul>${(o.strengths || []).map(x => `<li>${E(x)}</li>`).join('')}</ul></td><td><ul>${(o.risks || []).map(x => `<li>${E(x)}</li>`).join('')}</ul></td></tr></tbody></table>
       ${(o.steps || []).length ? `<h2>خطوات التنفيذ</h2><ul>${o.steps.map(x => `<li>${E(x)}</li>`).join('')}</ul>` : ''}
       <div class="disc">دراسة آلية تعليمية — مش نصيحة استثمارية. العوائد المتوقعة افتراضات.</div></body></html>`);

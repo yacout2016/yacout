@@ -339,7 +339,7 @@
       </div>
     </div>
 
-    <h2 class="bs-sec"><span class="bs-ic">🤖</span> ${ai.source === 'ai' ? 'رأي الذكاء الاصطناعي' : 'الرأي الآلي'} <span class="bs-chip ${ai.source === 'ai' ? 'bs-c-gold' : 'bs-c-neu'}">${ai.source === 'ai' ? '✨ ذكاء اصطناعي' : '⚙️ محرك آلي من المؤشرات'}</span></h2>
+    <h2 class="bs-sec"><span class="bs-ic">🤖</span> ${ai.source === 'ai' ? 'رأي الذكاء الاصطناعي' : 'تحليل محرك GRIFFINE'} <span class="bs-chip ${ai.source === 'ai' ? 'bs-c-gold' : 'bs-c-neu'}">${ai.source === 'ai' ? '✨ ذكاء اصطناعي' : '⚙️ محرك آلي من المؤشرات'}</span></h2>
     <div class="bs-card bs-ai">
       <p>${E(ai.opinion)}</p>
       ${ai.aiError && window.__isAdmin ? `<div class="bs-adminnote">للإدارة: الذكاء الاصطناعي ماشتغلش في التحليل ده — ${E(ai.aiError)}</div>` : ''}
@@ -479,7 +479,7 @@
         ${(R.inds || []).map(x => `<tr><td>${e(x.name)}</td><td class="n">${x.value == null ? '—' : Math.abs(x.value) >= 1e5 ? (x.value / 1e6).toFixed(2) + 'M' : n2(x.value)}</td><td class="${x.s > 0 ? 'pos' : x.s < 0 ? 'neg' : ''}">${x.s > 0 ? 'إيجابي' : x.s < 0 ? 'سلبي' : 'محايد'}</td><td>${e(x.note)}</td></tr>`).join('')}</tbody></table>
       <h2>الدعم والمقاومة</h2><div class="kv">${[['دعم 2', R.levels.s2], ['دعم 1', R.levels.s1], ['المحور', R.levels.p], ['مقاومة 1', R.levels.r1], ['مقاومة 2', R.levels.r2]].map(([l, x]) => `<div><span>${l}</span><b class="n">${n2(x)}</b></div>`).join('')}</div>
       ${(R.cross || []).length ? `<h2>التقاطعات الأخيرة</h2><ul>${R.cross.slice().reverse().map(x => `<li class="${x.k}"><b>${e(x.t)}</b> — ${e(x.d)} (${e(x.date)})</li>`).join('')}</ul>` : ''}
-      <h2>${ai.source === 'ai' ? 'رأي الذكاء الاصطناعي' : 'الرأي الآلي'}</h2><p>${e(ai.opinion)}</p>
+      <h2>${ai.source === 'ai' ? 'رأي الذكاء الاصطناعي' : 'تحليل محرك GRIFFINE'}</h2><p>${e(ai.opinion)}</p>
       <table><thead><tr><th class="pos">عوامل إيجابية</th><th class="neg">عوامل سلبية ومخاطر</th></tr></thead><tbody><tr><td><ul>${(ai.positives || []).map(x => `<li>${e(x)}</li>`).join('')}</ul></td><td><ul>${(ai.negatives || []).map(x => `<li>${e(x)}</li>`).join('')}</ul></td></tr></tbody></table>
       <h2>السيناريوهات</h2><table><tbody>${[['الإيجابي', ai.bull, 'pos'], ['الأساسي', ai.base, ''], ['السلبي', ai.bear, 'neg']].map(([t, x, c]) => `<tr><td class="${c}"><b>${t}</b></td><td class="n ${c}"><b>${x ? x.prob : 0}%</b></td><td>${e(x ? x.text : '')}</td></tr>`).join('')}</tbody></table>
       ${ai.market_view ? `<h2>الموقف العام</h2><p>${e(ai.market_view)}</p>` : ''}

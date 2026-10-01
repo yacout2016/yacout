@@ -5,6 +5,7 @@ const { check, summary, launch, page, loginAdmin, q, BASE } = require('../lib');
 (async () => {
   q("DELETE FROM login_attempts");
   q("DELETE FROM site_config WHERE config_key IN ('basira_cfg','basira_ai_key','mizanai_cfg')");
+  q("REPLACE INTO site_config (config_key, config_value) VALUES ('ai_paid_on', '1')");   // الإصدار 127: المدفوع مقفول افتراضيًا ← الاختبارات اللي بتستخدم المفتاح بتفعّله
   q("DELETE FROM mizan_studies");
   const b = await launch(); const a = await page(b, { width: 1366, height: 900 }); await loginAdmin(a);
   await a.evaluate(() => renderHome()); await a.waitForTimeout(1500);
@@ -84,5 +85,5 @@ const { check, summary, launch, page, loginAdmin, q, BASE } = require('../lib');
   check('بدون أخطاء JavaScript', !a.__errors.length && !m.__errors.length, a.__errors[0] || m.__errors[0]);
   q("DELETE FROM site_config WHERE config_key IN ('basira_cfg','basira_ai_key','mizanai_cfg')");
   q("DELETE FROM mizan_studies"); q("DELETE FROM trash_bin WHERE item_type='mizan'");
-  await b.close(); process.exit(summary() ? 1 : 0);
+  q("DELETE FROM site_config WHERE config_key = 'ai_paid_on'"); await b.close(); process.exit(summary() ? 1 : 0);
 })().catch(e => { console.error(e); process.exit(1); });

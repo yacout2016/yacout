@@ -90,18 +90,19 @@ function mza_ai_schema(){
 }
 function mza_ai($conn, $mode, $summary){
     $cfg = mza_cfg($conn); $bcfg = bs_cfg($conn);
-    $key = site_config_get($conn, 'basira_ai_key');
+    $key = ai_paid_key($conn);   // الإصدار 127
     if (empty($cfg['ai_on']) || empty($bcfg['ai_on']) || $key === '') return null;
     $sig = md5(json_encode([$mode, $summary, $bcfg['model']]));
     $f = opp_cache_dir() . '/' . md5("mzai122|$sig") . '.json';
     if (is_file($f) && time() - filemtime($f) < 3600 && ($j = json_decode((string)@file_get_contents($f), true))) return $j;
-    if ($bcfg['ai_daily_max'] > 0 && bs_ai_counter() >= $bcfg['ai_daily_max']) return ['error' => 'وصلنا للحد اليومي لطلبات الذكاء الاصطناعي.'];
+    if ($bcfg['ai_daily_max'] > 0 && bs_ai_counter() >= $bcfg['ai_daily_max']) return ai_user()['admin'] ? ['error' => 'وصلنا للحد اليومي للموقع كله.'] : null;
     $what = ['stocks' => 'توزيع مبلغ على قطاعات البورصة وشركات مرشحة', 'assets' => 'توزيع شامل على الأصول (أسهم وعقار وشهادات وادخار وذهب وسيولة) مع توقع النمو', 'check' => 'فحص توزيعة استثمار حالية وخطوات إعادة التوزيع'][$mode] ?? 'دراسة توزيع استثمار';
     $system = 'أنت مستشار توزيع استثمارات آلي داخل منصة GRIFFINE. اكتب بالعربية الفصحى المبسطة رأيًا تعليميًا على ' . $what . '، معتمدًا فقط على الأرقام في رسالة المستخدم (نظرية المحفظة الحديثة، التنويع، مستوى المخاطرة، الفائدة المركبة). '
         . 'متخترعش أرقام ولا أخبار. ده مش نصيحة استثمارية - استخدم لغة اقتراح واحتمالات. summary: فقرة من 3 لـ 5 جمل. strengths وrisks: من 2 لـ 4 نقاط قصيرة. steps: من 2 لـ 4 خطوات تنفيذ عملية (زي الدخول على مراحل بخطط DCA أو المراجعة كل 3 شهور).';
     bs_ai_counter(true);
     $r = bs_ai_call($key, $bcfg['model'], $bcfg['effort'], $system, "بيانات الدراسة (JSON):\n" . json_encode($summary, JSON_UNESCAPED_UNICODE), 6000, mza_ai_schema());
-    if (!$r[0]) return ['error' => $r[1]];
+    if (!$r[0]) return ai_user()['admin'] ? ['error' => $r[1]] : null;
+    ai_count_use($conn);
     $o = $r[0]; $cl = fn($s, $n = 900) => mb_substr(trim(strip_tags((string)$s)), 0, $n);
     $list = fn($a) => array_values(array_slice(array_filter(array_map(fn($x) => $cl($x, 220), is_array($a) ? $a : [])), 0, 5));
     $out = ['summary' => $cl($o['summary'] ?? ''), 'strengths' => $list($o['strengths'] ?? []), 'risks' => $list($o['risks'] ?? []), 'steps' => $list($o['steps'] ?? []), 'model' => $r[2] ?? $bcfg['model']];

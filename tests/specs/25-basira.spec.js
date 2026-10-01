@@ -6,6 +6,7 @@ const http = (u) => fetch(u).then(r => r.json()).catch(() => ({}));
 (async () => {
   q("DELETE FROM login_attempts");
   q("DELETE FROM site_config WHERE config_key IN ('basira_cfg','basira_ai_key')");
+  q("REPLACE INTO site_config (config_key, config_value) VALUES ('ai_paid_on', '1')");   // الإصدار 127: المدفوع مقفول افتراضيًا ← الاختبارات اللي بتستخدم المفتاح بتفعّله
   q(`DELETE FROM basira_reports WHERE account_email IN ('${ADMIN}','${CUST.email}')`);
   q("DELETE FROM admin_settings WHERE setting_key='hide_basira_screen'");
   await fetch('http://127.0.0.1:8098/set?sym=COMI&price=80').catch(() => {});
@@ -41,7 +42,7 @@ const http = (u) => fetch(u).then(r => r.json()).catch(() => ({}));
   check('الرسم البياني (سعر + متوسطات) + RSI + MACD', R.main >= 4 && R.rsi && R.macd > 20, JSON.stringify({ m: R.main, macd: R.macd }));
   check('الاتجاه العام + الدعم والمقاومة (5 مستويات) + الرأي + 3 سيناريوهات', /صاعد|هابط|محايد/.test(R.verdict) && R.lv >= 5 && R.ai > 40 && R.scen === 3, JSON.stringify({ v: R.verdict, lv: R.lv, ai: R.ai }));
   check('الأخبار: كل خبر بيفتح مصدره في تبويب جديد', R.news.length >= 3 && R.news.every(([h, t, rel]) => /^https:\/\/example\.com\//.test(h) && t === '_blank' && /noopener/.test(rel)), JSON.stringify(R.news[0]));
-  check('الرأي بالمحرك الآلي لما مفيش مفتاح', /الرأي الآلي/.test(R.src));
+  check('الرأي بالمحرك المجاني (محرك GRIFFINE) لما مفيش مفتاح', /محرك GRIFFINE/.test(R.src));
   // تفاعل الرسم: الفترة + المؤشرات
   const p1 = await a.evaluate(() => document.getElementById('bsMain').innerHTML.length);
   await a.click('#bsRng [data-r="22"]'); await a.click('#bsLegend input[data-k="bb"]'); await a.waitForTimeout(200);
@@ -134,5 +135,5 @@ const http = (u) => fetch(u).then(r => r.json()).catch(() => ({}));
   q("DELETE FROM site_config WHERE config_key IN ('basira_cfg','basira_ai_key')");
   q(`DELETE FROM basira_reports WHERE account_email IN ('${ADMIN}','${CUST.email}')`);
   q(`DELETE FROM user_watchlist WHERE account_email='${ADMIN}' AND symbol='COMI'`);
-  await b.close(); process.exit(summary());
+  q("DELETE FROM site_config WHERE config_key = 'ai_paid_on'"); await b.close(); process.exit(summary());
 })();

@@ -50,6 +50,8 @@ $stmt->bind_param("ssdsisssi", $id, $name, $amount, $periodLabel, $durationDays,
 
 if ($stmt->execute()) {
     try { $m = $conn->prepare("UPDATE subscription_plans SET market = ? WHERE id = ?"); $m->bind_param("ss", $planMarket, $id); $m->execute(); $m->close(); } catch (Throwable $e) {}
+    // الإصدار 127: باقة شاملة خدمات الذكاء الاصطناعي (برو)
+    if (isset($_POST['includesAi'])) { try { $ai = $_POST['includesAi'] === '1' ? 1 : 0; $m = $conn->prepare("UPDATE subscription_plans SET includes_ai = ? WHERE id = ?"); $m->bind_param("is", $ai, $id); $m->execute(); $m->close(); } catch (Throwable $e) {} }
     echo json_encode(["success" => true]);
 } else {
     echo json_encode(["success" => false, "message" => "حدث خطأ: " . $conn->error]);
