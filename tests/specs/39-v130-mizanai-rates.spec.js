@@ -64,6 +64,15 @@ const CUST = { email: 'paytest@example.com', pass: process.env.GT_CUSTOMER_PASS 
   const fb = await a.evaluate(async () => (await apiGet('/mizanai_api.php?action=rates&market=' + encodeURIComponent('مصر'))).live);
   check('صفحة البنك المركزي ماتفتحتش ← سعر الفائدة الاحتياطي من لوحة التحكم (21% ← شهادات 18%)', fb.rates.cds === 18 && /لوحة التحكم/.test(fb.src.cds), JSON.stringify({ cds: fb.rates.cds, src: fb.src.cds }));
 
+  // الإصدار 131: أكتر من مصدر — الأول فشل ← التاني (عائد الشهادات من بنك) نجح
+  await a.evaluate(async () => apiPost('/mizanai_api.php', { action: 'admin_rates_save', config: JSON.stringify({ markets: { 'مصر': { index: '^CASE30', url: '', kw: '', fb: '', sources: 'البنك المركزي | http://127.0.0.1:8098/nothing | Overnight Deposit | policy\nبنك تجريبي | http://127.0.0.1:8098/bankcds | 3 Years | cds' } } }) }));
+  await a.evaluate(async () => apiPost('/mizanai_api.php', { action: 'admin_rates_now', market: 'مصر' }));
+  const ms = await a.evaluate(async () => { const r = await apiGet('/mizanai_api.php?action=admin_rates_get'); return { live: r.live['مصر'], src: r.config.markets['مصر'].sources }; });
+  check('أكتر من مصدر (الإصدار 131): البنك المركزي فشل ← عائد الشهادات من البنك (17.25% ← 17.3) + باقي الأصول بنفس الفروق + حالة كل مصدر ظاهرة للأدمن',
+    ms.live && ms.live.rates.cds === 17.3 && ms.live.rates.savings === 14.3 && /بنك تجريبي/.test(ms.live.src.cds) && ms.live.tried.length === 2 && !ms.live.tried[0].ok && ms.live.tried[1].ok, JSON.stringify(ms.live && { r: ms.live.rates, t: ms.live.tried }));
+  await a.evaluate(() => renderAdminMizanAi()); await a.waitForSelector('.mzr-src', { timeout: 20000 }).catch(() => {});
+  check('لوحة التحكم: خانة «مصادر سعر الفائدة / الشهادات» (سطر لكل مصدر) + ✓ / ✕ لكل مصدر', await a.evaluate(() => !!document.querySelector('.mzr-src') && /بنك تجريبي/.test(document.querySelector('.mzr-src').value) && !!document.querySelector('.mzr-tried .neg') && !!document.querySelector('.mzr-tried .pos')));
+
   check('بدون أخطاء JavaScript', !c.__errors.length && !d.__errors.length && !a.__errors.length, c.__errors[0] || d.__errors[0] || a.__errors[0]);
   q("REPLACE INTO site_config (config_key, config_value) VALUES ('mizanai_rates_cfg', '')"); q("DELETE FROM mizan_user_rates");
   await b.close(); process.exit(summary() ? 1 : 0);

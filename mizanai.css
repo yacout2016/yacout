@@ -120,3 +120,6 @@ body.g-shell #app .mza-seg2 button, .mza-seg2 button{ display:flex !important; f
 .mza-rf.mza-miss .mza-rsrc{ color:#B45309; font-weight:700; }
 .mza-rf.mza-need input{ border-color:#DC2626 !important; box-shadow:0 0 0 3px rgba(220,38,38,.15) !important; }
 .mzr-mk input{ min-width:110px; margin:0 !important; }
+
+/* الإصدار 131: مصادر سعر الفائدة المتعددة */
+.mzr-src{ min-width:320px; font-size:12px; margin:0 !important; } .mzr-tried{ margin:3px 0; line-height:1.7; }

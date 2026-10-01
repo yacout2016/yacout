@@ -61,7 +61,7 @@ try {
             $log = []; try { $res = $conn->query("SELECT market, old_rates, new_rates, sources, trigger_kind, created_by, created_at FROM mizan_rates_log ORDER BY id DESC LIMIT 15");
                 while ($r = $res->fetch_assoc()) $log[] = ['market' => $r['market'], 'old' => json_decode((string)$r['old_rates'], true), 'new' => json_decode((string)$r['new_rates'], true), 'trigger' => $r['trigger_kind'], 'by' => $r['created_by'], 'at' => $r['created_at']]; } catch (Throwable $e) {}
             $mk = mc_active($conn) ?: ['مصر']; $live = mr_live_all($conn); $L = [];
-            foreach ($mk as $m) { $x = $live[$m] ?? null; $L[$m] = $x ? ['rates' => $x['rates'], 'src' => $x['src'], 'policy' => $x['policy'] ?? null, 'at' => date('Y-m-d H:i', (int)$x['at'])] : null; }
+            foreach ($mk as $m) { $x = $live[$m] ?? null; $L[$m] = $x ? ['rates' => $x['rates'], 'src' => $x['src'], 'policy' => $x['policy'] ?? null, 'at' => date('Y-m-d H:i', (int)$x['at']), 'tried' => $x['tried'] ?? []] : null; }
             mza_out(["success" => true, "config" => mr_cfg($conn), "defaults" => mr_defaults(), "markets" => $mk, "live" => $L, "log" => $log, "ready" => mr_ready($conn)]);
         }
         if ($action === 'admin_rates_save' && $isPost) {

@@ -5,6 +5,9 @@
    - صناديق أسهم: عائد المؤشر ناقص متوسط مصاريف الصناديق
    - ذهب: نمو سعر الذهب بالعملة المحلية آخر 3 سنين (أوقية الذهب بالدولار × سعر الدولار)
    - شهادات / توفير / حساب يومي / صناديق نقدية / دخل ثابت: سعر الفائدة الأساسي من موقع البنك المركزي ± فرق ثابت (الأدمن بيظبطه)
+     الإصدار 131: أكتر من مصدر مجاني بالترتيب (البنك المركزي ← البنك الأهلي ← بنك مصر ← أي موقع الأدمن يضيفه):
+       مصدر «policy» = سعر الفائدة الأساسي ، مصدر «cds» = عائد الشهادات مباشرة من البنك
+       لو كل المصادر فشلت ← سعر الفائدة الاحتياطي من لوحة التحكم ← وإلا المستثمر بيكتب النسبة يدوي
    - عقار: مفيش مصدر مجاني موثوق ← تقدير الأدمن لو كاتبه، وإلا المستثمر بيكتبه يدوي
    - أي رقم مش متاح ← null (الشاشة بتطلب من المستثمر يكتبه يدوي)
    - التحديث: تلقائي كل N يوم (افتراضي 30) + «حدّث الآن» مرة واحدة في اليوم لكل سوق + سجل بكل تحديث
@@ -23,11 +26,15 @@ function mr_defaults(){
         'sp_cds' => -3, 'sp_savings' => -6, 'sp_daily' => -8, 'sp_money' => -4, 'sp_fixed' => -3,
         // لكل سوق: رمز المؤشر + صفحة البنك المركزي + الكلمة اللي جنب سعر الفائدة + سعر احتياطي لو الصفحة ماتفتحتش
         'markets' => [
-            'مصر'      => ['index' => '^CASE30',  'url' => 'https://www.cbe.org.eg/en/monetary-policy', 'kw' => 'Overnight Deposit', 'fb' => ''],
-            'السعودية' => ['index' => '^TASI.SR', 'url' => 'https://www.sama.gov.sa/en-US/Pages/default.aspx', 'kw' => 'Repo', 'fb' => ''],
-            'الإمارات' => ['index' => '^DFMGI',   'url' => '', 'kw' => '', 'fb' => ''],
-            'قطر'      => ['index' => '^QSI',     'url' => '', 'kw' => '', 'fb' => ''],
-            'الكويت'   => ['index' => '^BKP',     'url' => '', 'kw' => '', 'fb' => ''],
+            'مصر'      => ['index' => '^CASE30',  'url' => '', 'kw' => '', 'fb' => '', 'sources' => implode("\n", [
+                'البنك المركزي المصري | https://www.cbe.org.eg/en/monetary-policy | Overnight Deposit | policy',
+                'البنك المركزي المصري (عربي) | https://www.cbe.org.eg/ar/monetary-policy | الإيداع لليلة واحدة | policy',
+                'البنك الأهلي المصري | https://www.nbe.com.eg/NBE/E/#/EN/ProductCategory?inParams=%7B%22CategoryID%22%3A%22CertificatesID%22%7D | 3 Years | cds',
+                'بنك مصر | https://www.banquemisr.com/en/Home/SAVINGS/Certificates | 3 years | cds'])],
+            'السعودية' => ['index' => '^TASI.SR', 'url' => '', 'kw' => '', 'fb' => '', 'sources' => 'البنك المركزي السعودي | https://www.sama.gov.sa/en-US/Pages/default.aspx | Repo | policy'],
+            'الإمارات' => ['index' => '^DFMGI',   'url' => '', 'kw' => '', 'fb' => '', 'sources' => ''],
+            'قطر'      => ['index' => '^QSI',     'url' => '', 'kw' => '', 'fb' => '', 'sources' => ''],
+            'الكويت'   => ['index' => '^BKP',     'url' => '', 'kw' => '', 'fb' => '', 'sources' => ''],
         ],
     ];
 }
@@ -41,7 +48,7 @@ function mr_cfg($conn){
         $val = trim((string)$j['markets'][$m][$f]);
         if ($f === 'url' && $val !== '' && !preg_match('#^https?://#i', $val)) $val = '';
         if ($f === 'fb') $val = is_numeric($val) ? (string)max(0, min(60, (float)$val)) : '';
-        $d['markets'][$m][$f] = mb_substr($val, 0, 300);
+        $d['markets'][$m][$f] = mb_substr($val, 0, $f === 'sources' ? 3000 : 300);
     }
     return $d;
 }
@@ -69,6 +76,19 @@ function mr_cagr($series){
     if ($n >= 37) { $three = (pow($last / $v[$n - 37], 1 / 3) - 1) * 100; return ($one + $three) / 2; }
     return $one;
 }
+/* الإصدار 131: المصادر — سطر لكل مصدر: الاسم | الرابط | الكلمة اللي جنب النسبة | policy أو cds
+   (رابط + كلمة الإصدار 130 القديمة لو متسجلة بتبقى أول مصدر) */
+function mr_sources($M){
+    $out = [];
+    if (!empty($M['url']) && !empty($M['kw'])) $out[] = ['name' => 'المصدر المحفوظ', 'url' => $M['url'], 'kw' => $M['kw'], 'kind' => 'policy'];
+    foreach (preg_split('/\R/u', (string)($M['sources'] ?? '')) as $ln) {
+        $p = array_map('trim', explode('|', $ln)); if (count($p) < 3) continue;
+        if (!preg_match('#^https?://#i', $p[1]) || $p[2] === '') continue;
+        $out[] = ['name' => mb_substr($p[0] ?: 'مصدر', 0, 60), 'url' => $p[1], 'kw' => mb_substr($p[2], 0, 80), 'kind' => strtolower($p[3] ?? 'policy') === 'cds' ? 'cds' : 'policy'];
+        if (count($out) >= 8) break;
+    }
+    return $out;
+}
 /* سعر الفائدة الأساسي من صفحة البنك المركزي: أول نسبة % بعد الكلمة المحددة */
 function mr_policy_rate($url, $kw){
     if ($url === '' || $kw === '') return null;
@@ -93,10 +113,21 @@ function mr_fetch($conn, $market, $prev = null){
         if ($fx) { $fxv = $fx; foreach ($gold as $t => $g) { $best = null; foreach ($fxv as $ft => $fv) { if ($best === null || abs($ft - $t) < abs($best - $t)) $best = $ft; } if ($best !== null && abs($best - $t) < 20 * 86400) $loc[$t] = $g * $fxv[$best]; } }
         elseif ($ccy === 'USD') $loc = $gold;
         if (count($loc) >= 13 && ($g = mr_cagr($loc)) !== null) { $R['gold'] = $clamp($g); $S['gold'] = 'نمو سعر الذهب بال' . (function_exists('mk_ccy_ar') ? mk_ccy_ar($ccy) : $ccy) . ' آخر 3 سنين'; } }
-    // الأصول المرتبطة بسعر الفائدة
-    $pol = mr_policy_rate($M['url'], $M['kw']); $polSrc = 'سعر الفائدة من موقع البنك المركزي';
-    if ($pol === null && $M['fb'] !== '') { $pol = (float)$M['fb']; $polSrc = 'سعر الفائدة من لوحة التحكم'; }
+    // الأصول المرتبطة بسعر الفائدة — الإصدار 131: أكتر من مصدر بالترتيب لحد ما واحد ينجح
+    $pol = null; $polSrc = ''; $cds = null; $cdsSrc = ''; $tried = [];
+    foreach (mr_sources($M) as $src) {
+        if ($src['kind'] === 'policy' && $pol !== null) continue;
+        if ($src['kind'] === 'cds' && ($cds !== null || $pol !== null)) continue;   // سعر الفائدة الأساسي كفاية لكل الأصول
+        $v = mr_policy_rate($src['url'], $src['kw']);
+        $tried[] = ['name' => $src['name'], 'kind' => $src['kind'], 'ok' => $v !== null, 'v' => $v];
+        if ($v === null) continue;
+        if ($src['kind'] === 'policy') { $pol = $v; $polSrc = 'سعر الفائدة من ' . $src['name']; } else { $cds = $v; $cdsSrc = 'عائد الشهادات من ' . $src['name']; }
+    }
+    if ($pol === null && $cds === null && $M['fb'] !== '') { $pol = (float)$M['fb']; $polSrc = 'سعر الفائدة من لوحة التحكم'; $tried[] = ['name' => 'سعر الفائدة الاحتياطي (لوحة التحكم)', 'kind' => 'policy', 'ok' => true, 'v' => $pol]; }
     if ($pol !== null) foreach (MR_RATE_ASSETS as $a => $sk) { $R[$a] = $clamp($pol + $C[$sk]); $S[$a] = $polSrc . ' (' . $pol . '%) ' . ($C[$sk] >= 0 ? '+ ' : '− ') . abs($C[$sk]); }
+    elseif ($cds !== null) foreach (MR_RATE_ASSETS as $a => $sk) {   // عائد الشهادات من بنك ← باقي الأصول بنفس الفروق عن الشهادات
+        $d = $C[$sk] - $C['sp_cds']; $R[$a] = $clamp($cds + $d); $S[$a] = $a === 'cds' ? $cdsSrc . ' (' . $cds . '%)' : $cdsSrc . ' (' . $cds . '%) ' . ($d >= 0 ? '+ ' : '− ') . abs($d); }
+    $GLOBALS['__mr_tried'] = $tried;
     // العقار
     if ($C['re_est'] !== '') { $R['realestate'] = (float)$C['re_est']; $S['realestate'] = 'تقدير لوحة التحكم'; }
     // اللي فشل ← آخر رقم ناجح لو عمره أقل من 90 يوم
@@ -119,7 +150,7 @@ function mr_get($conn, $market, $force = false, $trigger = 'auto', $by = ''){
                 @set_time_limit(90);
                 [$R, $S, $pol] = mr_fetch($conn, $market, $cur);
                 $ok = $cur['ok_at'] ?? []; foreach (MR_ASSETS as $a) if ($R[$a] !== null && strpos($S[$a], 'آخر تحديث ناجح') !== 0) $ok[$a] = time();
-                $new = ['rates' => $R, 'src' => $S, 'policy' => $pol, 'at' => time(), 'ok_at' => $ok, 'trigger' => $trigger];
+                $new = ['rates' => $R, 'src' => $S, 'policy' => $pol, 'at' => time(), 'ok_at' => $ok, 'trigger' => $trigger, 'tried' => $GLOBALS['__mr_tried'] ?? []];
                 $all = mr_live_all($conn); $all[$market] = $new; mr_live_save($conn, $all);
                 try { $old = $cur ? json_encode($cur['rates']) : null; $nr = json_encode($R); $ns = json_encode($S, JSON_UNESCAPED_UNICODE);
                     $st = $conn->prepare("INSERT INTO mizan_rates_log (market, old_rates, new_rates, sources, trigger_kind, created_by) VALUES (?, ?, ?, ?, ?, ?)"); $st->bind_param("ssssss", $market, $old, $nr, $ns, $trigger, $by); $st->execute(); $st->close(); } catch (Throwable $e) {}

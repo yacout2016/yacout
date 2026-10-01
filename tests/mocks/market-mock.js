@@ -50,6 +50,7 @@ http.createServer((req, res) => { let body = ''; req.on('data', c => body += c);
   if (MONTHLY[dp]) { const [p0, g] = MONTHLY[dp], n = 61, now = Math.floor(Date.now() / 1000), ts = [], c = [];
     for (let i = 0; i < n; i++) { ts.push(now - (n - 1 - i) * 30.44 * 86400); c.push(+(p0 * Math.pow(1 + g, i / 12)).toFixed(4)); }
     return send({ chart: { result: [{ meta: { currency: 'USD' }, timestamp: ts.map(Math.round), indicators: { quote: [{ close: c }] } }] } }); }
+  if (dp === '/bankcds') { res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }); return res.end('<html><body><h3>Certificates</h3><p>Platinum Certificate 3 Years — annual return 17.25% paid monthly</p></body></html>'); }
   if (dp === '/cbe') { res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }); return res.end('<html><body><h2>Key Policy Rates</h2><table><tr><td>Overnight Deposit Rate</td><td>22.00%</td></tr><tr><td>Overnight Lending Rate</td><td>23.00%</td></tr></table></body></html>'); }
   send({ chart: { result: null } });
 }); }).listen(8098, () => console.log('market mock 8098'));
