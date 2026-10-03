@@ -13,7 +13,7 @@ const CUST = { email: 'paytest@example.com', pass: process.env.GT_CUSTOMER_PASS 
 
   // 1) صفحة «⏱ المدد والفترات» في لوحة التحكم
   await a.evaluate(() => renderAdminHub()); await a.waitForSelector('#goPeriodsBtn', { timeout: 15000 }).catch(() => {});
-  check('لوحة التحكم: زرار واحد «الشاشة الرئيسية والقوائم المنسدلة (مدد البحث)»', await a.evaluate(() => /الشاشة الرئيسية والقوائم المنسدلة/.test((document.getElementById('goPeriodsBtn') || {}).textContent || '')));
+  check('لوحة التحكم: زرار «التحكم في الشاشة الرئيسية والقوائم المنسدلة للمدد الزمنية»', await a.evaluate(() => /التحكم في الشاشة الرئيسية والقوائم المنسدلة للمدد الزمنية/.test((document.getElementById('goPeriodsBtn') || {}).textContent || '')));
   await a.click('#goPeriodsBtn'); await a.waitForSelector('.gs-he-per .gper-row', { timeout: 30000 }).catch(() => {});
   const pg = await a.evaluate(() => ({ n: document.querySelectorAll('.gs-he-per .gper-row').length, t: document.getElementById('app').textContent }));
   check('الزرار بيفتح نفس شكل الشاشة الرئيسية (قيمة المحفظة) + أزرار إخفاء / إظهار على كل كارت (6)', await a.evaluate(() => !!document.querySelector('.gs-hctl-bar') && !!document.querySelector('#gsHero') && document.querySelectorAll('.gs-home [data-hk]').length === 6));

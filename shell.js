@@ -1160,7 +1160,7 @@
     const hAt = (k) => hOff(k) && EDIT ? ' gs-hoff' : '';
     const hSt = (k) => hOff(k) && !EDIT ? ' style="display:none"' : '';
     const hTag = (k) => !EDIT ? '' : `<div class="gs-hctl"><span class="u-muted">${HL[k]}</span><button type="button" class="gs-hctl-b ${hOff(k) ? 'off' : ''}" data-hk="${k}">${hOff(k) ? '🙈 مخفي عن العملاء — إظهار' : '👁 ظاهر للكل — إخفاء'}</button></div>`;
-    const hBar = EDIT ? `<div class="gs-hctl-bar"><b>🛠 التحكم في الشاشة الرئيسية</b><span>ده نفس شكل الرئيسية عند العملاء. اللي تخفيه يختفي من عند الكل (هنا بيفضل باهت عشان ترجّعه). وتحت: كل القوائم المنسدلة لمدد البحث.</span><button type="button" class="gs-hctl-b" id="gsHEBack">🛡️ رجوع للوحة التحكم</button></div>` : '';
+    const hBar = EDIT ? `<div class="gs-hctl-bar"><b>🛠 التحكم في الشاشة الرئيسية والقوائم المنسدلة للمدد الزمنية</b><span>ده نفس شكل الرئيسية عند العملاء. اللي تخفيه يختفي من عند الكل (هنا بيفضل باهت عشان ترجّعه). وتحت: كل القوائم المنسدلة لمدد البحث.</span><button type="button" class="gs-hctl-b" id="gsHEBack">🛡️ رجوع للوحة التحكم</button></div>` : '';
 
     // ---- 3) رسم الشاشة ----
     app.innerHTML = `<div class="container gs-home">

@@ -29,7 +29,7 @@ function adminNavButtonsHtml(){
     ]},
     { title: 'الإدارة والصلاحيات', items: [
       { id:'goSettingsBtn', perm:'manage_admin_settings', icon:'⚙️', label:'الصلاحيات والإعدادات الإلزامية' },
-      { id:'goPeriodsBtn', perm:'manage_admin_settings', icon:'🛠', label:'الشاشة الرئيسية والقوائم المنسدلة (مدد البحث)' },
+      { id:'goPeriodsBtn', perm:'manage_admin_settings', icon:'🛠', label:'التحكم في الشاشة الرئيسية والقوائم المنسدلة للمدد الزمنية' },
       { id:'goEmergencyBtn', perm:'manage_admin_settings', icon:'🚨', label:'الشاشات الطارئة (الصيانة / انقطاع النت / السيرفر / التحميل)' },
       { id:'goEmailCenterBtn', perm:'manage_admin_settings', icon:'📧', label:'مركز الإيميلات (اختبار وسجل الإرسال)' },
       { id:'goAiBtn', perm:'manage_admin_settings', icon:'🤖', label:'الذكاء الاصطناعي (مجاني / مدفوع + حساب Claude)' },
