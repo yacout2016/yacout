@@ -1,0 +1,8 @@
+# GRIFFINE — الإصدار 146
+User-agent: *
+Allow: /$
+Allow: /index.php
+Allow: /manifest.json
+Allow: /icon-512.png
+Disallow: /*.php$
+Sitemap: https://www.griffine.store/sitemap.xml

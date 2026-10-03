@@ -68,7 +68,11 @@ try {
     if ($action === 'get') {
         $cfg = lp_get_config($conn);
         // عداد الزوار: مرة لكل جلسة
-        if (!empty($_GET['visit']) && empty($_SESSION['lp_seen'])) {
+        // الإصدار 146: العداد الحقيقي واقف لحد ما الأدمن يدوس «ابدأ الأرقام الحقيقية» (عداد الزوار = حقيقي)،
+        //   وزيارات الأدمن والموظفين عمرها ما بتتحسب
+        $vMode = 'manual';
+        foreach ((($cfg['stats'] ?? [])['items'] ?? []) as $it) { if (($it['key'] ?? '') === 'visitors') $vMode = (string)($it['mode'] ?? 'manual'); }
+        if ($vMode === 'real' && !empty($_GET['visit']) && empty($_SESSION['lp_seen']) && empty($_SESSION['is_admin'])) {
             $_SESSION['lp_seen'] = 1;
             try { $conn->query("INSERT INTO site_config (config_key, config_value) VALUES ('landing_visits', '1') ON DUPLICATE KEY UPDATE config_value = CAST(config_value AS UNSIGNED) + 1"); } catch (Throwable $e) {}
         }
@@ -80,7 +84,7 @@ try {
                 "plans"    => lp_count($conn, "SELECT COUNT(*) FROM user_plans WHERE deleted = 0"),
                 "alerts"   => lp_count($conn, "SELECT COUNT(*) FROM user_alerts"),
             ],
-            "reviews" => [], "faq" => [], "version" => 145,
+            "reviews" => [], "faq" => [], "version" => 146,
         ];
         // آراء العملاء الحقيقية (من شاشة «آراء العملاء» في الموقع) - الأدمن بيخفي أي رأي من اللاندينج
         $rv = is_array($cfg['reviews'] ?? null) ? $cfg['reviews'] : [];
@@ -141,6 +145,13 @@ try {
         lp_out(["success" => true, "reviews" => $rows]);
     }
 
+    // الإصدار 146: بعد الإطلاق ← تصفير عداد الزوار (الزيارات الداخلية والتجارب بتتمسح) وبداية العد الحقيقي
+    if ($action === 'stats_reset' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        if (!lp_is_editor($conn)) { http_response_code(403); lp_out(["success" => false, "message" => "غير مصرح."]); }
+        requireCsrf(); session_write_close();
+        $conn->query("INSERT INTO site_config (config_key, config_value) VALUES ('landing_visits', '0') ON DUPLICATE KEY UPDATE config_value = '0'");
+        lp_out(["success" => true]);
+    }
     if ($action === 'save' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!lp_is_editor($conn)) { http_response_code(403); lp_out(["success" => false, "message" => "غير مصرح — صلاحية تعديل تصميم الموقع مطلوبة."]); }
         requireCsrf();

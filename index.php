@@ -53,52 +53,66 @@ header("Content-Security-Policy: default-src 'self'; "
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>GRIFFINE — خطة تعزيز المتوسط</title>
+<title>GRIFFINE — منصة تنظيم الاستثمار في الأسهم: خطط DCA وGrid وتوصيات وتحليلات</title>
+<?php $gSite = 'https://' . (preg_match('/^(www\.)?griffine\.(store|app|com)$/i', $_SERVER['HTTP_HOST'] ?? '') ? strtolower($_SERVER['HTTP_HOST']) : 'www.griffine.store'); ?>
+<!-- الإصدار 146: الظهور في جوجل والمشاركة على واتساب / فيسبوك (صورة + عنوان + وصف) -->
+<link rel="canonical" href="<?php echo $gSite; ?>/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="GRIFFINE">
+<meta property="og:locale" content="ar_AR">
+<meta property="og:url" content="<?php echo $gSite; ?>/">
+<meta property="og:title" content="GRIFFINE — نظّم استثمارك في البورصة بخطة واضحة">
+<meta property="og:description" content="خطط تعزيز المتوسط (DCA) والشبكة (Grid)، توصيات وتحليلات، فرص بالمؤشرات الفنية، وتنبيهات فورية — البورصة المصرية والخليج.">
+<meta property="og:image" content="<?php echo $gSite; ?>/icon-512.png">
+<meta property="og:image:width" content="512"><meta property="og:image:height" content="512">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="GRIFFINE — نظّم استثمارك في البورصة بخطة واضحة">
+<meta name="twitter:image" content="<?php echo $gSite; ?>/icon-512.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="theme-boot.js?v=145"></script>
-<link rel="stylesheet" href="griffine.css?v=145">
-<link rel="stylesheet" href="shell.css?v=145">
-<link rel="stylesheet" href="landing.css?v=145">
-<link rel="stylesheet" href="basira.css?v=145">
-<link rel="stylesheet" href="mizan.css?v=145">
-<link rel="stylesheet" href="mizanai.css?v=145">
+<script src="theme-boot.js?v=146"></script>
+<link rel="stylesheet" href="griffine.css?v=146">
+<link rel="stylesheet" href="shell.css?v=146">
+<link rel="stylesheet" href="landing.css?v=146">
+<link rel="stylesheet" href="basira.css?v=146">
+<link rel="stylesheet" href="mizan.css?v=146">
+<link rel="stylesheet" href="mizanai.css?v=146">
 </head>
 <body>
 <div id="app"></div>
 <!-- الإصدار 100: الشاشات الطارئة (صيانة / انقطاع النت / السيرفر / التحميل البطيء) - لازم تبقى قبل أي ملف تاني -->
-<script src="emergency.js?v=145"></script>
+<script src="emergency.js?v=146"></script>
 
-<script src="shell.js?v=145"></script>
+<script src="shell.js?v=146"></script>
 <!-- الإصدار 72: استوديو التصميم - يطبّق الثيم وتعديلات الأدمن على كل الشاشات (شاشة التعديل نفسها studio-editor.js تُحمَّل للأدمن فقط) -->
-<script src="studio.js?v=145"></script>
+<script src="studio.js?v=146"></script>
 <!-- الإصدار 88: griffine.js قُسّم إلى ملفات حسب الأقسام (بالترتيب نفسه) - يجب أن يبقى app-init.js آخر ملف -->
-<script src="app-core.js?v=145"></script>
-<script src="app-public.js?v=145"></script>
-<script src="app-subscribe.js?v=145"></script>
-<script src="app-admin.js?v=145"></script>
-<script src="app-plans.js?v=145"></script>
-<script src="app-screener.js?v=145"></script>
-<script src="app-chat.js?v=145"></script>
-<script src="app-nav.js?v=145"></script>
-<script src="hr.js?v=145"></script>
-<script src="markets.js?v=145"></script>
-<script src="trades.js?v=145"></script>
-<script src="faq.js?v=145"></script>
-<script src="trash.js?v=145"></script>
-<script src="promo.js?v=145"></script>
-<script src="notify.js?v=145"></script>
-<script src="ai_access.js?v=145"></script>
-<script src="recs.js?v=145"></script>
-<script src="opps.js?v=145"></script>
-<script src="landing.js?v=145"></script>
-<script src="landing-admin.js?v=145"></script>
-<script src="basira.js?v=145"></script>
-<script src="mizan.js?v=145"></script>
-<script src="mizanai.js?v=145"></script>
-<script src="perks.js?v=145"></script>
-<script src="periods.js?v=145"></script>
-<script src="app-init.js?v=145"></script>
+<script src="app-core.js?v=146"></script>
+<script src="app-public.js?v=146"></script>
+<script src="app-subscribe.js?v=146"></script>
+<script src="app-admin.js?v=146"></script>
+<script src="app-plans.js?v=146"></script>
+<script src="app-screener.js?v=146"></script>
+<script src="app-chat.js?v=146"></script>
+<script src="app-nav.js?v=146"></script>
+<script src="hr.js?v=146"></script>
+<script src="markets.js?v=146"></script>
+<script src="trades.js?v=146"></script>
+<script src="faq.js?v=146"></script>
+<script src="trash.js?v=146"></script>
+<script src="promo.js?v=146"></script>
+<script src="notify.js?v=146"></script>
+<script src="ai_access.js?v=146"></script>
+<script src="recs.js?v=146"></script>
+<script src="opps.js?v=146"></script>
+<script src="landing.js?v=146"></script>
+<script src="landing-admin.js?v=146"></script>
+<script src="basira.js?v=146"></script>
+<script src="mizan.js?v=146"></script>
+<script src="mizanai.js?v=146"></script>
+<script src="perks.js?v=146"></script>
+<script src="periods.js?v=146"></script>
+<script src="app-init.js?v=146"></script>
 </body>
 </html>

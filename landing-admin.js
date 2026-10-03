@@ -116,7 +116,9 @@
       links: () => {
         const hidden = new Set((C.reviews.hidden || []).map(Number));
         return [
-          card('العدادات', C.stats.items.map((it, i) => `<div class="lpa-item"><div class="lpa-grid">${field(`stats.items.${i}.label`, 'الاسم', 'text')}${field(`stats.items.${i}.icon`, 'أيقونة', 'text')}${field(`stats.items.${i}.mode`, 'المصدر', 'select', [['real', 'حقيقي من الموقع'], ['manual', 'رقم أكتبه بنفسي'], ['off', 'مخفي']])}${field(`stats.items.${i}.value`, 'الرقم اليدوي', 'num')}</div><div class="u-fs12 u-muted">الرقم الحقيقي دلوقتي: <b>${(+live.stats[it.key] || 0).toLocaleString('en-US')}</b></div></div>`).join(''), 'الزوار = زيارات صفحة اللاندينج (مرة لكل جلسة) · المستخدمين = الحسابات المسجلة · الخطط = خطط DCA وGrid · التنبيهات = التنبيهات اللي اتبعتت.'),
+          card('العدادات', C.stats.items.map((it, i) => `<div class="lpa-item"><div class="lpa-grid">${field(`stats.items.${i}.label`, 'الاسم', 'text')}${field(`stats.items.${i}.icon`, 'أيقونة', 'text')}${field(`stats.items.${i}.mode`, 'المصدر', 'select', [['real', 'حقيقي من الموقع'], ['manual', 'رقم أكتبه بنفسي'], ['off', 'مخفي']])}${field(`stats.items.${i}.value`, 'الرقم اليدوي', 'num')}</div><div class="u-fs12 u-muted">الرقم الحقيقي دلوقتي: <b>${(+live.stats[it.key] || 0).toLocaleString('en-US')}</b></div></div>`).join(''), 'الزوار = زيارات صفحة اللاندينج (مرة لكل جلسة) · المستخدمين = الحسابات المسجلة · الخطط = خطط DCA وGrid · التنبيهات = التنبيهات اللي اتبعتت.' +
+            `<br><b>قبل الإطلاق:</b> خلّي المصدر «رقم أكتبه بنفسي» واكتب الأرقام المناسبة. عداد الزوار الحقيقي واقف ومش بيحسب زياراتك أو زيارات الموظفين.
+            <br><b>بعد الإطلاق وحضور زوار حقيقيين:</b> دوس الزرار ده ← عداد الزوار يتصفّر وكل العدادات تبقى حقيقية.<br><button type="button" class="small u-wa u-mt6" data-do="statsLive">🚀 ابدأ الأرقام الحقيقية (بعد الإطلاق)</button>`),
           card('آراء العملاء', `<div class="lpa-grid">${field('reviews.mode', 'المصدر', 'select', [['real', 'حقيقية من الموقع (شاشة آراء العملاء)'], ['manual', 'أكتبها بنفسي'], ['both', 'الاتنين مع بعض'], ['off', 'مقفولة (القسم مخفي)']])}${field('reviews.min', 'أقل تقييم يظهر (1-5)', 'num', [1, 5])}${field('reviews.count', 'أقصى عدد آراء', 'num', [1, 30])}</div>
             <h4>الآراء الحقيقية من الموقع (${allReviews.length}) — علّم على اللي يظهر</h4>
             <div class="lpa-reviews">${allReviews.map(r => `<label class="lpa-rv ${r.stars < (+C.reviews.min || 4) ? 'low' : ''}"><input type="checkbox" data-rv="${r.id}" ${hidden.has(r.id) ? '' : 'checked'}> <span><b>${esc(r.name)}</b> ${'★'.repeat(r.stars)} <small class="u-muted">${esc(r.date)}${r.stars < (+C.reviews.min || 4) ? ' · أقل من الحد الأدنى' : ''}</small><br>${esc(r.text)}</span></label>`).join('') || '<div class="u-muted u-fs12">لسه مفيش آراء — العملاء بيكتبوا آراءهم من شاشة «آراء العملاء» في حسابهم.</div>'}</div>`
@@ -180,6 +182,13 @@
       if (ds.smv) { const [i, dir] = ds.smv.split('|').map(Number), j = i + dir; if (j < 0 || j >= C.sections.length) return; [C.sections[i], C.sections[j]] = [C.sections[j], C.sections[i]]; markDirty(); return draw(); }
       if (ds.sdel) { if (!await gConfirm('حذف القسم المخصص ده؟')) return; C.sections.splice(+ds.sdel, 1); markDirty(); return draw(); }
       if (ds.do === 'addsec') { const id = 'c' + Date.now().toString(36); C.sections.push({ id, custom: true, on: true, band: false, title: 'عنوان القسم الجديد', text: '', img: '', layout: 'img-left', btn: '', action: 'register', url: '' }); open[id] = true; markDirty(); return draw(); }
+      if (ds.do === 'statsLive') {   // الإصدار 146
+        if (!await gConfirm('بدء الأرقام الحقيقية؟ عداد الزوار هيتصفّر وكل العدادات هتعرض الأرقام الحقيقية من الموقع.')) return;
+        const r = await apiPost('/landing_api.php', { action: 'stats_reset' }).catch(() => null);
+        if (!(r && r.success)) return GShell.toast('تعذّر التصفير', 'err');
+        C.stats.items.forEach(it => { if (it.mode !== 'off') it.mode = 'real'; }); markDirty();
+        if (await save(true)) { GShell.toast('🚀 العدادات بقت حقيقية — عداد الزوار بدأ من الصفر', 'ok'); return draw(); } return;
+      }
       if (ds.do === 'preview') { if (await save(true)) { app.oninput = app.onchange = app.onclick = null; renderLanding(true); } return; }
       if (ds.do === 'studio') { if (await save(true)) { app.oninput = app.onchange = app.onclick = null; await renderLanding(true); if (window.GStudio && GStudio.openEditor) GStudio.openEditor(); } return; }
       if (ds.do === 'faqadmin') { app.oninput = app.onchange = app.onclick = null; return renderFaqAdminPage(); }

@@ -5,8 +5,8 @@ session_start();
 include 'db.php';
 
 if (!isset($_SESSION['user_email'])) {
-    http_response_code(401);
-    echo json_encode(["success" => false, "message" => "يرجى تسجيل الدخول."]);
+    // الإصدار 146: الزائر قبل الدخول ← رد عادي (من غير 401) عشان مايظهرش خطأ في الكونسول
+    echo json_encode(["success" => false, "guest" => true, "message" => "يرجى تسجيل الدخول."]);
     exit();
 }
 

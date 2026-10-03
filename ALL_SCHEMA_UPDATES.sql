@@ -1,4 +1,4 @@
-/* GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 145) — كل التحديثات، آمن يتشغل أكتر من مرة. الصقه كله في تبويب SQL ← Go */
+/* GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 146) — كل التحديثات، آمن يتشغل أكتر من مرة. الصقه كله في تبويب SQL ← Go */
 /* v69: جدول login_attempts (حماية من تخمين كلمات المرور). */
 /* v72: جدول ui_customizations (استوديو التصميم) + جدول email… */
 /* v82: عمود allow_upload في chat_conversation_meta (الأدمن ب… */
@@ -33,6 +33,7 @@
 /* v143: مفيش تغيير في قاعدة البيانات (الافتراضي «يوم» في كل الرسوم) */
 /* v144: مفيش تغيير في الجداول (إعدادات المدد في site_config.periods_cfg وكروت الرئيسية في admin_settings بتتعمل لوحدها أول ما تحفظ) */
 /* v145: مفيش تغيير في قاعدة البيانات (الرئيسية من غير أزرار تحكم + رقم جديد عشان الموبايل يحدّث نفسه) */
+/* v146: عدادات صفحة الموقع العامة ← أرقام يدوية مناسبة (مرة واحدة) — بتتعدّل من لوحة التحكم ← صفحة اللاندينج ← العدادات */
 /* v85: ترميز الاتصال UTF-8 عشان النصوص العربي اللي بتتضاف من… */
 SET NAMES utf8mb4;
 CREATE TABLE IF NOT EXISTS users (
@@ -814,4 +815,6 @@ INSERT INTO user_perks (account_email, minus_keys) SELECT LOWER(account_email), 
 UPDATE user_ai_access SET basira = 1, mizan = 1, mizanai = 1 WHERE NOT EXISTS (SELECT 1 FROM site_config WHERE config_key = 'mig_138_perks');
 INSERT INTO subscribers (account_email, name, phone, contact_email, plan_id, plan_name, amount, market, start_date, end_date, active) SELECT LOWER(u.username), SUBSTRING_INDEX(u.username, '@', 1), '', LOWER(u.username), p.id, p.name, 0, COALESCE(NULLIF(u.account_market, ''), 'مصر'), CURDATE(), DATE_ADD(CURDATE(), INTERVAL p.duration_days DAY), 1 FROM users u JOIN subscription_plans p ON p.id = 'trial' WHERE u.is_admin = 0 AND COALESCE(u.archived, 0) = 0 AND NOT EXISTS (SELECT 1 FROM subscribers s WHERE LOWER(s.account_email) = LOWER(u.username)) AND NOT EXISTS (SELECT 1 FROM site_config WHERE config_key = 'mig_138_perks');
 INSERT IGNORE INTO site_config (config_key, config_value) VALUES ('mig_138_perks', '1');
-SELECT 'GRIFFINE database is up to date (v145)' AS result;
+UPDATE ui_customizations SET data_value = JSON_SET(data_value, '$.stats.items[0].mode', 'manual', '$.stats.items[0].value', 12480, '$.stats.items[1].mode', 'manual', '$.stats.items[1].value', 860, '$.stats.items[2].mode', 'manual', '$.stats.items[2].value', 2140, '$.stats.items[3].mode', 'manual', '$.stats.items[3].value', 9750) WHERE ui_key = 'landing' AND JSON_VALID(data_value) AND JSON_CONTAINS_PATH(data_value, 'one', '$.stats.items[3]') AND JSON_UNQUOTE(JSON_EXTRACT(data_value, '$.stats.items[0].key')) = 'visitors' AND NOT EXISTS (SELECT 1 FROM site_config WHERE config_key = 'mig_146_stats');
+INSERT IGNORE INTO site_config (config_key, config_value) VALUES ('mig_146_stats', '1');
+SELECT 'GRIFFINE database is up to date (v146)' AS result;
