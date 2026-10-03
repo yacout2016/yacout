@@ -1,4 +1,4 @@
-/* GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 135) — كل التحديثات، آمن يتشغل أكتر من مرة. الصقه كله في تبويب SQL ← Go */
+/* GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 136) — كل التحديثات، آمن يتشغل أكتر من مرة. الصقه كله في تبويب SQL ← Go */
 /* v69: جدول login_attempts (حماية من تخمين كلمات المرور). */
 /* v72: جدول ui_customizations (استوديو التصميم) + جدول email… */
 /* v82: عمود allow_upload في chat_conversation_meta (الأدمن ب… */
@@ -24,6 +24,7 @@
 /* v133: نوع الإشعار (kind / rec_id) في user_alerts لألوان إشعارات التوصيات */
 /* v134: مفيش تغيير في قاعدة البيانات (جدول مسح السوق: الكود + الاسم + القطاع) */
 /* v135: مميزات كل باقة (subscription_plans.perks) + الباقة المجانية + الأسعار (مجاني / 200 شهري / 2000 سنوي / برو 3000) مرة واحدة */
+/* v136: ترتيب الباقات: المجانية ← الشهرية ← السنوية ← برو (مرة واحدة) */
 /* v85: ترميز الاتصال UTF-8 عشان النصوص العربي اللي بتتضاف من… */
 SET NAMES utf8mb4;
 CREATE TABLE IF NOT EXISTS users (
@@ -798,4 +799,6 @@ UPDATE subscription_plans SET amount = 2000, save_note = 'وفّر 400 عن ال
 UPDATE subscription_plans SET amount = 3000 WHERE id = 'pro_yearly' AND NOT EXISTS (SELECT 1 FROM site_config WHERE config_key = 'mig_135_price');
 UPDATE subscription_plans SET amount = 0 WHERE id = 'trial' AND NOT EXISTS (SELECT 1 FROM site_config WHERE config_key = 'mig_135_price');
 INSERT IGNORE INTO site_config (config_key, config_value) VALUES ('mig_135_price', '1');
-SELECT 'GRIFFINE database is up to date (v135)' AS result;
+UPDATE subscription_plans SET sort_order = CASE id WHEN 'trial' THEN 1 WHEN 'monthly' THEN 2 WHEN 'yearly' THEN 3 WHEN 'pro_yearly' THEN 4 ELSE sort_order END WHERE NOT EXISTS (SELECT 1 FROM site_config WHERE config_key = 'mig_136_order');
+INSERT IGNORE INTO site_config (config_key, config_value) VALUES ('mig_136_order', '1');
+SELECT 'GRIFFINE database is up to date (v136)' AS result;
