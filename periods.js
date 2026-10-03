@@ -3,7 +3,7 @@
    ---------------------------------------------------------------------
    كل قائمة مدة (يوم / أسبوع / شهر …) ليها اسم ثابت هنا (REG) ومكانها في الموقع.
    الأدمن بيشوف جنب كل قائمة زرار ⚙ ← يشيل أي اختيار (يتمسح عند الكل) أو يغيّر الافتراضي.
-   وكمان كلهم في صفحة واحدة: لوحة التحكم ← «⏱ المدد والفترات» (renderAdminPeriods).
+   وكمان كلهم في صفحة واحدة: لوحة التحكم ← «🏠 الشاشة الرئيسية والقوائم المنسدلة (مدد البحث)» (كروت الرئيسية + كل القوائم) (renderAdminPeriods).
    التخزين: periods_api.php ← site_config.periods_cfg = { id: { h:[المخفي], d:'الافتراضي' } }
 
    الاستخدام في أي شاشة:
@@ -131,8 +131,15 @@
     pushNav(() => renderAdminPeriods());
     const email = await getSession(); if (!email) return renderLogin();
     if (!window.__isAdmin) return renderHome();
-    await gPerLoad(true);
+    const [, HS] = await Promise.all([gPerLoad(true), typeof getAdminSettings === 'function' ? getAdminSettings().catch(() => ({})) : {}]);
     if (typeof screenStale === 'function' && screenStale(tok)) return;
+    // الإصدار 144: كروت الشاشة الرئيسية (إخفاء / إظهار للكل) في نفس الصفحة
+    const HOME = [['hide_home_hero', 'قيمة المحفظة'], ['hide_curve_home', 'منحنى أداء المحفظة'], ['hide_home_alerts', 'تنبيهات الأسعار'], ['hide_home_quick', 'الاختصارات'], ['hide_home_recs', 'أحدث التوصيات'], ['hide_home_holdings', 'استثماراتي']];
+    const homeHtml = `<div class="section-card gper-grp" id="gperHome"><div class="section-title">🏠 كروت الشاشة الرئيسية</div>
+      <div class="gper-sub">دوسة على الكارت تخفيه عن كل العملاء (إنت بتفضل شايفه باهت في الرئيسية ومكتوب «مخفي»)، ودوسة تانية ترجّعه.</div>
+      ${HOME.map(([k, l]) => { const off = HS && HS[k] === true; return `<div class="gper-row"><div class="gper-row-t"><b>${E(l)}</b><small>${off ? '<span class="gper-hid">🙈 مخفي عن العملاء</span>' : '👁 ظاهر للكل'}</small></div>
+        <span class="gper-row-b"><button type="button" class="small ${off ? '' : 'secondary'}" data-hk="${k}" data-off="${off ? 1 : 0}">${off ? '👁 إظهار' : '🙈 إخفاء'}</button></span></div>`; }).join('')}
+      <div class="gper-row"><span class="gper-row-b"><button type="button" class="secondary small" id="gperGoHome">↗ افتح الشاشة الرئيسية</button></span></div></div>`;
     const groups = {};
     Object.keys(REG).forEach(id => { (groups[REG[id].scr] = groups[REG[id].scr] || []).push(id); });
     const row = (id) => {
@@ -143,12 +150,21 @@
         <span class="gper-row-b">${isAdm() ? `<button type="button" class="small" data-ed="${id}">⚙ تعديل</button>` : ''}${typeof window[r.go] === 'function' ? `<button type="button" class="secondary small" data-open="${r.go}">↗ الشاشة</button>` : ''}</span></div>`;
     };
     app.innerHTML = `<div class="container">${typeof logoHeader === 'function' ? logoHeader() : ''}
-      <div class="topbar"><div>${typeof pageTitle === 'function' ? pageTitle('admin_periods', '⏱ المدد والفترات في كل الشاشات') : '<h1>⏱ المدد والفترات</h1>'}</div>
+      <div class="topbar"><div>${typeof pageTitle === 'function' ? pageTitle('admin_periods', '🏠 الشاشة الرئيسية والقوائم المنسدلة (مدد البحث)') : '<h1>🏠 الشاشة الرئيسية والقوائم المنسدلة</h1>'}</div>
         <button class="secondary small" id="gperBack">🛡️ رجوع للوحة التحكم</button></div>
+      ${homeHtml}
+      <h2 class="u-mt20">⏱ القوائم المنسدلة — مدد البحث والرسم في كل شاشة</h2>
       <div class="info">كل قوائم المدة في الموقع (يوم / أسبوع / شهر …) لكل شاشة لوحدها. «⚙ تعديل» ← شيل أي اختيار يتمسح من عند الكل، أو غيّر الافتراضي اللي بيفتح عليه الكل. نفس الزرار ⚙ موجود جنب القائمة جوه كل شاشة (بيظهر لك إنت بس).</div>
       ${Object.keys(groups).map(g => `<div class="section-card gper-grp"><div class="section-title">${E(g)}</div>${groups[g].map(row).join('')}</div>`).join('')}
     </div>`;
     document.getElementById('gperBack').onclick = () => (typeof renderAdminHub === 'function' ? renderAdminHub() : renderHome());
+    app.querySelectorAll('[data-hk]').forEach(b => b.onclick = async () => {
+      b.disabled = true;
+      const r = await apiPost('/admin_settings_save.php', { key: b.dataset.hk, value: b.dataset.off === '1' ? 0 : 1 }).catch(() => null);
+      if (r && r.success) { toast(b.dataset.off === '1' ? '👁 رجع يظهر للعملاء' : '🙈 اتخفى عن العملاء', 'ok'); renderAdminPeriods(); }
+      else { b.disabled = false; toast((r && r.message) || 'تعذّر الحفظ', 'err'); }
+    });
+    document.getElementById('gperGoHome').onclick = () => renderHome();
     app.querySelectorAll('[data-ed]').forEach(b => b.onclick = () => gPerEdit(b.dataset.ed, () => renderAdminPeriods()));
     app.querySelectorAll('[data-open]').forEach(b => b.onclick = () => { try { window[b.dataset.open](); } catch(e){} });
   };

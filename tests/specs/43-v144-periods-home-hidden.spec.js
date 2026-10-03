@@ -13,11 +13,16 @@ const CUST = { email: 'paytest@example.com', pass: process.env.GT_CUSTOMER_PASS 
 
   // 1) صفحة «⏱ المدد والفترات» في لوحة التحكم
   await a.evaluate(() => renderAdminHub()); await a.waitForSelector('#goPeriodsBtn', { timeout: 15000 }).catch(() => {});
-  check('لوحة التحكم: زرار «⏱ المدد والفترات»', await a.evaluate(() => !!document.getElementById('goPeriodsBtn')));
+  check('لوحة التحكم: زرار واحد «الشاشة الرئيسية والقوائم المنسدلة (مدد البحث)»', await a.evaluate(() => /الشاشة الرئيسية والقوائم المنسدلة/.test((document.getElementById('goPeriodsBtn') || {}).textContent || '')));
   await a.click('#goPeriodsBtn'); await a.waitForSelector('.gper-row', { timeout: 15000 }).catch(() => {});
   const pg = await a.evaluate(() => ({ n: document.querySelectorAll('.gper-row').length, t: document.getElementById('app').textContent }));
+  check('نفس الصفحة: كروت الشاشة الرئيسية (6) بزرار إخفاء / إظهار لكل كارت', await a.evaluate(() => document.querySelectorAll('#gperHome [data-hk]').length === 6));
   check('الصفحة فيها كل قوائم المدد لكل شاشة (الرئيسية / بصيرة / المسح / الفرص / الكشاف / Grid / الميزان / الموقع العام)', pg.n >= 12 && /منحنى أداء المحفظة/.test(pg.t) && /مدة البحث/.test(pg.t) && /الإطار الزمني/.test(pg.t) && /النطاق التلقائي/.test(pg.t), pg.n);
 
+  await a.click('#gperHome [data-hk="hide_home_recs"]'); await a.waitForTimeout(1200); await a.waitForSelector('#gperHome', { timeout: 10000 }).catch(() => {});
+  check('من نفس الصفحة: إخفاء «أحدث التوصيات» ← اتحفظ ومكتوب «مخفي عن العملاء»', q("SELECT setting_value FROM admin_settings WHERE setting_key='hide_home_recs'") === '1' && await a.evaluate(() => /مخفي عن العملاء/.test(document.getElementById('gperHome').textContent)));
+  await a.click('#gperHome [data-hk="hide_home_recs"]'); await a.waitForTimeout(1200); await a.waitForSelector('#gperHome', { timeout: 10000 }).catch(() => {});
+  check('ودوسة تانية ← رجع ظاهر للكل', q("SELECT setting_value FROM admin_settings WHERE setting_key='hide_home_recs'") === '0');
   // 2) منحنى الرئيسية: شيل «يوم» وخلي الافتراضي «أسبوع»
   await a.click('[data-ed="home_curve"]'); await a.waitForSelector('#gperOv', { timeout: 5000 });
   await a.uncheck('#gperOv .gper-it input[value="1d"]'); await a.uncheck('#gperOv .gper-it input[value="all"]');
