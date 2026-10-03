@@ -3,6 +3,7 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/session_boot.php';
 session_start();
 include 'db.php';
+require_once __DIR__ . '/rate_lib.php'; rate_guard($conn, 'chat', 60);   // الإصدار 150: حماية من سحب البيانات بالبوتات
 require_once __DIR__ . '/uploads.php';
 require_once __DIR__ . '/chat_read_state.php';
 require_once __DIR__ . '/chat_faq_lib.php';

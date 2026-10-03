@@ -11,6 +11,7 @@ header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/session_boot.php';
 session_start();
 include 'db.php';
+require_once __DIR__ . '/rate_lib.php'; rate_guard($conn, 'opp', 300);   // الإصدار 150: حماية من سحب البيانات بالبوتات
 require_once __DIR__ . '/opps_lib.php';
 require_once __DIR__ . '/trash_lib.php';
 function op_out($a){ echo json_encode($a, JSON_UNESCAPED_UNICODE); exit(); }

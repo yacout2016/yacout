@@ -14,6 +14,7 @@ header('Cache-Control: no-store');
 require_once __DIR__ . '/session_boot.php';
 session_start();
 include 'db.php';
+require_once __DIR__ . '/rate_lib.php'; rate_guard($conn, 'lp', 600);   // الإصدار 150: حماية من سحب البيانات بالبوتات
 require_once __DIR__ . '/security_lib.php';
 
 function lp_out($a){ echo json_encode($a, JSON_UNESCAPED_UNICODE); exit(); }
@@ -84,7 +85,7 @@ try {
                 "plans"    => lp_count($conn, "SELECT COUNT(*) FROM user_plans WHERE deleted = 0"),
                 "alerts"   => lp_count($conn, "SELECT COUNT(*) FROM user_alerts"),
             ],
-            "reviews" => [], "faq" => [], "version" => 149,
+            "reviews" => [], "faq" => [], "version" => 150,
         ];
         // آراء العملاء الحقيقية (من شاشة «آراء العملاء» في الموقع) - الأدمن بيخفي أي رأي من اللاندينج
         $rv = is_array($cfg['reviews'] ?? null) ? $cfg['reviews'] : [];

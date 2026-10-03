@@ -27,6 +27,7 @@ header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/session_boot.php';
 session_start();
 include 'db.php';
+require_once __DIR__ . '/rate_lib.php'; rate_guard($conn, 'mq', 600);   // الإصدار 150: حماية من سحب البيانات بالبوتات
 require_once __DIR__ . '/quote_lib.php';   // الإصدار 88: المنطق كله بقى في دالة mq_get_quote()
 
 if (!isset($_SESSION['user_email'])) { http_response_code(403); echo json_encode(["success" => false, "message" => 'سجّل دخول الأول.'], JSON_UNESCAPED_UNICODE); exit(); }

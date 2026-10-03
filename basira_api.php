@@ -18,6 +18,7 @@ header('Cache-Control: no-store');
 require_once __DIR__ . '/session_boot.php';
 session_start();
 include 'db.php';
+require_once __DIR__ . '/rate_lib.php'; rate_guard($conn, 'bs', 900);   // الإصدار 150: حماية من سحب البيانات بالبوتات
 require_once __DIR__ . '/security_lib.php';
 require_once __DIR__ . '/markets_lib.php';
 require_once __DIR__ . '/basira_lib.php';

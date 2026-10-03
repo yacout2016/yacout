@@ -9,6 +9,15 @@
    العنوان والنص وتشغيل/إيقاف كل شاشة من لوحة التحكم ← «🚨 الشاشات الطارئة» (site_public_config.php → emergency)
    الإعدادات بتتحفظ على الجهاز عشان تظهر حتى لو السيرفر واقع.
    ===================================================================== */
+/* الإصدار 150: حماية من النسخ — لو حد نسخ ملفات الموقع ورفعها على دومين تاني، الصفحة بتقف وبتوجّه للموقع الأصلي.
+   © GRIFFINE — جميع الحقوق محفوظة. ممنوع نسخ أو إعادة استخدام الكود أو التصميم أو المحتوى. */
+(function(){
+  const h = String(location.hostname || '').toLowerCase();
+  if (/(^|\.)griffine\.(store|app|com)$/.test(h) || h === 'localhost' || h === '127.0.0.1' || h === '') return;
+  window.__gNotOriginal = true;
+  const stop = () => { try { document.documentElement.innerHTML = '<head><meta charset="utf-8"><title>GRIFFINE</title></head><body style="font-family:Tahoma,sans-serif;direction:rtl;text-align:center;padding:60px 20px;background:#0F172A;color:#fff"><h1>⚠️ نسخة غير أصلية</h1><p>الصفحة دي نسخة غير مصرّح بيها من منصة GRIFFINE.</p><p><a style="color:#C9A227;font-weight:700" href="https://www.griffine.store">افتح الموقع الأصلي www.griffine.store</a></p><p style="opacity:.6;font-size:12px">© GRIFFINE — جميع الحقوق محفوظة</p></body>'; } catch(e){} };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', stop); else stop();
+})();
 (function(){
   'use strict';
   const KEY = 'gs_emg_cfg_v1';
@@ -35,7 +44,7 @@
     (document.body || document.documentElement).appendChild(box);
     return box;
   }
-  const logo = () => { const dark = document.documentElement.getAttribute('data-theme') === 'dark'; return `<img class="gs-emg-logo" src="${dark ? 'griffine-logo-dark.webp' : 'griffine-logo-light.webp'}?v=149" alt="GRIFFINE">`; };
+  const logo = () => { const dark = document.documentElement.getAttribute('data-theme') === 'dark'; return `<img class="gs-emg-logo" src="${dark ? 'griffine-logo-dark.webp' : 'griffine-logo-light.webp'}?v=150" alt="GRIFFINE">`; };
   const ICON = { maint: '🛠️', offline: '📡', down: '☁️', slow: '' };
   function paint(kind, extra){
     const c = cfg[kind] || {}; const b = ensure();
@@ -82,7 +91,7 @@
     if (maintOn && !admin && !staffBypass) show('maint'); else hide('maint');
   }
   // الإصدار 102: لو السيرفر عليه نسخة أحدث من اللي شغالة على الجهاز (كاش قديم) ← مسح الكاش وإعادة تحميل مرة واحدة
-  const BUILD = 149;
+  const BUILD = 150;
   function checkBuild(b){
     b = parseInt(b, 10) || 0; if (b <= BUILD) return;
     let done = null; try { done = sessionStorage.getItem('gs_build_reload'); } catch(e){}

@@ -12,7 +12,7 @@ Options -Indexes
 </FilesMatch>
 
 # 3) ملفات مساعدة PHP مبتتفتحش لوحدها (بيستخدمها الكود من جوه بس)
-<FilesMatch "^(db|mailer|uploads|session_boot|chat_read_state|chat_notify_lib|plans_store|otp_lib|paymob_lib|security_lib|quote_lib|markets_lib|trades_lib|chat_faq_lib|trash_lib|codes_lib|markets_core|symbols_lib|notify_lib|opps_lib)\.php$">
+<FilesMatch "^(db|mailer|uploads|session_boot|chat_read_state|chat_notify_lib|plans_store|otp_lib|paymob_lib|security_lib|quote_lib|markets_lib|trades_lib|chat_faq_lib|trash_lib|codes_lib|markets_core|symbols_lib|notify_lib|opps_lib|ai_access_lib|basira_lib|mizan_lib|mizanai_lib|mizanai_rates_lib|perks_lib|rate_lib|recs_lib)\.php$">
     Require all denied
 </FilesMatch>
 
@@ -34,6 +34,13 @@ RedirectMatch 403 ^/griffine_sessions/
     <Files "index.php">
         Header always set Content-Security-Policy "default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://s3.tradingview.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' blob:; connect-src 'self'; frame-src https://s.tradingview.com https://www.tradingview.com https://*.tradingview.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'; upgrade-insecure-requests"
     </Files>
+</IfModule>
+
+# 5ج) الإصدار 150: منع برامج تنزيل / نسخ المواقع كاملة وبوتات سحب البيانات (جوجل وفيسبوك وواتساب وتيك توك مسموحين عادي)
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{HTTP_USER_AGENT} (HTTrack|WebCopier|WebCopy|WebZIP|Offline\ Explorer|SiteSucker|Teleport|WebStripper|WebReaper|BlackWidow|SiteSnagger|WebSauger|Website\ Quester|python-requests|Scrapy|aiohttp|Go-http-client|libwww-perl|MJ12bot|AhrefsBot|SemrushBot|DotBot|PetalBot|DataForSeoBot|BLEXBot|serpstatbot) [NC]
+    RewriteRule .* - [F,L]
 </IfModule>
 
 # 6) تحويل أي زيارة http إلى https
