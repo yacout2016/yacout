@@ -85,14 +85,15 @@
   const HZ = [['week', 'أسبوع'], ['month', 'شهر'], ['3m', '3 شهور'], ['6m', '6 شهور'], ['year', 'سنة']];
   let SCAN = { items: [], total: 0, run: 0, hz: 'month', market: '', sector: '', sort: 'up', dir: -1 };
   // الإصدار 120: أعمدة جدول المسح (lock = مبيتخفاش) + إظهار/إخفاء محفوظ على الجهاز + الجدول جوه الصفحة من غير تمرير يمين وشمال
+  // الإصدار 134: الكود والاسم والقطاع أعمدة منفصلة بعد المسلسل + كل الأعمدة تتخفي (ماعدا المسلسل)
   const SC_COLS = [
-    { k: 'n', l: '#', lock: true }, { k: 'sym', l: 'السهم', lock: true, sort: 'sym' }, { k: 'sec', l: 'القطاع', sort: 'sec' },
-    { k: 'px', l: 'آخر سعر / اليوم', sort: 'chg' }, { k: 'up', l: 'احتمال الصعود', lock: true, sort: 'up' }, { k: 'v', l: 'التوقع' },
-    { k: 'rng', l: 'النطاق المتوقع', off: true }, { k: 'sc', l: 'درجة الاتجاه', sort: 'score' }, { k: 'y1', l: 'عائد سنة', sort: 'y1' }, { k: 'go', l: '', lock: true }];
-  const SC_KEY = 'bs_scan_cols_v1';
+    { k: 'n', l: '#', lock: true }, { k: 'sym', l: 'الكود', sort: 'sym' }, { k: 'nm', l: 'اسم السهم', sort: 'nm' }, { k: 'sec', l: 'القطاع', sort: 'sec' },
+    { k: 'px', l: 'آخر سعر / اليوم', sort: 'chg' }, { k: 'up', l: 'احتمال الصعود', sort: 'up' }, { k: 'v', l: 'التوقع' },
+    { k: 'rng', l: 'النطاق المتوقع', off: true }, { k: 'sc', l: 'درجة الاتجاه', sort: 'score' }, { k: 'y1', l: 'عائد سنة', sort: 'y1' }, { k: 'go', l: 'زرار التحليل' }];
+  const SC_KEY = 'bs_scan_cols_v2';
   function scHidden(){
     try { const v = JSON.parse(localStorage.getItem(SC_KEY) || 'null'); if (Array.isArray(v)) return v; } catch(e){}
-    return SC_COLS.filter(c => c.off || (window.innerWidth < 700 && ['sec', 'sc', 'y1'].includes(c.k))).map(c => c.k);
+    return SC_COLS.filter(c => c.off || (window.innerWidth < 700 && ['v', 'sc', 'y1', 'go'].includes(c.k))).map(c => c.k);
   }
   function scApplyCols(){
     const t = document.getElementById('bsScTable'); if (!t) return;
@@ -101,6 +102,54 @@
     const m = document.getElementById('bsColMenu');
     if (m) m.innerHTML = SC_COLS.filter(c => !c.lock).map(c => `<label><input type="checkbox" data-k="${c.k}" ${hid.includes(c.k) ? '' : 'checked'}> ${E(c.l)}</label>`).join('') + '<button type="button" class="bs-colall">إظهار كل الأعمدة</button>';
   }
+  // الإصدار 134: بحث + فلتر لكل عمود (زي باقي جداول الموقع) — نص: «فيه»، أرقام: 60 أو >60 أو <10 أو 5-20
+  const SC_NUM = { px: 1, up: 1, sc: 1, y1: 1 };
+  function scFilterEl(c){
+    if (c.k === 'n' || c.k === 'go') return '';
+    if (c.k === 'sec') return `<select class="bs-scf" data-f="sec" aria-label="فلتر القطاع"><option value="">الكل</option></select>`;
+    if (c.k === 'v') return `<select class="bs-scf" data-f="v" aria-label="فلتر التوقع"><option value="">الكل</option><option value="pos">صعود محتمل</option><option value="neu">عرضي</option><option value="neg">هبوط محتمل</option></select>`;
+    return `<input type="search" class="bs-scf" data-f="${c.k}" placeholder="${SC_NUM[c.k] ? 'رقم' : 'فلتر'}" aria-label="فلتر ${E(c.l)}"${SC_NUM[c.k] ? ' inputmode="text" title="رقم أو >رقم أو <رقم أو من-إلى"' : ''}>`;
+  }
+  const scDig = (s) => String(s == null ? '' : s).replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/٫/g, '.').trim().toLowerCase();
+  function scNumOk(val, f){
+    if (val == null || isNaN(val)) return false;
+    let m = f.match(/^(>=|<=|>|<|=)?\s*(-?\d+(?:\.\d+)?)%?$/);
+    if (m) { const x = parseFloat(m[2]); return m[1] === '>' ? val > x : m[1] === '<' ? val < x : m[1] === '>=' ? val >= x : m[1] === '<=' ? val <= x : m[1] === '=' ? val === x : String(val).startsWith(m[2]) || Math.abs(val - x) < 1e-9; }
+    m = f.match(/^(-?\d+(?:\.\d+)?)\s*-\s*(-?\d+(?:\.\d+)?)$/);
+    if (m) { const a = parseFloat(m[1]), b = parseFloat(m[2]); return val >= Math.min(a, b) && val <= Math.max(a, b); }
+    return String(val).includes(f);
+  }
+  function scMatch(x){
+    const h = (x.hz && x.hz[SCAN.hz]) || {}, u = h.up || 0, vk = u >= 58 ? 'pos' : u <= 42 ? 'neg' : 'neu', nm = x.ar || gArName(x.symbol, SCAN.market) || x.name || '';
+    const q = scDig(SCAN.q);
+    if (q && ![x.symbol, nm, x.name, x.sector].some(s => scDig(s).includes(q))) return false;
+    const F = SCAN.f || {};
+    for (const k in F) { const f = scDig(F[k]); if (!f) continue;
+      if (k === 'sym' && !scDig(x.symbol).includes(f)) return false;
+      if (k === 'nm' && !scDig(nm).includes(f) && !scDig(x.name).includes(f)) return false;
+      if (k === 'sec' && String(x.sector || '') !== F[k]) return false;
+      if (k === 'v' && vk !== F[k]) return false;
+      if (k === 'rng' && !scDig(h.lo != null ? n2(h.lo) + ' — ' + n2(h.hi) : '').includes(f)) return false;
+      if (k === 'px' && !scNumOk(x.last, f)) return false;
+      if (k === 'up' && !scNumOk(u, f)) return false;
+      if (k === 'sc' && !scNumOk(x.score, f)) return false;
+      if (k === 'y1' && !scNumOk(x.y1 == null ? null : Math.round(x.y1 * 10) / 10, f)) return false;
+    }
+    return true;
+  }
+  function scWireFilters(){
+    const fb = document.getElementById('bsScFBtn'), fr = document.getElementById('bsScFr'), q = document.getElementById('bsScQ'); if (!fb || fb._w) return; fb._w = 1;
+    SCAN.f = SCAN.f || {}; SCAN.q = SCAN.q || '';
+    let open = (() => { try { const v = localStorage.getItem('bs_scan_fopen'); if (v != null) return v === '1'; } catch(e){} return window.innerWidth >= 700; })();
+    const show = () => { fr.hidden = !open; fb.setAttribute('aria-expanded', String(open)); fb.classList.toggle('on', open); };
+    fb.onclick = () => { open = !open; try { localStorage.setItem('bs_scan_fopen', open ? '1' : '0'); } catch(e){} show(); };
+    show(); q.value = SCAN.q;
+    let tmr = 0; const later = () => { clearTimeout(tmr); tmr = setTimeout(paintScan, 120); };
+    q.addEventListener('input', () => { SCAN.q = q.value; later(); });
+    fr.addEventListener('input', (e) => { const k = e.target.dataset && e.target.dataset.f; if (!k) return; SCAN.f[k] = e.target.value; later(); });
+    fr.addEventListener('change', (e) => { const k = e.target.dataset && e.target.dataset.f; if (!k) return; SCAN.f[k] = e.target.value; paintScan(); });
+    fr.addEventListener('click', (e) => e.stopPropagation());
+  }
   function scWireCols(){
     const btn = document.getElementById('bsColBtn'), m = document.getElementById('bsColMenu'); if (!btn || btn._w) return; btn._w = 1;
     btn.onclick = (e) => { e.stopPropagation(); m.hidden = !m.hidden; btn.setAttribute('aria-expanded', String(!m.hidden)); };
@@ -108,9 +157,9 @@
     m.addEventListener('change', (e) => { const k = e.target.dataset.k; if (!k) return; let h = scHidden(); h = e.target.checked ? h.filter(x => x !== k) : [...new Set([...h, k])]; try { localStorage.setItem(SC_KEY, JSON.stringify(h)); } catch(e2){} scApplyCols(); m.hidden = false; });
     m.addEventListener('click', (e) => { if (!e.target.closest('.bs-colall')) return; try { localStorage.setItem(SC_KEY, '[]'); } catch(e2){} scApplyCols(); });
     document.addEventListener('click', () => { m.hidden = true; btn.setAttribute('aria-expanded', 'false'); });
-    document.querySelectorAll('#bsScTable th[data-sort]').forEach(th => { const go = () => { const k = th.dataset.sort; if (SCAN.sort === k) SCAN.dir *= -1; else { SCAN.sort = k; SCAN.dir = (k === 'sym' || k === 'sec') ? 1 : -1; } paintScan(); };
+    document.querySelectorAll('#bsScTable th[data-sort]').forEach(th => { const go = () => { const k = th.dataset.sort; if (SCAN.sort === k) SCAN.dir *= -1; else { SCAN.sort = k; SCAN.dir = (k === 'sym' || k === 'nm' || k === 'sec') ? 1 : -1; } paintScan(); };
       th.onclick = go; th.onkeydown = (e) => { if (e.key === 'Enter') go(); }; });
-    scApplyCols();
+    scApplyCols(); scWireFilters();
   }
   function wireScanTabs(tok, m0){
     const one = document.getElementById('bsTabOne'), sc = document.getElementById('bsTabScan');
@@ -139,9 +188,11 @@
     </div>
     <div id="bsScTop"></div>
     <div class="bs-card" id="bsScRes" hidden>
-      <div class="bs-sctools"><span class="u-muted u-fs12" id="bsScCount"></span>
+      <div class="bs-sctools"><input type="search" id="bsScQ" class="bs-scq" placeholder="🔎 بحث بالكود أو الاسم أو القطاع…" aria-label="بحث في نتايج المسح"><span class="u-muted u-fs12" id="bsScCount"></span>
+        <button type="button" class="bs-colbtn" id="bsScFBtn" aria-expanded="false">⚙ فلاتر الأعمدة <b id="bsScFOn"></b></button>
         <span class="bs-colbox"><button type="button" class="bs-colbtn" id="bsColBtn" aria-haspopup="true" aria-expanded="false">👁 إظهار / إخفاء الأعمدة <b id="bsColHid"></b></button><div class="bs-colmenu" id="bsColMenu" hidden></div></span></div>
-      <div class="bs-scbody"><table id="bsScTable" class="bs-sctable g-no-enh"><thead><tr>${SC_COLS.map(c => `<th data-col="${c.k}"${c.sort ? ` data-sort="${c.sort}" tabindex="0" title="ترتيب"` : ''}>${c.k === 'up' ? '<span id="bsScHzTh">احتمال الصعود</span>' : c.l}${c.sort ? '<i class="bs-sorti"></i>' : ''}</th>`).join('')}</tr></thead><tbody></tbody></table></div></div>`;
+      <div class="bs-scbody"><table id="bsScTable" class="bs-sctable g-no-enh"><thead><tr>${SC_COLS.map(c => `<th data-col="${c.k}"${c.sort ? ` data-sort="${c.sort}" tabindex="0" title="ترتيب"` : ''}>${c.k === 'up' ? '<span id="bsScHzTh">احتمال الصعود</span>' : c.k === 'go' ? '' : c.l}${c.sort ? '<i class="bs-sorti"></i>' : ''}</th>`).join('')}</tr>
+        <tr class="bs-scfr" id="bsScFr">${SC_COLS.map(c => `<th data-col="${c.k}">${scFilterEl(c)}</th>`).join('')}</tr></thead><tbody></tbody></table></div></div>`;
     const mkt = document.getElementById('bsScMkt'), sec = document.getElementById('bsScSec');
     const loadSecs = async () => {
       sec.innerHTML = '<option value="">كل البورصة</option>';
@@ -183,21 +234,28 @@
   function paintScan(){
     const tb = document.querySelector('#bsScTable tbody'); if (!tb) return;
     const hl = (HZ.find(h => h[0] === SCAN.hz) || [0, ''])[1];
-    const th = document.getElementById('bsScHzTh'); if (th) th.textContent = `احتمال الصعود (${hl})`;
+    const th = document.getElementById('bsScHzTh'); if (th) th.textContent = window.innerWidth < 700 ? `الصعود (${hl})` : `احتمال الصعود (${hl})`;
     const up = (x) => (x.hz && x.hz[SCAN.hz] ? x.hz[SCAN.hz].up : 0);
-    const val = { up, sym: (x) => x.symbol, sec: (x) => x.sector || '', chg: (x) => x.chg || 0, score: (x) => x.score || 0, y1: (x) => (x.y1 == null ? -1e9 : x.y1) };
+    const val = { up, sym: (x) => x.symbol, nm: (x) => x.ar || gArName(x.symbol, SCAN.market) || x.name || '', sec: (x) => x.sector || '', chg: (x) => x.chg || 0, score: (x) => x.score || 0, y1: (x) => (x.y1 == null ? -1e9 : x.y1) };
     const f = val[SCAN.sort] || up;
-    const L = SCAN.items.slice().sort((a, b) => { const A = f(a), B = f(b); const c = typeof A === 'string' ? A.localeCompare(B, 'ar') : A - B; return c * SCAN.dir || up(b) - up(a) || b.score - a.score; });
+    const ss = document.querySelector('#bsScFr select[data-f="sec"]');
+    if (ss) { const secs = [...new Set(SCAN.items.map(x => x.sector).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ar')), cur = (SCAN.f || {}).sec || '';
+      const want = '<option value="">الكل</option>' + secs.map(s => `<option${s === cur ? ' selected' : ''}>${E(s)}</option>`).join('');
+      if (ss._h !== want) { ss.innerHTML = want; ss._h = want; } }
+    const fOn = Object.values(SCAN.f || {}).filter(v => String(v || '').trim()).length + (String(SCAN.q || '').trim() ? 1 : 0);
+    const fb = document.getElementById('bsScFOn'); if (fb) fb.textContent = Object.values(SCAN.f || {}).filter(v => String(v || '').trim()).length ? `(${Object.values(SCAN.f).filter(v => String(v || '').trim()).length})` : '';
+    const L = SCAN.items.filter(scMatch).sort((a, b) => { const A = f(a), B = f(b); const c = typeof A === 'string' ? A.localeCompare(B, 'ar') : A - B; return c * SCAN.dir || up(b) - up(a) || b.score - a.score; });
     document.querySelectorAll('#bsScTable th[data-sort]').forEach(th => { th.classList.toggle('on', th.dataset.sort === SCAN.sort); th.classList.toggle('asc', th.dataset.sort === SCAN.sort && SCAN.dir > 0); });
-    const cnt = document.getElementById('bsScCount'); if (cnt) cnt.textContent = SCAN.items.length ? `${SCAN.items.length} سهم — اضغط على عنوان العمود للترتيب` : '';
+    const cnt = document.getElementById('bsScCount'); if (cnt) cnt.textContent = !SCAN.items.length ? '' : fOn ? `${L.length} من ${SCAN.items.length} سهم` : `${SCAN.items.length} سهم — اضغط على عنوان العمود للترتيب`;
     tb.innerHTML = L.map((x, i) => { const h = x.hz[SCAN.hz] || {}, u = h.up || 0, v = u >= 58 ? 'pos' : u <= 42 ? 'neg' : 'neu', ar = x.ar || gArName(x.symbol, SCAN.market);
       return `<tr class="bs-scr" data-s="${E(x.symbol)}" tabindex="0" title="${E(x.symbol)} — ${E(ar || x.name)}"><td data-col="n" class="n">${i + 1}</td>
-        <td data-col="sym"><b class="n" data-coname="${E(ar || x.name)}">${E(x.symbol)}</b>${x.src === 'ai' ? ' <span class="bs-chip bs-c-gold" title="فيه تعديل الذكاء الاصطناعي">AI</span>' : ''}<small class="bs-scname g-coname">${E(ar || x.name)}</small></td>
+        <td data-col="sym"><b class="n" data-coname="${E(ar || x.name)}">${E(x.symbol)}</b>${x.src === 'ai' ? ' <span class="bs-chip bs-c-gold" title="فيه تعديل الذكاء الاصطناعي">AI</span>' : ''}</td>
+        <td data-col="nm"><span class="bs-scname">${E(ar || x.name || '—')}</span></td>
         <td data-col="sec"><span class="bs-scsec">${E(x.sector)}</span></td><td data-col="px"><span class="n">${n2(x.last)}</span><small class="n ${cls(x.chg)}">${pct(x.chg)}</small></td>
         <td data-col="up"><div class="bs-scup"><div class="bs-scbar sm"><i class="${v}" style="width:${u}%"></i></div><b class="n ${v}">${u}%</b></div></td>
         <td data-col="v"><span class="bs-chip ${v === 'pos' ? 'bs-c-pos' : v === 'neg' ? 'bs-c-neg' : 'bs-c-neu'}">${u >= 58 ? 'صعود محتمل' : u <= 42 ? 'هبوط محتمل' : 'عرضي'}</span></td>
         <td data-col="rng" class="n">${h.lo != null ? n2(h.lo) + ' — ' + n2(h.hi) : '—'}</td><td data-col="sc" class="n ${vk(x.score)}">${x.score}</td><td data-col="y1" class="n ${cls(x.y1)}">${pct(x.y1)}</td>
-        <td data-col="go"><button type="button" class="secondary small bs-scopen" data-s="${E(x.symbol)}" title="التحليل الكامل" aria-label="التحليل الكامل لـ ${E(x.symbol)}">تحليل ↗</button></td></tr>`; }).join('') || `<tr><td colspan="10" class="u-muted">لسه مفيش نتايج…</td></tr>`;
+        <td data-col="go"><button type="button" class="secondary small bs-scopen" data-s="${E(x.symbol)}" title="التحليل الكامل" aria-label="التحليل الكامل لـ ${E(x.symbol)}">تحليل ↗</button></td></tr>`; }).join('') || `<tr><td colspan="11" class="u-muted">${SCAN.items.length ? 'مفيش أسهم مطابقة للبحث / الفلتر.' : 'لسه مفيش نتايج…'}</td></tr>`;
     scApplyCols();
     const open = (s) => { if (window.__bsShowSingle) window.__bsShowSingle(); const inp = document.getElementById('bsSym'), mk = document.getElementById('bsMkt'); if (inp) inp.value = s; if (mk) mk.value = SCAN.market; window.scrollTo({ top: 0, behavior: 'smooth' }); analyze(s, SCAN.market, false, null); };
     tb.querySelectorAll('tr.bs-scr').forEach(r => { r.onclick = (e) => { open(r.dataset.s); }; r.onkeydown = (e) => { if (e.key === 'Enter') open(r.dataset.s); }; });

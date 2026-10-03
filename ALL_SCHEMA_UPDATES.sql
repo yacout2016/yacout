@@ -1,4 +1,4 @@
-/* GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 133) — كل التحديثات، آمن يتشغل أكتر من مرة. الصقه كله في تبويب SQL ← Go */
+/* GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 134) — كل التحديثات، آمن يتشغل أكتر من مرة. الصقه كله في تبويب SQL ← Go */
 /* v69: جدول login_attempts (حماية من تخمين كلمات المرور). */
 /* v71: مفيش تغييرات في قاعدة البيانات (إصلاحات واجهة فقط: ال… */
 /* v72: جدول ui_customizations (استوديو التصميم) + جدول email… */
@@ -63,6 +63,7 @@
 /* v131: «توصية شراء / بيع» — معاينة قبل الإرسال (إشعار / إيمي… */
 /* v132: صلاحية «توصياته لازم الأدمن يوافق عليها» للمحلل + تصحيح الصلاحية القديمة */
 /* v133: نوع الإشعار (kind / rec_id) في user_alerts لألوان إشعارات التوصيات */
+/* v134: مفيش تغيير في قاعدة البيانات (جدول مسح السوق: الكود + الاسم + القطاع) */
 /* v85: ترميز الاتصال UTF-8 عشان النصوص العربي اللي بتتضاف من… */
 SET NAMES utf8mb4;
 CREATE TABLE IF NOT EXISTS users (
@@ -830,4 +831,4 @@ DELETE sp FROM staff_permissions sp JOIN staff_members s ON s.id = sp.staff_id W
 INSERT IGNORE INTO site_config (config_key, config_value) VALUES ('mig_132_rec', '1');
 ALTER TABLE user_alerts ADD COLUMN IF NOT EXISTS kind VARCHAR(16) NULL, ADD COLUMN IF NOT EXISTS rec_id INT NULL;
 ALTER TABLE user_alerts MODIFY COLUMN title VARCHAR(255) NOT NULL;
-SELECT 'GRIFFINE database is up to date (v133)' AS result;
+SELECT 'GRIFFINE database is up to date (v134)' AS result;
