@@ -29,6 +29,13 @@ RedirectMatch 403 ^/griffine_sessions/
     Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains" env=HTTPS
 </IfModule>
 
+# 5ب) الإصدار 147: حماية CSP للصفحة الرئيسية من هنا كمان (لأن إعدادات الاستضافة كانت بتستبدل اللي بيبعته index.php)
+<IfModule mod_headers.c>
+    <Files "index.php">
+        Header always set Content-Security-Policy "default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://s3.tradingview.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' blob:; connect-src 'self'; frame-src https://s.tradingview.com https://www.tradingview.com https://*.tradingview.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'; upgrade-insecure-requests"
+    </Files>
+</IfModule>
+
 # 6) تحويل أي زيارة http إلى https
 <IfModule mod_rewrite.c>
     RewriteEngine On

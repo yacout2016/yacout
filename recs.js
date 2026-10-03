@@ -527,6 +527,16 @@
       }
     } finally { pumping = false; }
   }
+  // الإصدار 147: حالة المراجعة واضحة في شاشة المحلل والأدمن — المرفوضة كارت أحمر والمقبولة كارت أخضر ومكتوب مين ووقت إيه
+  // موافقة حقيقية = مُراجِع غير صاحب التوصية (الإرسال المباشر من غير مراجعة بيتسجل باسم المرسل نفسه)
+  const rcApproved = (r) => !!r.approvedBy && !['draft', 'pending', 'rejected'].includes(r.status) && String(r.approvedBy).toLowerCase() !== String(r.createdBy || '').toLowerCase();
+  function decisionHtml(r){
+    const who = r.approvedBy ? ` — بواسطة ${E(r.approvedBy)}` : '', when = r.approvedAt ? ` · ${formatDateAr(r.approvedAt)}` : '';
+    if (r.status === 'rejected') return `<div class="rc-decide rc-decide-no">❌ <b>تم رفض التوصية</b>${who}${when}${r.rejectReason ? `<br><span>سبب الرفض: ${E(r.rejectReason)}</span>` : ''}</div>`;
+    if (r.status === 'pending') return `<div class="rc-decide rc-decide-pend">⏳ <b>بانتظار موافقة الأدمن</b> — لسه ماتبعتتش للمشتركين</div>`;
+    if (rcApproved(r)) return `<div class="rc-decide rc-decide-ok">✅ <b>تمت الموافقة على التوصية وإرسالها للمشتركين</b>${who}${when}</div>`;
+    return '';
+  }
   function logCard(r, email){
     const st = { active: ['✅ اتبعتت — نشطة', 'rc-chip rc-chip-ok'], cancelled: ['أُلغيت', 'rc-chip rc-chip-mut'], expired: ['⏰ انتهت', 'rc-chip rc-chip-mut'], closed: ['اتقفلت', 'rc-chip rc-chip-mut'], draft: ['💾 مسودة', 'rc-chip rc-chip-mut'], pending: ['⏳ بانتظار الموافقة', 'rc-chip rc-chip-pend'], rejected: ['❌ مرفوضة', 'rc-chip rc-chip-no'] }[r.status] || ['✅ اتبعتت — نشطة', 'rc-chip rc-chip-ok'];
     const mine = r.createdBy && r.createdBy.toLowerCase() === String(email).toLowerCase();
@@ -539,10 +549,10 @@
       r.status === 'pending' && canAppr && (!mine || window.__isSuperAdmin) ? btn('pub', '✅ موافقة وإرسال', '') + ' ' + btn('rej', '❌ رفض', 'danger') : '',
       pre && (mine || canAppr) ? btn('trash', '🗑 حذف', 'danger') : '',
       can ? btn('del', '🗑️ إلغاء', 'danger') : ''].filter(Boolean).join(' ');
-    return `<div class="section-card rc-log rc-${r.type || 'buy'}${pre ? ' rc-log-pre' : ''} rc-lst-${E(r.status || 'active')}" data-st="${E(r.status)}"><div class="u-row"><div><b>${r.type === 'sell' ? '📉 بيع' : '📈 شراء'} — ${E(r.stockName)} (${E(r.symbol)})</b> <span class="${st[1]} u-fs12">${st[0]}</span>${r.long ? ` <span class="rc-longtag">${E(CFG.t_long_term || 'طويلة المدى')}</span>` : ''} <span class="g-mkt-tag">🌍 ${E(r.market || 'مصر')}</span></div>
+    return `<div class="section-card rc-log rc-${r.type || 'buy'}${pre ? ' rc-log-pre' : ''} rc-lst-${E(r.status || 'active')}${rcApproved(r) ? ' rc-lst-approved' : ''}" data-st="${E(r.status)}"><div class="u-row"><div><b>${r.type === 'sell' ? '📉 بيع' : '📈 شراء'} — ${E(r.stockName)} (${E(r.symbol)})</b> <span class="${st[1]} u-fs12">${st[0]}</span>${r.long ? ` <span class="rc-longtag">${E(CFG.t_long_term || 'طويلة المدى')}</span>` : ''} <span class="g-mkt-tag">🌍 ${E(r.market || 'مصر')}</span></div>
       <span class="rc-logacts">${acts}</span></div>
       <div class="u-fs12 u-muted">${r.type === 'sell' ? 'البيع' : 'الشراء'} ${N(r.buyFrom)} – ${N(r.buyTo)} — ${TFL[r.timeframe] || ''} — ${pre ? 'اتعملت' : 'أُرسلت'} ${formatDateAr(r.createdAt)} بواسطة ${E(r.analyst || '-')}${r.analyst && r.createdBy ? ` <small>(${E(r.createdBy)})</small>` : ''}${r.status === 'active' && r.expiresAt ? ` — تنتهي ${formatDateAr(r.expiresAt)}` : ''}${r.approvedBy && r.status === 'active' && r.approvedBy.toLowerCase() !== String(r.createdBy || '').toLowerCase() ? ` — وافق عليها ${E(r.approvedBy)}` : ''}${(r.updates || []).length ? ` — ${r.updates.length} تحديث` : ''}</div>
-      ${r.status === 'rejected' && r.rejectReason ? `<div class="u-fs12 neg">سبب الرفض: ${E(r.rejectReason)}</div>` : ''}</div>`;
+      ${decisionHtml(r)}</div>`;
   }
   function updateModal(r, done){
     if (!r) return;

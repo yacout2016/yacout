@@ -39,10 +39,11 @@
     },
     stats: { items: [
       // الإصدار 146: قبل الإطلاق أرقام يدوية مناسبة (بتتعدّل من لوحة التحكم) — بعد الإطلاق زرار «ابدأ الأرقام الحقيقية»
-      { key: 'visitors', icon: '👁️', label: 'زيارة للموقع', mode: 'manual', value: 12480 },
-      { key: 'users', icon: '👥', label: 'مستخدم مسجّل', mode: 'manual', value: 860 },
-      { key: 'plans', icon: '📈', label: 'خطة استثمار', mode: 'manual', value: 2140 },
-      { key: 'alerts', icon: '🔔', label: 'تنبيه اتبعت للمستخدمين', mode: 'manual', value: 9750 }
+      // الإصدار 147: الرقم اليدوي بيزيد لوحده كل يوم (من gmin لـ gmax في اليوم) من تاريخ since
+      { key: 'visitors', icon: '👁️', label: 'زيارة للموقع', mode: 'manual', value: 12480, gmin: 70, gmax: 110, since: '2026-10-03' },
+      { key: 'users', icon: '👥', label: 'مستخدم مسجّل', mode: 'manual', value: 860, gmin: 2, gmax: 3, since: '2026-10-03' },
+      { key: 'plans', icon: '📈', label: 'خطة استثمار', mode: 'manual', value: 2140, gmin: 4, gmax: 7, since: '2026-10-03' },
+      { key: 'alerts', icon: '🔔', label: 'تنبيه اتبعت للمستخدمين', mode: 'manual', value: 9750, gmin: 25, gmax: 40, since: '2026-10-03' }
     ] },
     markets: {
       nav: 'الأسواق', eyebrow: 'الأسواق المالية', title: 'الأسواق كلها [[قدامك في شاشة واحدة]]',
@@ -117,6 +118,17 @@
     if (isObj(def)) { const o = {}; Object.keys(def).forEach(k => { o[k] = merge(def[k], isObj(v) ? v[k] : undefined); }); if (isObj(v)) Object.keys(v).forEach(k => { if (!(k in o)) o[k] = v[k]; }); return o; }
     return v === undefined || v === null ? def : v;
   }
+  // الإصدار 147: العداد اليدوي بيزيد لوحده كل يوم — زيادة اليوم ثابتة لكل يوم (نفس الرقم عند كل الزوار) بين gmin و gmax
+  const STAT_GROW = { visitors: [70, 110], users: [2, 3], plans: [4, 7], alerts: [25, 40] };
+  LP.manualStat = function(it, at){
+    const base = +it.value || 0, g = STAT_GROW[it.key] || [0, 0];
+    const lo = Math.max(0, it.gmin != null && it.gmin !== '' ? +it.gmin : g[0]), hi = Math.max(lo, it.gmax != null && it.gmax !== '' ? +it.gmax : g[1]);
+    const since = Date.parse((it.since || '2026-10-03') + 'T00:00:00Z'), now = at || Date.now();
+    const days = Math.max(0, Math.min(3650, Math.floor((now - since) / 86400000)));
+    let add = 0;
+    for (let d = 0; d < days; d++) { let h = 2166136261; const str = it.key + ':' + d; for (let k = 0; k < str.length; k++) { h ^= str.charCodeAt(k); h = Math.imul(h, 16777619); } add += lo + ((h >>> 0) % (hi - lo + 1)); }
+    return base + add;
+  };
   LP.merge = function(cfg){
     const c = merge(JSON.parse(JSON.stringify(LP.DEFAULTS)), cfg || {});
     // أي قسم أساسي مش موجود في الترتيب المحفوظ (قسم جديد في إصدار جاي) ← بيتضاف في الآخر
@@ -214,7 +226,7 @@
         <div class="lp-toast t3"><span class="i">📉</span><div><b>متوسط التكلفة نزل 5.7%</b><small>بعد تنفيذ المستوى الثالث</small></div></div>` : ''}`}
       </div></div></section>`; };
   R.stats = (c, L) => { const items = c.stats.items.filter(it => it.mode !== 'off'); if (!items.length) return '';
-    return `<section class="lp-wrap"><div class="lp-stats">${items.map((it, i) => { const v = it.mode === 'real' ? (+L.stats[it.key] || 0) : (+it.value || 0);
+    return `<section class="lp-wrap"><div class="lp-stats">${items.map((it, i) => { const v = it.mode === 'real' ? (+L.stats[it.key] || 0) : LP.manualStat(it);
       return `<div class="lp-stat lp-rev">${it.key === 'visitors' && it.mode === 'real' ? '<span class="lp-live"><i></i> مباشر</span>' : ''}<div class="i">${esc(it.icon || '•')}</div><b class="lp-num" data-count="${v}">0</b><span>${esc(it.label)}</span></div>`; }).join('')}</div></section>`; };
   R.markets = (c) => `<div class="lp-wrap">${secHead(c.markets)}
       <div class="lp-tabs lp-rev" id="lpMkTabs"></div>
@@ -287,7 +299,7 @@
     return `<div class="lp-wrap"><div class="lp-custom ${lay}"><div class="lp-custom-t lp-rev">${s.eyebrow ? `<span class="lp-eyebrow">${esc(s.eyebrow)}</span>` : ''}${s.title ? `<h2>${T(s.title)}</h2>` : ''}${s.text ? `<p>${esc(s.text)}</p>` : ''}${s.btn ? btnHtml(s.btn, s.action === 'url' ? 'url:' + (s.url || '') : (s.action || 'register'), true) : ''}</div>${img ? `<div class="lp-rev"><img src="${esc(img)}" alt=""></div>` : ''}</div></div>`; };
 
   const logoHtml = (c) => { const lg = imgSrc(c.theme.logo);
-    return lg ? `<img src="${esc(lg)}" alt="GRIFFINE">` : `<img class="lp-logo-l" src="griffine-logo-light.webp?v=146" alt="GRIFFINE"><img class="lp-logo-d" src="griffine-logo-dark.webp?v=146" alt="GRIFFINE">`; };
+    return lg ? `<img src="${esc(lg)}" alt="GRIFFINE">` : `<img class="lp-logo-l" src="griffine-logo-light.webp?v=147" alt="GRIFFINE"><img class="lp-logo-d" src="griffine-logo-dark.webp?v=147" alt="GRIFFINE">`; };
   const IC = {
     moon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg>',
     login: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>',
@@ -327,7 +339,7 @@
       <footer class="lp-foot"><div class="lp-wrap"><div class="g">
         <div><button type="button" class="lp-brand" data-act="top">${logoHtml(c)}${c.theme.wordmark !== false ? '<span class="lp-word">GRIFFINE</span>' : ''}</button>${c.footer.text ? `<p>${esc(c.footer.text)}</p>` : ''}</div>
         <div><h5>المنصة</h5>${navSecs.slice(0, 3).map(([id, l]) => `<button type="button" data-act="section:${id}">${esc(l)}</button>`).join('')}</div>
-        <div><h5>الشركة</h5>${navSecs.slice(3).map(([id, l]) => `<button type="button" data-act="section:${id}">${esc(l)}</button>`).join('')}<button type="button" data-act="privacy">سياسة الخصوصية</button></div>
+        <div><h5>الشركة</h5>${navSecs.slice(3).map(([id, l]) => `<button type="button" data-act="section:${id}">${esc(l)}</button>`).join('')}<button type="button" data-act="privacy">سياسة الخصوصية</button><button type="button" data-act="terms">الشروط والأحكام</button></div>
         <div><h5>الحساب</h5><button type="button" data-act="login">${esc(c.nav.login)}</button><button type="button" data-act="register">إنشاء حساب</button>${c.app.on !== false ? `<button type="button" data-act="app">${esc(c.app.label)}</button>` : ''}</div>
       </div><div class="lp-disc"><span>${esc(c.footer.disclaimer)}</span><span>© ${new Date().getFullYear()} GRIFFINE · الإصدار ${esc(L.version || 108)}</span></div></div></footer>
     </div>`;
@@ -355,7 +367,15 @@
   const alive = () => root && root.isConnected;
 
   // الإصدار 142: «يوم» في الرسوم التوضيحية = منحنى اليوم (40 نقطة بين إغلاق امبارح وسعر النهارده)
-  const dayCurve = (s) => { const a = s[s.length - 2], b = s[s.length - 1]; return Array.from({ length: 40 }, (_, i) => { const f = i / 39; return a + (b - a) * f + Math.sin(i / 2.6) * Math.abs(b - a || a * 0.004) * 0.35 * (1 - f); }); };
+  // الإصدار 147: حركة يوم واقعية (مشي عشوائي صغير مثبّت من إقفال امبارح لآخر سعر) بدل الموجة الكبيرة
+  const dayCurve = (s) => {
+    const a = s[s.length - 2], b = s[s.length - 1], n = 54; let seed = Math.round(Math.abs(a * 1000 + b * 7)) % 2147483647 || 1;
+    const rnd = () => (seed = seed * 16807 % 2147483647) / 2147483647 - 0.5;
+    const w = [0]; for (let i = 1; i < n; i++) w.push(w[i - 1] + rnd());
+    const end = w[n - 1], dev = w.map((x, i) => x - end * i / (n - 1)), mx = Math.max(...dev.map(Math.abs)) || 1;
+    const amp = Math.max(Math.abs(b - a) * 0.45, Math.abs(a) * 0.0025);
+    return w.map((_, i) => a + (b - a) * i / (n - 1) + dev[i] / mx * amp);
+  };
   function drawHero(anim){
     const box = document.getElementById('lpHeroChart'); if (!box) return;
     const vals = heroRange <= 2 ? dayCurve(heroSeries) : heroSeries.slice(-heroRange);
@@ -466,6 +486,7 @@
     if (a === 'login') return renderLogin();
     if (a === 'plans') return typeof renderSubscriptionPlans === 'function' ? renderSubscriptionPlans() : renderRegister();
     if (a === 'privacy') return typeof renderPrivacyPolicyPage === 'function' ? renderPrivacyPolicyPage() : null;
+    if (a === 'terms') return typeof renderTermsPage === 'function' ? renderTermsPage() : null;   // الإصدار 147
     if (a === 'theme') { if (window.GShell && GShell.toggleTheme) GShell.toggleTheme(); else document.documentElement.toggleAttribute('data-theme'); setTimeout(redrawAll, 30); return; }
     if (a === 'app') return appSheet(CUR);
     if (a === 'menu') { const m = document.getElementById('lpMMenu'); if (m) m.classList.toggle('open'); return; }

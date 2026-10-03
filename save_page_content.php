@@ -15,7 +15,7 @@ requireCsrf();
 
 $key = $_POST['key'] ?? '';
 $content = $_POST['content'] ?? '';
-$allowed = ['about', 'refund_policy', 'contact', 'suggestions', 'privacy'];
+$allowed = ['about', 'refund_policy', 'contact', 'suggestions', 'privacy', 'terms'];   // الإصدار 147: الشروط والأحكام
 // مفاتيح عناوين الشاشات (title__اسم_الشاشة) بتتوافق تلقائيًا مع أي شاشة، مش لازم تتضاف يدويًا هنا
 $isTitleKey = static function($k){ return $k !== '' && preg_match('/^title__[a-zA-Z0-9_]+$/', $k) === 1; };
 

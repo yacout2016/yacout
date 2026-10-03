@@ -32,7 +32,7 @@ const guest = async (b, vp) => { const g = await page(b, vp); await g.goto(BASE 
   const users = +q("SELECT COUNT(*) FROM users WHERE COALESCE(archived,0)=0");
   await g.evaluate(() => document.querySelector('.lp-stats').scrollIntoView()); await g.waitForTimeout(2200);
   const st = await g.$$eval('.lp-stat b', d => d.map(x => +x.textContent.replace(/,/g, '')));
-  check('العدادات قبل الإطلاق: أرقام يدوية مناسبة (الإصدار 146)', st.includes(12480) && st.includes(860), JSON.stringify(st) + ' users=' + users);
+  check('العدادات قبل الإطلاق: أرقام يدوية مناسبة (الإصدار 146)', st.length === 4 && st[0] >= 12480 && st[1] >= 860, JSON.stringify(st) + ' users=' + users);
   await g.waitForFunction(() => /COMI|TMGH|HRHO/.test((document.getElementById('lpTicker') || {}).textContent || ''), null, { timeout: 12000 }).catch(() => {});
   check('شريط الأسعار بأسعار حقيقية من مصدر أسعار الموقع', /COMI|TMGH|HRHO/.test(await g.textContent('#lpTicker')));
   await g.click('.lp-nav [data-act="login"]'); await g.waitForTimeout(1200);

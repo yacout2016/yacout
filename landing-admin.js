@@ -68,6 +68,8 @@
     if (screenStale(__tok)) return;
     window.__lastPageKey = 'landing_admin';
     const C = L.merge(d.raw), live = d.live || { stats: {} }, allReviews = (rv && rv.reviews) || [];
+    // الإصدار 147: الإعدادات القديمة ملهاش «الزيادة اليومية» ← بتاخد الافتراضي
+    (C.stats.items || []).forEach(it => { const df = (L.DEFAULTS.stats.items || []).find(x => x.key === it.key) || {}; ['gmin', 'gmax', 'since'].forEach(k => { if (it[k] == null || it[k] === '') it[k] = df[k] != null ? df[k] : (k === 'since' ? '2026-10-03' : 0); }); });
     let cur = tab || 'general', open = {}, dirty = false;
 
     const val = (p) => getP(C, p);
@@ -116,7 +118,7 @@
       links: () => {
         const hidden = new Set((C.reviews.hidden || []).map(Number));
         return [
-          card('العدادات', C.stats.items.map((it, i) => `<div class="lpa-item"><div class="lpa-grid">${field(`stats.items.${i}.label`, 'الاسم', 'text')}${field(`stats.items.${i}.icon`, 'أيقونة', 'text')}${field(`stats.items.${i}.mode`, 'المصدر', 'select', [['real', 'حقيقي من الموقع'], ['manual', 'رقم أكتبه بنفسي'], ['off', 'مخفي']])}${field(`stats.items.${i}.value`, 'الرقم اليدوي', 'num')}</div><div class="u-fs12 u-muted">الرقم الحقيقي دلوقتي: <b>${(+live.stats[it.key] || 0).toLocaleString('en-US')}</b></div></div>`).join(''), 'الزوار = زيارات صفحة اللاندينج (مرة لكل جلسة) · المستخدمين = الحسابات المسجلة · الخطط = خطط DCA وGrid · التنبيهات = التنبيهات اللي اتبعتت.' +
+          card('العدادات', C.stats.items.map((it, i) => `<div class="lpa-item"><div class="lpa-grid">${field(`stats.items.${i}.label`, 'الاسم', 'text')}${field(`stats.items.${i}.icon`, 'أيقونة', 'text')}${field(`stats.items.${i}.mode`, 'المصدر', 'select', [['real', 'حقيقي من الموقع'], ['manual', 'رقم أكتبه بنفسي'], ['off', 'مخفي']])}${field(`stats.items.${i}.value`, 'الرقم اليدوي (البداية)', 'num')}${field(`stats.items.${i}.gmin`, 'زيادة يومية من', 'num')}${field(`stats.items.${i}.gmax`, 'زيادة يومية لحد', 'num')}</div><div class="u-fs12 u-muted">${it.mode === 'manual' ? `المعروض النهارده: <b>${L.manualStat(it).toLocaleString('en-US')}</b> (بيزيد لوحده كل يوم بين ${+it.gmin || 0} و${+it.gmax || 0}) · ` : ''}الرقم الحقيقي دلوقتي: <b>${(+live.stats[it.key] || 0).toLocaleString('en-US')}</b></div></div>`).join(''), 'الزوار = زيارات صفحة اللاندينج (مرة لكل جلسة) · المستخدمين = الحسابات المسجلة · الخطط = خطط DCA وGrid · التنبيهات = التنبيهات اللي اتبعتت.' +
             `<br><b>قبل الإطلاق:</b> خلّي المصدر «رقم أكتبه بنفسي» واكتب الأرقام المناسبة. عداد الزوار الحقيقي واقف ومش بيحسب زياراتك أو زيارات الموظفين.
             <br><b>بعد الإطلاق وحضور زوار حقيقيين:</b> دوس الزرار ده ← عداد الزوار يتصفّر وكل العدادات تبقى حقيقية.<br><button type="button" class="small u-wa u-mt6" data-do="statsLive">🚀 ابدأ الأرقام الحقيقية (بعد الإطلاق)</button>`),
           card('آراء العملاء', `<div class="lpa-grid">${field('reviews.mode', 'المصدر', 'select', [['real', 'حقيقية من الموقع (شاشة آراء العملاء)'], ['manual', 'أكتبها بنفسي'], ['both', 'الاتنين مع بعض'], ['off', 'مقفولة (القسم مخفي)']])}${field('reviews.min', 'أقل تقييم يظهر (1-5)', 'num', [1, 5])}${field('reviews.count', 'أقصى عدد آراء', 'num', [1, 30])}</div>
@@ -165,6 +167,7 @@
       else if (t.dataset.t === 'lines') v = t.value.split('\n').map(s => s.trim()).filter(Boolean);
       else if (t.dataset.t === 'num') v = t.value === '' ? '' : +t.value;
       setP(C, p, v); markDirty();
+      { const m = /^stats\.items\.(\d+)\.value$/.exec(p); if (m && C.stats.items[+m[1]]) C.stats.items[+m[1]].since = new Date().toISOString().slice(0, 10); }   // الإصدار 147: رقم بداية جديد ← الزيادة اليومية تبدأ من النهارده
       if (t.type === 'color') { const s = t.parentElement.querySelector('span'); if (s) s.textContent = v; }
       if (e.type === 'change' && (/^sections\.\d+\.on$/.test(p))) t.closest('.lpa-sec').classList.toggle('off', !v);
     };

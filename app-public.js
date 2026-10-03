@@ -275,7 +275,7 @@ function authScreen(o){
       ${o.sub ? `<p class="gl-sub">${o.sub}</p>` : ''}
       ${o.error ? `<div class="gl-alert err" role="alert">${escapeHtml(o.error)}</div>` : ''}
       ${o.body}
-      <p class="gl-terms">باستخدامك GRIFFINE أنت توافق على <a id="glTermsLink">إخلاء المسؤولية</a> و<a id="glPrivacyLink">سياسة الخصوصية</a>.</p>
+      <p class="gl-terms">باستخدامك GRIFFINE أنت توافق على <a id="glTermsLink">إخلاء المسؤولية</a> و<a id="glPrivacyLink">سياسة الخصوصية</a> و<a id="glTosLink">الشروط والأحكام</a>.</p>
     </div>
   </div>`;
 }
@@ -287,6 +287,7 @@ function authField(id, type, label, icon, attrs){
 function wireAuthCommon(backTo, selfFn){
   const b = document.getElementById('glBackBtn'); if (b) b.onclick = backTo || (() => renderPublicHome());
   document.getElementById('glTermsLink').onclick = () => renderDisclaimerPage({ backTo: selfFn });
+  { const t = document.getElementById('glTosLink'); if (t) t.onclick = () => renderTermsPage({ backTo: selfFn }); }
   document.getElementById('glPrivacyLink').onclick = () => renderPrivacyPolicyPage({ backTo: selfFn });
   document.querySelectorAll('.gl-eye').forEach(btn => btn.onclick = () => {
     const inp = document.getElementById(btn.dataset.for); if (!inp) return;
@@ -546,6 +547,40 @@ async function renderPrivacyPolicyPage(options){
     if (options.backTo) return options.backTo();
     return email ? renderHome() : renderPublicHome();
   };
+}
+
+// الإصدار 147: الشروط والأحكام — نص افتراضي، والأدمن يستبدله من «📝 تعديل نصوص شاشات الموقع» ← الشروط والأحكام
+async function renderTermsPage(options){
+  const __tok = screenToken();
+  pushNav(() => renderTermsPage(options));
+  options = options || {};
+  const email = await getSession();
+  const pc = await getPageContent('terms');
+  const custom = (pc && pc.success && pc.content) ? pc.content : null;
+  const p = 'font-size:13.5px;line-height:1.8;margin:0 0 12px;';
+  const defaultHtml = `
+      <h3>1) عن الخدمة</h3>
+      <p style="${p}">GRIFFINE منصة لتنظيم الاستثمار في الأسهم: خطط تعزيز المتوسط (DCA) والشبكة (Grid)، متابعة المحفظة، تنبيهات، تحليلات وتوصيات استرشادية. استخدامك للموقع معناه موافقتك على الشروط دي.</p>
+      <h3>2) الحساب</h3>
+      <p style="${p}">إنت مسؤول عن صحة بياناتك والحفاظ على سرية كلمة المرور، وعن أي استخدام لحسابك. الحساب شخصي ومينفعش يتشارك أو يتباع.</p>
+      <h3>3) طبيعة المحتوى والتوصيات</h3>
+      <p style="${p}">كل الأدوات والتحليلات والتوصيات لأغراض التنظيم والاسترشاد فقط، ومش نصيحة استثمارية ملزمة ولا ضمان لأي ربح. قرار الشراء والبيع قرارك وعلى مسؤوليتك، والاستثمار في الأسهم فيه مخاطر خسارة جزء من رأس المال أو كله. الأسعار المعروضة ممكن تكون متأخرة.</p>
+      <h3>4) الاشتراكات والدفع</h3>
+      <p style="${p}">الباقات المدفوعة بتتفعّل بعد إتمام الدفع (أو مراجعته)، ومدتها ومميزاتها مكتوبة في صفحة «الباقات والأسعار». الاسترداد حسب «سياسة استرداد الاشتراك». ممكن نغيّر الأسعار أو المميزات مستقبلًا، والتغيير مش بيأثر على اشتراك ساري لحد ما يخلص.</p>
+      <h3>5) الاستخدام المسموح</h3>
+      <p style="${p}">ممنوع إساءة استخدام الموقع: محاولة الاختراق، أو جمع البيانات آليًا، أو نسخ المحتوى والتوصيات وإعادة نشرها أو بيعها من غير إذن مكتوب. أي مخالفة ممكن تؤدي لإيقاف الحساب.</p>
+      <h3>6) الملكية الفكرية</h3>
+      <p style="${p}">التصميم والنصوص والأدوات والشعار ملك GRIFFINE، ومحمية بالقانون.</p>
+      <h3>7) حدود المسؤولية</h3>
+      <p style="${p}">GRIFFINE مش مسؤول عن أي خسائر مالية ناتجة عن قرارات استثمارية، أو عن انقطاع الخدمة أو تأخر الأسعار أو التنبيهات لأسباب خارجة عن إرادتنا.</p>
+      <h3>8) التعديلات والتواصل</h3>
+      <p style="${p}">ممكن نحدّث الشروط دي من وقت للتاني، وأي تحديث بيظهر هنا. لأي استفسار تواصل معانا من الشات أو صفحة «تواصل معنا».</p>`;
+  if (screenStale(__tok)) return; app.innerHTML = `<div class="container">${logoHeader()}
+    <h2>الشروط والأحكام</h2>
+    <div class="section-card">${custom ? `<div class="u-prose">${escapeHtml(custom)}</div>` : defaultHtml}</div>
+    <button class="btn-gray" id="termsBackBtn">رجوع</button>
+  </div>`;
+  document.getElementById('termsBackBtn').onclick = () => { if (options.backTo) return options.backTo(); return email ? renderHome() : renderPublicHome(); };
 }
 
 async function renderVerifyEmailResult(token){

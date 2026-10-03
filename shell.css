@@ -1473,3 +1473,15 @@ body.g-shell #app select.gs-curve-rngsel, select.gs-curve-rngsel{ width:auto !im
 .gs-hblk.gs-hoff{ opacity:.45; outline:2px dashed rgba(220,38,38,.5); outline-offset:4px; border-radius:16px; }
 .gs-hctl-bar{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:10px 12px; margin:6px 0 12px; border:1px dashed var(--gs-brand,#C9A227); border-radius:14px; background:var(--gs-brand-tint,rgba(201,162,39,.08)); font-size:12.5px; }
 .gs-hctl-bar b{ color:var(--gs-brand-strong,#A6811E); }
+/* الإصدار 147: حالة مراجعة التوصية (مرفوضة / مقبولة / بانتظار) — لون الكارت كله + سطر واضح */
+.rc-log.rc-lst-rejected{ background:rgba(220,38,38,.10) !important; border:1.5px solid rgba(220,38,38,.55) !important; border-inline-start:6px solid #DC2626 !important; }
+.rc-log.rc-lst-approved{ background:rgba(5,150,105,.10) !important; border:1.5px solid rgba(5,150,105,.5) !important; border-inline-start:6px solid #059669 !important; }
+.rc-log.rc-lst-pending{ background:rgba(245,158,11,.10) !important; border-color:rgba(245,158,11,.55) !important; }
+.rc-decide{ margin-top:8px; padding:8px 10px; border-radius:10px; font-size:13px; line-height:1.7; }
+.rc-decide-no{ background:#FEE2E2; color:#991B1B; } .rc-decide-ok{ background:#D1FAE5; color:#065F46; } .rc-decide-pend{ background:#FEF3C7; color:#92400E; }
+.rc-decide span{ font-weight:600; }
+/* الإصدار 147: أيقونة الشات العايمة على الموبايل أصغر ولازقة في الركن عشان ماتغطيش الكروت */
+@media (max-width:700px){
+  body #chatBubble{ width:44px !important; height:44px !important; left:8px !important; border-width:2px !important; opacity:.94; }
+  body:has(.lp-screen) #chatBubble{ bottom:max(10px, env(safe-area-inset-bottom)) !important; }
+}
