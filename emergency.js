@@ -13,9 +13,9 @@
    © GRIFFINE — جميع الحقوق محفوظة. ممنوع نسخ أو إعادة استخدام الكود أو التصميم أو المحتوى. */
 (function(){
   const h = String(location.hostname || '').toLowerCase();
-  if (/(^|\.)griffine\.(store|app|com)$/.test(h) || h === 'localhost' || h === '127.0.0.1' || h === '') return;
+  if (/(^|\.)griffine\.(app|com)$/.test(h) || h === 'localhost' || h === '127.0.0.1' || h === '') return;
   window.__gNotOriginal = true;
-  const stop = () => { try { document.documentElement.innerHTML = '<head><meta charset="utf-8"><title>GRIFFINE</title></head><body style="font-family:Tahoma,sans-serif;direction:rtl;text-align:center;padding:60px 20px;background:#0F172A;color:#fff"><h1>⚠️ نسخة غير أصلية</h1><p>الصفحة دي نسخة غير مصرّح بيها من منصة GRIFFINE.</p><p><a style="color:#C9A227;font-weight:700" href="https://www.griffine.store">افتح الموقع الأصلي www.griffine.store</a></p><p style="opacity:.6;font-size:12px">© GRIFFINE — جميع الحقوق محفوظة</p></body>'; } catch(e){} };
+  const stop = () => { try { document.documentElement.innerHTML = '<head><meta charset="utf-8"><title>GRIFFINE</title></head><body style="font-family:Tahoma,sans-serif;direction:rtl;text-align:center;padding:60px 20px;background:#0F172A;color:#fff"><h1>⚠️ نسخة غير أصلية</h1><p>الصفحة دي نسخة غير مصرّح بيها من منصة GRIFFINE.</p><p><a style="color:#C9A227;font-weight:700" href="https://www.griffine.app">افتح الموقع الأصلي www.griffine.app</a></p><p style="opacity:.6;font-size:12px">© GRIFFINE — جميع الحقوق محفوظة</p></body>'; } catch(e){} };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', stop); else stop();
 })();
 (function(){
@@ -44,7 +44,7 @@
     (document.body || document.documentElement).appendChild(box);
     return box;
   }
-  const logo = () => { const dark = document.documentElement.getAttribute('data-theme') === 'dark'; return `<img class="gs-emg-logo" src="${dark ? 'griffine-logo-dark.webp' : 'griffine-logo-light.webp'}?v=152" alt="GRIFFINE">`; };
+  const logo = () => { const dark = document.documentElement.getAttribute('data-theme') === 'dark'; return `<img class="gs-emg-logo" src="${dark ? 'griffine-logo-dark.webp' : 'griffine-logo-light.webp'}?v=153" alt="GRIFFINE">`; };
   const ICON = { maint: '🛠️', offline: '📡', down: '☁️', slow: '' };
   function paint(kind, extra){
     const c = cfg[kind] || {}; const b = ensure();
@@ -91,7 +91,7 @@
     if (maintOn && !admin && !staffBypass) show('maint'); else hide('maint');
   }
   // الإصدار 102: لو السيرفر عليه نسخة أحدث من اللي شغالة على الجهاز (كاش قديم) ← مسح الكاش وإعادة تحميل مرة واحدة
-  const BUILD = 152;
+  const BUILD = 153;
   function checkBuild(b){
     b = parseInt(b, 10) || 0; if (b <= BUILD) return;
     let done = null; try { done = sessionStorage.getItem('gs_build_reload'); } catch(e){}

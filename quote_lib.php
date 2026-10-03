@@ -36,7 +36,7 @@ function mq_http($url, $postJson = null){
     $ch = curl_init($url);
     $opts = [
         CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 10, CURLOPT_CONNECTTIMEOUT => 6, CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_USERAGENT => 'Mozilla/5.0 (compatible; GRIFFINE/1.0; +https://griffine.store)',
+        CURLOPT_USERAGENT => 'Mozilla/5.0 (compatible; GRIFFINE/1.0; +https://www.griffine.app)',
         CURLOPT_HTTPHEADER => ['Accept: application/json'],
     ];
     if ($postJson !== null) {

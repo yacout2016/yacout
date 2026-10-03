@@ -200,7 +200,7 @@ function bs_rss($q, $max){
     if (is_file($f) && time() - filemtime($f) < 2 * 3600) { $j = json_decode((string)@file_get_contents($f), true); if (is_array($j)) return array_slice($j, 0, $max); }
     $ch = curl_init($url);
     curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 8, CURLOPT_CONNECTTIMEOUT => 5, CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_USERAGENT => 'Mozilla/5.0 (compatible; GRIFFINE/1.0; +https://griffine.store)']);
+        CURLOPT_USERAGENT => 'Mozilla/5.0 (compatible; GRIFFINE/1.0; +https://www.griffine.app)']);
     $body = curl_exec($ch); $code = curl_getinfo($ch, CURLINFO_HTTP_CODE); curl_close($ch);
     if ($body === false || $code >= 400) return [];
     $prev = libxml_use_internal_errors(true);

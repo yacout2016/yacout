@@ -3,7 +3,7 @@
    GRIFFINE — price_alerts_check.php (الإصدار 88)
    فحص تنبيهات الأسعار لكل العملاء (تنبيه جوه الموقع + إيميل لما السعر يوصل لمستوى في خطة العميل)
    الاستخدام: Cron Job في هوستنجر كل 15 دقيقة وقت التداول:
-     https://griffine.store/price_alerts_check.php?key=<CRON_KEY من griffine_config.php>
+     https://www.griffine.app/price_alerts_check.php?key=<CRON_KEY من griffine_config.php>
    (العميل كمان بيتفحص فورًا أول ما يفتح الموقع - الـ Cron للي مفتحش الموقع)
    ===================================================================== */
 header('Content-Type: application/json; charset=utf-8');

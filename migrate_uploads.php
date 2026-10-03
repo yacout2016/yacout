@@ -2,7 +2,7 @@
 /* صيانة ما بعد التحديث - لمدير الموقع الأصلي بس:
    1) تحويل الصور القديمة (Base64 جوه قاعدة البيانات) لملفات
    2) مسح الملفات القديمة والحساسة من السيرفر
-   افتح الرابط ده وإنت مسجّل دخول: https://www.griffine.store/migrate_uploads.php
+   افتح الرابط ده وإنت مسجّل دخول: https://www.griffine.app/migrate_uploads.php
    كل مرة بيحوّل حتى 100 صورة من كل جدول - كرر فتح الصفحة حتى ما يقولك "خلاص". آمن تشغّله أكتر من مرة. */
 header('Content-Type: text/html; charset=UTF-8');
 require_once __DIR__ . '/session_boot.php';

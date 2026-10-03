@@ -85,7 +85,7 @@ try {
                 "plans"    => lp_count($conn, "SELECT COUNT(*) FROM user_plans WHERE deleted = 0"),
                 "alerts"   => lp_count($conn, "SELECT COUNT(*) FROM user_alerts"),
             ],
-            "reviews" => [], "faq" => [], "version" => 152,
+            "reviews" => [], "faq" => [], "version" => 153,
         ];
         // آراء العملاء الحقيقية (من شاشة «آراء العملاء» في الموقع) - الأدمن بيخفي أي رأي من اللاندينج
         $rv = is_array($cfg['reviews'] ?? null) ? $cfg['reviews'] : [];

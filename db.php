@@ -49,7 +49,7 @@ define('ADMIN_EMAIL', 'top72026@gmail.com');
 define('MAIL_FROM', 'info@griffine.app');
 define('MAIL_FROM_NAME', 'GRIFFINE');
 define('MAIL_ADMIN_TO', 'info@griffine.app');
-define('MAIL_SITE_URL', 'https://griffine.store');
+define('MAIL_SITE_URL', 'https://www.griffine.app');   // الإصدار 153: الدومين الجديد
 define('MAIL_SMTP_HOST', 'smtp.hostinger.com');
 define('MAIL_SMTP_PORT', 465);
 if (!defined('MAIL_SMTP_USER')) define('MAIL_SMTP_USER', 'info@griffine.app');   // الإصدار 152: الصندوق الجديد (كلمة سره MAIL_SMTP_PASS في griffine_config.php)

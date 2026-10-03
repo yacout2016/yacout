@@ -3,7 +3,7 @@
    GRIFFINE — mailer.php (الإصدار 72) — إرسال كل إيميلات الموقع من مكان واحد
    ---------------------------------------------------------------------
    ليه ملف موحّد؟
-     قبل كده كل ملف كان بيبعت بـ mail() لوحده ومن عنوان no-reply@www.griffine.store
+     قبل كده كل ملف كان بيبعت بـ mail() لوحده ومن عنوان no-reply على الدومين القديم
      (عنوان غير موجود) ومن غير تشفير للعنوان العربي - فالإيميلات كانت بتتحجز أو تروح Spam.
    دلوقتي:
      1) المرسل دايمًا info@griffine.app (صندوق حقيقي على الدومين) + Return-Path صحيح
@@ -34,7 +34,7 @@
 defined('MAIL_FROM')        || define('MAIL_FROM', 'info@griffine.app');
 defined('MAIL_FROM_NAME')   || define('MAIL_FROM_NAME', 'GRIFFINE');
 defined('MAIL_ADMIN_TO')    || define('MAIL_ADMIN_TO', 'info@griffine.app');   // تنبيهات الإدارة ونسخ الشات
-defined('MAIL_SITE_URL')    || define('MAIL_SITE_URL', 'https://griffine.store');
+defined('MAIL_SITE_URL')    || define('MAIL_SITE_URL', 'https://www.griffine.app');
 defined('MAIL_SMTP_HOST')   || define('MAIL_SMTP_HOST', 'smtp.hostinger.com');
 defined('MAIL_SMTP_PORT')   || define('MAIL_SMTP_PORT', 465);                    // 465 = SSL ، 587 = STARTTLS
 defined('MAIL_SMTP_USER')   || define('MAIL_SMTP_USER', 'info@griffine.app');

@@ -130,5 +130,34 @@
     const ls = document.getElementById('mkLinksSave'); if (ls) ls.onclick = () => { const d = { action: 'save_cfg' }; ['tiktok', 'facebook', 'instagram', 'youtube', 'x', 'whatsapp'].forEach(p => d['link_' + p] = document.getElementById('mkL_' + p).value.trim()); post(d, '✅ اتحفظت الروابط'); };
     const lg = document.getElementById('mkLgo'); if (lg) lg.onclick = () => { const u = trackLink(document.getElementById('mkLpf').value, document.getElementById('mkLcmp').value.trim().toLowerCase().replace(/[^a-z0-9_\-]/g, '')); document.getElementById('mkLout').innerHTML = `<code dir="ltr">${E(u)}</code> <button type="button" class="small" id="mkLcp">📋 نسخ</button>`; document.getElementById('mkLcp').onclick = async () => { try { await navigator.clipboard.writeText(u); GShell.toast('✅ اتنسخ الرابط', 'ok'); } catch(e){} }; };
   }
+  // الإصدار 153: «📢 إبلاغ كل المستخدمين بالرابط الجديد» (domain_notice.php) — إشعار جوه الموقع + إيميل، على دفعات
+  window.renderAdminDomainNotice = async function(){
+    const tok = screenToken(); pushNav(() => renderAdminDomainNotice()); window.__lastPageKey = 'admin_domain';
+    const email = await getSession(); if (!email) return renderLogin();
+    if (!window.__isAdmin) return renderHome();
+    const d = await apiGet('/domain_notice.php').catch(() => null);
+    if (screenStale(tok)) return;
+    if (!d || !d.success) { app.innerHTML = `<div class="container"><div class="section-card error">${E((d && d.message) || 'تعذّر التحميل')}</div></div>`; return; }
+    const L = d.last;
+    app.innerHTML = `<div class="container wide">${logoHeader()}
+      <div class="topbar"><div>${pageTitle('admin_domain', '📢 إبلاغ كل المستخدمين بالرابط الجديد')}</div><button class="secondary small" id="dnBack">🛡️ رجوع للوحة التحكم</button></div>
+      <div class="section-card"><div class="info">هيتبعت لكل المستخدمين (<b>${N(d.total)}</b> حساب): إشعار جوه الموقع + إيميل فيه الرابط الجديد <b dir="ltr">www.griffine.app</b> وإنهم يسجّلوا دخولهم من جديد بنفس الإيميل وكلمة السر.</div>
+        <div id="dnLast" class="u-fs12 u-muted u-mt6">${L ? `آخر إرسال: ${E(L.at)} — إشعارات ${N(L.app)} · إيميلات ${N(L.mail)}${L.running ? ' (ماكملش)' : ''}` : 'لسه ماتبعتش.'}</div>
+        <button type="button" id="dnSend" class="u-mt6">📢 ابعت الإشعار والإيميل للكل</button><div id="dnProg" class="u-fs12 u-mt6"></div></div></div>`;
+    document.getElementById('dnBack').onclick = () => renderAdminHub();
+    document.getElementById('dnSend').onclick = async () => {
+      if (L && !L.running && !(await gConfirm('الإبلاغ اتبعت قبل كده — تبعته تاني لكل المستخدمين؟'))) return;
+      if (!L && !(await gConfirm(`هيتبعت إشعار وإيميل لـ ${N(d.total)} مستخدم. متأكد؟`))) return;
+      const btn = document.getElementById('dnSend'), pg = document.getElementById('dnProg'); btn.disabled = true;
+      let after = 0, r = null;
+      do {
+        r = await apiPost('/domain_notice.php', { action: 'send', after }).catch(() => null);
+        if (!r || !r.success) { btn.disabled = false; return GShell.toast((r && r.message) || 'تعذّر الإرسال — دوس تاني', 'err'); }
+        after = r.next; pg.textContent = `⏳ إشعارات ${N(r.app)} · إيميلات ${N(r.mail)} من ${N(r.total)}`;
+      } while (!r.done && !screenStale(tok));
+      pg.textContent = `✅ خلص: إشعارات ${N(r.app)} · إيميلات ${N(r.mail)} من ${N(r.total)}`; btn.disabled = false;
+      GShell.toast('✅ اتبعت الإبلاغ لكل المستخدمين', 'ok');
+    };
+  };
   window.__mktGen = gen;   // للاختبارات
 })();

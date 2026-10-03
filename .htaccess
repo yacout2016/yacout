@@ -46,8 +46,12 @@ RedirectMatch 403 ^/griffine_sessions/
 # 6) تحويل أي زيارة http إلى https
 <IfModule mod_rewrite.c>
     RewriteEngine On
+    # الإصدار 153: أي حد يفتح الدومين القديم أو griffine.app من غير www يتحوّل لـ https://www.griffine.app
+    RewriteCond %{HTTP_HOST} ^(www\.)?griffine\.store$ [NC,OR]
+    RewriteCond %{HTTP_HOST} ^griffine\.app$ [NC]
+    RewriteRule ^ https://www.griffine.app%{REQUEST_URI} [L,R=301]
     RewriteCond %{HTTPS} !=on
     RewriteCond %{HTTP:X-Forwarded-Proto} !=https
-    RewriteCond %{HTTP_HOST} ^(www\.)?griffine\.store$ [NC]
+    RewriteCond %{HTTP_HOST} ^www\.griffine\.app$ [NC]
     RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 </IfModule>

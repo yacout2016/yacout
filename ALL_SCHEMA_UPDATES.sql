@@ -1,4 +1,4 @@
-/* GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 152) — كل التحديثات، آمن يتشغل أكتر من مرة. الصقه كله في تبويب SQL ← Go */
+/* GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 153) — كل التحديثات، آمن يتشغل أكتر من مرة. الصقه كله في تبويب SQL ← Go */
 /* v69: جدول login_attempts (حماية من تخمين كلمات المرور). */
 /* v72: جدول ui_customizations (استوديو التصميم) + جدول email… */
 /* v82: عمود allow_upload في chat_conversation_meta (الأدمن ب… */
@@ -40,6 +40,7 @@
 /* v150: جدول rate_limits (حماية من سحب البيانات بالبوتات) */
 /* v151: جدول site_events (تحليلات الزوار — البحث والتطوير) + جدول mkt_items (التسويق) */
 /* v152: الإيميل الجديد info@griffine.app — أي نص محفوظ فيه الإيميل القديم بيتغيّر مرة واحدة (صفحات النصوص / المساعد الذكي / اللاندينج / الإعدادات) */
+/* v153: نقل الموقع لـ www.griffine.app — أي رابط محفوظ فيه griffine.store بيتغيّر لـ griffine.app مرة واحدة (نفس الجداول) */
 /* v85: ترميز الاتصال UTF-8 عشان النصوص العربي اللي بتتضاف من… */
 SET NAMES utf8mb4;
 CREATE TABLE IF NOT EXISTS users (
@@ -832,4 +833,10 @@ UPDATE ui_customizations SET data_value = REPLACE(data_value, 'info@griffine.sto
 UPDATE site_config SET config_value = REPLACE(config_value, 'info@griffine.store', 'info@griffine.app') WHERE config_value LIKE '%info@griffine.store%' AND NOT EXISTS (SELECT 1 FROM (SELECT config_key FROM site_config WHERE config_key = 'mig_152_mail') x);
 UPDATE site_content SET content_value = REPLACE(content_value, 'info@griffine.store', 'info@griffine.app') WHERE content_value LIKE '%info@griffine.store%' AND NOT EXISTS (SELECT 1 FROM site_config WHERE config_key = 'mig_152_mail');
 INSERT IGNORE INTO site_config (config_key, config_value) VALUES ('mig_152_mail', '1');
-SELECT 'GRIFFINE database is up to date (v152)' AS result;
+UPDATE page_contents SET content = REPLACE(content, 'griffine.store', 'griffine.app') WHERE content LIKE '%griffine.store%' AND NOT EXISTS (SELECT 1 FROM site_config WHERE config_key = 'mig_153_domain');
+UPDATE chat_faq SET answer = REPLACE(answer, 'griffine.store', 'griffine.app') WHERE answer LIKE '%griffine.store%' AND NOT EXISTS (SELECT 1 FROM site_config WHERE config_key = 'mig_153_domain');
+UPDATE ui_customizations SET data_value = REPLACE(data_value, 'griffine.store', 'griffine.app') WHERE data_value LIKE '%griffine.store%' AND NOT EXISTS (SELECT 1 FROM site_config WHERE config_key = 'mig_153_domain');
+UPDATE site_config SET config_value = REPLACE(config_value, 'griffine.store', 'griffine.app') WHERE config_value LIKE '%griffine.store%' AND NOT EXISTS (SELECT 1 FROM (SELECT config_key FROM site_config WHERE config_key = 'mig_153_domain') x);
+UPDATE site_content SET content_value = REPLACE(content_value, 'griffine.store', 'griffine.app') WHERE content_value LIKE '%griffine.store%' AND NOT EXISTS (SELECT 1 FROM site_config WHERE config_key = 'mig_153_domain');
+INSERT IGNORE INTO site_config (config_key, config_value) VALUES ('mig_153_domain', '1');
+SELECT 'GRIFFINE database is up to date (v153)' AS result;

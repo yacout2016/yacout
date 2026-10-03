@@ -5,4 +5,4 @@ Allow: /index.php
 Allow: /manifest.json
 Allow: /icon-512.png
 Disallow: /*.php$
-Sitemap: https://www.griffine.store/sitemap.xml
+Sitemap: https://www.griffine.app/sitemap.xml
