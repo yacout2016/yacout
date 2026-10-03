@@ -1,4 +1,4 @@
-/* GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 150) — كل التحديثات، آمن يتشغل أكتر من مرة. الصقه كله في تبويب SQL ← Go */
+/* GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 151) — كل التحديثات، آمن يتشغل أكتر من مرة. الصقه كله في تبويب SQL ← Go */
 /* v69: جدول login_attempts (حماية من تخمين كلمات المرور). */
 /* v72: جدول ui_customizations (استوديو التصميم) + جدول email… */
 /* v82: عمود allow_upload في chat_conversation_meta (الأدمن ب… */
@@ -38,6 +38,7 @@
 /* v148: مفيش تغيير في الجداول (مرفق صورة / PDF مع التوصية — مقفول افتراضيًا + بحث لوحة التحكم) */
 /* v149: مفيش تغيير في قاعدة البيانات (الزائر بيحمّل ملفات الصفحة العامة بس) */
 /* v150: جدول rate_limits (حماية من سحب البيانات بالبوتات) */
+/* v151: جدول site_events (تحليلات الزوار — البحث والتطوير) + جدول mkt_items (التسويق) */
 /* v85: ترميز الاتصال UTF-8 عشان النصوص العربي اللي بتتضاف من… */
 SET NAMES utf8mb4;
 CREATE TABLE IF NOT EXISTS users (
@@ -822,4 +823,6 @@ INSERT IGNORE INTO site_config (config_key, config_value) VALUES ('mig_138_perks
 UPDATE ui_customizations SET data_value = JSON_SET(data_value, '$.stats.items[0].mode', 'manual', '$.stats.items[0].value', 12480, '$.stats.items[1].mode', 'manual', '$.stats.items[1].value', 860, '$.stats.items[2].mode', 'manual', '$.stats.items[2].value', 2140, '$.stats.items[3].mode', 'manual', '$.stats.items[3].value', 9750) WHERE ui_key = 'landing' AND JSON_VALID(data_value) AND JSON_CONTAINS_PATH(data_value, 'one', '$.stats.items[3]') AND JSON_UNQUOTE(JSON_EXTRACT(data_value, '$.stats.items[0].key')) = 'visitors' AND NOT EXISTS (SELECT 1 FROM site_config WHERE config_key = 'mig_146_stats');
 INSERT IGNORE INTO site_config (config_key, config_value) VALUES ('mig_146_stats', '1');
 CREATE TABLE IF NOT EXISTS rate_limits (k VARCHAR(100) NOT NULL PRIMARY KEY, n INT NOT NULL DEFAULT 0, win INT NOT NULL DEFAULT 0) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-SELECT 'GRIFFINE database is up to date (v150)' AS result;
+CREATE TABLE IF NOT EXISTS site_events (id BIGINT AUTO_INCREMENT PRIMARY KEY, ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP, day DATE NOT NULL, ev VARCHAR(12) NOT NULL, vid VARCHAR(40) NOT NULL, screen VARCHAR(60) NOT NULL DEFAULT '', src VARCHAR(40) NOT NULL DEFAULT 'direct', device VARCHAR(10) NOT NULL DEFAULT '', browser VARCHAR(20) NOT NULL DEFAULT '', os VARCHAR(20) NOT NULL DEFAULT '', country VARCHAR(4) NOT NULL DEFAULT '', logged TINYINT NOT NULL DEFAULT 0, ms INT NOT NULL DEFAULT 0, x VARCHAR(200) NOT NULL DEFAULT '', KEY ix_day_ev (day, ev), KEY ix_vid (vid)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS mkt_items (id INT AUTO_INCREMENT PRIMARY KEY, kind VARCHAR(10) NOT NULL, platform VARCHAR(20) NOT NULL DEFAULT '', title VARCHAR(200) NOT NULL, body TEXT NULL, campaign VARCHAR(40) NOT NULL DEFAULT '', status VARCHAR(12) NOT NULL DEFAULT 'todo', due DATE NULL, url VARCHAR(300) NOT NULL DEFAULT '', auto_key VARCHAR(60) NULL, created_by VARCHAR(190) NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, done_at DATETIME NULL, UNIQUE KEY ux_auto (auto_key)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+SELECT 'GRIFFINE database is up to date (v151)' AS result;

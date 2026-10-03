@@ -35,6 +35,10 @@ function adminNavButtonsHtml(){
       { id:'goAiBtn', perm:'manage_admin_settings', icon:'🤖', label:'الذكاء الاصطناعي (مجاني / مدفوع + حساب Claude)' },
       { id:'goBlacklistBtn', perm:'manage_blacklist', icon:'🚫', label:'القائمة السوداء' },
     ]},
+    { title: 'التطوير والتسويق', items: [
+      { id:'goRdBtn', perm:['manage_admin_settings', 'view_reports'], icon:'🔬', label:'البحث والتطوير (تحليلات الزوار واقتراحات التطوير)' },
+      { id:'goMktBtn', perm:['manage_admin_settings', 'manage_plans'], icon:'📣', label:'التسويق (محتوى لكل منصة · جدول نشر · مطلوب منك · الأداء)' },
+    ]},
     { title: 'المحتوى والتنسيق', items: [
       { id:'goLandingBtn', perm:'edit_site_design', icon:'🏁', label:'صفحة اللاندينج (واجهة الموقع قبل الدخول)' },
       { id:'goBasiraBtn', perm:'edit_site_design', icon:'🔮', label:'تحليلات بصيرة AI' },
@@ -80,7 +84,9 @@ function wireAdminNavButtons(){
     goPlansMgmtBtn: renderPlansManagementPage,
     goChatAdminBtn: renderChatAdminPage,
     goSettingsBtn: renderAdminSettingsPage,
-    goPeriodsBtn: () => renderAdminPeriods(),            // الإصدار 144 (periods.js)
+    goPeriodsBtn: () => renderAdminPeriods(),
+    goRdBtn: () => renderAdminRD(),                       // الإصدار 151 (rd.js)
+    goMktBtn: () => renderAdminMkt(),                     // الإصدار 151 (mkt.js)            // الإصدار 144 (periods.js)
     goEmergencyBtn: () => renderEmergencyAdminPage(),   // الإصدار 100 (promo.js)
     goAdsBtn: () => renderAdsAdminPage(),               // الإصدار 100 (promo.js)
     goLandingBtn: () => renderAdminLandingPage(),       // الإصدار 108 (landing-admin.js)

@@ -440,6 +440,7 @@ async function renderRegister(error){
       const mSel = document.getElementById('regMarket');
       const r = await apiPost('/register.php', { email, password, acceptDisclaimer: '1', refCode, market: mSel ? mSel.value : 'مصر' });
       if (!r.success) return renderRegister(r.message || 'حصل خطأ أثناء إنشاء الحساب.');
+      if (window.gTrack) gTrack('sig', 'renderRegister');   // الإصدار 152: تسجيل جديد (لتقارير التسويق: كل منصة جابت كام تسجيل)
       try { localStorage.setItem('griffine_remembered_email', email); } catch(e){}
       invalidateSessionCache();
       window.__isAdmin = !!r.is_admin;

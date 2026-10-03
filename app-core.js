@@ -3,7 +3,7 @@
    (اتفصل من griffine.js - كل الملفات بتتحمّل بالترتيب في index.php وبتشارك نفس المتغيرات العامة)
    ===================================================================== */
 /* GRIFFINE — كود الواجهة الأساسي (اتفصل من index.php في الإصدار 68) */
-const GRIFFINE_LOGO_B64 = location.origin + '/griffine-logo-light.webp?v=150';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
+const GRIFFINE_LOGO_B64 = location.origin + '/griffine-logo-light.webp?v=151';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
 /* ================== حسابات مساعدة ================== */
 function daysBetween(isoStart, isoEnd){
   if(!isoStart) return null;
@@ -749,6 +749,34 @@ async function getSession(){
   return __sessionPromise;
 }
 function invalidateSessionCache(){ __sessionPromise = null; }
+/* الإصدار 151: تحليلات الزوار (من غير خدمة خارجية) — الشاشات + مصدر الزيارة + سرعة التحميل + الأخطاء + البحث اللي مالقاش
+   معرّف عشوائي للجهاز بس (مفيش أي بيانات شخصية) — الأدمن والموظفين مش بيتحسبوا — السيرفر: track.php */
+(function(){
+  let vid = ''; try { vid = localStorage.getItem('g_vid') || ''; if (!vid) { vid = 'v' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10); localStorage.setItem('g_vid', vid); } } catch(e){ vid = 'anon'; }
+  const srcOf = () => {
+    try { const s = sessionStorage.getItem('g_src'); if (s) return s; } catch(e){}
+    const p = new URLSearchParams(location.search); let s = (p.get('utm_source') || p.get('src') || '').toLowerCase().replace(/[^a-z0-9_\-.]/g, '').slice(0, 30);
+    if (!s) { const r = (document.referrer || '').toLowerCase(), self = location.hostname;
+      s = !r || r.includes(self) ? 'direct' : /tiktok/.test(r) ? 'tiktok' : /facebook|fb\.|m\.me/.test(r) ? 'facebook' : /instagram/.test(r) ? 'instagram' : /google\./.test(r) ? 'google'
+        : /wa\.me|whatsapp/.test(r) ? 'whatsapp' : /t\.co|twitter|x\.com/.test(r) ? 'x' : /youtube/.test(r) ? 'youtube' : /telegram|t\.me/.test(r) ? 'telegram' : /bing\./.test(r) ? 'bing' : 'other'; }
+    if (p.get('utm_campaign')) s = (s + '.' + p.get('utm_campaign').toLowerCase().replace(/[^a-z0-9_\-]/g, '').slice(0, 20)).slice(0, 40);
+    try { sessionStorage.setItem('g_src', s); } catch(e){}
+    return s;
+  };
+  let first = true, errs = 0;
+  window.gTrack = function(ev, screen, x){
+    try {
+      if (window.__isAdmin) return;
+      const f = new FormData(); f.append('ev', ev); f.append('vid', vid); f.append('screen', String(screen || '').slice(0, 60)); f.append('src', srcOf());
+      if (ev === 'pv' && first) { first = false; const n = performance.getEntriesByType && performance.getEntriesByType('navigation')[0]; f.append('ms', Math.round(n && n.domContentLoadedEventEnd ? n.domContentLoadedEventEnd : performance.now())); f.append('x', 'load'); }
+      else if (x) f.append('x', String(x).slice(0, 200));
+      if (navigator.sendBeacon) navigator.sendBeacon('track.php', f); else fetch('track.php', { method: 'POST', body: f, credentials: 'same-origin', keepalive: true }).catch(() => {});
+    } catch(e){}
+  };
+  const onErr = (msg) => { if (errs >= 5) return; errs++; gTrack('err', (document.body && document.body.dataset.gsScreen) || '', msg); };
+  window.addEventListener('error', (e) => { if (e && e.message) onErr(`${e.message} @ ${(e.filename || '').split('/').pop().split('?')[0]}:${e.lineno || 0}`); });
+  window.addEventListener('unhandledrejection', (e) => { const r = e && e.reason; onErr('promise: ' + (r && r.message ? r.message : String(r)).slice(0, 150)); });
+})();
 /* الإصدار 149: علامة «مسجّل دخول» (كوكي g_in من غير أي بيانات) — السيرفر بيستخدمها عشان الزائر يحمّل ملفات الصفحة العامة بس */
 function gAuthMark(on){ try { document.cookie = 'g_in=' + (on ? '1' : '') + '; path=/; SameSite=Lax' + (location.protocol === 'https:' ? '; Secure' : '') + (on ? '; max-age=2592000' : '; max-age=0'); } catch(e){} }
 const gIsLite = () => !!(document.body && document.body.dataset.glite === '1');
@@ -1332,9 +1360,9 @@ async function renderAccessExpired(sub){
 }
 
 const app = document.getElementById('app');
-const TOP7_LOGO_B64 = location.origin + '/top7-logo-light.webp?v=150';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
-const GRIFFINE_LOGO_DARK_B64 = location.origin + '/griffine-logo-dark.webp?v=150';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
-const TOP7_LOGO_DARK_B64 = location.origin + '/top7-logo-dark.webp?v=150';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
+const TOP7_LOGO_B64 = location.origin + '/top7-logo-light.webp?v=151';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
+const GRIFFINE_LOGO_DARK_B64 = location.origin + '/griffine-logo-dark.webp?v=151';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
+const TOP7_LOGO_DARK_B64 = location.origin + '/top7-logo-dark.webp?v=151';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
 /* الوضع الحالي (فاتح/ليلي) - الإصدار 71: بيتقري من الصفحة نفسها (data-theme) مش من التخزين بس،
    عشان الشعار يطلع صح حتى لو المتصفح مانع التخزين (وضع التصفح الخفي)
    (السكربت الصغير في index.php بيحط data-theme من التخزين قبل تحميل أي ملف، فالاتنين دايمًا متطابقين) */

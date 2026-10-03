@@ -50,7 +50,7 @@
      ===================================================================== */
 
   // رقم الإصدار - بيظهر في شاشة "حسابي" (غيّره مع ?v= في index.php و VERSION في sw.js)
-  const APP_VERSION = 150;
+  const APP_VERSION = 151;
 
   /* الاستعلامات المتكررة (الدردشة/التوصيات/قائمة المتابعة) - استعلام متكيّف (الإصدار 89)
      - بتقف لما التبويب يكون مخفي أو الموبايل مقفول
@@ -460,6 +460,7 @@
   /* اسم الشاشة الحالية على body (data-gs-screen) - استوديو التصميم بيستخدمه
      عشان تعديلات كل شاشة تتطبق عليها هي بس */
   GS.markScreen = function(name){
+    if (name !== GS.currentScreen && window.gTrack) gTrack('pv', name);   // الإصدار 151: تحليلات الزوار
     GS.currentScreen = name;
     document.body.setAttribute('data-gs-screen', name);
     GS.setTab(GS.tab);   // تنوير العنصر الصح في القائمة الجانبية (العناصر المربوطة بشاشة معيّنة)
@@ -2030,6 +2031,7 @@
       sel = Math.min(sel, Math.max(0, cur.length - 1));
       res.innerHTML = cur.length ? cur.map((x, i) => `<button type="button" class="gs-search-it${i === sel ? ' on' : ''}" data-i="${i}" role="option"><b>${esc(x.label)}</b><small>${esc(x.sub)}</small></button>`).join('')
         : `<div class="gs-search-empty">مفيش نتايج لـ «${esc(q.value)}» — جرّب كلمة تانية.</div>`;
+      if (!cur.length && t.length >= 3 && window.gTrack) { clearTimeout(GS.__missT); GS.__missT = setTimeout(() => gTrack('miss', 'search', q.value.trim()), 1500); }   // الإصدار 151: كلمة اتدوّر عليها ومالقتش
       res.querySelectorAll('.gs-search-it').forEach(b => b.onclick = () => go(+b.dataset.i));
     };
     const go = (i) => { const x = cur[i]; if (!x) return; GS.closeSearch(); try { x.go(); } catch(e){ console.error(e); } };
