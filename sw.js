@@ -2,24 +2,24 @@
 // 1) إشعارات Push حقيقية (زي ما كانت)
 // 2) تشغيل كتطبيق: تخزين ملفات الواجهة الثابتة + صفحة "غير متصل" لما الإنترنت يقطع
 // ملحوظة: طلبات الـ API (ملفات .php) مش بتتخزن أبدًا - البيانات المالية لازم تيجي من السيرفر دايمًا
-const VERSION = 'griffine-v137';
+const VERSION = 'griffine-v138';
 const STATIC_ASSETS = [
   '/offline.html',
-  '/shell.css?v=137',
-  '/shell.js?v=137',
-  '/emergency.js?v=137',
-  '/studio.js?v=137',
-  '/landing.js?v=137',
-  '/landing.css?v=137',
-  '/basira.js?v=137',
-  '/perks.js?v=137',
-  '/basira.css?v=137',
-  '/mizan.js?v=137',
-  '/mizan.css?v=137',
-  '/mizanai.js?v=137',
-  '/mizanai.css?v=137',
-  '/griffine-logo-light.webp?v=137',
-  '/griffine-logo-dark.webp?v=137',
+  '/shell.css?v=138',
+  '/shell.js?v=138',
+  '/emergency.js?v=138',
+  '/studio.js?v=138',
+  '/landing.js?v=138',
+  '/landing.css?v=138',
+  '/basira.js?v=138',
+  '/perks.js?v=138',
+  '/basira.css?v=138',
+  '/mizan.js?v=138',
+  '/mizan.css?v=138',
+  '/mizanai.js?v=138',
+  '/mizanai.css?v=138',
+  '/griffine-logo-light.webp?v=138',
+  '/griffine-logo-dark.webp?v=138',
   '/icon-192.png',
   '/icon-512.png',
   '/manifest.json'

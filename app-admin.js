@@ -288,14 +288,15 @@ async function renderAdminSubscribers(){
   function renderTable(list){
     document.getElementById('subscribersTableWrap').innerHTML = list.length ? `<table data-g-rows="5" class="g-one-line">
       <thead><tr>
-        <th>الكود</th><th>الاسم</th><th>الهاتف</th><th>الإيميل</th><th>الخطة</th><th>بداية الخطة</th><th>تاريخ الانتهاء</th><th>قيمة السداد</th><th>طريقة السداد</th><th>الحالة</th><th>التذكيرات</th><th>صلاحيات خاصة</th><th>🔔 الإشعارات</th><th>🤖 الذكاء الاصطناعي</th><th></th>
+        <th>الكود</th><th>الاسم</th><th>الهاتف</th><th>الإيميل</th><th>الخطة</th><th>⭐ المميزات</th><th>بداية الخطة</th><th>تاريخ الانتهاء</th><th>قيمة السداد</th><th>طريقة السداد</th><th>الحالة</th><th>التذكيرات</th><th>صلاحيات خاصة</th><th>🔔 الإشعارات</th><th>🤖 الذكاء الاصطناعي</th><th></th>
       </tr></thead>
       <tbody>
         ${list.map(r=>{
           const isActive = r.active !== false;
           const remEnabled = r.reminderEnabled !== false;
           return `<tr>
-          <td dir="ltr"><b>${escapeHtml(r.memberCode || '')}</b>${r.staffCode ? ` <span class="u-fs11 u-muted">${escapeHtml(r.staffCode)}</span>` : ''}</td><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.phone)}</td><td dir="ltr">${escapeHtml(r.contactEmail || r.accountEmail)}</td><td>${escapeHtml(r.planName)}${r.isComp?' <span class="tag" style="background:#e6f4ea;color:var(--green);">هدية</span>':''}</td>
+          <td dir="ltr"><b>${escapeHtml(r.memberCode || '')}</b>${r.staffCode ? ` <span class="u-fs11 u-muted">${escapeHtml(r.staffCode)}</span>` : ''}</td><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.phone)}</td><td dir="ltr">${escapeHtml(r.contactEmail || r.accountEmail)}</td><td class="pk-subplan-td" data-gtext="${escapeHtml(r.planName)}${r.isComp ? ' هدية' : ''}" data-subid="${escapeHtml(String(r.id))}" data-plan="${escapeHtml(r.planId || '')}" data-mkt="${escapeHtml(r.accountMarket || 'مصر')}"><span class="pk-subplan-txt">${escapeHtml(r.planName)}</span>${r.isComp?' <span class="tag" style="background:#e6f4ea;color:var(--green);">هدية</span>':''}</td>
+          <td class="pk-td" data-pksub="${escapeHtml(String(r.accountEmail || '').toLowerCase())}">…</td>
           <td>${formatDateAr(r.startDate)}</td><td>${formatDateAr(r.endDate)}</td>
           <td>${r.amount===0?'مجانًا':fmtMoney(r.amount)+' '+r.currency}</td>
           <td>${r.paymentMethod ? escapeHtml(payMethodLabel(r.paymentMethod)) : '-'}
@@ -318,12 +319,13 @@ async function renderAdminSubscribers(){
           <td><button class="small danger u-wa" data-gcall="__deleteSubRow" data-gargs="${gArgs([String(r.id)])}">🗄️ أرشفة</button></td>
         </tr>`}).join('')}
         <tr style="font-weight:bold;background:#f0f4f2;">
-          <td colspan="7">الإجمالي</td><td>${fmtMoney(computeTotals(list))}</td><td colspan="7"></td>
+          <td colspan="8">الإجمالي</td><td>${fmtMoney(computeTotals(list))}</td><td colspan="7"></td>
         </tr>
       </tbody>
     </table>` : '<p class="u-note">لا يوجد مشتركين في هذه الفترة.</p>';
     gNpWire(document.getElementById('subscribersTableWrap'));
     if (typeof gAiWire === 'function') gAiWire(document.getElementById('subscribersTableWrap'));   // الإصدار 127
+    if (window.pkSubsDecorate) window.pkSubsDecorate(document.getElementById('subscribersTableWrap'), async () => { subscribers = await getAllSubscribers(); refreshAdmin(); });   // الإصدار 138: الباقة + المميزات لكل مشترك
 
     window.__viewProof = (id) => {
       const rec = list.find(x=>x.id===id) || subscribers.find(x=>x.id===id);

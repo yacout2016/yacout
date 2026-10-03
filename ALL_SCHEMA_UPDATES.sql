@@ -1,4 +1,4 @@
-/* GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 137) — كل التحديثات، آمن يتشغل أكتر من مرة. الصقه كله في تبويب SQL ← Go */
+/* GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 138) — كل التحديثات، آمن يتشغل أكتر من مرة. الصقه كله في تبويب SQL ← Go */
 /* v69: جدول login_attempts (حماية من تخمين كلمات المرور). */
 /* v72: جدول ui_customizations (استوديو التصميم) + جدول email… */
 /* v82: عمود allow_upload في chat_conversation_meta (الأدمن ب… */
@@ -26,6 +26,7 @@
 /* v135: مميزات كل باقة (subscription_plans.perks) + الباقة المجانية + الأسعار (مجاني / 200 شهري / 2000 سنوي / برو 3000) مرة واحدة */
 /* v136: ترتيب الباقات: المجانية ← الشهرية ← السنوية ← برو (مرة واحدة) */
 /* v137: مفيش تغيير في قاعدة البيانات (إخفاء / إظهار المميزات بيتحفظ في site_config) */
+/* v138: user_perks (مميزات إضافية / متشالة لكل مشترك) + الحسابات اللي مالهاش اشتراك ← الباقة المجانية (مرة واحدة) */
 /* v85: ترميز الاتصال UTF-8 عشان النصوص العربي اللي بتتضاف من… */
 SET NAMES utf8mb4;
 CREATE TABLE IF NOT EXISTS users (
@@ -802,4 +803,9 @@ UPDATE subscription_plans SET amount = 0 WHERE id = 'trial' AND NOT EXISTS (SELE
 INSERT IGNORE INTO site_config (config_key, config_value) VALUES ('mig_135_price', '1');
 UPDATE subscription_plans SET sort_order = CASE id WHEN 'trial' THEN 1 WHEN 'monthly' THEN 2 WHEN 'yearly' THEN 3 WHEN 'pro_yearly' THEN 4 ELSE sort_order END WHERE NOT EXISTS (SELECT 1 FROM site_config WHERE config_key = 'mig_136_order');
 INSERT IGNORE INTO site_config (config_key, config_value) VALUES ('mig_136_order', '1');
-SELECT 'GRIFFINE database is up to date (v137)' AS result;
+CREATE TABLE IF NOT EXISTS user_perks (account_email VARCHAR(191) NOT NULL PRIMARY KEY, plus_keys TEXT NULL, minus_keys TEXT NULL, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+INSERT INTO user_perks (account_email, minus_keys) SELECT LOWER(account_email), CONCAT('[', CONCAT_WS(',', IF(basira = 0, '"basira","basira_scan"', NULL), IF(mizan = 0, '"mizan"', NULL), IF(mizanai = 0, '"mizanai"', NULL)), ']') FROM user_ai_access WHERE (basira = 0 OR mizan = 0 OR mizanai = 0) AND NOT EXISTS (SELECT 1 FROM site_config WHERE config_key = 'mig_138_perks') ON DUPLICATE KEY UPDATE minus_keys = VALUES(minus_keys);
+UPDATE user_ai_access SET basira = 1, mizan = 1, mizanai = 1 WHERE NOT EXISTS (SELECT 1 FROM site_config WHERE config_key = 'mig_138_perks');
+INSERT INTO subscribers (account_email, name, phone, contact_email, plan_id, plan_name, amount, market, start_date, end_date, active) SELECT LOWER(u.username), SUBSTRING_INDEX(u.username, '@', 1), '', LOWER(u.username), p.id, p.name, 0, COALESCE(NULLIF(u.account_market, ''), 'مصر'), CURDATE(), DATE_ADD(CURDATE(), INTERVAL p.duration_days DAY), 1 FROM users u JOIN subscription_plans p ON p.id = 'trial' WHERE u.is_admin = 0 AND COALESCE(u.archived, 0) = 0 AND NOT EXISTS (SELECT 1 FROM subscribers s WHERE LOWER(s.account_email) = LOWER(u.username)) AND NOT EXISTS (SELECT 1 FROM site_config WHERE config_key = 'mig_138_perks');
+INSERT IGNORE INTO site_config (config_key, config_value) VALUES ('mig_138_perks', '1');
+SELECT 'GRIFFINE database is up to date (v138)' AS result;

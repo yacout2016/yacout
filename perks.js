@@ -135,7 +135,7 @@
     const on = catalog().filter(c => gPerk(c.k)), off = catalog().filter(c => !gPerk(c.k));
     return `<div class="section-card pk-mine" id="pkMine"><div class="pk-mine-h">⭐ مميزات باقتك${PK.planName ? ` — ${E(PK.planName)}` : ''}</div>
       <div class="pk-phase">${phaseLine()}</div>
-      <div class="pk-grid">${on.map(c => `<div class="pk-it on">✅ ${E(c.l)}</div>`).join('')}${off.map(c => `<div class="pk-it off">🔒 ${E(c.l)}</div>`).join('')}</div>
+      <div class="pk-grid">${on.map(c => `<div class="pk-it on">✅ ${E(c.l)}${(PK.extra || []).includes(c.k) ? ' <span class="pk-gift">🎁 ميزة إضافية من الإدارة</span>' : ''}</div>`).join('')}${off.map(c => `<div class="pk-it off">🔒 ${E(c.l)}</div>`).join('')}</div>
       <button type="button" class="pk-cta u-mt10" data-pk-plans>💎 الباقات والأسعار</button></div>`;
   }
   window.pkMineHtml = pkMineHtml;
@@ -221,6 +221,52 @@
       };
       const rs = td.querySelector('[data-pkreset]');
       if (rs) rs.onclick = async () => { const x = await apiPost('/perks_api.php', { action: 'reset_plan', planId: p.id }).catch(() => null); alert((x && x.message) || 'تعذّر'); if (x && x.success) pkAdminDecorate(wrap, plansShown); };
+    });
+  };
+  /* ---- الإصدار 138: جدول المشتركين — الباقة من قائمة منسدلة + مميزات كل مشترك (الافتراضي = باقته) */
+  let SUBPL = null;
+  window.pkSubsDecorate = async function(wrap, reload){
+    if (!wrap || !hasPermissionSafe('manage_subscribers')) return;
+    if (!SUBPL) { const r = await apiGet('/perks_api.php?action=plans_min').catch(() => null); SUBPL = r && r.success ? r.plans : []; }
+    wrap.querySelectorAll('td.pk-subplan-td').forEach(td => {
+      if (td.__pk) return; td.__pk = 1;
+      const cur = td.dataset.plan, mkt = td.dataset.mkt || 'مصر';
+      const opts = SUBPL.filter(p => p.id === cur || (p.isActive && (p.market || 'مصر') === mkt));
+      if (!opts.length) return;
+      const sel = document.createElement('select'); sel.className = 'pk-subplan'; sel.setAttribute('aria-label', 'باقة المشترك');
+      sel.innerHTML = opts.map(p => `<option value="${E(p.id)}" ${p.id === cur ? 'selected' : ''}>${E(p.name)}${p.amount > 0 ? ' — ' + p.amount.toLocaleString('en-US') : ' — مجانًا'}</option>`).join('');
+      const txt = td.querySelector('.pk-subplan-txt'); if (txt) txt.replaceWith(sel); else td.prepend(sel);
+      sel.onchange = async () => {
+        const p = SUBPL.find(x => x.id === sel.value);
+        const pick = p.amount > 0 ? await gChoice(`تحويل المشترك لـ «${p.name}» — تبدأ النهارده لمدة ${p.durationDays} يوم. نوعها:`, ['🎁 هدية (من غير فلوس)', '💳 مدفوعة']) : (await gConfirm(`تحويل المشترك لـ «${p.name}» من النهارده لمدة ${p.durationDays} يوم؟`) ? 0 : null);
+        if (pick === null || pick === undefined) { sel.value = cur; return; }
+        const x = await apiPost('/perks_api.php', { action: 'set_plan', subId: td.dataset.subid, planId: p.id, mode: pick === 1 ? 'paid' : 'gift' }).catch(() => null);
+        alert((x && x.message) || 'تعذّر'); if (x && x.success) { if (reload) reload(); } else sel.value = cur;
+      };
+    });
+    wrap.querySelectorAll('td[data-pksub]').forEach(td => {
+      if (td.__pk) return; td.__pk = 1;
+      const email = td.dataset.pksub; if (!email) { td.textContent = '—'; return; }
+      td.innerHTML = `<details class="pk-dd"><summary>⭐ المميزات</summary><div class="pk-dd-box"><small class="u-muted">جاري التحميل…</small></div></details>`;
+      const det = td.querySelector('details'), box = td.querySelector('.pk-dd-box');
+      const load = async () => {
+        const s = await apiGet('/perks_api.php?action=sub&email=' + encodeURIComponent(email)).catch(() => null);
+        if (!s || !s.success) { box.innerHTML = `<small>${E((s && s.message) || 'تعذّر التحميل')}</small>`; return; }
+        const sum = det.querySelector('summary');
+        sum.innerHTML = `⭐ المميزات <b>${s.keys.length}</b>${s.plus.length ? ` <small class="pk-gift">+${s.plus.length} إضافي</small>` : ''}${s.minus.length ? ` <small class="pk-minus">−${s.minus.length}</small>` : ''}`;
+        const on = new Set([...s.base.filter(k => !s.minus.includes(k)), ...s.plus]);
+        box.innerHTML = `<div class="u-fs12 u-muted">الافتراضي = مميزات باقته (${E(s.planName || '')}${s.phase === 'full' ? ' — فترة التعرّف: كل حاجة' : ''}). علّم لتفتح ميزة إضافية أو شيل العلامة لتقفلها عنده بس.${s.phase === 'none' ? ' <b>اشتراكه مش شغال — التعديلات بتتطبق لما يتفعّل.</b>' : ''}</div>
+          ${s.catalog.map(c => { const inB = s.base.includes(c.k); return `<label class="pk-dd-it${c.hidden ? ' pk-hid' : ''}"><input type="checkbox" value="${E(c.k)}" ${on.has(c.k) ? 'checked' : ''}> ${E(c.ic)} ${E(c.l)} ${inB ? '<small class="u-muted">(في باقته)</small>' : ''}${s.plus.includes(c.k) ? ' <small class="pk-gift">🎁 إضافي</small>' : ''}${s.minus.includes(c.k) ? ' <small class="pk-minus">متشالة عنده</small>' : ''}${c.hidden ? ' <small>(🙈 مخفية عن الكل)</small>' : ''}</label>`; }).join('')}
+          <div class="pk-dd-tools"><button type="button" class="small u-wa" data-pksubsave>💾 حفظ مميزات المشترك</button>${(s.plus.length || s.minus.length) ? '<button type="button" class="small secondary u-wa" data-pksubreset>↩ رجوع لمميزات الباقة</button>' : ''}</div>`;
+        box.querySelector('[data-pksubsave]').onclick = async () => {
+          const keys = [...box.querySelectorAll('.pk-dd-it input:checked')].map(i => i.value);
+          const x = await apiPost('/perks_api.php', { action: 'sub_save', email, keys: JSON.stringify(keys) }).catch(() => null);
+          alert((x && x.message) || 'تعذّر الحفظ'); if (x && x.success) load();
+        };
+        const rs = box.querySelector('[data-pksubreset]');
+        if (rs) rs.onclick = async () => { const x = await apiPost('/perks_api.php', { action: 'sub_reset', email }).catch(() => null); alert((x && x.message) || 'تعذّر'); if (x && x.success) load(); };
+      };
+      det.addEventListener('toggle', () => { if (det.open && !det.__ld) { det.__ld = 1; load(); } });
     });
   };
   function hasPermissionSafe(p){ try { return !!window.__isSuperAdmin || (typeof hasPermission === 'function' && hasPermission(p)); } catch(e){ return false; } }

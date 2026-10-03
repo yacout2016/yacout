@@ -19,7 +19,7 @@ function gAiCellHtml(email){
   const cb = (f, label, tip) => `<label class="u-check g-np-cb" title="${tip}"><input type="checkbox" data-ai="${f}" ${p[f] ? 'checked' : ''} ${dis}> ${label}</label>`;
   const lim = p.limit == null ? '' : String(p.limit), custom = lim !== '' && !AI_LIMITS.includes(lim);
   return `<div class="g-np g-ai" data-ai-email="${escapeHtml(e)}">
-    ${cb('basira', '🔮 بصيرة', 'شاشة بصيرة AI — تحليل الأسهم')}${cb('mizan', '⚖️ ميزان المحفظة', 'شاشة ميزان محفظتك AI')}${cb('mizanai', '🧭 ميزان GRIFFINE', 'شاشة ميزان GRIFFINE AI')}
+    ${''/* الإصدار 138: فتح / قفل بصيرة والميزانين لكل مشترك اتنقل لعمود «⭐ المميزات» */}
     <select class="g-np-vis" data-ai="paid" title="الذكاء الاصطناعي المدفوع (Claude) للمشترك ده" ${dis}>
       <option value="" ${p.paid === null ? 'selected' : ''}>💳 المدفوع: حسب الباقة (${pro ? 'برو ✓' : 'مش برو'})</option>
       <option value="1" ${p.paid === true ? 'selected' : ''}>💳 المدفوع: مفتوح له</option>

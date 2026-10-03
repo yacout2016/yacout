@@ -45,7 +45,8 @@ const aiN = async () => ((await http('http://127.0.0.1:8098/ai-last')).n || 0);
   // 5) خانات المشترك في جدول المشتركين
   await a.evaluate(() => renderAdminSubscribers()); await a.waitForSelector(`.g-ai[data-ai-email="${CUST.email}"]`, { timeout: 20000 }).catch(() => {});
   const cell = await a.evaluate((e) => { const x = document.querySelector(`.g-ai[data-ai-email="${e}"]`); return x ? { cbs: [...x.querySelectorAll('input[type=checkbox]')].map(i => i.dataset.ai + ':' + i.checked), paid: x.querySelector('[data-ai="paid"]').value, lim: x.querySelector('[data-ai="daily_limit"]').value, txt: x.textContent } : null; }, CUST.email);
-  check('جدول المشتركين: 🔮 بصيرة + ⚖️ ميزان المحفظة + 🧭 ميزان GRIFFINE (شغالين) + المدفوع «حسب الباقة» + الحد اليومي «مفتوح»', cell && cell.cbs.join(',') === 'basira:true,mizan:true,mizanai:true' && cell.paid === '' && cell.lim === '' && /مش برو/.test(cell.txt), JSON.stringify(cell).slice(0, 200));
+  // الإصدار 138: فتح / قفل بصيرة والميزانين لكل مشترك اتنقل لعمود «⭐ المميزات» — العمود ده فيه المدفوع والحد اليومي بس
+  check('جدول المشتركين: المدفوع «حسب الباقة» + الحد اليومي «مفتوح» (والشاشات في عمود المميزات)', cell && cell.cbs.length === 0 && cell.paid === '' && cell.lim === '' && /مش برو/.test(cell.txt), JSON.stringify(cell).slice(0, 200));
   await a.selectOption(`.g-ai[data-ai-email="${CUST.email}"] [data-ai="paid"]`, '1'); await a.waitForTimeout(700);
   await a.selectOption(`.g-ai[data-ai-email="${CUST.email}"] [data-ai="daily_limit"]`, '5'); await a.waitForTimeout(700);
   check('فتح المدفوع للمشترك + الحد اليومي 5 من الخانات ← اتحفظ', q(`SELECT CONCAT(paid, '/', daily_limit) FROM user_ai_access WHERE account_email='${CUST.email}'`).trim() === '1/5');

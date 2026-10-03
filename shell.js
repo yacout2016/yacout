@@ -50,7 +50,7 @@
      ===================================================================== */
 
   // رقم الإصدار - بيظهر في شاشة "حسابي" (غيّره مع ?v= في index.php و VERSION في sw.js)
-  const APP_VERSION = 137;
+  const APP_VERSION = 138;
 
   /* الاستعلامات المتكررة (الدردشة/التوصيات/قائمة المتابعة) - استعلام متكيّف (الإصدار 89)
      - بتقف لما التبويب يكون مخفي أو الموبايل مقفول
@@ -875,6 +875,7 @@
     if (!head && body.length && body[0].cells.length && Array.from(body[0].cells).every(c => c.tagName === 'TH')) { head = body[0]; body = body.slice(1); }
     return { head, body };
   }
+  const CTX = (c) => c ? (c.hasAttribute('data-gtext') ? c.getAttribute('data-gtext') : c.textContent) : '';   // الإصدار 138: خلية فيها قائمة منسدلة بتتفلتر بقيمتها
   const isTotalRow = (r) => /^(الإجمالي|الاجمالي|المجموع|الإجمالى)/.test(T_NORM(r.cells[0] && r.cells[0].textContent)) || r.classList.contains('g-total');
   function enhanceTables(root){
     root.querySelectorAll('table').forEach(t => {
@@ -892,9 +893,9 @@
       // ---- أنواع الأعمدة
       const kinds = [];
       for (let c = 0; c < cols; c++) {
-        const vals = dataRows.map(r => r.cells[c] ? T_NORM(r.cells[c].textContent) : '').filter(v => v && v !== '-' && v !== '—');
+        const vals = dataRows.map(r => r.cells[c] ? T_NORM(CTX(r.cells[c])) : '').filter(v => v && v !== '-' && v !== '—');
         const nums = vals.filter(v => T_NUM(v) !== null).length, dates = vals.filter(v => T_DATE(v)).length;
-        const hasCtl = dataRows.some(r => r.cells[c] && r.cells[c].querySelector('button, input, select'));
+        const hasCtl = dataRows.some(r => r.cells[c] && !r.cells[c].hasAttribute('data-gtext') && r.cells[c].querySelector('button, input, select'));
         const distinct = [...new Set(vals)];
         kinds.push({ type: hasCtl ? 'ctl' : (dates && dates >= vals.length * 0.7 ? 'date' : (nums && nums >= vals.length * 0.7 ? 'num' : 'text')), distinct });
       }
@@ -908,7 +909,7 @@
           head.querySelectorAll('.g-sortable').forEach(x => x.removeAttribute('data-sort')); th.dataset.sort = sortDir > 0 ? 'asc' : 'desc';
           const rows = rowsNow(); if (!rows.length) return;
           const k = kinds[c].type, tb = rows[0].parentNode, totals = Array.from(tb.rows).filter(isTotalRow);
-          const key = (r) => { const tx = r.cells[c] ? r.cells[c].textContent : ''; return k === 'num' ? T_NUM(tx) : k === 'date' ? T_DATE(tx) : T_NORM(tx); };
+          const key = (r) => { const tx = r.cells[c] ? CTX(r.cells[c]) : ''; return k === 'num' ? T_NUM(tx) : k === 'date' ? T_DATE(tx) : T_NORM(tx); };
           rows.sort((a, b) => { const x = key(a), y = key(b);
             if (x === null || x === '' ) return 1; if (y === null || y === '') return -1;
             return (k === 'num' ? x - y : String(x).localeCompare(String(y), 'ar')) * sortDir; });
@@ -943,7 +944,7 @@
           let ok = !qs || T_NORM(r.textContent).toLowerCase().includes(qs);
           for (let c = 0; ok && c < cols; c++) {
             const f = filters[c]; if (!f || !f.value) continue;
-            const v = r.cells[c] ? T_NORM(r.cells[c].textContent) : '';
+            const v = r.cells[c] ? T_NORM(CTX(r.cells[c])) : '';
             ok = f.tagName === 'SELECT' ? v === f.value : v.toLowerCase().includes(T_NORM(f.value).toLowerCase());
           }
           r.style.display = ok ? '' : 'none'; if (ok) shown++; subsOf(r).forEach(x => { x.style.display = ok ? '' : 'none'; });

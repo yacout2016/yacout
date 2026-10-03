@@ -12,7 +12,10 @@ async function renderSubscriptionPlans(){
   const marketToCurrency = { 'مصر':'جنيه مصري', 'السعودية':'ريال سعودي', 'الإمارات':'درهم إماراتي', 'قطر':'ريال قطري', 'الكويت':'دينار كويتي' };
 
   const myRes = await getMySubscription();
-  const mySub = (myRes && myRes.success) ? myRes.subscription : null;
+  const mySubRaw = (myRes && myRes.success) ? myRes.subscription : null;
+  // الإصدار 138: الباقة المجانية (التلقائية) مش «باقة حالية» تتأجل لها الترقية — الاشتراك المدفوع بيبدأ على طول
+  const onFree = !!(mySubRaw && mySubRaw.planId === 'trial');
+  const mySub = onFree ? null : mySubRaw;
   const selectedMarket = (window.__acct && window.__acct.market) || 'مصر';   // الإصدار 96: بورصة الحساب
 
   window.__lastPageKey='subscription_plans'; if (screenStale(__tok)) return; app.innerHTML = `<div class="container wide">${logoHeader()}
@@ -86,10 +89,11 @@ async function renderSubscriptionPlans(){
       return;
     }
     // التجربة المجانية مرة واحدة بس - متظهرش حتى عنده اشتراك بالفعل
-    const plans = mySub ? res.plans.filter(p => Number(p.amount) > 0) : res.plans;
+    let plans = mySub ? res.plans.filter(p => Number(p.amount) > 0) : res.plans;
     // الإصدار 135: مميزات كل باقة تحتها + الحساب الجديد شغال على الباقة المجانية تلقائي
     window.__pkFullDays = res.fullDays || 0;
     const pkS = window.gPerkState ? gPerkState() : null, freeNow = !!(pkS && (pkS.phase === 'full' || pkS.phase === 'basic'));
+    if (onFree && !freeNow) plans = plans.filter(p => Number(p.amount) > 0);   // المجانية خلصت ← الباقات المدفوعة بس
 
     grid.innerHTML = plans.map(p => `
       <div class="price-card ${p.badge==='الأكثر توفيرًا'?'featured':''} ${mySub && mySub.planId===p.id ? 'selected':''}" data-plan="${p.id}">

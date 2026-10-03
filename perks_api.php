@@ -20,14 +20,54 @@ if ($action === 'me') {
     $s = perk_state($conn, $email, $isAdmin);
     pk_out(["success" => true, "phase" => $s['phase'], "keys" => $s['keys'], "plan" => $s['plan'], "planName" => $s['planName'],
         "daysLeft" => $s['daysLeft'], "freeLeft" => $s['freeLeft'] ?? null, "reason" => $s['reason'] ?? null,
+        "extra" => $s['plus'] ?? [], "removed" => $s['minus'] ?? [],
         "fullDays" => perk_cfg($conn)['full_days'], "catalog" => $isAdmin ? perk_catalog($conn) : perk_catalog_public($conn), "hidden" => perk_hidden($conn)]);
 }
 
 // ---- الإدارة
 if (!$isAdmin) { http_response_code(403); pk_out(["success" => false, "message" => "غير مصرح لك."]); }
-requirePermission($conn, 'manage_plans');
+$SUB_ACTIONS = ['sub', 'sub_save', 'sub_reset', 'set_plan', 'plans_min'];   // الإصدار 138: شاشة المشتركين
+requirePermission($conn, in_array($action, $SUB_ACTIONS, true) ? 'manage_subscribers' : 'manage_plans');
 if ($isPost) requireCsrf();
 if (!perk_has_col($conn)) pk_out(["success" => false, "message" => "شغّل ملف قاعدة البيانات ALL_SCHEMA_UPDATES.sql الأول (الإصدار 135)."]);
+
+// ---- الإصدار 138: مشترك بعينه (الباقة من قائمة منسدلة + ميزات إضافية / متشالة)
+if ($action === 'plans_min') {
+    $out = []; $res = $conn->query("SELECT id, name, amount, duration_days, market, is_active FROM subscription_plans ORDER BY sort_order ASC, id ASC");
+    while ($r = $res->fetch_assoc()) $out[] = ['id' => $r['id'], 'name' => $r['name'], 'amount' => (float)$r['amount'], 'durationDays' => (int)$r['duration_days'], 'market' => $r['market'] ?? 'مصر', 'isActive' => (bool)$r['is_active']];
+    pk_out(["success" => true, "plans" => $out]);
+}
+if ($action === 'sub') {
+    $e = strtolower(trim((string)($_GET['email'] ?? '')));
+    if ($e === '') pk_out(["success" => false, "message" => "إيميل غير صحيح."]);
+    $s = perk_state($conn, $e, false);
+    pk_out(["success" => true, "phase" => $s['phase'], "planName" => $s['planName'], "base" => $s['base'] ?? [], "plus" => $s['plus'] ?? [], "minus" => $s['minus'] ?? [],
+        "keys" => $s['keys'], "catalog" => perk_catalog($conn), "ovOk" => perk_ov_ready($conn)]);
+}
+if ($isPost && ($action === 'sub_save' || $action === 'sub_reset')) {
+    if (!perk_ov_ready($conn)) pk_out(["success" => false, "message" => "شغّل ALL_SCHEMA_UPDATES.sql الأول (الإصدار 138)."]);
+    $e = strtolower(trim((string)($_POST['email'] ?? '')));
+    if ($e === '') pk_out(["success" => false, "message" => "إيميل غير صحيح."]);
+    if ($action === 'sub_reset') { perk_user_ov_save($conn, $e, [], []); pk_out(["success" => true, "message" => "رجعت لمميزات الباقة."]); }
+    $in = json_decode((string)($_POST['keys'] ?? '[]'), true); if (!is_array($in)) pk_out(["success" => false, "message" => "بيانات غير صحيحة."]);
+    $keys = array_values(array_intersect(perk_keys_all($conn), array_map('strval', $in)));
+    $base = perk_state($conn, $e, false)['base'] ?? [];
+    $plus = array_values(array_diff($keys, $base)); $minus = array_values(array_diff($base, $keys));
+    perk_user_ov_save($conn, $e, $plus, $minus);
+    pk_out(["success" => true, "plus" => $plus, "minus" => $minus, "message" => "✅ اتحفظت مميزات المشترك" . ($plus ? " — إضافي: " . count($plus) : "") . ($minus ? " — متشال: " . count($minus) : "")]);
+}
+if ($isPost && $action === 'set_plan') {
+    $id = (int)($_POST['subId'] ?? 0); $pid = trim((string)($_POST['planId'] ?? '')); $gift = ($_POST['mode'] ?? 'gift') === 'gift';
+    $pl = perk_plan_row($conn, $pid); if (!$pl || $id <= 0) pk_out(["success" => false, "message" => "بيانات غير صحيحة."]);
+    $g = $conn->prepare("SELECT account_email FROM subscribers WHERE id = ?"); $g->bind_param("i", $id); $g->execute(); $acc = ($g->get_result()->fetch_row() ?: [null])[0]; $g->close();
+    if (!$acc) pk_out(["success" => false, "message" => "المشترك غير موجود."]);
+    $start = date('Y-m-d'); $end = date('Y-m-d', strtotime($start . ' +' . max(1, (int)$pl['duration_days']) . ' days'));
+    $amt = $gift ? 0.0 : (float)$pl['amount']; $comp = ($gift && (float)$pl['amount'] > 0) ? 1 : 0; $pn = $pl['name'];
+    $st = $conn->prepare("UPDATE subscribers SET plan_id = ?, plan_name = ?, amount = ?, is_comp = ?, start_date = ?, end_date = ?, active = 1, pending_plan_id = NULL, pending_plan_name = NULL, pending_amount = NULL WHERE id = ?");
+    $st->bind_param("ssdissi", $pid, $pn, $amt, $comp, $start, $end, $id); $st->execute(); $st->close();
+    logSubscriptionEvent($conn, $acc, $gift ? 'gift' : 'admin_change', $pid, $pn, $amt);
+    pk_out(["success" => true, "endDate" => $end, "message" => "✅ «" . $pn . "» اتفعّلت للمشترك من النهارده لحد " . $end . ($gift ? " (هدية)" : "")]);
+}
 
 if ($action === 'admin') {
     $plans = [];

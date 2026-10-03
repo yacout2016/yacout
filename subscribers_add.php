@@ -126,6 +126,8 @@ $stmt->bind_param(
 
 if ($stmt->execute()) {
     $newId = $conn->insert_id;
+    // الإصدار 138: صف الباقة المجانية التلقائي بيتشال لما المشترك يشترك بنفسه (عشان مايبقاش له صفين في جدول المشتركين)
+    if ($amount > 0) { try { $dl = $conn->prepare("DELETE FROM subscribers WHERE account_email = ? AND plan_id = 'trial' AND amount = 0 AND id <> ?"); $dl->bind_param("si", $accountEmail, $newId); $dl->execute(); $dl->close(); } catch (Throwable $e) {} }
     logSubscriptionEvent($conn, $accountEmail, 'new_subscription', $planId, $planName, $amount);
     if ((int)$active === 1) {
         maybeRewardReferral($conn, $accountEmail);

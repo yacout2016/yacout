@@ -144,8 +144,54 @@ function perk_state($conn, $email, $isAdmin = false){
     } else {
         $out = ['phase' => 'none', 'keys' => [], 'plan' => $sub['plan_id'] ?? '', 'planName' => $sub['plan_name'] ?? '', 'daysLeft' => 0, 'reason' => (int)$sub['active'] === 1 ? 'expired' : 'pending'];
     }
+    // الإصدار 138: تعديلات الأدمن لمشترك بعينه (ميزات إضافية فوق باقته / ميزات متشالة) — بتفضل معاه حتى لو باقته اتغيرت
+    $out['base'] = $out['keys']; $out['plus'] = []; $out['minus'] = [];
+    if (in_array($out['phase'], ['full', 'basic', 'paid'], true)) {
+        $ov = perk_user_ov($conn, $e);
+        $out['plus'] = array_values(array_diff($ov['plus'], $out['base'])); $out['minus'] = array_values(array_intersect($ov['minus'], $out['base']));
+        $out['keys'] = array_values(array_diff(array_unique(array_merge($out['base'], $out['plus'])), $out['minus']));
+    }
     $out['keys'] = array_values(array_diff($out['keys'], perk_hidden($conn)));   // الإصدار 137: المخفي مقفول عند الكل
     return $cache[$ck] = $out;
+}
+function perk_ov_ready($conn){
+    static $r = null; if ($r !== null) return $r;
+    try { $x = $conn->query("SHOW TABLES LIKE 'user_perks'"); $r = $x && $x->num_rows > 0; } catch (Throwable $e) { $r = false; }
+    return $r;
+}
+function perk_user_ov($conn, $email){
+    $d = ['plus' => [], 'minus' => []];
+    if ($email === '' || !perk_ov_ready($conn)) return $d;
+    $st = $conn->prepare("SELECT plus_keys, minus_keys FROM user_perks WHERE account_email = ?"); $e = strtolower($email); $st->bind_param("s", $e); $st->execute();
+    $r = $st->get_result()->fetch_assoc(); $st->close();
+    if (!$r) return $d;
+    $valid = perk_keys_all($conn);
+    $j = fn($v) => array_values(array_intersect($valid, is_array($x = json_decode((string)$v, true)) ? $x : []));
+    return ['plus' => $j($r['plus_keys']), 'minus' => $j($r['minus_keys'])];
+}
+function perk_user_ov_save($conn, $email, $plus, $minus){
+    $e = strtolower($email);
+    if (!$plus && !$minus) { $st = $conn->prepare("DELETE FROM user_perks WHERE account_email = ?"); $st->bind_param("s", $e); $st->execute(); $st->close(); return; }
+    $p = json_encode(array_values($plus)); $m = json_encode(array_values($minus));
+    $st = $conn->prepare("INSERT INTO user_perks (account_email, plus_keys, minus_keys) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE plus_keys = VALUES(plus_keys), minus_keys = VALUES(minus_keys)");
+    $st->bind_param("sss", $e, $p, $m); $st->execute(); $st->close();
+}
+// الإصدار 138: الحساب الجديد بيتسجّل على الباقة المجانية تلقائي (يظهر في جدول المشتركين والأدمن يقدر يغيّرها)
+function perk_auto_free($conn, $email, $start = null){
+    try {
+        $e = strtolower($email);
+        $c = $conn->prepare("SELECT id FROM subscribers WHERE LOWER(account_email) = ? LIMIT 1"); $c->bind_param("s", $e); $c->execute(); $has = (bool)$c->get_result()->fetch_row(); $c->close();
+        if ($has) return false;
+        $pl = perk_plan_row($conn, PERK_FREE_PLAN); if (!$pl) return false;
+        $start = $start ?: date('Y-m-d'); $end = date('Y-m-d', strtotime($start . ' +' . max(1, (int)$pl['duration_days']) . ' days'));
+        $name = explode('@', $e)[0]; $mkt = 'مصر';
+        try { $m = $conn->prepare("SELECT account_market FROM users WHERE LOWER(username) = ?"); $m->bind_param("s", $e); $m->execute(); $mr = $m->get_result()->fetch_row(); $m->close(); if ($mr && $mr[0]) $mkt = $mr[0]; } catch (Throwable $x) {}
+        $st = $conn->prepare("INSERT INTO subscribers (account_email, name, phone, contact_email, plan_id, plan_name, amount, market, start_date, end_date, active) VALUES (?, ?, '', ?, ?, ?, 0, ?, ?, ?, 1)");
+        $pid = PERK_FREE_PLAN; $pn = $pl['name'];
+        $st->bind_param("ssssssss", $e, $name, $e, $pid, $pn, $mkt, $start, $end); $st->execute(); $st->close();
+        if (function_exists('logSubscriptionEvent')) logSubscriptionEvent($conn, $e, 'free_auto', $pid, $pn, 0);
+        return true;
+    } catch (Throwable $x) { return false; }
 }
 function perk_has($conn, $email, $k, $isAdmin = false){
     if ($isAdmin) return true;

@@ -99,6 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         recordReferral($conn, $refCode, $email);
         try { require_once __DIR__ . '/codes_lib.php'; codes_assign_user($conn, $email); } catch (Throwable $e) {}   // الإصدار 96: كود العضو (INV-n) تلقائي
         if (mc_ready($conn)) { $mk = $conn->prepare("UPDATE users SET account_market = ? WHERE username = ?"); $mk->bind_param("ss", $acctMarket, $email); $mk->execute(); $mk->close(); }
+        if (!$isAdmin) { try { require_once __DIR__ . '/perks_lib.php'; perk_auto_free($conn, $email); } catch (Throwable $e) {} }   // الإصدار 138: الباقة المجانية تلقائي
         $needsVerify = getAdminSetting($conn, 'require_email_verification', true);
         if ($needsVerify) sendVerificationEmail($conn, $email);
         echo json_encode(["success" => true, "message" => $needsVerify ? "تم إنشاء الحساب بنجاح. أرسلنا إليك رابط تفعيل على بريدك." : "تم إنشاء الحساب بنجاح.", "is_admin" => (bool)$isAdmin]);
