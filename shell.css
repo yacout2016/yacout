@@ -1528,3 +1528,15 @@ body.g-shell #app select.gs-curve-rngsel, select.gs-curve-rngsel{ width:auto !im
 .mk-perf > div{ display:grid; grid-template-columns:2fr 1fr 1fr 1fr; gap:8px; padding:6px 0; border-bottom:1px solid var(--gs-border,#E5E7EB); font-size:13px; } .mk-ph{ font-weight:700; color:var(--gs-muted,#64748B); }
 .mk-lk{ display:flex; flex-direction:column; gap:4px; font-size:13px; margin-bottom:8px; } .mk-lk input{ margin:0 !important; }
 .mk-warn{ background:#FEF3C7; color:#92400E; border-radius:10px; padding:8px 10px; font-size:12.5px; margin-bottom:10px; }
+/* الإصدار 154: «📢 رسالة لكل المستخدمين» */
+.bc-f{ display:flex; flex-direction:column; gap:4px; font-size:12.5px; margin-top:8px; } .bc-f input, .bc-f textarea{ margin:0 !important; } .bc-f textarea{ resize:vertical; line-height:1.8; }
+.bc-ch > span:last-child{ display:flex; gap:12px; flex-wrap:wrap; align-items:center; min-height:38px; } .bc-ch label, .bc-all span{ display:inline-flex !important; flex-direction:row !important; align-items:center; gap:6px; min-width:0 !important; white-space:nowrap; }
+.bc-ch input[type=checkbox], .bc-all input, .bc-ck{ width:auto !important; margin:0 !important; }
+.bc-item{ border:1px solid var(--gs-border,#E5E7EB); border-radius:12px; padding:10px 12px; margin:8px 0; border-inline-start:5px solid #2563EB; }
+.bc-h{ display:flex; gap:8px; align-items:center; justify-content:space-between; } .bc-h b{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.bc-body{ white-space:pre-wrap; font-size:13px; line-height:1.8; margin:6px 0; max-height:110px; overflow:auto; }
+.bc-acts{ display:flex; gap:6px; flex-wrap:wrap; } .bc-acts button{ width:auto !important; margin:0 !important; }
+.bc-list{ max-height:640px; overflow:auto; }
+.bc-pv{ margin-top:10px; } .bc-pv-n{ border:1px solid var(--gs-border,#E5E7EB); border-radius:12px; padding:10px; font-size:13px; }
+.bc-pv-m{ border:1px solid var(--gs-border,#E5E7EB); border-radius:12px; padding:14px; background:var(--gs-surface-2,#F8FAFC); font-size:13.5px; line-height:1.9; } .bc-pv-m h3{ margin:0 0 8px; color:#C9A227; }
+.bc-pv-b{ display:inline-block; background:#C9A227; color:#0F172A; font-weight:700; border-radius:10px; padding:8px 16px; margin-top:6px; }

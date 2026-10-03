@@ -32,7 +32,7 @@ function adminNavButtonsHtml(){
       { id:'goPeriodsBtn', perm:'manage_admin_settings', icon:'🛠', label:'التحكم في الشاشة الرئيسية والقوائم المنسدلة للمدد الزمنية' },
       { id:'goEmergencyBtn', perm:'manage_admin_settings', icon:'🚨', label:'الشاشات الطارئة (الصيانة / انقطاع النت / السيرفر / التحميل)' },
       { id:'goEmailCenterBtn', perm:'manage_admin_settings', icon:'📧', label:'مركز الإيميلات (اختبار وسجل الإرسال)' },
-      { id:'goDomainBtn', perm:'manage_admin_settings', icon:'📢', label:'إبلاغ كل المستخدمين بالرابط الجديد www.griffine.app' },
+      { id:'goBroadcastBtn', perm:['manage_admin_settings', 'send_broadcast'], icon:'📢', label:'رسالة لكل المستخدمين (إشعار + إيميل · السجل والسلة)' },
       { id:'goAiBtn', perm:'manage_admin_settings', icon:'🤖', label:'الذكاء الاصطناعي (مجاني / مدفوع + حساب Claude)' },
       { id:'goBlacklistBtn', perm:'manage_blacklist', icon:'🚫', label:'القائمة السوداء' },
     ]},
@@ -87,7 +87,7 @@ function wireAdminNavButtons(){
     goSettingsBtn: renderAdminSettingsPage,
     goPeriodsBtn: () => renderAdminPeriods(),
     goRdBtn: () => renderAdminRD(),                       // الإصدار 151 (rd.js)
-    goDomainBtn: () => renderAdminDomainNotice(),          // الإصدار 153 (mkt.js)
+    goBroadcastBtn: () => renderAdminBroadcast(),          // الإصدار 154 (mkt.js)
     goMktBtn: () => renderAdminMkt(),                     // الإصدار 151 (mkt.js)            // الإصدار 144 (periods.js)
     goEmergencyBtn: () => renderEmergencyAdminPage(),   // الإصدار 100 (promo.js)
     goAdsBtn: () => renderAdsAdminPage(),               // الإصدار 100 (promo.js)
