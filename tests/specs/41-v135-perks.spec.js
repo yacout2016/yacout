@@ -96,6 +96,30 @@ const NEW = { email: 'perknew@example.com', pass: 'Perk12345x' };
   check('«الذكاء المتقدم» في الباقة ← includes_ai بيتظبط معاه', ai.success && q("SELECT includes_ai FROM subscription_plans WHERE id = 'yearly'") === '1');
   await a.evaluate(async () => apiPost('/perks_api.php', { action: 'reset_plan', planId: 'yearly' })); q("UPDATE subscription_plans SET includes_ai = 0 WHERE id = 'yearly'");
 
+  // الإصدار 137: إخفاء ميزة عن كل المشتركين (مثلًا الذكاء المتقدم + ميزان GRIFFINE AI)
+  q(`UPDATE users SET created_at = NOW() WHERE username='${NEW.email}'`);
+  await a.evaluate(() => renderPlansManagementPage()); await a.waitForSelector('[data-pkvis="mizanai"]', { timeout: 20000 }).catch(() => {});
+  await a.uncheck('[data-pkvis="mizanai"]'); await a.waitForTimeout(1200);
+  await a.evaluate(async () => apiPost('/perks_api.php', { action: 'toggle_hidden', k: 'ai_pro', hidden: '1' }));
+  check('الأدمن: إخفاء ميزة من «إظهار / إخفاء المميزات» ← اتحفظت', /"hidden":\[[^\]]*"mizanai"/.test(q("SELECT config_value FROM site_config WHERE config_key = 'perks_cfg'")), q("SELECT config_value FROM site_config WHERE config_key = 'perks_cfg'"));
+  s = await me(n);
+  check('المشترك (حتى في فترة التعرّف): الميزة المخفية مش في القائمة ولا شغالة', !s.catalog.some(x => x.k === 'mizanai' || x.k === 'ai_pro') && !s.keys.includes('mizanai') && s.catalog.length === 12, JSON.stringify({ n: s.catalog.length, k: s.keys.includes('mizanai') }));
+  const pl2 = await n.evaluate(async () => apiGet('/plans_list.php'));
+  check('«الباقات والأسعار»: الميزة المخفية مش ظاهرة تحت أي باقة', !pl2.perkCatalog.some(x => x.k === 'mizanai') && pl2.plans.every(p => !(p.perks || []).includes('mizanai')));
+  const mzh = await n.evaluate(async () => apiGet('/mizanai_api.php?action=config'));
+  check('السيرفر: الميزة المخفية مقفولة برسالة «غير متاحة حاليًا» (من غير ترقية)', mzh.success === false && mzh.perkHidden === 'mizanai' && /غير متاحة/.test(mzh.message), JSON.stringify(mzh).slice(0, 120));
+  await n.evaluate(async () => { await gPerksLoad(); await refreshTopNav(); }); await n.waitForTimeout(600);
+  check('القائمة الجانبية: الميزة المخفية مش موجودة خالص (مش 🔒)', await n.evaluate(() => !document.querySelector('.gs-sidebar [data-tab="mizanai"]') && !!document.querySelector('.gs-sidebar [data-tab="mizan"]')));
+  await n.evaluate(() => renderMizanAi()); await n.waitForSelector('.pk-lock', { timeout: 10000 }).catch(() => {});
+  check('فتح الشاشة المخفية ← «غير متاحة حاليًا» من غير باقات', await n.evaluate(() => /غير متاحة حاليًا/.test((document.querySelector('.pk-lock') || {}).textContent || '') && !document.querySelector('.pk-lock .pk-chip')));
+  await a.evaluate(() => renderPlansManagementPage()); await a.waitForSelector('[data-pkvis="mizanai"]', { timeout: 20000 }).catch(() => {});
+  check('لوحة التحكم: المخفية عليها 🙈 وفي قائمة الباقة «مخفية عن الكل»', await a.evaluate(() => /🙈/.test(document.querySelector('[data-pkvis="mizanai"]').closest('label').textContent) && /مخفية عن الكل/.test(document.querySelector('td[data-pkplan="monthly"] .pk-dd-box').textContent)));
+  await a.check('[data-pkvis="mizanai"]'); await a.waitForTimeout(1200);
+  await a.evaluate(async () => apiPost('/perks_api.php', { action: 'toggle_hidden', k: 'ai_pro', hidden: '0' }));
+  s = await me(n);
+  check('إظهارها تاني ← رجعت للمشترك', s.catalog.length === 14 && s.keys.includes('mizanai'));
+  q("DELETE FROM site_config WHERE config_key = 'perks_cfg'");
+
   // موبايل: زرار الباقات المميز في حسابي
   const m = await page(b, { width: 390, height: 844 }); await login(m, CUST);
   await m.evaluate(() => GShell.renderAccount()); await m.waitForSelector('.pk-cta-wide', { timeout: 15000 }).catch(() => {});

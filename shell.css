@@ -1437,3 +1437,9 @@ td.pk-td{ min-width:170px; white-space:normal !important; } .pk-dd summary b{ co
 .pk-dd-box{ margin-top:6px; padding:8px; border:1px solid var(--gs-border,#E5E7EB); border-radius:10px; background:var(--gs-surface,#fff); min-width:250px; }
 .pk-dd-it{ display:flex; align-items:center; gap:6px; font-size:12.5px; padding:3px 0; cursor:pointer; font-weight:500; } .pk-dd-it input{ width:16px; height:16px; margin:0; flex:0 0 auto; }
 .pk-dd-tools{ display:flex; gap:6px; flex-wrap:wrap; margin:6px 0; } .pk-dd-tools button{ margin:0 !important; }
+/* الإصدار 137: إظهار / إخفاء المميزات */
+.pk-adm-vis summary{ cursor:pointer; font-weight:700; font-size:13px; margin:8px 0 4px; }
+.pk-vis-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:6px; margin-top:8px; }
+.pk-vis-it{ display:flex; align-items:center; gap:6px; font-size:12.5px; padding:6px 8px; border-radius:10px; background:rgba(16,185,129,.08); cursor:pointer; font-weight:500; }
+.pk-vis-it.off{ background:var(--gs-surface-2,#F1F5F9); opacity:.7; text-decoration:line-through; } .pk-vis-it input{ width:16px; height:16px; margin:0; flex:0 0 auto; }
+.pk-dd-it.pk-hid{ opacity:.6; }

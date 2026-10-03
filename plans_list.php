@@ -27,9 +27,9 @@ while ($r = $result->fetch_assoc()) {
         "market" => $r['market'] ?? 'مصر',
         "currency" => mc_ccy($r['market'] ?? 'مصر'),
         "ccyAr" => MC_MARKETS[$r['market'] ?? 'مصر']['ccyAr'] ?? '',
-        "perks" => $pkOn ? perk_plan_keys($conn, $r) : null,
+        "perks" => $pkOn ? array_values(array_diff(perk_plan_keys($conn, $r), perk_hidden($conn))) : null,
         "isFree" => $r['id'] === PERK_FREE_PLAN,
     ];
 }
-echo json_encode(["success" => true, "market" => $mkt, "currency" => mc_ccy($mkt), "ccyAr" => MC_MARKETS[$mkt]["ccyAr"], "plans" => $plans, "perkCatalog" => $pkOn ? perk_catalog($conn) : [], "fullDays" => perk_cfg($conn)['full_days']], JSON_UNESCAPED_UNICODE);
+echo json_encode(["success" => true, "market" => $mkt, "currency" => mc_ccy($mkt), "ccyAr" => MC_MARKETS[$mkt]["ccyAr"], "plans" => $plans, "perkCatalog" => $pkOn ? perk_catalog_public($conn) : [], "fullDays" => perk_cfg($conn)['full_days']], JSON_UNESCAPED_UNICODE);
 ?>

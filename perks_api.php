@@ -20,7 +20,7 @@ if ($action === 'me') {
     $s = perk_state($conn, $email, $isAdmin);
     pk_out(["success" => true, "phase" => $s['phase'], "keys" => $s['keys'], "plan" => $s['plan'], "planName" => $s['planName'],
         "daysLeft" => $s['daysLeft'], "freeLeft" => $s['freeLeft'] ?? null, "reason" => $s['reason'] ?? null,
-        "fullDays" => perk_cfg($conn)['full_days'], "catalog" => perk_catalog($conn)]);
+        "fullDays" => perk_cfg($conn)['full_days'], "catalog" => $isAdmin ? perk_catalog($conn) : perk_catalog_public($conn), "hidden" => perk_hidden($conn)]);
 }
 
 // ---- الإدارة
@@ -74,9 +74,17 @@ if ($action === 'add_custom') {
     perk_cfg_save($conn, $cfg, $email);
     pk_out(["success" => true, "k" => $k, "message" => "✅ اتضافت «{$l}» — علّم عليها في الباقات اللي فيها."]);
 }
+if ($action === 'toggle_hidden') {   // الإصدار 137: إخفاء ميزة عن كل المشتركين (ماتظهرش ولا تتطلب) أو إظهارها
+    $k = (string)($_POST['k'] ?? '');
+    if (!in_array($k, perk_keys_all($conn), true)) pk_out(["success" => false, "message" => "ميزة غير معروفة."]);
+    $h = array_values(array_diff($cfg['hidden'], [$k]));
+    if (($_POST['hidden'] ?? '0') === '1') $h[] = $k;
+    $cfg['hidden'] = $h; perk_cfg_save($conn, $cfg, $email);
+    pk_out(["success" => true, "hidden" => $h, "message" => (($_POST['hidden'] ?? '0') === '1' ? '🙈 «' . perk_label($conn, $k) . '» اتخفت عن كل المشتركين.' : '👁 «' . perk_label($conn, $k) . '» رجعت تظهر للمشتركين.')]);
+}
 if ($action === 'del_custom') {
     $k = (string)($_POST['k'] ?? '');
-    $cfg['custom'] = array_values(array_filter($cfg['custom'], fn($x) => $x['k'] !== $k));
+    $cfg['custom'] = array_values(array_filter($cfg['custom'], fn($x) => $x['k'] !== $k)); $cfg['hidden'] = array_values(array_diff($cfg['hidden'], [$k]));
     perk_cfg_save($conn, $cfg, $email);
     pk_out(["success" => true, "message" => "اتشالت الميزة من كل الباقات."]);
 }

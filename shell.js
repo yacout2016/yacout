@@ -50,7 +50,7 @@
      ===================================================================== */
 
   // رقم الإصدار - بيظهر في شاشة "حسابي" (غيّره مع ?v= في index.php و VERSION في sw.js)
-  const APP_VERSION = 136;
+  const APP_VERSION = 137;
 
   /* الاستعلامات المتكررة (الدردشة/التوصيات/قائمة المتابعة) - استعلام متكيّف (الإصدار 89)
      - بتقف لما التبويب يكون مخفي أو الموبايل مقفول
@@ -476,7 +476,9 @@
     if (!hidden('hide_screener_screen')) tabs.push({ tab:'screener', label:'الكشاف', ic:'radar', go:() => renderScreener() });
     else if (!hidden('hide_recommendations_screen')) tabs.push({ tab:'rec', label:'التوصيات', ic:'megaphone', go:() => renderRecommendationsCustomerPage() });
     tabs.push({ tab:'account', label:'حسابي', ic:'user', go:() => GS.renderAccount() });
-    return tabs;
+    // الإصدار 137: التبويبات اللي ميزتها مخفية من الأدمن مابتظهرش
+    const PKT = { portfolio:'portfolio', screener:'screener', rec:'recs_short|recs_long' };
+    return tabs.filter(t => !(window.gPerkHidden && (t.tab === 'plans' ? window.gPerkHidden('dca') && window.gPerkHidden('grid') : PKT[t.tab] && window.gPerkHidden(PKT[t.tab]))));
   }
 
   // عناصر الشريط الجانبي على الكمبيوتر ({sec} = عنوان قسم)
@@ -502,7 +504,7 @@
       { screen:'renderSubscriptionPlans', label:'الاشتراك والباقات', ic:'card', go:() => renderSubscriptionPlans() },
       !hidden('hide_referral_screen') && { screen:'renderReferralPage', label:'ادعُ صديقك', ic:'gift', go:() => renderReferralPage() },
       !hidden('hide_trash_screen') && { screen:'renderTrashPage', label:'سلة المحذوفات', ic:'trash', go:() => renderTrashPage() },
-    ].filter(Boolean);
+    ].filter(Boolean).filter(it => !(it.pk && window.gPerkHidden && window.gPerkHidden(it.pk)));   // الإصدار 137: الميزة المخفية من الأدمن مابتظهرش خالص
     // لوحة التحكم بتفتح شاشة الأزرار (renderAdminHub) - الشاشات الفرعية مبقتش بتكرر الأزرار دي (الإصدار 72)
     // + اختصارات مباشرة لأهم شاشات الإدارة حسب صلاحيات كل موظف (الإصدار 73)
     if (window.__isAdmin) {

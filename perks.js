@@ -29,6 +29,8 @@
   const isAdm = () => !!window.__isAdmin;
   const active = () => PK && !isAdm() && PK.phase !== 'admin' && PK.phase !== 'none';
   window.gPerk = (k) => { if (isAdm() || !PK || PK.phase === 'admin') return true; return (PK.keys || []).includes(k); };
+  // الإصدار 137: ميزة مخفية من الأدمن عن كل المشتركين ← ماتظهرش خالص (لا في القائمة ولا تحت الباقات) — 'a|b' مخفية لو الاتنين مخفيين
+  window.gPerkHidden = (spec) => { if (isAdm() || !PK || !Array.isArray(PK.hidden) || !PK.hidden.length) return false; return String(spec).split('|').every(k => PK.hidden.includes(k)); };
   window.gPerkState = () => PK;
   const catalog = () => (PK && PK.catalog) || [];
   const label = (k) => { const c = catalog().find(x => x.k === k); return c ? c.l : k; };
@@ -57,6 +59,11 @@
   window.renderPerkLocked = async function(k, from){
     const __tok = screenToken();
     pushNav(() => renderPerkLocked(k, from));
+    if (gPerkHidden(k)) {   // الإصدار 137: الميزة مخفية حاليًا ← رسالة عامة من غير باقات ولا ترقية
+      window.__lastPageKey = 'perk_locked'; if (screenStale(__tok)) return;
+      app.innerHTML = `<div class="container"><div class="section-card pk-lock"><div class="pk-lock-ic">⏸️</div><h2>الشاشة دي غير متاحة حاليًا</h2><p class="u-muted">ارجع للرئيسية وكمّل باقي خدمات الموقع.</p><div class="pk-lock-btns"><button type="button" id="pkHome">🏠 الرئيسية</button></div></div></div>`;
+      document.getElementById('pkHome').onclick = () => renderHome(); return;
+    }
     const res = await getPlansList().catch(() => null);
     const plans = (res && res.success ? res.plans : []).filter(p => (p.perks || []).includes(k));
     window.__lastPageKey = 'perk_locked'; if (screenStale(__tok)) return;
@@ -74,6 +81,7 @@
   // شريط التنبيه فوق الشاشات اللي بتفتح (يتابع اللي عنده بس)
   function banner(k){
     const c = document.querySelector('#app .container'); if (!c || c.querySelector('.pk-banner')) return;
+    if (gPerkHidden(k)) return;   // الإصدار 137: المخفية مالهاش شريط ترقية
     const d = document.createElement('div'); d.className = 'pk-banner';
     d.innerHTML = `<span>🔒 «${E(label(k))}» مش ضمن باقتك الحالية — تقدر تتابع اللي عندك بس، ومش هتقدر تضيف جديد.</span><button type="button" class="pk-cta small">💎 ترقية الباقة</button>`;
     d.querySelector('button').onclick = () => renderSubscriptionPlans();
@@ -92,6 +100,8 @@
           if (n && active() && n.any && n.keys.some(k => !gPerk(k))) Promise.resolve(r).then(() => later(() => partial(name, n)));
           return r;
         }
+        const hk = [...n.cust, ...n.keys].find(k => !gPerk(k) && gPerkHidden(k));
+        if (hk && !n.any) return renderPerkLocked(hk, name);   // الإصدار 137: مخفية ← «غير متاحة حاليًا»
         if (!n.hard && !n.any && !n.cust.some(k => !gPerk(k))) { const r = orig.apply(this, arguments); Promise.resolve(r).then(() => later(() => { banner(n.keys.find(k => !gPerk(k))); return !!document.querySelector('.pk-banner'); })); return r; }
         return renderPerkLocked(n.cust.find(k => !gPerk(k)) || n.keys.find(k => !gPerk(k)) || n.keys[0], name);
       };
@@ -104,8 +114,8 @@
     if (name === 'renderBasira') {
       const sc = document.getElementById('bsTabScan'), one = document.getElementById('bsTabOne'); if (!sc || !one) return false;
       const lock = (b, k) => { if (b.__pk) return; b.__pk = 1; b.insertAdjacentHTML('beforeend', ' 🔒'); b.onclick = (e) => { e.preventDefault(); e.stopImmediatePropagation(); renderPerkLocked(k, name); }; };
-      if (miss.includes('basira_scan')) lock(sc, 'basira_scan');
-      if (miss.includes('basira')) { sc.click(); lock(one, 'basira'); }
+      if (miss.includes('basira_scan')) { if (gPerkHidden('basira_scan')) sc.hidden = true; else lock(sc, 'basira_scan'); }
+      if (miss.includes('basira')) { sc.click(); if (gPerkHidden('basira')) one.hidden = true; else lock(one, 'basira'); }
       return true;
     }
     banner(miss[0]); return !!document.querySelector('.pk-banner');
@@ -177,6 +187,10 @@
         <label class="u-check"><input type="checkbox" id="pkFullAi" ${ADM.fullAi ? 'checked' : ''}> فترة التعرّف تشمل «الذكاء الاصطناعي المتقدم» (بيستهلك رصيد)</label>
         <button type="button" class="small u-wa" id="pkSaveCfg">حفظ</button>
       </div>
+      <details class="pk-adm-vis" open><summary>👁 إظهار / إخفاء المميزات عند كل المشتركين</summary>
+        <div class="u-fs12 u-muted u-mt8">الميزة المخفية 🙈 مابتظهرش للمشترك خالص (لا في القائمة ولا تحت الباقات ولا يقدر يطلبها) وبتتقفل من السيرفر — مثلًا «الذكاء الاصطناعي المتقدم» تخفيه مؤقتًا من كل الباقات. الأدمن والموظفين شايفينها عادي.</div>
+        <div class="pk-vis-grid">${cat.map(c => `<label class="pk-vis-it ${c.hidden ? 'off' : ''}"><input type="checkbox" data-pkvis="${E(c.k)}" ${c.hidden ? '' : 'checked'}> <span>${c.hidden ? '🙈' : '👁'} ${E(c.l)}</span></label>`).join('')}</div>
+      </details>
       <details class="pk-adm-add"><summary>➕ إضافة ميزة أو شاشة جديدة للباقات</summary>
         <div class="pk-adm-row"><input type="text" id="pkNewL" maxlength="120" placeholder="اسم الميزة (مثلًا: أولوية في الدعم الفني)">
           <select id="pkNewS">${PK_LINKABLE.map(([v, l]) => `<option value="${v}">${E(l)}</option>`).join('')}</select>
@@ -185,6 +199,10 @@
       </details></div>`;
     document.getElementById('pkSaveCfg').onclick = async () => { const x = await apiPost('/perks_api.php', { action: 'save_cfg', fullDays: document.getElementById('pkFullDays').value, fullAi: document.getElementById('pkFullAi').checked ? '1' : '0' }).catch(() => null); alert((x && x.message) || 'تعذّر الحفظ'); };
     document.getElementById('pkAdd').onclick = async () => { const x = await apiPost('/perks_api.php', { action: 'add_custom', label: document.getElementById('pkNewL').value, screen: document.getElementById('pkNewS').value }).catch(() => null); alert((x && x.message) || 'تعذّر'); if (x && x.success) pkAdminDecorate(wrap, plansShown); };
+    top.querySelectorAll('[data-pkvis]').forEach(i => i.onchange = async () => {
+      const x = await apiPost('/perks_api.php', { action: 'toggle_hidden', k: i.dataset.pkvis, hidden: i.checked ? '0' : '1' }).catch(() => null);
+      alert((x && x.message) || 'تعذّر الحفظ'); pkAdminDecorate(wrap, plansShown);
+    });
     top.querySelectorAll('[data-pkdel]').forEach(b => b.onclick = async () => { if (!await gConfirm('حذف الميزة دي من كل الباقات؟', { ok: 'حذف', danger: true })) return; const x = await apiPost('/perks_api.php', { action: 'del_custom', k: b.dataset.pkdel }).catch(() => null); if (x && x.success) pkAdminDecorate(wrap, plansShown); });
     // القائمة المنسدلة قدام كل باقة
     wrap.querySelectorAll('[data-pkplan]').forEach(td => {
@@ -192,7 +210,7 @@
       td.innerHTML = `<details class="pk-dd"><summary>⭐ المميزات <b>${p.keys.length}/${cat.length}</b>${p.isDefault ? ' <small>(افتراضي)</small>' : ''}</summary>
         <div class="pk-dd-box">
           <div class="pk-dd-tools"><button type="button" class="small secondary u-wa" data-pkall="1">اختيار الكل</button><button type="button" class="small secondary u-wa" data-pkall="0">إلغاء الكل</button></div>
-          ${cat.map(c => `<label class="pk-dd-it"><input type="checkbox" value="${E(c.k)}" ${p.keys.includes(c.k) ? 'checked' : ''}> ${E(c.ic)} ${E(c.l)}</label>`).join('')}
+          ${cat.map(c => `<label class="pk-dd-it${c.hidden ? ' pk-hid' : ''}"><input type="checkbox" value="${E(c.k)}" ${p.keys.includes(c.k) ? 'checked' : ''}> ${E(c.ic)} ${E(c.l)}${c.hidden ? ' <small>(🙈 مخفية عن الكل)</small>' : ''}</label>`).join('')}
           <div class="pk-dd-tools"><button type="button" class="small u-wa" data-pksave>💾 حفظ مميزات الباقة</button>${!p.isDefault ? '<button type="button" class="small secondary u-wa" data-pkreset>↩ الاختيارات الأصلية</button>' : ''}</div>
         </div></details>`;
       td.querySelectorAll('[data-pkall]').forEach(b => b.onclick = () => td.querySelectorAll('.pk-dd-it input').forEach(i => { i.checked = b.dataset.pkall === '1'; }));

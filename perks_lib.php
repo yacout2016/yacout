@@ -29,12 +29,13 @@ const PERK_BUILTIN = [
 
 function perk_cfg($conn){
     static $c = null; if ($c !== null) return $c;
-    $d = ['custom' => [], 'full_days' => 20, 'full_ai' => false];
+    $d = ['custom' => [], 'full_days' => 20, 'full_ai' => false, 'hidden' => []];
     $raw = function_exists('site_config_get') ? site_config_get($conn, 'perks_cfg') : '';
     if ($raw === '') { try { $st = $conn->prepare("SELECT config_value FROM site_config WHERE config_key = 'perks_cfg'"); $st->execute(); $r = $st->get_result()->fetch_row(); $st->close(); $raw = $r ? (string)$r[0] : ''; } catch (Throwable $e) {} }
     $j = $raw !== '' ? json_decode($raw, true) : null;
     if (is_array($j)) $d = array_merge($d, array_intersect_key($j, $d));
     $d['full_days'] = max(0, min(365, (int)$d['full_days'])); $d['full_ai'] = !empty($d['full_ai']);
+    $d['hidden'] = array_values(array_filter(is_array($d['hidden']) ? $d['hidden'] : [], 'is_string'));   // الإصدار 137: مميزات مخفية عن كل المشتركين
     $d['custom'] = array_values(array_filter(is_array($d['custom']) ? $d['custom'] : [], fn($x) => is_array($x) && preg_match('/^c_[a-z0-9]{4,12}$/', $x['k'] ?? '') && trim($x['l'] ?? '') !== ''));
     return $c = $d;
 }
@@ -46,11 +47,14 @@ function perk_cfg_save($conn, $cfg, $by = null){
 }
 // القائمة كاملة: الثابتة + اللي الأدمن ضافها ({k, l, ic, screen, custom})
 function perk_catalog($conn){
-    $out = [];
-    foreach (PERK_BUILTIN as $k => $p) $out[] = ['k' => $k, 'l' => $p['l'], 'ic' => $p['ic'], 'screen' => '', 'custom' => false];
-    foreach (perk_cfg($conn)['custom'] as $c) $out[] = ['k' => $c['k'], 'l' => (string)$c['l'], 'ic' => '➕', 'screen' => preg_match('/^render[A-Za-z0-9]{2,60}$/', $c['screen'] ?? '') ? $c['screen'] : '', 'custom' => true];
+    $out = []; $hid = perk_cfg($conn)['hidden'];
+    foreach (PERK_BUILTIN as $k => $p) $out[] = ['k' => $k, 'l' => $p['l'], 'ic' => $p['ic'], 'screen' => '', 'custom' => false, 'hidden' => in_array($k, $hid, true)];
+    foreach (perk_cfg($conn)['custom'] as $c) $out[] = ['k' => $c['k'], 'l' => (string)$c['l'], 'ic' => '➕', 'screen' => preg_match('/^render[A-Za-z0-9]{2,60}$/', $c['screen'] ?? '') ? $c['screen'] : '', 'custom' => true, 'hidden' => in_array($c['k'], $hid, true)];
     return $out;
 }
+// الإصدار 137: اللي المشترك يشوفه (من غير المخفي)
+function perk_catalog_public($conn){ return array_values(array_filter(perk_catalog($conn), fn($p) => !$p['hidden'])); }
+function perk_hidden($conn){ return perk_cfg($conn)['hidden']; }
 function perk_keys_all($conn){ return array_column(perk_catalog($conn), 'k'); }
 
 // الاختيارات الافتراضية لكل باقة (لحد ما الأدمن يحفظ اختياراته)
@@ -140,6 +144,7 @@ function perk_state($conn, $email, $isAdmin = false){
     } else {
         $out = ['phase' => 'none', 'keys' => [], 'plan' => $sub['plan_id'] ?? '', 'planName' => $sub['plan_name'] ?? '', 'daysLeft' => 0, 'reason' => (int)$sub['active'] === 1 ? 'expired' : 'pending'];
     }
+    $out['keys'] = array_values(array_diff($out['keys'], perk_hidden($conn)));   // الإصدار 137: المخفي مقفول عند الكل
     return $cache[$ck] = $out;
 }
 function perk_has($conn, $email, $k, $isAdmin = false){
@@ -149,6 +154,7 @@ function perk_has($conn, $email, $k, $isAdmin = false){
 function perk_label($conn, $k){ foreach (perk_catalog($conn) as $p) if ($p['k'] === $k) return $p['l']; return $k; }
 // رسالة الرفض (نفس شكل requiresSubscription اللي الشاشات بتفهمه)
 function perk_denied($conn, $email, $k){
+    if (in_array($k, perk_hidden($conn), true)) return ["success" => false, "hidden" => true, "perkHidden" => $k, "message" => "الميزة دي غير متاحة حاليًا."];
     $s = perk_state($conn, $email);
     $msg = $s['phase'] === 'none'
         ? 'الميزة دي متاحة للمشتركين — اختار باقتك من «الباقات والأسعار».'
