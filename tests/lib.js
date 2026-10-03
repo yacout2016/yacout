@@ -11,11 +11,16 @@ let failed = 0, passed = 0;
 function check(name, ok, info){ if (ok) passed++; else failed++; console.log(`${ok ? '  ✔' : '  ✘'} ${name}${info !== undefined ? '  → ' + String(info).slice(0, 160) : ''}`); }
 function summary(){ console.log(`  = ${passed} نجح، ${failed} فشل`); return failed; }
 const q = (sql) => execSync(`${DB} -N -e "SET NAMES utf8mb4; ${sql.replace(/"/g, '\\"')}"`).toString().trim();
-async function launch(){ return chromium.launch({ executablePath: CHROME, args: ['--no-sandbox'] }); }
+// الإصدار 149: أي نافذة بيفتحها اختبار = جهاز مسجّل قبل كده (الموقع الكامل) — إلا لو اتطلب { lite: true }
+async function launch(){
+  const br = await chromium.launch({ executablePath: CHROME, args: ['--no-sandbox'] });
+  const orig = br.newContext.bind(br);
+  br.newContext = async (o) => { const { lite, ...rest } = o || {}; const c = await orig(rest); if (!lite) await c.addCookies([{ name: 'g_in', value: '1', url: BASE }]); return c; };
+  return br;
+}
 // الإصدار 149: الاختبارات بتفتح الموقع الكامل (كأن الجهاز مسجّل قبل كده) — page(b, vp, { lite: true }) = صفحة الزائر الخفيفة
 async function page(browser, viewport, opts){
-  const ctx = await browser.newContext({ viewport: viewport || { width: 1366, height: 900 } });
-  if (!(opts && opts.lite)) await ctx.addCookies([{ name: 'g_in', value: '1', url: BASE }]);
+  const ctx = await browser.newContext({ viewport: viewport || { width: 1366, height: 900 }, lite: !!(opts && opts.lite) });
   const p = await ctx.newPage();
   p.__errors = []; p.on('pageerror', e => p.__errors.push(e.message));
   await p.goto(BASE + '/index.php'); await p.waitForTimeout(1500);
