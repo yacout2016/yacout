@@ -73,7 +73,8 @@ const kpis = (p) => p.$$eval('#trBody .g-kpi', d => Object.fromEntries(d.map(k =
 
   // 7) العميل: معاملاته هو بس
   q("REPLACE INTO admin_settings (setting_key, setting_value) VALUES ('hide_trades_screen', '0')");
-  const c = await page(b); await c.goto(require('../lib').BASE + '/index.php'); await c.waitForTimeout(1500);
+  const c = await page(b); await c.context().addCookies([{ name: 'g_in', value: '1', url: require('../lib').BASE }]);   // الإصدار 149: جهاز مسجّل (الصفحة الكاملة)
+  await c.goto(require('../lib').BASE + '/index.php'); await c.waitForTimeout(1500);
   const lr = await loginAs(c, CUST);
   const live = await c.evaluate(() => apiGet('/trades_report.php?action=live'));
   check('العميل: السيرفر بيرجّع خططه هو بس', live.success && live.mine && live.accounts.length === 1 && live.plans.every(x => x.e === 'paytest@example.com') && live.plans.some(x => x.s === 'TSTC'), lr && lr.success);
