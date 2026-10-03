@@ -84,7 +84,7 @@
      بالدفعات (10 أسهم كل طلب) مع شريط تقدّم وإيقاف - والضغط على أي سهم بيفتح تحليله الكامل */
   const hzIn = (k) => k === 'day' ? 'يوم' : (HZ.find(h => h[0] === k) || [0, ''])[1];   // «خلال يوم» مش «خلال يومي»
   const HZ = [['day', 'يومي'], ['week', 'أسبوع'], ['month', 'شهر'], ['3m', '3 شهور'], ['6m', '6 شهور'], ['year', 'سنة']];
-  let SCAN = { items: [], total: 0, run: 0, hz: 'month', market: '', sector: '', sort: 'up', dir: -1 };
+  let SCAN = { items: [], total: 0, run: 0, hz: 'day', market: '', sector: '', sort: 'up', dir: -1 };
   // الإصدار 120: أعمدة جدول المسح (lock = مبيتخفاش) + إظهار/إخفاء محفوظ على الجهاز + الجدول جوه الصفحة من غير تمرير يمين وشمال
   // الإصدار 134: الكود والاسم والقطاع أعمدة منفصلة بعد المسلسل + كل الأعمدة تتخفي (ماعدا المسلسل)
   const SC_COLS = [
@@ -174,12 +174,12 @@
   async function buildScan(tok, m0){
     const wrap = document.getElementById('bsScanWrap'), mk = allowedMkts();
     const hz = HZ.filter(([k]) => !CFG.horizons || CFG.horizons[k] !== false);
-    if (!hz.find(([k]) => k === SCAN.hz)) SCAN.hz = (hz.find(([k]) => k === 'month') || hz[0] || ['month'])[0];
+    if (!hz.find(([k]) => k === SCAN.hz)) SCAN.hz = (hz.find(([k]) => k === 'day') || hz[0] || ['day'])[0];
     wrap.innerHTML = `<div class="bs-card bs-scan">
       <div class="bs-scrow">
         <div><label for="bsScMkt">البورصة</label><select id="bsScMkt">${mk.map(x => `<option ${x === m0 ? 'selected' : ''}>${E(x)}</option>`).join('')}</select></div>
         <div><label for="bsScSec">القطاع</label><select id="bsScSec"><option value="">كل البورصة</option></select></div>
-        <div><label>الأسهم المتوقع صعودها خلال</label><div class="bs-seg" id="bsScHz">${hz.map(([k, l]) => `<button type="button" data-k="${k}" class="${k === SCAN.hz ? 'on' : ''}">${l}</button>`).join('')}</div></div>
+        <div><label for="bsScHz">الأسهم المتوقع صعودها خلال</label><select id="bsScHz">${hz.map(([k, l]) => `<option value="${k}" ${k === SCAN.hz ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
         <div class="bs-scbtns"><button type="button" class="bs-go" id="bsScGo">📊 ابدأ المسح</button><button type="button" class="secondary small" id="bsScStop" hidden>⏹ إيقاف</button></div>
       </div>
       <div class="bs-scprog" id="bsScProg" hidden><div class="bs-scbar"><i id="bsScBar"></i></div><small id="bsScTxt"></small></div>
@@ -199,7 +199,7 @@
       if (r && r.success) sec.innerHTML = `<option value="">كل البورصة (${r.total} سهم)</option>` + r.sectors.map(x => `<option value="${E(x.name)}">${E(x.name)} (${x.n})</option>`).join('');
     };
     mkt.onchange = () => { SCAN.run++; loadSecs(); };
-    document.querySelectorAll('#bsScHz button').forEach(b => b.onclick = () => { SCAN.hz = b.dataset.k; document.querySelectorAll('#bsScHz button').forEach(x => x.classList.toggle('on', x === b)); paintScan(); });
+    document.getElementById('bsScHz').onchange = (e) => { SCAN.hz = e.target.value; paintScan(); };   // الإصدار 140: قائمة منسدلة (الافتراضي يومي)
     scWireCols();
     document.getElementById('bsScGo').onclick = () => runScan(tok);
     document.getElementById('bsScStop').onclick = () => { SCAN.run++; scanDone('اتوقف المسح — النتايج اللي اتحللت ظاهرة تحت.'); };

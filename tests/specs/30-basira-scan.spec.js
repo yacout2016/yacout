@@ -9,9 +9,9 @@ const { check, summary, launch, page, loginAdmin, q } = require('../lib');
   await a.evaluate(() => renderBasira()); await a.waitForSelector('#bsTabScan', { timeout: 20000 }).catch(() => {});
   check('بصيرة: تبويبين «تحليل سهم» و«مسح السوق — الأسهم المتوقع صعودها»', await a.evaluate(() => /تحليل سهم/.test(document.getElementById('bsTabOne').textContent) && /مسح السوق/.test(document.getElementById('bsTabScan').textContent)));
   await a.click('#bsTabScan'); await a.waitForFunction(() => document.querySelectorAll('#bsScSec option').length > 1, null, { timeout: 20000 }).catch(() => {});
-  const ui = await a.evaluate(() => ({ one: document.getElementById('bsOneWrap').hidden, secs: [...document.querySelectorAll('#bsScSec option')].map(o => o.textContent), hz: [...document.querySelectorAll('#bsScHz button')].map(x => x.textContent), on: (document.querySelector('#bsScHz .on') || {}).textContent }));
+  const ui = await a.evaluate(() => ({ one: document.getElementById('bsOneWrap').hidden, secs: [...document.querySelectorAll('#bsScSec option')].map(o => o.textContent), hz: [...document.querySelectorAll('#bsScHz option')].map(x => x.textContent), on: (document.querySelector('#bsScHz option:checked') || {}).textContent, sel: document.getElementById('bsScHz').tagName }));
   check('المسح: قائمة القطاعات من السوق بالعربي (كل البورصة + البنوك)', ui.one && ui.secs[0].includes('كل البورصة') && ui.secs.some(x => /البنوك \(2\)/.test(x)), ui.secs.join(' | '));
-  check('المسح: الفترات يومي / أسبوع / شهر / 3 شهور / 6 شهور / سنة (الافتراضي شهر)', ui.hz.join(',') === 'يومي,أسبوع,شهر,3 شهور,6 شهور,سنة' && ui.on === 'شهر', ui.hz.join(','));
+  check('المسح: الفترات قائمة منسدلة يومي / أسبوع / شهر / 3 شهور / 6 شهور / سنة (الافتراضي يومي)', ui.sel === 'SELECT' && ui.hz.join(',') === 'يومي,أسبوع,شهر,3 شهور,6 شهور,سنة' && ui.on === 'يومي', ui.hz.join(','));
 
   // كل البورصة
   await a.click('#bsScGo');
@@ -20,10 +20,10 @@ const { check, summary, launch, page, loginAdmin, q } = require('../lib');
   let rows = await rowsOf();
   const sorted = (L) => L.every((x, i) => i === 0 || L[i - 1].up >= x.up);
   check('كل البورصة: الأسهم اتحللت كلها + شريط التقدّم اكتمل', rows.length === 5 && await a.evaluate(() => document.getElementById('bsScBar').style.width === '100%'), JSON.stringify(rows.map(r => r.s)));
-  check('مترتبة حسب احتمال الصعود خلال شهر (الأعلى الأول)', sorted(rows) && await a.evaluate(() => /شهر/.test(document.getElementById('bsScHzTh').textContent)), rows.map(r => r.s + ':' + r.up).join(', '));
-  check('الأعلى احتمالًا (أفضل 3) فوق الجدول', await a.evaluate(() => document.querySelectorAll('.bs-sctc').length === 3 && /الأعلى احتمالًا للصعود خلال شهر/.test(document.getElementById('bsScTop').textContent)));
+  check('مترتبة حسب احتمال الصعود خلال يوم (الأعلى الأول)', sorted(rows) && await a.evaluate(() => /يوم/.test(document.getElementById('bsScHzTh').textContent)), rows.map(r => r.s + ':' + r.up).join(', '));
+  check('الأعلى احتمالًا (أفضل 3) فوق الجدول', await a.evaluate(() => document.querySelectorAll('.bs-sctc').length === 3 && /الأعلى احتمالًا للصعود خلال يوم/.test(document.getElementById('bsScTop').textContent)));
   check('السهم النازل (DROPX) مش في الأول', rows[0].s !== 'DROPX', rows[0].s);
-  await a.click('#bsScHz button[data-k="year"]'); await a.waitForTimeout(200);
+  await a.selectOption('#bsScHz', 'year'); await a.waitForTimeout(200);
   rows = await rowsOf();
   check('تغيير الفترة لسنة ← إعادة الترتيب فورًا (من غير مسح تاني)', sorted(rows) && await a.evaluate(() => /سنة/.test(document.getElementById('bsScHzTh').textContent) && /خلال سنة/.test(document.getElementById('bsScTop').textContent)), rows.map(r => r.s + ':' + r.up).join(', '));
 
