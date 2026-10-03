@@ -475,7 +475,8 @@ async function mkPortfolioCurve(el, ccys, sel, plans, grids, rangeKey){
   // آخر نقطة = بطاقة المحفظة بالظبط (الاتنين دلوقتي بسعر السوق وبنفس تعريف التكلفة)
   const all = mkBuildSeries(positions, el.__hist, today, now ? now.value : null, now ? now.cost : null);
   const RANGES = [['1d', 'يوم', 1], ['1w', 'أسبوع', 7], ['1m', 'شهر', 31], ['3m', '3 شهور', 92], ['6m', '6 شهور', 183], ['1y', 'سنة', 366], ['all', 'الكل', 99999]];
-  rangeKey = rangeKey || el.__range || 'all'; el.__range = rangeKey;
+  rangeKey = rangeKey || el.__range || '1d';   // الإصدار 142: الافتراضي يوم
+  el.__range = rangeKey;
   const lim = (RANGES.find(x => x[0] === rangeKey) || RANGES[3])[2];
   const cut = new Date(Date.now() - lim * 86400000).toISOString().slice(0, 10);
   let pts = all.filter(p => p.d >= cut); if (pts.length < 2) pts = all.slice(-2);

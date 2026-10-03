@@ -15,7 +15,7 @@
   /* ---------- أسماء الأسهم بالعربي: من السيرفر (basira_names.json + اللي الأدمن أضافه من «تحليلات بصيرة AI») ---------- */
   let AR = {};
   const MKTS = ['مصر', 'السعودية', 'الإمارات', 'قطر', 'الكويت'];
-  let CFG = null, CUR = null, CUR_ID = null, RANGE = 132, SHOW = { s20: true, s50: true, s200: true, bb: false };
+  let CFG = null, CUR = null, CUR_ID = null, RANGE = 'd', SHOW = { s20: true, s50: true, s200: true, bb: false };
   window.gArName = function(sym, market){
     const s = String(sym || '').toUpperCase(), cust = AR['*'] || {};
     if (cust[s]) return cust[s];
@@ -333,6 +333,7 @@
     rep.innerHTML = reportHtml(R, Object.assign({ actions: true }, o));
     drawCharts(R);
     wireReport(R);
+    if (RANGE === 'd') { const rg = document.getElementById('bsRng'); if (rg && rg.onchange) rg.onchange(); }   // الإصدار 142: الافتراضي «يوم» (أسعار اليوم)
   }
   function reportHtml(R, o){
     const ar = R.arName || gArName(R.symbol, R.market), v = vk(R.score), hz = R.horizons.filter(h => !CFG || !CFG.horizons || CFG.horizons[h.key] !== false);
@@ -474,6 +475,10 @@
     const s = chartSvgs(R, R.__day ? R.chart.c.length : (RANGE === 'd' ? 22 : RANGE), SHOW, false), svg = document.getElementById('bsMain'); if (!svg) return;
     svg.innerHTML = s.main + `<line id="bsCross" x1="0" x2="0" y1="0" y2="320" stroke="var(--gs-muted,#64748B)" stroke-dasharray="3 3" opacity="0" vector-effect="non-scaling-stroke"/><rect id="bsHover" x="0" y="0" width="1000" height="320" fill="transparent"/>`;
     document.getElementById('bsRsi').innerHTML = s.rsi; document.getElementById('bsMacd').innerHTML = s.macd;
+    // الإصدار 142: في «يوم» (أسعار اليوم كل 5 دقايق) مفيش متوسطات / RSI / MACD يومية ← بتستخبى
+    const dayMode = !!R.__day || RANGE === 'd';
+    ['bsRsi', 'bsMacd'].forEach(id => { const el = document.getElementById(id); if (el) { el.style.display = dayMode ? 'none' : ''; const lb = el.previousElementSibling; if (lb && lb.classList.contains('bs-sub')) lb.style.display = dayMode ? 'none' : ''; } });
+    const lgd = document.getElementById('bsLegend'); if (lgd) lgd.style.display = dayMode ? 'none' : '';
     const tip = document.getElementById('bsTip'), cross = svg.querySelector('#bsCross'), C = R.chart;
     const move = (cx) => { const b = svg.getBoundingClientRect(), fx = Math.max(0, Math.min(1, (cx - b.left) / b.width)), i = Math.round(fx * (s.n - 1)), j = s.x0 + i;
       cross.setAttribute('x1', fx * 1000); cross.setAttribute('x2', fx * 1000); cross.setAttribute('opacity', 1);
