@@ -54,6 +54,7 @@ function adminNavButtonsHtml(){
     ]},
   ];
 
+  window.__adminNavGroups = groups;   // الإصدار 148: لبحث لوحة التحكم
   const cardHtml = it => `<button class="admin-nav-card" id="${it.id}"><span class="nav-icon">${it.icon}</span><span class="nav-label">${escapeHtml(it.label)}</span>${it.extra||''}</button>`;
 
   const groupsHtml = groups.map(g => {
@@ -67,6 +68,7 @@ function adminNavButtonsHtml(){
   }).join('');
 
   return `<div class="admin-nav-groups">
+    ${window.adminSearchHtml ? adminSearchHtml() : ''}
     ${groupsHtml}
     <div class="admin-nav-grid"><button class="admin-nav-card" id="homeBtn"><span class="nav-icon">🏠</span><span class="nav-label">الشاشة الرئيسية</span></button></div>
   </div>`;
@@ -110,6 +112,7 @@ function wireAdminNavButtons(){
     const el = document.getElementById(id);
     if (el) el.onclick = map[id];
   });
+  if (window.adminSearchWire) adminSearchWire();   // الإصدار 148: بحث لوحة التحكم
   updateChatUnreadBadge();
 }
 async function updateChatUnreadBadge(){
@@ -1286,17 +1289,8 @@ async function renderSiteConfigAdmin(){
   };
 }
 
-async function renderAdminSettingsPage(){
-  const __tok = screenToken();   // الإصدار 88
-  pushNav(() => renderAdminSettingsPage());
-  const email = await getSession();
-  if(!email) return renderLogin();
-  if(!window.__isAdmin) return renderHome();
-  if(!hasPermission('manage_admin_settings')) return renderAdminHub();
-
-  const settings = await getAdminSettings();
-
-  const items = [
+// الإصدار 148: برّه الدالة عشان «بحث لوحة التحكم» يلاقيها من غير ما الصفحة تتفتح
+const ADMIN_SETTING_ITEMS = [
     { key:'require_email_verification', label:'تفعيل البريد الإلكتروني إلزامي', desc:'يجب أن يضغط العميل رابط التفعيل الذي يصله بالبريد قبل أن يتمكن من استخدام الموقع.' },
     { key:'require_valid_email_domain', label:'التحقق من صحة دومين الإيميل عند التسجيل', desc:'يرفض التسجيل بإيميل دومينه غير موجود فعليًا (حماية من الإيميلات الوهمية).' },
     { key:'require_payment_ref', label:'رقم عملية التحويل إلزامي', desc:'عند السداد بمحفظة أو تحويل بنكي، يجب أن يكتب العميل رقم/مرجع العملية.' },
@@ -1306,8 +1300,8 @@ async function renderAdminSettingsPage(){
     { key:'chat_enabled', label:'تشغيل الدردشة الفورية المدمجة', desc:'إذا أوقفته، لن يتمكن أحد من إرسال أو استقبال رسائل الشات إطلاقًا، حتى لو كانت الأيقونة ظاهرة.' },
     { key:'chat_icon_visible', label:'إظهار أيقونة الدردشة الفورية العائمة', desc:'تقدر تخفي الأيقونة من على كل صفحات الموقع من غير ما توقف الشات نفسه بالكامل.' },
   ];
-
-  const visibilityItems = [
+// الإصدار 148: برّه الدالة عشان «بحث لوحة التحكم» يلاقيها من غير ما الصفحة تتفتح
+const ADMIN_VIS_ITEMS = [
     { key:'hide_dac_screen', label:'إخفاء زرار خطط تعزيز المتوسط (DCA)', desc:'يشيل الزرار من الشاشة الرئيسية للعميل من غير ما يمسح أي بيانات أو خطط موجودة.' },
     { key:'hide_grid_screen', label:'إخفاء زرار خطط الشبكة (Grid)', desc:'' },
     { key:'hide_portfolio_screen', label:'إخفاء زرار ملخص المحفظة', desc:'' },
@@ -1341,6 +1335,19 @@ async function renderAdminSettingsPage(){
     { key:'hide_site_search', label:'إخفاء «البحث العام في الموقع»', desc:'أيقونة البحث في الشريط العلوي: بتدوّر على أي شاشة أو أداة أو خطة أو سهم وتفتحه مباشرة (وكمان Ctrl+K). الشاشات المخفية عن العملاء مبتظهرش في نتايجهم.' },
     { key:'hide_plan_watch', label:'إخفاء «متابعة خططك على آخر سعر» في شاشات الخطط', desc:'المربع اللي فوق خطط DCA وGrid: الخطط اللي سعرها عدّى هدف البيع، والمبلغ المرصود اللي خلص، ونسبة التركّز حسب ميزان المحفظة. الإخفاء بيطبّق على الكل.' },
   ];
+async function renderAdminSettingsPage(){
+  const __tok = screenToken();   // الإصدار 88
+  pushNav(() => renderAdminSettingsPage());
+  const email = await getSession();
+  if(!email) return renderLogin();
+  if(!window.__isAdmin) return renderHome();
+  if(!hasPermission('manage_admin_settings')) return renderAdminHub();
+
+  const settings = await getAdminSettings();
+
+  const items = ADMIN_SETTING_ITEMS;
+
+  const visibilityItems = ADMIN_VIS_ITEMS;
 
   if (screenStale(__tok)) return; app.innerHTML = `<div class="container wide">${logoHeader()}
     <div class="topbar">

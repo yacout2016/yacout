@@ -101,7 +101,8 @@
               <input id="rcAnalyst" value="${E(analyst)}" placeholder="${E(C.t_team)}" ${meta.canRename ? '' : 'readonly class="rc-locked"'}>${meta.canRename ? '' : '<small class="u-muted">🔒 مقفول — بيتبعت باسمك المسجّل في الموقع</small>'}</div>
           </div>
           <h3 class="rc-h">${E(C.t_attach)}</h3>
-          <div class="rc-ch rc-att">${chk('rcAttChart', C.att_chart, C.t_att_chart)}${chk('rcAttAi', C.att_ai, C.t_att_ai)}${chk('rcAttInd', C.att_ind, C.t_att_ind)}${chk('rcAttFib', C.att_fib, C.t_att_fib)}</div>
+          <div class="rc-ch rc-att">${chk('rcAttChart', C.att_chart, C.t_att_chart)}${chk('rcAttAi', C.att_ai, C.t_att_ai)}${chk('rcAttInd', C.att_ind, C.t_att_ind)}${chk('rcAttFib', C.att_fib, C.t_att_fib)}${C.allow_ext ? `<label class="u-check"><input type="checkbox" id="rcAttExt"> 📎 صورة أو PDF من جهازك</label>` : ''}</div>
+          ${C.allow_ext ? `<div class="rc-ext" id="rcExtBox" hidden><input type="file" id="rcExtFile" accept="image/png,image/jpeg,image/webp,application/pdf"><small class="u-muted">صورة (PNG / JPG / WEBP) أو PDF — لحد 5 ميجا. بتظهر في كارت التوصية والإيميل.</small><div id="rcExtInfo" class="u-fs12"></div></div>` : ''}
           <h3 class="rc-h">${E(C.t_channels)}</h3>
           <div class="rc-ch">
             <label class="u-check"><input type="checkbox" id="rcChApp" checked> 🔔 المنصة</label>
@@ -154,6 +155,7 @@
     const ids = ['rcFrom', 'rcTo', 'rcT1', 'rcT2', 'rcT3', 'rcT1p', 'rcT2p', 'rcT3p', 'rcS1', 'rcS1p', 'rcS2', 'rcS2p', 'rcS3', 'rcS3p', 'rcName', 'rcNote', 'rcAnalyst', 'rcSellPct'];
     ids.forEach(id => $(id).addEventListener('input', paint));
     ['rcValid', 'rcAttChart', 'rcAttAi', 'rcAttInd', 'rcAttFib'].forEach(id => $(id).addEventListener('change', paint));
+    EXT = null; wireExt();   // الإصدار 148
     $('rcType').onclick = (e) => { const b = e.target.closest('button[data-t]'); if (!b) return; TYPE = b.dataset.t; $('rcType').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); setType(); };
     document.querySelectorAll('input[name="rcStopMode"]').forEach(x => x.onchange = () => setStopMode());
     let t = null;
@@ -273,7 +275,20 @@
       note: $('rcNote').value.trim(), analyst: $('rcAnalyst').value.trim(), validityHours: +$('rcValid').value, long: !!($('rcValid').selectedOptions[0] && $('rcValid').selectedOptions[0].dataset.long === '1'),
       attach: att, aiText: att.includes('ai') ? aiText() : '', indicators: att.includes('ind') ? indNotes() : [], createdAt: null, updates: [] };
   }
-  function attList(){ return [['rcAttChart', 'chart'], ['rcAttAi', 'ai'], ['rcAttInd', 'ind'], ['rcAttFib', 'fib']].filter(([id]) => $(id) && $(id).checked).map(x => x[1]); }
+  function attList(){ return [['rcAttChart', 'chart'], ['rcAttAi', 'ai'], ['rcAttInd', 'ind'], ['rcAttFib', 'fib'], ['rcAttExt', 'ext']].filter(([id, k]) => $(id) && $(id).checked && (k !== 'ext' || EXT)).map(x => x[1]); }
+  // الإصدار 148: صورة / PDF من جهاز المحلل (لو الأدمن مشغّلها) — EXT = { data, type: 'img'|'pdf', name }
+  let EXT = null;
+  function wireExt(){
+    const cb = $('rcAttExt'), fi = $('rcExtFile'); if (!cb || !fi) return;
+    cb.addEventListener('change', () => { $('rcExtBox').hidden = !cb.checked; if (cb.checked && !EXT) fi.click(); paint(); });
+    fi.addEventListener('change', () => {
+      const f = fi.files && fi.files[0]; const info = $('rcExtInfo');
+      if (!f) { EXT = null; info.textContent = ''; return paint(); }
+      if (!/^(image\/(png|jpeg|webp)|application\/pdf)$/.test(f.type)) { EXT = null; fi.value = ''; info.innerHTML = '<span class="neg">النوع ده مش مسموح — صورة أو PDF بس.</span>'; return paint(); }
+      if (f.size > 5 * 1024 * 1024) { EXT = null; fi.value = ''; info.innerHTML = '<span class="neg">الملف أكبر من 5 ميجا.</span>'; return paint(); }
+      const rd = new FileReader(); rd.onload = () => { EXT = { data: rd.result, type: f.type === 'application/pdf' ? 'pdf' : 'img', name: f.name }; info.innerHTML = `✅ ${E(f.name)} <small>(${(f.size / 1024 / 1024).toFixed(2)} ميجا)</small>`; paint(); }; rd.readAsDataURL(f);
+    });
+  }
   function aiText(){ return AI && AI.text ? AI.text : ''; }
 
   /* ---------- الرسم البياني والمؤشرات (SVG بيتحوّل PNG وقت الإرسال) ---------- */
@@ -424,7 +439,7 @@
     const body = Object.assign({ action, type: o.type, symbol: o.symbol, stockName: o.stockName, market: o.market, timeframe: o.timeframe, from: o.buyFrom ?? '', to: o.buyTo ?? '', validityHours: o.validityHours,
       sellPct: o.sellPct ?? '', stop1: o.stop1 ?? '', stop1pct: o.stop1Pct ?? '', stop2: o.stop2 ?? '', stop2pct: o.stop2Pct ?? '', stop3: o.stop3 ?? '', stop3pct: o.stop3Pct ?? '', note: o.note, analyst: o.analyst, last: LV.last ?? '',
       lv_p: LV.levels ? LV.levels.p : '', lv_s1: LV.levels ? LV.levels.s1 : '', lv_s2: LV.levels ? LV.levels.s2 : '', lv_s3: LV.levels ? LV.levels.s3 : '',
-      attach: o.attach.join(','), aiText: o.aiText, indicators: JSON.stringify(o.indicators), img_chart: imgChart, img_fib: imgFib }, ch);
+      attach: o.attach.join(','), aiText: o.aiText, indicators: JSON.stringify(o.indicators), img_chart: imgChart, img_fib: imgFib, ext_file: o.attach.includes('ext') && EXT ? EXT.data : '' }, ch);
     o.resistances.forEach((x, i) => { body['t' + (i + 1)] = x.level ?? ''; body['t' + (i + 1) + 'pct'] = x.pct ?? ''; });
     return { o, ch, body };
   }
@@ -678,6 +693,8 @@
     const stops = [1, 2, 3].filter(i => r['stop' + i]); const multi = stops.length > 1;
     const chart = opt.preview ? (att.includes('chart') && LAST_SVG.main ? `<div class="rc-cimg">${LAST_SVG.main}</div>` : '') : (r.chartUrl ? `<div class="rc-cimg"><img src="${E(r.chartUrl)}" alt="الرسم البياني" loading="lazy"></div>` : '');
     const fib = opt.preview ? (att.includes('fib') && LAST_SVG.fib ? `<div class="rc-cimg">${LAST_SVG.fib}</div>` : '') : (r.fibUrl ? `<div class="rc-cimg"><img src="${E(r.fibUrl)}" alt="فيبوناتشي" loading="lazy"></div>` : '');
+    const xu = opt.preview ? (att.includes('ext') && EXT ? EXT.data : '') : (r.extUrl || ''), xt = opt.preview ? (EXT && EXT.type) : r.extType;
+    const ext = !xu ? '' : xt === 'pdf' ? `<div class="rc-extatt"><a class="rc-extpdf" href="${E(xu)}" target="_blank" rel="noopener">📄 فتح ملف PDF المرفق من المحلل</a></div>` : `<div class="rc-cimg"><img src="${E(xu)}" alt="مرفق المحلل" loading="lazy"></div>`;   // الإصدار 148
     const ind = (r.indicators || []).length ? `<div class="rc-inds">${r.indicators.map(x => `<span class="rc-xn"><b>${E(x.l)}</b>${x.v ? ' <span class="n">' + E(x.v) + '</span>' : ''}${x.n ? ' — ' + E(x.n) : ''}</span>`).join('')}</div>` : '';
     return `<div class="rc-card rc-${buy ? 'buy' : 'sell'}${expired ? ' rc-expired' : ''}">
       <div class="rc-kindtag">${E(C.t_kind_label || '👨‍💼 توصية تعليمية سريعة من محلل مالي')}</div>
@@ -689,7 +706,7 @@
         : `<div class="rc-line"><span>📉 مستويات الهبوط المتوقعة</span><b class="n">${tg.map(x => N(x.level)).join(' ← ')}</b></div>`) : ''}
       ${r.stop1 ? (buy ? stops.map(i => `<div class="rc-line rc-sl"><span>🛑 وقف الخسارة${multi ? ' ' + i : ''}</span><b class="n">${N(r['stop' + i])}</b><span class="rc-pct">بيع <b class="n">${N(r['stop' + i + 'Pct'] == null ? 100 : r['stop' + i + 'Pct'], 0)}%</b></span></div>`).join('')
         : `<div class="rc-line rc-sl"><span>⚠️ التوصية تعتبر فاشلة لو السعر عدّى لفوق</span><b class="n">${N(r.stop1)}</b></div>`) : ''}
-      ${fib}${ind}
+      ${fib}${ext}${ind}
       ${r.aiText ? `<div class="rc-ai"><b>🤖 رأي بصيرة AI</b><div>${E(r.aiText)}</div></div>` : ''}
       ${r.note ? `<div class="rc-note">📝 ${E(r.note)}</div>` : ''}
       <div class="rc-foot">${E(C.t_analyst || 'المحلل')}: ${E(r.analyst || C.t_team || 'فريق GRIFFINE')}${r.createdAt ? ' — ' + formatDateAr(r.createdAt) : ''} — ${E(C.t_disclaimer || 'تحليل تعليمي وليس أمر شراء أو بيع')}</div>
@@ -743,6 +760,7 @@
       ['h', 'موافقة الأدمن قبل الإرسال'], ['approval_on', 'كل توصيات المحللين تروح للأدمن (أو اللي معاه صلاحية «مراجعة واعتماد التوصيات») يوافق عليها الأول، وبعدين تتبعت للمشتركين', 'bool'],
       ['h', 'الرسالة والإشعارات'], ['t_long_term', 'علامة التوصية طويلة المدى'], ['t_expired_title', 'عنوان إشعار انتهاء الصلاحية'], ['t_expired_body', 'نص إشعار انتهاء الصلاحية', 'area'],
       ['t_disclaimer', 'التنويه في آخر الرسالة', 'area'], ['t_team', 'الاسم لو المحلل مالوش اسم مسجّل'], ['t_email_cta', 'زرار الإيميل'], ['t_email_foot', 'آخر الإيميل', 'area'], ['t_wa_link', 'سطر اللينك في الواتساب'],
+      ['h', 'المرفقات من جهاز المحلل'], ['allow_ext', 'السماح للمحلل برفع صورة أو ملف PDF من جهازه مع التوصية (مقفول افتراضيًا)', 'bool'],
       ['h', 'الافتراضيات'], ['entry_band', 'نطاق منطقة الدخول من النقطة المحورية %', 'num'], ['tp1', 'نسبة البيع عند الهدف 1 %', 'num'], ['tp2', 'نسبة البيع عند الهدف 2 %', 'num'], ['tp3', 'نسبة البيع عند الهدف 3 %', 'num'],
       ['st1', 'وقف 3 مراحل — نسبة المرحلة 1 %', 'num'], ['st2', 'نسبة المرحلة 2 %', 'num'], ['st3', 'نسبة المرحلة 3 %', 'num'], ['long_hours', '«طويلة المدى» من صلاحية', 'valid'],
       ['att_chart', 'إرفاق الرسم مختار افتراضيًا', 'bool'], ['att_ai', 'إرفاق رأي بصيرة مختار افتراضيًا', 'bool'], ['att_ind', 'إرفاق المؤشرات مختار افتراضيًا', 'bool'], ['att_fib', 'إرفاق فيبوناتشي مختار افتراضيًا', 'bool'], ['ind_default', 'المؤشرات الظاهرة في الرسم افتراضيًا', 'ind'],

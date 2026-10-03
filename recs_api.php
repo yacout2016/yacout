@@ -88,7 +88,8 @@ try {
         $regName = rc_registered_name($conn, $email);
         $analyst = rc_can_rename($conn) ? mb_substr(trim((string)($_POST['analyst'] ?? '')), 0, 120) : '';
         if ($analyst === '') $analyst = $regName;
-        $att = array_values(array_intersect(explode(',', (string)($_POST['attach'] ?? '')), ['chart', 'ai', 'ind', 'fib']));
+        $att = array_values(array_intersect(explode(',', (string)($_POST['attach'] ?? '')), ['chart', 'ai', 'ind', 'fib', 'ext']));
+        if (empty(rc_cfg($conn)['allow_ext'])) $att = array_values(array_diff($att, ['ext']));   // الإصدار 148: الأدمن قافل رفع الملفات
         $aiText = in_array('ai', $att, true) ? mb_substr(trim((string)($_POST['aiText'] ?? '')), 0, 1200) : '';
         $ind = [];
         foreach ((array)json_decode((string)($_POST['indicators'] ?? '[]'), true) as $x) if (is_array($x) && count($ind) < 10)
@@ -101,6 +102,12 @@ try {
             elseif (rc_store_img($imgKey, $nm, $du)) $imgOk[] = $nm;
         }
         $att = array_values(array_filter($att, fn($a) => !in_array($a, ['chart', 'fib'], true) || in_array($a, $imgOk, true)));
+        $extPrev = null;   // الإصدار 148: صورة / PDF من جهاز المحلل
+        if (in_array('ext', $att, true)) {
+            $xd = (string)($_POST['ext_file'] ?? '');
+            if ($preview) { $xx = rc_ext_decode($xd); if ($xx) $extPrev = ['url' => $xd, 'type' => $xx['t'] === 'pdf' ? 'pdf' : 'img']; else $att = array_values(array_diff($att, ['ext'])); }
+            elseif (!rc_store_ext($imgKey, $xd)) { if ($xd !== '') rc_out(["success" => false, "message" => "الملف المرفق لازم يكون صورة (PNG / JPG / WEBP) أو PDF لحد 5 ميجا."]); $att = array_values(array_diff($att, ['ext'])); }
+        }
         if ($aiText === '') $att = array_values(array_diff($att, ['ai']));
         if (!$indJson) $att = array_values(array_diff($att, ['ind']));
         $attS = implode(',', $att);
@@ -110,7 +117,7 @@ try {
             $r = ['id' => 0, 'symbol' => $sym, 'stock_name' => $name, 'buy_from' => $from, 'buy_to' => $to, 'resistance1' => $t[1], 'resistance1_pct' => $tp[1], 'resistance2' => $t[2], 'resistance2_pct' => $tp[2],
                 'resistance3' => $t[3], 'resistance3_pct' => $tp[3], 'support1' => $L['s1'], 'support2' => $L['s2'], 'support3' => $L['s3'], 'validity_hours' => $valid, 'created_by' => $email, 'market' => $mkt,
                 'rec_type' => $type, 'timeframe' => $tf, 'currency' => $ccy, 'pivot' => $L['p'], 'last_price' => $L['last'], 'stop1' => $s1, 'stop1_pct' => $s1p, 'stop2' => $s2, 'stop2_pct' => $s2p, 'stop3' => $s3, 'stop3_pct' => $s3p,
-                'sell_pct' => $sellPct, 'note' => $note, 'channels' => $chs, 'analyst_name' => $analyst, 'img_key' => null, 'attach' => $attS, 'ai_text' => $aiText, 'indicators' => $indJson, 'created_at' => date('Y-m-d H:i:s'), 'status' => 'preview', '_img' => $imgData];
+                'sell_pct' => $sellPct, 'note' => $note, 'channels' => $chs, 'analyst_name' => $analyst, 'img_key' => null, 'attach' => $attS, 'ai_text' => $aiText, 'indicators' => $indJson, 'created_at' => date('Y-m-d H:i:s'), 'status' => 'preview', '_img' => $imgData, '_ext' => $extPrev];
             rc_out(["success" => true] + rc_preview_payload($conn, $r));
         }
         // الحالة: مسودة / بانتظار موافقة الأدمن / تتبعت على طول

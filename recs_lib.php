@@ -46,7 +46,8 @@ function rc_defaults(){
         't_email_cta' => 'افتح التوصية في GRIFFINE', 't_email_foot' => 'الأسعار متأخرة حوالي 15 دقيقة. وصلك الإيميل ده عشان أنت مشترك في التوصيات، وتقدر توقفه من إعدادات الإشعارات.',
         't_wa_link' => '🔗 التفاصيل والرسم:',
         'entry_band' => 1, 'tp1' => 40, 'tp2' => 30, 'tp3' => 30, 'st1' => 50, 'st2' => 30, 'st3' => 20, 'long_hours' => 336,
-        'att_chart' => true, 'att_ai' => true, 'att_ind' => true, 'att_fib' => false, 'ind_default' => 'sma20,sma50,rsi',
+        'att_chart' => true, 'att_ai' => true, 'att_ind' => true, 'att_fib' => false, 'allow_ext' => false,   // الإصدار 148: رفع صورة / PDF من جهاز المحلل (مقفول افتراضيًا)
+        'ind_default' => 'sma20,sma50,rsi',
         // الإصدار 131: موافقة الأدمن قبل الإرسال (مقفولة افتراضيًا) + نصوص المعاينة
         't_kind_label' => '👨‍💼 توصية تعليمية سريعة من محلل مالي', 't_kind_short' => 'تعليمية سريعة من محلل مالي',   // الإصدار 133
         'approval_on' => false, 't_btn_preview' => '👁 معاينة قبل الإرسال', 't_btn_draft' => '💾 حفظ مسودة', 't_send_review' => '📨 إرسال للمراجعة',
@@ -155,6 +156,40 @@ function rc_store_img($key, $name, $data){
     if ($bin === false || strncmp($bin, "\x89PNG", 4) !== 0 || @getimagesizefromstring($bin) === false) return false;
     $d = rc_img_dir(); if (!$d) return false;
     return @file_put_contents("$d/{$key}_{$name}.png", $bin) !== false;
+}
+/* الإصدار 148: مرفق خارجي من جهاز المحلل (صورة PNG / JPG / WEBP أو PDF لحد 5 ميجا) — بيتشغّل من إعدادات شاشة التوصيات */
+const RC_EXT_TYPES = ['png' => 'image/png', 'jpg' => 'image/jpeg', 'webp' => 'image/webp', 'pdf' => 'application/pdf'];
+function rc_ext_decode($data){
+    if (!is_string($data) || !preg_match('#^data:(image/png|image/jpeg|image/webp|application/pdf);base64,#', $data, $m) || strlen($data) > 7200000) return null;
+    $bin = base64_decode(substr($data, strlen($m[0])), true);
+    if ($bin === false || strlen($bin) > 5 * 1024 * 1024 || strlen($bin) < 16) return null;
+    if (strncmp($bin, "\x89PNG", 4) === 0) $t = 'png';
+    elseif (strncmp($bin, "\xFF\xD8\xFF", 3) === 0) $t = 'jpg';
+    elseif (substr($bin, 0, 4) === 'RIFF' && substr($bin, 8, 4) === 'WEBP') $t = 'webp';
+    elseif (strncmp($bin, '%PDF', 4) === 0) $t = 'pdf';
+    else return null;
+    if ($t !== 'pdf' && @getimagesizefromstring($bin) === false) return null;
+    return ['t' => $t, 'bin' => $bin];
+}
+function rc_store_ext($key, $data){
+    if (!preg_match('/^[a-f0-9]{32}$/', $key)) return null;
+    $x = rc_ext_decode($data); if (!$x) return null;
+    $d = rc_img_dir(); if (!$d) return null;
+    return @file_put_contents("$d/{$key}_ext.{$x['t']}", $x['bin']) !== false ? $x['t'] : null;
+}
+function rc_ext_file($key){
+    if (!preg_match('/^[a-f0-9]{32}$/', (string)$key)) return null;
+    $d = rc_img_dir(); if (!$d) return null;
+    foreach (RC_EXT_TYPES as $t => $mime) if (is_file("$d/{$key}_ext.$t")) return ['path' => "$d/{$key}_ext.$t", 't' => $t, 'mime' => $mime];
+    return null;
+}
+// [رابط, نوع] للمرفق الخارجي (pdf / img) — أو null
+function rc_ext_info($r, $abs = false){
+    $a = explode(',', (string)($r['attach'] ?? ''));
+    if (!in_array('ext', $a, true)) return null;
+    if (!empty($r['_ext'])) return ['url' => $r['_ext']['url'], 'type' => $r['_ext']['type']];
+    $f = rc_ext_file($r['img_key'] ?? ''); if (!$f) return null;
+    return ['url' => ($abs ? MAIL_SITE_URL : '') . '/rec_img.php?k=' . $r['img_key'] . '&n=ext', 'type' => $f['t'] === 'pdf' ? 'pdf' : 'img'];
 }
 function rc_img_url($r, $name){
     $a = explode(',', (string)($r['attach'] ?? ''));
@@ -358,6 +393,8 @@ function rc_email($conn, $r){
     if (is_array($I) && $I) { $cells = ''; foreach ($I as $x) $cells .= '<tr><td style="padding:7px 10px;border:1px solid #E5E7EB;font-size:13.5px;"><b>' . $e($x['l']) . ($x['v'] !== '' ? ' <span dir="ltr">' . $e($x['v']) . '</span>' : '') . '</b>' . ($x['n'] !== '' ? '<br><span style="color:#4B5563;">' . $e($x['n']) . '</span>' : '') . '</td></tr>'; $ind = '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-top:10px;">' . $cells . '</table>'; }
     if (($u = rc_img_url($r, 'chart')) || $ind) $body .= $sec('الرسم البياني والمؤشرات', $img($u, 'الرسم البياني') . $ind);
     if ($u = rc_img_url($r, 'fib')) $body .= $sec('فيبوناتشي — الأهداف ووقف الخسارة', $img($u, 'فيبوناتشي'));
+    if ($xi = rc_ext_info($r, true)) $body .= $sec('📎 مرفق من المحلل', $xi['type'] === 'pdf'
+        ? '<a href="' . $e($xi['url']) . '" style="display:inline-block;background:#0F3D6E;color:#fff;text-decoration:none;padding:10px 18px;border-radius:10px;font-weight:700;">📄 فتح ملف PDF المرفق</a>' : $img($xi['url'], 'مرفق المحلل'));
     if (in_array('ai', $a, true) && trim((string)$r['ai_text']) !== '') $body .= $sec('🤖 رأي بصيرة AI', '<div style="background:#F6F3FF;border:1px solid #E1D8FF;border-radius:10px;padding:12px 14px;font-size:14px;line-height:1.9;color:#1F2937;">' . nl2br($e($r['ai_text'])) . '</div>');
     if (trim((string)$r['note']) !== '') $body .= $sec('📝 ملاحظة المحلل', '<div style="font-size:14px;line-height:1.9;">' . nl2br($e($r['note'])) . '</div>');
     $analyst = $r['analyst_name'] ?: $C['t_team'];

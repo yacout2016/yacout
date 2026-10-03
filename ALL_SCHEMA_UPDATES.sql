@@ -1,4 +1,4 @@
-/* GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 147) — كل التحديثات، آمن يتشغل أكتر من مرة. الصقه كله في تبويب SQL ← Go */
+/* GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 148) — كل التحديثات، آمن يتشغل أكتر من مرة. الصقه كله في تبويب SQL ← Go */
 /* v69: جدول login_attempts (حماية من تخمين كلمات المرور). */
 /* v72: جدول ui_customizations (استوديو التصميم) + جدول email… */
 /* v82: عمود allow_upload في chat_conversation_meta (الأدمن ب… */
@@ -35,6 +35,7 @@
 /* v145: مفيش تغيير في قاعدة البيانات (الرئيسية من غير أزرار تحكم + رقم جديد عشان الموبايل يحدّث نفسه) */
 /* v146: عدادات صفحة الموقع العامة ← أرقام يدوية مناسبة (مرة واحدة) — بتتعدّل من لوحة التحكم ← صفحة اللاندينج ← العدادات */
 /* v147: مفيش تغيير في الجداول (العدادات بتزيد يوميًا + الشروط والأحكام + حالة مراجعة التوصيات) */
+/* v148: مفيش تغيير في الجداول (مرفق صورة / PDF مع التوصية — مقفول افتراضيًا + بحث لوحة التحكم) */
 /* v85: ترميز الاتصال UTF-8 عشان النصوص العربي اللي بتتضاف من… */
 SET NAMES utf8mb4;
 CREATE TABLE IF NOT EXISTS users (
@@ -818,4 +819,4 @@ INSERT INTO subscribers (account_email, name, phone, contact_email, plan_id, pla
 INSERT IGNORE INTO site_config (config_key, config_value) VALUES ('mig_138_perks', '1');
 UPDATE ui_customizations SET data_value = JSON_SET(data_value, '$.stats.items[0].mode', 'manual', '$.stats.items[0].value', 12480, '$.stats.items[1].mode', 'manual', '$.stats.items[1].value', 860, '$.stats.items[2].mode', 'manual', '$.stats.items[2].value', 2140, '$.stats.items[3].mode', 'manual', '$.stats.items[3].value', 9750) WHERE ui_key = 'landing' AND JSON_VALID(data_value) AND JSON_CONTAINS_PATH(data_value, 'one', '$.stats.items[3]') AND JSON_UNQUOTE(JSON_EXTRACT(data_value, '$.stats.items[0].key')) = 'visitors' AND NOT EXISTS (SELECT 1 FROM site_config WHERE config_key = 'mig_146_stats');
 INSERT IGNORE INTO site_config (config_key, config_value) VALUES ('mig_146_stats', '1');
-SELECT 'GRIFFINE database is up to date (v147)' AS result;
+SELECT 'GRIFFINE database is up to date (v148)' AS result;

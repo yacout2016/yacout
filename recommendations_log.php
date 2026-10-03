@@ -39,12 +39,15 @@ function rc_extra($conn, $r){
     $f = fn($k) => isset($r[$k]) && $r[$k] !== null ? (float)$r[$k] : null;
     $att = array_values(array_filter(explode(',', (string)($r['attach'] ?? ''))));
     $img = fn($n) => !empty($r['img_key']) && in_array($n, $att, true) ? '/rec_img.php?k=' . $r['img_key'] . '&n=' . $n : null;
+    $ext = null;   // الإصدار 148: صورة / PDF من جهاز المحلل
+    if (in_array('ext', $att, true) && preg_match('/^[a-f0-9]{32}$/', (string)($r['img_key'] ?? ''))) { require_once __DIR__ . '/uploads.php'; $ud = upl_dir();
+        if ($ud) foreach (['png', 'jpg', 'webp', 'pdf'] as $t) if (is_file("$ud/rec/{$r['img_key']}_ext.$t")) { $ext = ['url' => '/rec_img.php?k=' . $r['img_key'] . '&n=ext', 'type' => $t === 'pdf' ? 'pdf' : 'img']; break; } }
     $o = ["type" => $r['rec_type'] ?? 'buy', "timeframe" => $r['timeframe'] ?? null, "currency" => $r['currency'] ?? null, "pivot" => $f('pivot'), "lastPrice" => $f('last_price'),
         "stop1" => $f('stop1'), "stop1Pct" => $f('stop1_pct'), "stop2" => $f('stop2'), "stop2Pct" => $f('stop2_pct'), "stop3" => $f('stop3'), "stop3Pct" => $f('stop3_pct'), "sellPct" => $f('sell_pct'),
         "note" => $r['note'] ?? '', "channels" => $r['channels'] ?? '', "analyst" => $r['analyst_name'] ?? '', "status" => $r['status'] ?? 'active',
         "approvedBy" => $r['approved_by'] ?? null, "approvedAt" => $r['approved_at'] ?? null, "rejectReason" => $r['reject_reason'] ?? '',   // الإصدار 131
         // الإصدار 129: المرفقات (الرسم / فيبوناتشي / رأي بصيرة / المؤشرات) + طويلة المدى + وقت الانتهاء
-        "attach" => $att, "chartUrl" => $img('chart'), "fibUrl" => $img('fib'), "aiText" => in_array('ai', $att, true) ? (string)($r['ai_text'] ?? '') : '',
+        "attach" => $att, "chartUrl" => $img('chart'), "fibUrl" => $img('fib'), "extUrl" => $ext['url'] ?? null, "extType" => $ext['type'] ?? null, "aiText" => in_array('ai', $att, true) ? (string)($r['ai_text'] ?? '') : '',
         "indicators" => in_array('ind', $att, true) ? (json_decode((string)($r['indicators'] ?? ''), true) ?: []) : [],
         "long" => function_exists('rc_is_long') ? rc_is_long($conn, (int)$r['validity_hours']) : (int)$r['validity_hours'] >= 336,
         "expiresAt" => date('Y-m-d H:i:s', strtotime($r['created_at']) + 3600 * (int)$r['validity_hours']), "updates" => []];
