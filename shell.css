@@ -1540,3 +1540,5 @@ body.g-shell #app select.gs-curve-rngsel, select.gs-curve-rngsel{ width:auto !im
 .bc-pv{ margin-top:10px; } .bc-pv-n{ border:1px solid var(--gs-border,#E5E7EB); border-radius:12px; padding:10px; font-size:13px; }
 .bc-pv-m{ border:1px solid var(--gs-border,#E5E7EB); border-radius:12px; padding:14px; background:var(--gs-surface-2,#F8FAFC); font-size:13.5px; line-height:1.9; } .bc-pv-m h3{ margin:0 0 8px; color:#C9A227; }
 .bc-pv-b{ display:inline-block; background:#C9A227; color:#0F172A; font-weight:700; border-radius:10px; padding:8px 16px; margin-top:6px; }
+.gs-bc-logo{ width:30px; height:26px; object-fit:contain; vertical-align:middle; margin-inline-end:6px; }
+.bc-pv-hd{ background:#0F172A; border-bottom:3px solid #C9A227; margin:-14px -14px 12px; padding:10px 14px; border-radius:12px 12px 0 0; display:flex; align-items:center; gap:10px; } .bc-pv-hd span{ color:#C9A227; font-weight:800; letter-spacing:3px; }

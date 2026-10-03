@@ -132,7 +132,7 @@
   }
   // الإصدار 154: «📢 رسالة لكل المستخدمين» (broadcast_api.php) — العنوان والنص والزرار من عندك · إشعار و/أو إيميل · مين يستلم
   //   سجل الإرسالات + السلة (المسح والاسترجاع والحذف النهائي للأدمن بس — الموظف بصلاحية «send_broadcast» بيبعت بس)
-  const BC_DOMAIN = { title: '🌐 GRIFFINE اتنقل لرابط جديد', body: 'أهلًا بيك،\nمنصة GRIFFINE اتنقلت لرابط جديد: www.griffine.app\nافتح الرابط الجديد وسجّل دخولك من جديد بنفس الإيميل وكلمة السر — حسابك وخططك وكل بياناتك زي ما هي.\nلو كنت مثبّت التطبيق على الموبايل، احذفه وثبّته تاني من الرابط الجديد.', btn_label: 'افتح www.griffine.app', btn_url: 'https://www.griffine.app/index.php' };
+  const BC_DOMAIN = { title: 'GRIFFINE اتنقل لرابط جديد', body: 'أهلًا بيك،\nمنصة GRIFFINE اتنقلت لرابط جديد: www.griffine.app\nافتح الرابط الجديد وسجّل دخولك من جديد بنفس الإيميل وكلمة السر — حسابك وخططك وكل بياناتك زي ما هي.\nلو كنت مثبّت التطبيق على الموبايل، احذفه وثبّته تاني من الرابط الجديد.', btn_label: 'افتح www.griffine.app', btn_url: 'https://www.griffine.app/index.php' };
   let BC = null, BCV = 'sent', BCF = null;
   window.renderAdminBroadcast = async function(view){
     const tok = screenToken(); pushNav(() => renderAdminBroadcast(view)); window.__lastPageKey = 'admin_broadcast';
@@ -168,7 +168,7 @@
         <label class="bc-f">العنوان <input id="bcTitle" maxlength="200" value="${E(f.title)}"></label>
         <label class="bc-f">نص الرسالة (كل سطر فقرة في الإيميل) <textarea id="bcBody" rows="6" maxlength="5000">${E(f.body)}</textarea></label>
         <div class="mk-row"><label>نص زرار الإيميل <input id="bcBtnL" maxlength="80" value="${E(f.btn_label)}" placeholder="افتح GRIFFINE"></label><label>رابط الزرار <input id="bcBtnU" dir="ltr" maxlength="300" value="${E(f.btn_url)}" placeholder="${E(BC.siteUrl)}/index.php"></label></div>
-        <div class="mk-row u-mt6"><button type="button" class="small secondary" id="bcPreset">🌐 نص الدومين الجديد</button><button type="button" class="small secondary" id="bcPrev">👁 معاينة</button><button type="button" class="small secondary" id="bcTest">🧪 تجربة على إيميلي</button><button type="button" class="small" id="bcSend">📢 ابعت</button></div>
+        <div class="mk-row u-mt6"><button type="button" class="small secondary" id="bcPreset">🔗 نص الدومين الجديد</button><button type="button" class="small secondary" id="bcPrev">👁 معاينة</button><button type="button" class="small secondary" id="bcTest">🧪 تجربة على إيميلي</button><button type="button" class="small" id="bcSend">📢 ابعت</button></div>
         <div id="bcPv"></div><div id="bcProg" class="u-fs12 u-mt6"></div></div>`}
       <div class="section-card"><div class="section-title">${tr ? '🗑 السلة' : '📤 الإرسالات'} (${N(BC.rows.length)})</div>
         ${BC.canDelete && BC.rows.length ? `<div class="mk-row"><label class="bc-all"><span><input type="checkbox" id="bcAll"> تحديد الكل</span></label>${tr ? `<button type="button" class="small" id="bcRestoreSel">↩️ استرجاع المحدد</button><button type="button" class="small danger" id="bcPurgeSel">🗑 حذف المحدد نهائي</button><button type="button" class="small danger" id="bcEmpty">🧹 تفريغ السلة</button>` : `<button type="button" class="small danger" id="bcTrashSel">🗑 مسح المحدد</button>`}</div>` : ''}
@@ -199,8 +199,8 @@
     const $ = (id) => document.getElementById(id), on = (id, fn) => { const el = $(id); if (el) el.onclick = fn; };
     on('bcBack', () => renderAdminHub()); on('bcTabSent', () => renderAdminBroadcast('sent')); on('bcTabTrash', () => renderAdminBroadcast('trash'));
     on('bcPreset', () => { BCF = Object.assign(bcForm(), BC_DOMAIN); bcDraw(tok); });
-    on('bcPrev', () => { const f = bcForm(); $('bcPv').innerHTML = `<div class="bc-pv"><div class="u-fs12 u-muted">🔔 الإشعار جوه الموقع</div><div class="bc-pv-n"><b>${E(f.title)}</b><div>${E(f.body.replace(/\n+/g, ' '))}</div></div>
-      <div class="u-fs12 u-muted u-mt6">📧 الإيميل (من info@griffine.app)</div><div class="bc-pv-m"><h3>${E(f.title)}</h3>${f.body.split(/\n+/).filter(Boolean).map(p => `<p>${E(p)}</p>`).join('')}<span class="bc-pv-b">${E(f.btn_label || 'افتح GRIFFINE')}</span></div></div>`; });
+    on('bcPrev', () => { const f = bcForm(); $('bcPv').innerHTML = `<div class="bc-pv"><div class="u-fs12 u-muted">🔔 الإشعار جوه الموقع</div><div class="bc-pv-n"><img class="gs-bc-logo" src="griffine-logo-${document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'}.webp" alt="GRIFFINE"><b>${E(f.title)}</b><div>${E(f.body.replace(/\n+/g, ' '))}</div></div>
+      <div class="u-fs12 u-muted u-mt6">📧 الإيميل (من info@griffine.app)</div><div class="bc-pv-m"><div class="bc-pv-hd"><img src="griffine-logo-email.png" alt="GRIFFINE" width="55" height="48"><span>GRIFFINE</span></div><h3>${E(f.title)}</h3>${f.body.split(/\n+/).filter(Boolean).map(p => `<p>${E(p)}</p>`).join('')}<span class="bc-pv-b">${E(f.btn_label || 'افتح GRIFFINE')}</span></div></div>`; });
     on('bcTest', async () => { const r = await apiPost('/broadcast_api.php', Object.assign({ action: 'test' }, bcForm())).catch(() => null); GShell.toast((r && r.message) || 'تعذّر الإرسال', r && r.success ? 'ok' : 'err'); });
     on('bcSend', async () => {
       const f = bcForm(); if (!f.title || !f.body) return GShell.toast('اكتب العنوان ونص الرسالة', 'err');

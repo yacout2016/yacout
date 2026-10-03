@@ -23,6 +23,8 @@ const ST = { email: 'bcstaff154@example.com', pass: 'Test12345bc' };   // موظ
   await a.click('#bcSend'); await a.waitForSelector('.bc-item', { timeout: 120000 }).catch(() => {});
   check('اتبعتت لكل المستخدمين على دفعات (إشعار لكل حساب)', +q("SELECT COUNT(*) FROM user_alerts") - a0 === total, (+q("SELECT COUNT(*) FROM user_alerts") - a0) + '/' + total);
   check('إيميل لكل حساب بالعنوان اللي كتبته', +q("SELECT COUNT(*) FROM email_log WHERE mail_type='broadcast' AND subject LIKE '%التجريبي%'") - m0 === total);
+  check('الإشعار جوه الموقع بشعار GRIFFINE (kind = bc)', q("SELECT kind FROM user_alerts WHERE account_email='bc3@example.com' ORDER BY id DESC LIMIT 1") === 'bc');
+  check('الإيميل فيه شعار GRIFFINE (PNG) فوق', require('fs').readFileSync(require('path').join(__dirname, '..', '..', 'mailer.php'), 'utf8').includes('/griffine-logo-email.png') && require('fs').existsSync(require('path').join(__dirname, '..', '..', 'griffine-logo-email.png')));
   check('السجل: الرسالة اتسجلت «✅ اتبعتت» بالعدد', q("SELECT CONCAT(status,'|',sent_app,'|',total) FROM broadcasts ORDER BY id DESC LIMIT 1") === `done|${total}|${total}` && await a.evaluate(() => /اتبعتت/.test(document.querySelector('.bc-item').textContent)));
   // إشعار بس لفئة «اللي اشتراكهم خلص» (مفيش حد) ← رسالة واضحة
   await a.selectOption('#bcAud', 'expired'); await a.uncheck('#bcMail');
@@ -30,6 +32,8 @@ const ST = { email: 'bcstaff154@example.com', pass: 'Test12345bc' };   // موظ
   check('عدد «اللي اشتراكهم خلص» مظبوط', await a.evaluate((n) => new RegExp('\\(' + n + '\\)').test(document.querySelector('#bcAud option[value=expired]').textContent), ex));
   // 🔁 استخدمها تاني + مسح ← السلة ← استرجاع ← حذف نهائي
   await a.click('[data-reuse]'); await a.waitForTimeout(200);
+  await a.evaluate(() => { const al = { id: 1, title: 'x', body: 'y', kind: 'bc', is_read: false, created_at: '2026-10-03 10:00:00' }; document.body.insertAdjacentHTML('beforeend', '<div id="bcLogoT">' + mkBcLogo(al) + '</div>'); });
+  check('شاشة الإشعارات بتعرض الشعار مكان أي إيموجي', await a.evaluate(() => !!document.querySelector('#bcLogoT img.gs-bc-logo[src*="griffine-logo"]')));
   check('🔁 استخدمها تاني ← النص رجع في الخانات', await a.evaluate(() => document.getElementById('bcTitle').value === 'عرض 154 التجريبي'));
   const id = q("SELECT id FROM broadcasts ORDER BY id DESC LIMIT 1");
   await a.click(`[data-trash="${id}"]`); await a.waitForTimeout(1200);

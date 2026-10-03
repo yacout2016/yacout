@@ -76,66 +76,66 @@ header("Content-Security-Policy: default-src 'self'; "
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="theme-boot.js?v=154"></script>
-<link rel="stylesheet" href="griffine.css?v=154">
-<link rel="stylesheet" href="shell.css?v=154">
-<link rel="stylesheet" href="landing.css?v=154">
+<script src="theme-boot.js?v=155"></script>
+<link rel="stylesheet" href="griffine.css?v=155">
+<link rel="stylesheet" href="shell.css?v=155">
+<link rel="stylesheet" href="landing.css?v=155">
 <?php if (!$gLite): ?>
-<link rel="stylesheet" href="basira.css?v=154">
-<link rel="stylesheet" href="mizan.css?v=154">
-<link rel="stylesheet" href="mizanai.css?v=154">
+<link rel="stylesheet" href="basira.css?v=155">
+<link rel="stylesheet" href="mizan.css?v=155">
+<link rel="stylesheet" href="mizanai.css?v=155">
 <?php endif; ?>
 </head>
 <body<?php echo $gLite ? ' data-glite="1"' : ''; ?>>
 <div id="app"></div>
 <!-- الإصدار 100: الشاشات الطارئة (صيانة / انقطاع النت / السيرفر / التحميل البطيء) - لازم تبقى قبل أي ملف تاني -->
-<script src="emergency.js?v=154"></script>
+<script src="emergency.js?v=155"></script>
 <?php if ($gLite): ?>
-<script src="lite-stubs.js?v=154"></script>
+<script src="lite-stubs.js?v=155"></script>
 <?php endif; ?>
 
-<script src="shell.js?v=154"></script>
+<script src="shell.js?v=155"></script>
 <!-- الإصدار 72: استوديو التصميم - يطبّق الثيم وتعديلات الأدمن على كل الشاشات (شاشة التعديل نفسها studio-editor.js تُحمَّل للأدمن فقط) -->
-<script src="studio.js?v=154"></script>
+<script src="studio.js?v=155"></script>
 <!-- الإصدار 88: griffine.js قُسّم إلى ملفات حسب الأقسام (بالترتيب نفسه) - يجب أن يبقى app-init.js آخر ملف -->
-<script src="app-core.js?v=154"></script>
-<script src="app-public.js?v=154"></script>
-<script src="app-subscribe.js?v=154"></script>
+<script src="app-core.js?v=155"></script>
+<script src="app-public.js?v=155"></script>
+<script src="app-subscribe.js?v=155"></script>
 <?php if (!$gLite): ?>
-<script src="app-admin.js?v=154"></script>
-<script src="app-plans.js?v=154"></script>
-<script src="app-screener.js?v=154"></script>
+<script src="app-admin.js?v=155"></script>
+<script src="app-plans.js?v=155"></script>
+<script src="app-screener.js?v=155"></script>
 <?php endif; ?>
-<script src="app-chat.js?v=154"></script>
-<script src="app-nav.js?v=154"></script>
+<script src="app-chat.js?v=155"></script>
+<script src="app-nav.js?v=155"></script>
 <?php if (!$gLite): ?>
-<script src="hr.js?v=154"></script>
-<script src="markets.js?v=154"></script>
-<script src="trades.js?v=154"></script>
-<script src="faq.js?v=154"></script>
-<script src="trash.js?v=154"></script>
+<script src="hr.js?v=155"></script>
+<script src="markets.js?v=155"></script>
+<script src="trades.js?v=155"></script>
+<script src="faq.js?v=155"></script>
+<script src="trash.js?v=155"></script>
 <?php endif; ?>
-<script src="promo.js?v=154"></script>
+<script src="promo.js?v=155"></script>
 <?php if (!$gLite): ?>
-<script src="notify.js?v=154"></script>
-<script src="ai_access.js?v=154"></script>
-<script src="recs.js?v=154"></script>
-<script src="opps.js?v=154"></script>
+<script src="notify.js?v=155"></script>
+<script src="ai_access.js?v=155"></script>
+<script src="recs.js?v=155"></script>
+<script src="opps.js?v=155"></script>
 <?php endif; ?>
-<script src="landing.js?v=154"></script>
+<script src="landing.js?v=155"></script>
 <?php if (!$gLite): ?>
-<script src="landing-admin.js?v=154"></script>
-<script src="basira.js?v=154"></script>
-<script src="mizan.js?v=154"></script>
-<script src="mizanai.js?v=154"></script>
-<script src="perks.js?v=154"></script>
+<script src="landing-admin.js?v=155"></script>
+<script src="basira.js?v=155"></script>
+<script src="mizan.js?v=155"></script>
+<script src="mizanai.js?v=155"></script>
+<script src="perks.js?v=155"></script>
 <?php endif; ?>
-<script src="periods.js?v=154"></script>
+<script src="periods.js?v=155"></script>
 <?php if (!$gLite): ?>
-<script src="admin-search.js?v=154"></script>
-<script src="rd.js?v=154"></script>
-<script src="mkt.js?v=154"></script>
+<script src="admin-search.js?v=155"></script>
+<script src="rd.js?v=155"></script>
+<script src="mkt.js?v=155"></script>
 <?php endif; ?>
-<script src="app-init.js?v=154"></script>
+<script src="app-init.js?v=155"></script>
 </body>
 </html>

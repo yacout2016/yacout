@@ -92,9 +92,12 @@ if ($action === 'batch') {
     $st->bind_param("i", $after); $st->execute(); $res = $st->get_result(); $users = []; while ($x = $res->fetch_assoc()) $users[] = $x; $st->close();
     $app = 0; $mail = 0; $last = $after; $paras = bc_paras($b['body']); $btn = bc_button($b);
     $alertBody = mb_substr(implode(' ', $paras), 0, 1000);
+    $hasKind = false; try { $c = $conn->query("SHOW COLUMNS FROM user_alerts LIKE 'kind'"); $hasKind = $c && $c->num_rows > 0; } catch (Throwable $e) {}
     foreach ($users as $u) {
         $last = (int)$u['id']; $email = (string)$u['username'];
-        if ((int)$b['ch_app'] === 1) { try { $i = $conn->prepare("INSERT INTO user_alerts (account_email, title, body, symbol, market) VALUES (?, ?, ?, NULL, NULL)"); $i->bind_param("sss", $email, $b['title'], $alertBody); $i->execute(); $i->close(); $app++; } catch (Throwable $e) {} }
+        if ((int)$b['ch_app'] === 1) { try {   // kind = 'bc' ← الإشعار بيظهر بشعار GRIFFINE
+            $i = $hasKind ? $conn->prepare("INSERT INTO user_alerts (account_email, title, body, symbol, market, kind) VALUES (?, ?, ?, NULL, NULL, 'bc')") : $conn->prepare("INSERT INTO user_alerts (account_email, title, body, symbol, market) VALUES (?, ?, ?, NULL, NULL)");
+            $i->bind_param("sss", $email, $b['title'], $alertBody); $i->execute(); $i->close(); $app++; } catch (Throwable $e) {} }
         if ((int)$b['ch_mail'] === 1) {
             $r = gm_safe(fn() => griffine_notify($conn, gm_customer_email($conn, $email), $b['title'], $b['title'], $paras, $btn, 'broadcast'));
             if (is_array($r) && !empty($r['ok'])) $mail++;

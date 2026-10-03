@@ -86,7 +86,7 @@ function gm_template($title, $paragraphs, $button = null){
         . '<body style="margin:0;padding:0;background:#F3F4F6;font-family:IBM Plex Sans Arabic,Tahoma,Arial,sans-serif;direction:rtl;text-align:right;">'
         . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F3F4F6;padding:24px 12px;"><tr><td align="center">'
         . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #E5E7EB;">'
-        . '<tr><td style="background:#0F172A;padding:18px 24px;border-bottom:3px solid #C9A227;"><span style="color:#C9A227;font-weight:800;letter-spacing:3px;font-size:18px;font-family:Arial,sans-serif;">GRIFFINE</span></td></tr>'
+        . '<tr><td style="background:#0F172A;padding:14px 24px;border-bottom:3px solid #C9A227;"><img src="' . $esc(rtrim(MAIL_SITE_URL, '/')) . '/griffine-logo-email.png" width="55" height="48" alt="GRIFFINE" style="vertical-align:middle;border:0;display:inline-block;margin-left:10px;"><span style="color:#C9A227;font-weight:800;letter-spacing:3px;font-size:18px;font-family:Arial,sans-serif;vertical-align:middle;">GRIFFINE</span></td></tr>'
         . '<tr><td style="padding:26px 24px 10px;"><h1 style="margin:0 0 16px;font-size:20px;color:#0F172A;">' . $esc($title) . '</h1>' . $ps . $btn . '</td></tr>'
         . '<tr><td style="padding:14px 24px 22px;color:#6B7280;font-size:12px;border-top:1px solid #F1F5F9;">فريق GRIFFINE · <a href="' . $esc(MAIL_SITE_URL) . '" style="color:#A6811E;">' . $esc(preg_replace('#^https?://#', '', MAIL_SITE_URL)) . '</a><br>للتواصل: ' . $esc(MAIL_FROM) . '</td></tr>'
         . '</table></td></tr></table></body></html>';

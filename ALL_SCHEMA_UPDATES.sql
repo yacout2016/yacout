@@ -1,4 +1,4 @@
-/* GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 154) — كل التحديثات، آمن يتشغل أكتر من مرة. الصقه كله في تبويب SQL ← Go */
+/* GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 155) — كل التحديثات، آمن يتشغل أكتر من مرة. الصقه كله في تبويب SQL ← Go */
 /* v69: جدول login_attempts (حماية من تخمين كلمات المرور). */
 /* v72: جدول ui_customizations (استوديو التصميم) + جدول email… */
 /* v82: عمود allow_upload في chat_conversation_meta (الأدمن ب… */
@@ -42,6 +42,7 @@
 /* v152: الإيميل الجديد info@griffine.app — أي نص محفوظ فيه الإيميل القديم بيتغيّر مرة واحدة (صفحات النصوص / المساعد الذكي / اللاندينج / الإعدادات) */
 /* v153: نقل الموقع لـ www.griffine.app — أي رابط محفوظ فيه griffine.store بيتغيّر لـ griffine.app مرة واحدة (نفس الجداول) */
 /* v154: جدول broadcasts («📢 رسالة لكل المستخدمين»: السجل + السلة) — صلاحية send_broadcast بتتضاف من الفريق والصلاحيات */
+/* v155: مفيش تغيير في الجداول (شعار GRIFFINE في الإيميلات والإشعارات) */
 /* v85: ترميز الاتصال UTF-8 عشان النصوص العربي اللي بتتضاف من… */
 SET NAMES utf8mb4;
 CREATE TABLE IF NOT EXISTS users (
@@ -841,4 +842,4 @@ UPDATE site_config SET config_value = REPLACE(config_value, 'griffine.store', 'g
 UPDATE site_content SET content_value = REPLACE(content_value, 'griffine.store', 'griffine.app') WHERE content_value LIKE '%griffine.store%' AND NOT EXISTS (SELECT 1 FROM site_config WHERE config_key = 'mig_153_domain');
 INSERT IGNORE INTO site_config (config_key, config_value) VALUES ('mig_153_domain', '1');
 CREATE TABLE IF NOT EXISTS broadcasts (id INT AUTO_INCREMENT PRIMARY KEY, title VARCHAR(200) NOT NULL, body TEXT NOT NULL, btn_label VARCHAR(80) NOT NULL DEFAULT '', btn_url VARCHAR(300) NOT NULL DEFAULT '', ch_app TINYINT NOT NULL DEFAULT 1, ch_mail TINYINT NOT NULL DEFAULT 1, audience VARCHAR(12) NOT NULL DEFAULT 'all', total INT NOT NULL DEFAULT 0, sent_app INT NOT NULL DEFAULT 0, sent_mail INT NOT NULL DEFAULT 0, status VARCHAR(10) NOT NULL DEFAULT 'sending', last_uid INT NOT NULL DEFAULT 0, created_by VARCHAR(190) NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, finished_at DATETIME NULL, deleted TINYINT NOT NULL DEFAULT 0, deleted_at DATETIME NULL, deleted_by VARCHAR(190) NULL, KEY ix_del (deleted, id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-SELECT 'GRIFFINE database is up to date (v154)' AS result;
+SELECT 'GRIFFINE database is up to date (v155)' AS result;
