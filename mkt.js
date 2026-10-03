@@ -1,5 +1,5 @@
 /* =====================================================================
-   GRIFFINE — mkt.js (الإصدار 154) — لوحة التحكم ← «📣 التسويق» + «📢 رسالة لكل المستخدمين» (قوالب ثابتة من غير ذكاء اصطناعي ومن غير تكلفة)
+   GRIFFINE — mkt.js (الإصدار 154) — لوحة التحكم ← «📣 التسويق» + «📢 الرسائل» (قوالب ثابتة من غير ذكاء اصطناعي ومن غير تكلفة)
    ✨ اقترح محتوى (كابشن + هاشتاجات + سكريبت فيديو لكل منصة) · 📅 جدول النشر وسجل كل اللي اتعمل
    📝 مطلوب منك (مهام بقواعد ثابتة) · 📊 الأداء (زوار وتسجيلات كل منصة / حملة) · 🔗 الحسابات وروابط التتبع
    مفيش أي كلمات سر — روابط الحسابات بس. النشر نفسه بتعمله إنت من التطبيق (الواجهات الرسمية للنشر الآلي محتاجة تسجيل مطوّر عند المنصات).
@@ -130,53 +130,68 @@
     const ls = document.getElementById('mkLinksSave'); if (ls) ls.onclick = () => { const d = { action: 'save_cfg' }; ['tiktok', 'facebook', 'instagram', 'youtube', 'x', 'whatsapp'].forEach(p => d['link_' + p] = document.getElementById('mkL_' + p).value.trim()); post(d, '✅ اتحفظت الروابط'); };
     const lg = document.getElementById('mkLgo'); if (lg) lg.onclick = () => { const u = trackLink(document.getElementById('mkLpf').value, document.getElementById('mkLcmp').value.trim().toLowerCase().replace(/[^a-z0-9_\-]/g, '')); document.getElementById('mkLout').innerHTML = `<code dir="ltr">${E(u)}</code> <button type="button" class="small" id="mkLcp">📋 نسخ</button>`; document.getElementById('mkLcp').onclick = async () => { try { await navigator.clipboard.writeText(u); GShell.toast('✅ اتنسخ الرابط', 'ok'); } catch(e){} }; };
   }
-  // الإصدار 154: «📢 رسالة لكل المستخدمين» (broadcast_api.php) — العنوان والنص والزرار من عندك · إشعار و/أو إيميل · مين يستلم
-  //   سجل الإرسالات + السلة (المسح والاسترجاع والحذف النهائي للأدمن بس — الموظف بصلاحية «send_broadcast» بيبعت بس)
-  const BC_DOMAIN = { title: 'GRIFFINE اتنقل لرابط جديد', body: 'أهلًا بيك،\nمنصة GRIFFINE اتنقلت لرابط جديد: www.griffine.app\nافتح الرابط الجديد وسجّل دخولك من جديد بنفس الإيميل وكلمة السر — حسابك وخططك وكل بياناتك زي ما هي.\nلو كنت مثبّت التطبيق على الموبايل، احذفه وثبّته تاني من الرابط الجديد.', btn_label: 'افتح www.griffine.app', btn_url: 'https://www.griffine.app/index.php' };
-  let BC = null, BCV = 'sent', BCF = null;
+  // الإصدار 154/156: «📢 الرسائل» (broadcast_api.php) — للمشتركين (بالاسم أو بالمجموعة) + بريد داخلي مبسّط بين الأدمن والموظفين
+  //   👤 أشخاص بالاسم: بحث بالاسم أو الإيميل والأدمن أول واحد · 📥 الوارد + ↩️ رد · 📤 الإرسالات · 🗑 السلة (للأدمن بس)
+  let BC = null, BCV = 'sent', BCF = null, BCSEL = [], BCPPL = [];
+  const ROLE = { admin: ['الأدمن', 'bc-r-admin'], staff: ['موظف', 'bc-r-staff'], sub: ['مشترك', 'bc-r-sub'] };
   window.renderAdminBroadcast = async function(view){
     const tok = screenToken(); pushNav(() => renderAdminBroadcast(view)); window.__lastPageKey = 'admin_broadcast';
     const email = await getSession(); if (!email) return renderLogin();
     if (!window.__isAdmin) return renderHome();
-    BCV = view === 'trash' ? 'trash' : 'sent';
+    BCV = ['trash', 'inbox'].includes(view) ? view : 'sent';
     BC = await apiGet('/broadcast_api.php?view=' + BCV).catch(() => null);
     if (screenStale(tok)) return;
     if (!BC || !BC.success) { app.innerHTML = `<div class="container"><div class="section-card error">${E((BC && BC.message) || 'تعذّر التحميل')}</div></div>`; return; }
+    BCPPL = BC.people || [];
     bcDraw(tok);
   };
   const bcAud = (k) => (BC.audiences || {})[k] || k;
+  const bcName = (em) => { const p = [...BCPPL, ...BCSEL].find(x => x.email.toLowerCase() === String(em).toLowerCase()); return p ? p.name : String(em).split('@')[0]; };
   function bcRow(x){
     const ch = [+x.ch_app ? `🔔 ${N(x.sent_app)}` : '', +x.ch_mail ? `📧 ${N(x.sent_mail)}` : ''].filter(Boolean).join(' · ');
-    const st = x.status === 'done' ? '✅ اتبعتت' : '⏳ ماكملتش';
-    const tr = BCV === 'trash';
-    return `<div class="bc-item" data-id="${x.id}">
-      <div class="bc-h">${BC.canDelete ? `<input type="checkbox" class="bc-ck" value="${x.id}">` : ''}<b>${E(x.title)}</b><span class="u-fs12 u-muted">${E(String(x.created_at).slice(0, 16))}</span></div>
-      <div class="u-fs12 u-muted">${st} · ${E(bcAud(x.audience))} (${N(x.total)}) · ${ch} · من ${E(x.created_by || '')}${tr ? ` · اتمسحت ${E(String(x.deleted_at || '').slice(0, 16))} من ${E(x.deleted_by || '')}` : ''}</div>
+    const tr = BCV === 'trash', inb = BCV === 'inbox';
+    const to = x.audience === 'people' ? String(x.recips || '').split(',').filter(Boolean).map(e => `${E(bcName(e))} <span dir="ltr">${E(e)}</span>`).join('، ') : E(bcAud(x.audience)) + ` (${N(x.total)})`;
+    const meta = inb ? `✉️ من: <b>${E(bcName(x.created_by))}</b> <span dir="ltr">${E(x.created_by || '')}</span>`
+      : `${x.status === 'done' ? '✅ اتبعتت' : '⏳ ماكملتش'} · إلى: ${to} · ${ch}${BC.canDelete ? ` · من ${E(x.created_by || '')}` : ''}${tr ? ` · اتمسحت ${E(String(x.deleted_at || '').slice(0, 16))} من ${E(x.deleted_by || '')}` : ''}`;
+    return `<div class="bc-item${inb ? ' bc-in' : ''}" data-id="${x.id}">
+      <div class="bc-h">${BC.canDelete && !inb ? `<input type="checkbox" class="bc-ck" value="${x.id}">` : ''}<b>${E(x.title)}</b><span class="u-fs12 u-muted">${E(String(x.created_at).slice(0, 16))}</span></div>
+      <div class="u-fs12 u-muted bc-meta">${meta}</div>
       <div class="bc-body">${E(x.body)}</div>
       <div class="bc-acts">${tr ? `<button type="button" class="small" data-restore="${x.id}">↩️ استرجاع</button><button type="button" class="small danger" data-purge="${x.id}">🗑 حذف نهائي</button>`
+        : inb ? `<button type="button" class="small" data-reply="${x.id}">↩️ رد</button>`
         : `<button type="button" class="small secondary" data-reuse="${x.id}">🔁 استخدمها تاني</button>${x.status !== 'done' ? `<button type="button" class="small secondary" data-resume="${x.id}">▶️ كمّل الإرسال</button>` : ''}${BC.canDelete ? `<button type="button" class="small danger" data-trash="${x.id}">🗑 مسح</button>` : ''}`}</div></div>`;
   }
+  const bcPRow = (p) => { const on = BCSEL.some(x => x.email.toLowerCase() === p.email.toLowerCase()), r = ROLE[p.role] || ROLE.sub;
+    return `<label class="bc-p${on ? ' on' : ''}"><input type="checkbox" data-pe="${E(p.email)}" ${on ? 'checked' : ''}><b>${E(p.name)}</b><span class="bc-role ${r[1]}">${r[0]}</span><span class="bc-pe" dir="ltr">${E(p.email)}</span></label>`; };
+  function bcPeopleHtml(){ return BCPPL.map(bcPRow).join('') || '<div class="u-muted u-fs12">مفيش نتايج.</div>'; }
+  function bcChips(){ return BCSEL.length ? BCSEL.map(p => `<span class="bc-chip">${E(p.name)} <button type="button" data-unsel="${E(p.email)}" aria-label="شيل">✕</button></span>`).join('') : '<span class="u-muted u-fs12">لسه مااخترتش حد.</span>'; }
   function bcDraw(tok){
-    const f = BCF || { title: '', body: '', btn_label: '', btn_url: '', ch_app: 1, ch_mail: 1, audience: 'all' };
-    const tr = BCV === 'trash';
+    const f = BCF || { title: '', body: '', btn_label: '', btn_url: '', ch_app: 1, ch_mail: 1, audience: 'people' };
+    const tabs = [['inbox', '📥 الوارد'], ['sent', BC.canDelete ? '📤 كل الرسائل' : '📤 اللي بعته'], ...(BC.canDelete ? [['trash', `🗑 السلة${BC.trashCount ? ' (' + BC.trashCount + ')' : ''}`]] : [])];
+    const ppl = f.audience === 'people';
     app.innerHTML = `<div class="container wide bc">${logoHeader()}
-      <div class="topbar"><div>${pageTitle('admin_broadcast', '📢 رسالة لكل المستخدمين')}</div><button class="secondary small" id="bcBack">🛡️ رجوع للوحة التحكم</button></div>
-      <div class="mk-tabs"><button type="button" class="small ${tr ? 'secondary' : ''}" id="bcTabSent">📤 الإرسالات</button>${BC.canDelete ? `<button type="button" class="small ${tr ? '' : 'secondary'}" id="bcTabTrash">🗑 السلة${BC.trashCount ? ' (' + BC.trashCount + ')' : ''}</button>` : ''}</div>
-      ${tr ? '' : `<div class="section-card"><div class="section-title">✍️ رسالة جديدة</div>
-        <div class="mk-row"><label>مين يستلم <select id="bcAud">${Object.keys(BC.audiences).map(k => `<option value="${k}" ${k === f.audience ? 'selected' : ''}>${E(BC.audiences[k])} (${N(BC.counts[k])})</option>`).join('')}</select></label>
+      <div class="topbar"><div>${pageTitle('admin_broadcast', '📢 الرسائل')}</div><button class="secondary small" id="bcBack">🛡️ رجوع للوحة التحكم</button></div>
+      <div class="mk-tabs">${tabs.map(([k, l]) => `<button type="button" class="small ${k === BCV ? '' : 'secondary'}" data-bctab="${k}">${l}</button>`).join('')}</div>
+      ${BCV === 'trash' ? '' : `<div class="section-card"><div class="section-title">✍️ رسالة جديدة</div>
+        ${BC.canSubs ? '' : '<div class="info u-fs12">تقدر تبعت للأدمن والموظفين. الإرسال للمشتركين محتاج صلاحية «📢 إرسال رسالة لكل المستخدمين».</div>'}
+        <div class="mk-row"><label>مين يستلم <select id="bcAud">${Object.keys(BC.audiences).map(k => `<option value="${k}" ${k === f.audience ? 'selected' : ''}>${E(BC.audiences[k])}${k === 'people' ? '' : ` (${N(BC.counts[k])})`}</option>`).join('')}</select></label>
           <label class="bc-ch"><span>القنوات</span><span><label><input type="checkbox" id="bcApp" ${+f.ch_app ? 'checked' : ''}> 🔔 إشعار جوه الموقع</label> <label><input type="checkbox" id="bcMail" ${+f.ch_mail ? 'checked' : ''}> 📧 إيميل</label></span></label></div>
+        <div id="bcPick" class="bc-pick" ${ppl ? '' : 'hidden'}>
+          <div class="bc-chips" id="bcChips">${bcChips()}</div>
+          <input id="bcQ" placeholder="🔎 دوّر بالاسم أو الإيميل" autocomplete="off">
+          <div class="bc-people" id="bcPeople">${bcPeopleHtml()}</div></div>
         <label class="bc-f">العنوان <input id="bcTitle" maxlength="200" value="${E(f.title)}"></label>
         <label class="bc-f">نص الرسالة (كل سطر فقرة في الإيميل) <textarea id="bcBody" rows="6" maxlength="5000">${E(f.body)}</textarea></label>
         <div class="mk-row"><label>نص زرار الإيميل <input id="bcBtnL" maxlength="80" value="${E(f.btn_label)}" placeholder="افتح GRIFFINE"></label><label>رابط الزرار <input id="bcBtnU" dir="ltr" maxlength="300" value="${E(f.btn_url)}" placeholder="${E(BC.siteUrl)}/index.php"></label></div>
-        <div class="mk-row u-mt6"><button type="button" class="small secondary" id="bcPreset">🔗 نص الدومين الجديد</button><button type="button" class="small secondary" id="bcPrev">👁 معاينة</button><button type="button" class="small secondary" id="bcTest">🧪 تجربة على إيميلي</button><button type="button" class="small" id="bcSend">📢 ابعت</button></div>
+        <div class="mk-row u-mt6"><button type="button" class="small secondary" id="bcPrev">👁 معاينة</button><button type="button" class="small" id="bcSend">📢 ابعت</button></div>
         <div id="bcPv"></div><div id="bcProg" class="u-fs12 u-mt6"></div></div>`}
-      <div class="section-card"><div class="section-title">${tr ? '🗑 السلة' : '📤 الإرسالات'} (${N(BC.rows.length)})</div>
-        ${BC.canDelete && BC.rows.length ? `<div class="mk-row"><label class="bc-all"><span><input type="checkbox" id="bcAll"> تحديد الكل</span></label>${tr ? `<button type="button" class="small" id="bcRestoreSel">↩️ استرجاع المحدد</button><button type="button" class="small danger" id="bcPurgeSel">🗑 حذف المحدد نهائي</button><button type="button" class="small danger" id="bcEmpty">🧹 تفريغ السلة</button>` : `<button type="button" class="small danger" id="bcTrashSel">🗑 مسح المحدد</button>`}</div>` : ''}
-        <div class="bc-list">${BC.rows.map(bcRow).join('') || `<div class="u-muted u-fs13">${tr ? 'السلة فاضية.' : 'لسه مفيش رسائل اتبعتت.'}</div>`}</div></div></div>`;
+      <div class="section-card"><div class="section-title">${tabs.find(t => t[0] === BCV)[1]} (${N(BC.rows.length)})</div>
+        ${BC.canDelete && BCV !== 'inbox' && BC.rows.length ? `<div class="mk-row"><label class="bc-all"><span><input type="checkbox" id="bcAll"> تحديد الكل</span></label>${BCV === 'trash' ? `<button type="button" class="small" id="bcRestoreSel">↩️ استرجاع المحدد</button><button type="button" class="small danger" id="bcPurgeSel">🗑 حذف المحدد نهائي</button><button type="button" class="small danger" id="bcEmpty">🧹 تفريغ السلة</button>` : `<button type="button" class="small danger" id="bcTrashSel">🗑 مسح المحدد</button>`}</div>` : ''}
+        <div class="bc-list">${BC.rows.map(bcRow).join('') || `<div class="u-muted u-fs13">${BCV === 'trash' ? 'السلة فاضية.' : BCV === 'inbox' ? 'مفيش رسائل وصلتلك.' : 'لسه مفيش رسائل اتبعتت.'}</div>`}</div></div></div>`;
     bcWire(tok);
   }
   const bcForm = () => ({ title: document.getElementById('bcTitle').value.trim(), body: document.getElementById('bcBody').value.trim(), btn_label: document.getElementById('bcBtnL').value.trim(), btn_url: document.getElementById('bcBtnU').value.trim(),
-    ch_app: document.getElementById('bcApp').checked ? 1 : 0, ch_mail: document.getElementById('bcMail').checked ? 1 : 0, audience: document.getElementById('bcAud').value });
+    ch_app: document.getElementById('bcApp').checked ? 1 : 0, ch_mail: document.getElementById('bcMail').checked ? 1 : 0, audience: document.getElementById('bcAud').value, to: BCSEL.map(p => p.email).join(',') });
   async function bcRun(id, tok){
     const btn = document.getElementById('bcSend'), pg = document.getElementById('bcProg'); if (btn) btn.disabled = true;
     let r = null, after = 0;
@@ -186,7 +201,7 @@
       after = r.next; if (pg) pg.textContent = `⏳ إشعارات ${N(r.app)} · إيميلات ${N(r.mail)} من ${N(r.total)}`;
     } while (!r.done && !screenStale(tok));
     if (screenStale(tok)) return;
-    GShell.toast(`✅ خلص: إشعارات ${N(r.app)} · إيميلات ${N(r.mail)} من ${N(r.total)}`, 'ok'); BCF = null; renderAdminBroadcast('sent');
+    GShell.toast(`✅ خلص: إشعارات ${N(r.app)} · إيميلات ${N(r.mail)} من ${N(r.total)}`, 'ok'); BCF = null; BCSEL = []; renderAdminBroadcast('sent');
   }
   async function bcAct(action, ids, ask){
     if (!ids.length) return GShell.toast('اختار رسالة الأول', 'err');
@@ -195,22 +210,43 @@
     if (!r || !r.success) return GShell.toast((r && r.message) || 'تعذّر التنفيذ', 'err');
     renderAdminBroadcast(BCV);
   }
+  function bcWirePeople(){
+    const box = document.getElementById('bcPeople'); if (!box) return;
+    box.querySelectorAll('[data-pe]').forEach(c => c.onchange = () => {
+      const p = BCPPL.find(x => x.email === c.dataset.pe); if (!p) return;
+      if (c.checked) { if (!BCSEL.some(x => x.email === p.email)) BCSEL.push(p); } else BCSEL = BCSEL.filter(x => x.email !== p.email);
+      c.closest('.bc-p').classList.toggle('on', c.checked); bcRefreshChips();
+    });
+  }
+  function bcRefreshChips(){ const ch = document.getElementById('bcChips'); ch.innerHTML = bcChips();
+    ch.querySelectorAll('[data-unsel]').forEach(b => b.onclick = () => { BCSEL = BCSEL.filter(x => x.email !== b.dataset.unsel); bcRefreshChips(); const c = document.querySelector(`[data-pe="${CSS.escape(b.dataset.unsel)}"]`); if (c) { c.checked = false; c.closest('.bc-p').classList.remove('on'); } }); }
   function bcWire(tok){
     const $ = (id) => document.getElementById(id), on = (id, fn) => { const el = $(id); if (el) el.onclick = fn; };
-    on('bcBack', () => renderAdminHub()); on('bcTabSent', () => renderAdminBroadcast('sent')); on('bcTabTrash', () => renderAdminBroadcast('trash'));
-    on('bcPreset', () => { BCF = Object.assign(bcForm(), BC_DOMAIN); bcDraw(tok); });
+    on('bcBack', () => renderAdminHub());
+    document.querySelectorAll('[data-bctab]').forEach(b => b.onclick = () => renderAdminBroadcast(b.dataset.bctab));
+    const aud = $('bcAud'); if (aud) aud.onchange = () => { $('bcPick').hidden = aud.value !== 'people'; };
+    bcWirePeople(); if ($('bcChips')) bcRefreshChips();
+    let qt = null; const q = $('bcQ'); if (q) q.oninput = () => { clearTimeout(qt); qt = setTimeout(async () => {
+      const r = await apiGet('/broadcast_api.php?action=people&q=' + encodeURIComponent(q.value.trim())).catch(() => null);
+      if (screenStale(tok) || !r || !r.success) return; BCPPL = r.people; $('bcPeople').innerHTML = bcPeopleHtml(); bcWirePeople(); }, 250); };
     on('bcPrev', () => { const f = bcForm(); $('bcPv').innerHTML = `<div class="bc-pv"><div class="u-fs12 u-muted">🔔 الإشعار جوه الموقع</div><div class="bc-pv-n"><img class="gs-bc-logo" src="griffine-logo-${document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'}.webp" alt="GRIFFINE"><b>${E(f.title)}</b><div>${E(f.body.replace(/\n+/g, ' '))}</div></div>
       <div class="u-fs12 u-muted u-mt6">📧 الإيميل (من info@griffine.app)</div><div class="bc-pv-m"><div class="bc-pv-hd"><img src="griffine-logo-email.png" alt="GRIFFINE" width="55" height="48"><span>GRIFFINE</span></div><h3>${E(f.title)}</h3>${f.body.split(/\n+/).filter(Boolean).map(p => `<p>${E(p)}</p>`).join('')}<span class="bc-pv-b">${E(f.btn_label || 'افتح GRIFFINE')}</span></div></div>`; });
-    on('bcTest', async () => { const r = await apiPost('/broadcast_api.php', Object.assign({ action: 'test' }, bcForm())).catch(() => null); GShell.toast((r && r.message) || 'تعذّر الإرسال', r && r.success ? 'ok' : 'err'); });
     on('bcSend', async () => {
       const f = bcForm(); if (!f.title || !f.body) return GShell.toast('اكتب العنوان ونص الرسالة', 'err');
       if (!f.ch_app && !f.ch_mail) return GShell.toast('اختار قناة واحدة على الأقل', 'err');
-      if (!(await gConfirm(`هتتبعت «${f.title}» لـ ${bcAud(f.audience)} (${N(BC.counts[f.audience])} مستخدم). متأكد؟`))) return;
+      if (f.audience === 'people' && !BCSEL.length) return GShell.toast('اختار شخص واحد على الأقل', 'err');
+      const who = f.audience === 'people' ? BCSEL.map(p => p.name).join('، ') : `${bcAud(f.audience)} (${N(BC.counts[f.audience])} مستخدم)`;
+      if (!(await gConfirm(`هتتبعت «${f.title}» لـ ${who}. متأكد؟`))) return;
       BCF = f; const r = await apiPost('/broadcast_api.php', Object.assign({ action: 'create' }, f)).catch(() => null);
       if (!r || !r.success) return GShell.toast((r && r.message) || 'تعذّر الإرسال', 'err');
       bcRun(r.id, tok);
     });
-    document.querySelectorAll('[data-reuse]').forEach(b => b.onclick = () => { const x = BC.rows.find(r => String(r.id) === b.dataset.reuse); BCF = { title: x.title, body: x.body, btn_label: x.btn_label, btn_url: x.btn_url, ch_app: x.ch_app, ch_mail: x.ch_mail, audience: x.audience }; bcDraw(tok); window.scrollTo(0, 0); });
+    const fill = (x, extra) => { BCF = Object.assign({ title: x.title, body: x.body, btn_label: x.btn_label, btn_url: x.btn_url, ch_app: x.ch_app, ch_mail: x.ch_mail, audience: x.audience }, extra || {}); };
+    document.querySelectorAll('[data-reuse]').forEach(b => b.onclick = () => { const x = BC.rows.find(r => String(r.id) === b.dataset.reuse); fill(x);
+      BCSEL = x.audience === 'people' ? String(x.recips || '').split(',').filter(Boolean).map(e => ({ email: e, name: bcName(e), role: 'sub' })) : []; bcDraw(tok); window.scrollTo(0, 0); });
+    document.querySelectorAll('[data-reply]').forEach(b => b.onclick = () => { const x = BC.rows.find(r => String(r.id) === b.dataset.reply);
+      fill(x, { title: /^رد: /.test(x.title) ? x.title : 'رد: ' + x.title, body: '', btn_label: '', btn_url: '', audience: 'people' });
+      BCSEL = [{ email: x.created_by, name: bcName(x.created_by), role: 'staff' }]; BCV = 'sent'; renderAdminBroadcast('sent').then(() => { const t = document.getElementById('bcBody'); if (t) t.focus(); }); });
     document.querySelectorAll('[data-resume]').forEach(b => b.onclick = () => bcRun(+b.dataset.resume, tok));
     document.querySelectorAll('[data-trash]').forEach(b => b.onclick = () => bcAct('trash', [b.dataset.trash], 'مسح الرسالة دي من السجل؟ (هتروح السلة)'));
     document.querySelectorAll('[data-restore]').forEach(b => b.onclick = () => bcAct('restore', [b.dataset.restore]));
