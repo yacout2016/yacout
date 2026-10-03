@@ -29,6 +29,7 @@ function adminNavButtonsHtml(){
     ]},
     { title: 'الإدارة والصلاحيات', items: [
       { id:'goSettingsBtn', perm:'manage_admin_settings', icon:'⚙️', label:'الصلاحيات والإعدادات الإلزامية' },
+      { id:'goPeriodsBtn', perm:'manage_admin_settings', icon:'⏱', label:'المدد والفترات (قوائم يوم / أسبوع / شهر في كل الشاشات)' },
       { id:'goEmergencyBtn', perm:'manage_admin_settings', icon:'🚨', label:'الشاشات الطارئة (الصيانة / انقطاع النت / السيرفر / التحميل)' },
       { id:'goEmailCenterBtn', perm:'manage_admin_settings', icon:'📧', label:'مركز الإيميلات (اختبار وسجل الإرسال)' },
       { id:'goAiBtn', perm:'manage_admin_settings', icon:'🤖', label:'الذكاء الاصطناعي (مجاني / مدفوع + حساب Claude)' },
@@ -77,6 +78,7 @@ function wireAdminNavButtons(){
     goPlansMgmtBtn: renderPlansManagementPage,
     goChatAdminBtn: renderChatAdminPage,
     goSettingsBtn: renderAdminSettingsPage,
+    goPeriodsBtn: () => renderAdminPeriods(),            // الإصدار 144 (periods.js)
     goEmergencyBtn: () => renderEmergencyAdminPage(),   // الإصدار 100 (promo.js)
     goAdsBtn: () => renderAdsAdminPage(),               // الإصدار 100 (promo.js)
     goLandingBtn: () => renderAdminLandingPage(),       // الإصدار 108 (landing-admin.js)
@@ -1322,6 +1324,12 @@ async function renderAdminSettingsPage(){
     { key:'hide_alerts_screen', label:'إخفاء تنبيهات الأسعار', desc:'يخفي الشاشة وكارت التنبيهات في الرئيسية.' },
     { key:'hide_stock_screen', label:'إخفاء صفحة السهم (السعر والشارت)', desc:'' },
     { key:'hide_curve_home', label:'إخفاء منحنى أداء المحفظة في الرئيسية', desc:'' },
+    // الإصدار 144: كروت الرئيسية (وكمان من شريط «🛠 التحكم في الرئيسية» فوق الرئيسية عندك)
+    { key:'hide_home_hero', label:'إخفاء كارت «قيمة المحفظة» في الرئيسية', desc:'' },
+    { key:'hide_home_alerts', label:'إخفاء كارت «تنبيهات الأسعار» في الرئيسية (الشاشة نفسها بتفضل)', desc:'' },
+    { key:'hide_home_quick', label:'إخفاء «الاختصارات» في الرئيسية', desc:'' },
+    { key:'hide_home_recs', label:'إخفاء «أحدث التوصيات» في الرئيسية', desc:'' },
+    { key:'hide_home_holdings', label:'إخفاء «استثماراتي» في الرئيسية', desc:'' },
     { key:'hide_trash_screen', label:'إخفاء سلة المحذوفات عن العملاء', desc:'الحذف يفضل ينتقل للسلة، ويقدر الأدمن يسترجع من سلته.' },
     { key:'hide_mizan_screen', label:'إخفاء «ميزان محفظتك AI» عن العملاء', desc:'الشاشة بتختفي من القائمة الجانبية ومن المحفظة والتقارير، والأدمن بيفضل يشوفها. رأي الذكاء الاصطناعي بيستخدم إعدادات ومفتاح «تحليلات بصيرة AI».' },
     { key:'hide_mizanai_screen', label:'إخفاء «ميزان GRIFFINE AI» (مخطِّط توزيع الاستثمار) عن العملاء', desc:'الشاشة بتختفي من القائمة والبحث، والأدمن بيفضل يشوفها. إعداداتها من زرار «ميزان GRIFFINE AI» في لوحة التحكم.' },

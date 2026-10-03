@@ -30,6 +30,7 @@ $allowedKeys = [
     'hide_mizanai_screen', // الإصدار 122: ميزان GRIFFINE AI
     'hide_install_icon', 'hide_site_search', // الإصدار 116: أيقونات الشريط العلوي
     'hide_plan_watch', // الإصدار 119: متابعة خططك على آخر سعر
+    'hide_home_hero', 'hide_home_quick', 'hide_home_alerts', 'hide_home_recs', 'hide_home_holdings', // الإصدار 144: كروت الرئيسية
 ];
 
 $key = trim($_POST['key'] ?? '');

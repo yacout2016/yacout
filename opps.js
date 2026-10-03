@@ -7,6 +7,10 @@
    - لحد 4 فرص مفتوحة في نفس الوقت ، والحذف بيودّي للسلة
    ===================================================================== */
 const OPP_TFS = [['1d', 'يومي'], ['1wk', 'أسبوعي'], ['1mo', 'شهري'], ['4h', '4 ساعات (حسب توفر البيانات)'], ['1h', 'ساعة (حسب توفر البيانات)']];
+// الإصدار 144: الأطر الظاهرة + الافتراضي من «⏱ المدد والفترات» (الإطار المحفوظ في الفرصة بيفضل ظاهر لصاحبها)
+function oppTfOpts(cur){ if (!window.gPerOpts) return OPP_TFS.map(([k, l]) => `<option value="${k}" ${k === (cur || '1d') ? 'selected' : ''}>${l}</option>`).join('');
+  const vis = gPerFilter('opps_tf', OPP_TFS), arr = OPP_TFS.filter(x => vis.includes(x) || x[0] === cur);
+  return gPerOpts('opps_tf', arr, cur || gPerDef('opps_tf')); }
 // كل مؤشر: الاسم + الإعدادات (المفتاح، العنوان، الافتراضي للشراء، الافتراضي للبيع) + الشروط (للشراء / للبيع)
 const OPP_DEF = {
   rsi:     { n: 'RSI (مؤشر القوة النسبية)', p: [['period', 'الفترة', 14], ['level', 'المستوى', 30, 70], ['lookback', 'آخر شموع للتقاطع', 3]],
@@ -76,7 +80,7 @@ async function renderOpportunities(editId){
         <button type="button" class="opp-buy" data-side="buy">🟢 شراء</button><button type="button" class="opp-sell" data-side="sell">🔴 بيع</button>
       </div>
       <div class="g-grid-filters u-mt10">
-        <label>الإطار الزمني<select id="oppTf">${OPP_TFS.map(([k, l]) => `<option value="${k}" ${edit && edit.timeframe === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+        <label>الإطار الزمني ${window.gPerGear ? gPerGear('opps_tf') : ''}<select id="oppTf">${oppTfOpts(edit && edit.timeframe)}</select></label>
         <label>عدد المؤشرات<select id="oppCount">${[1, 2, 3, 4, 5].map(n => `<option ${n === inds.length ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
       </div>
       <div id="oppInds"></div>
@@ -129,7 +133,8 @@ async function renderOpportunities(editId){
     });
     document.getElementById('oppCount').onchange = (e) => { const n = +e.target.value; const pool = ['rsi', 'macd', 'sma', 'bb', 'vol'];
       while (inds.length < n) inds.push(oppDefaultInd(pool.find(t => !inds.some(x => x.t === t)) || 'ema', side)); inds = inds.slice(0, n); paintInds(); };
-    document.getElementById('oppClear').onclick = () => { side = 'buy'; inds = [oppDefaultInd('rsi', 'buy')]; document.getElementById('oppCount').value = '1'; document.getElementById('oppTf').value = '1d'; paintSide(); paintInds(); };
+    document.getElementById('oppClear').onclick = () => { side = 'buy'; inds = [oppDefaultInd('rsi', 'buy')]; document.getElementById('oppCount').value = '1'; document.getElementById('oppTf').value = window.gPerDef ? gPerDef('opps_tf') : '1d'; paintSide(); paintInds(); };
+    if (window.gPerWire) gPerWire(app, () => { const t = document.getElementById('oppTf'); t.innerHTML = oppTfOpts(t.value); });
     const cc = document.getElementById('oppCancel'); if (cc) cc.onclick = () => renderOpportunities();
     document.getElementById('oppSave').onclick = async () => {
       const m = oppConflict(side, inds); if (m) return warn();

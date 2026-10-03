@@ -588,6 +588,10 @@
   const dirOf = (u) => u >= 58 ? 'up' : u <= 42 ? 'down' : 'flat';
   async function findOpp(mkt){
     const S = { items: [], total: 0, run: 0, hz: TF2HZ[$('rcTf').value] || 'week', dir: 'all', market: mkt };
+    // الإصدار 144: قائمة منسدلة + المدد الظاهرة والافتراضي من «⏱ المدد والفترات» (مدة التوصية نفسها لو ظاهرة)
+    const hzList = window.gPerFilter ? gPerFilter('rc_scan', SC_HZ) : SC_HZ;
+    if (!hzList.some(h => h[0] === S.hz) || (window.gPerIsHidden && gPerIsHidden('rc_scan', S.hz))) S.hz = window.gPerDef ? gPerDef('rc_scan') : 'week';
+    const hzOpts = () => window.gPerOpts ? gPerOpts('rc_scan', SC_HZ, S.hz) : SC_HZ.map(([k, l]) => `<option value="${k}" ${k === S.hz ? 'selected' : ''}>${l}</option>`).join('');
     const active = new Set((window.__rcActiveSyms || []).map(x => String(x).toUpperCase()));
     const ov = document.createElement('div'); ov.className = 'rc-ov';
     ov.innerHTML = `<div class="rc-dlg rc-find rc-scan" role="dialog" aria-label="مسح السوق">
@@ -595,7 +599,7 @@
       <div class="bs-card bs-scan"><div class="bs-scrow">
         <div><label for="rcScMkt">البورصة</label><select id="rcScMkt" data-g-mkt="skip">${(META.markets || []).map(m => `<option value="${E(m.name)}" ${m.name === mkt ? 'selected' : ''}>${E(m.name)}</option>`).join('')}</select></div>
         <div><label for="rcScSec">القطاع</label><select id="rcScSec"><option value="">كل البورصة</option></select></div>
-        <div><label>المتوقع خلال ${gTipI('بتتحدد تلقائي من «المدة» اللي في التوصية — وتقدر تغيّرها هنا')}</label><div class="bs-seg" id="rcScHz">${SC_HZ.map(([k, l]) => `<button type="button" data-k="${k}" class="${k === S.hz ? 'on' : ''}">${l}</button>`).join('')}</div></div>
+        <div><label for="rcScHz">المتوقع خلال ${gTipI('بتتحدد تلقائي من «المدة» اللي في التوصية — وتقدر تغيّرها هنا')} ${window.gPerGear ? gPerGear('rc_scan') : ''}</label><select id="rcScHz">${hzOpts()}</select></div>
         <div class="bs-scbtns"><button type="button" class="bs-go" id="rcScGo">📊 ابدأ المسح</button><button type="button" class="secondary small" id="rcScStop" hidden>⏹ إيقاف</button></div>
       </div>
       <div class="bs-scprog" id="rcScProg" hidden><div class="bs-scbar"><i id="rcScBar"></i></div><small id="rcScTxt"></small></div>
@@ -622,7 +626,8 @@
           <td><button type="button" class="small u-wa" data-pick="${E(x.symbol)}" data-d="${d}">${d === 'down' ? 'توصية بيع' : 'اختيار'}</button></td></tr>`; }).join('') || `<tr><td colspan="9" class="u-muted">${S.items.length ? 'مفيش أسهم في الاتجاه ده.' : 'دوس «ابدأ المسح».'}</td></tr>`;
     };
     $('rcScDir').onclick = (e) => { const b = e.target.closest('[data-d]'); if (!b) return; S.dir = b.dataset.d; paint(); };
-    $('rcScHz').onclick = (e) => { const b = e.target.closest('[data-k]'); if (!b) return; S.hz = b.dataset.k; $('rcScHz').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); paint(); };
+    $('rcScHz').onchange = (e) => { S.hz = e.target.value; paint(); };
+    if (window.gPerWire) gPerWire(ov, () => { $('rcScHz').innerHTML = hzOpts(); });
     $('rcScBody').onclick = (e) => { const b = e.target.closest('[data-pick]'); if (!b) return;
       if (b.dataset.d === 'down' && TYPE !== 'sell') { const t = $('rcType').querySelector('button[data-t="sell"]'); if (t) t.click(); }
       if (b.dataset.d === 'up' && TYPE !== 'buy') { const t = $('rcType').querySelector('button[data-t="buy"]'); if (t) t.click(); }

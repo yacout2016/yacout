@@ -14,6 +14,9 @@
 (function(){
   'use strict';
   const E = (s) => escapeHtml(String(s == null ? '' : s));
+  // الإصدار 144: مدد الاستثمار الظاهرة + الافتراضي من «⏱ المدد والفترات» (الأدمن يتحكم من ⚙ جنب القائمة)
+  const MZA_HZ = { mza_s: [['3', '3 شهور'], ['6', '6 شهور'], ['12', 'سنة'], ['36', '3 سنين']], mza_a: [['1', 'شهر'], ['6', '6 شهور'], ['12', 'سنة'], ['36', '3 سنين'], ['60', '5 سنين']] };
+  const mzaHzOpts = (id, sel) => window.gPerOpts ? gPerOpts(id, MZA_HZ[id], sel || gPerDef(id)) : MZA_HZ[id].map(([k, l]) => `<option value="${k}" ${k === (sel || '12') ? 'selected' : ''}>${l}</option>`).join('');
   const f0 = (v) => Math.round(+v || 0).toLocaleString('en-US');
   const f2 = (v) => Number(+v || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const toast = (m, k) => { if (window.GShell && GShell.toast) GShell.toast(m, k || 'ok'); };
@@ -135,7 +138,7 @@
         <div class="mza-grid">
           <div><label for="mzaSAmt">المبلغ اللي عايز تستثمره في الأسهم</label><input id="mzaSAmt" type="number" min="1000" step="1000" value="100000"></div>
           <div><label for="mzaSMkt">البورصة</label><select id="mzaSMkt">${mk.map(x => `<option>${E(x)}</option>`).join('')}</select></div>
-          <div><label for="mzaSHz">مدة الاستثمار</label><select id="mzaSHz"><option value="3">3 شهور</option><option value="6">6 شهور</option><option value="12" selected>سنة</option><option value="36">3 سنين</option></select></div>
+          <div><label for="mzaSHz">مدة الاستثمار ${window.gPerGear ? gPerGear('mza_s') : ''}</label><select id="mzaSHz">${mzaHzOpts('mza_s')}</select></div>
           <div><label>مستوى المخاطرة</label>${seg('mzaSRisk', riskOpts('stocks'), 'mid')}</div>
           <div class="wide"><label for="mzaSExM">القطاعات</label>${msBox('mzaSEx', 'القطاعات')}</div>
           <div><label for="mzaSMax">أقصى عدد قطاعات</label><select id="mzaSMax"><option>4</option><option selected>6</option><option>8</option></select></div>
@@ -149,7 +152,7 @@
           <div><label>نوع الاستثمار</label>${seg('mzaAType', [['lump', 'مبلغ ثابت'], ['monthly', 'تدفقات شهرية']], 'lump')}</div>
           <div><label for="mzaAAmt" id="mzaAAmtL">المبلغ</label><input id="mzaAAmt" type="number" min="0" step="1000" value="100000"></div>
           <div id="mzaAMonW" hidden><label for="mzaAMon">المبلغ الشهري</label><input id="mzaAMon" type="number" min="100" step="100" value="5000"></div>
-          <div><label for="mzaAHz">المدة</label><select id="mzaAHz"><option value="1">شهر</option><option value="6">6 شهور</option><option value="12" selected>سنة</option><option value="36">3 سنين</option><option value="60">5 سنين</option></select></div>
+          <div><label for="mzaAHz">المدة ${window.gPerGear ? gPerGear('mza_a') : ''}</label><select id="mzaAHz">${mzaHzOpts('mza_a')}</select></div>
           <div><label for="mzaAMkt">بورصة قطاعات الأسهم</label><select id="mzaAMkt">${mk.map(x => `<option>${E(x)}</option>`).join('')}</select></div>
           <div><label>مستوى المخاطرة</label>${seg('mzaARisk', riskOpts('assets'), 'mid')}</div>
           <div class="wide"><label for="mzaAExM">الأصول</label>${msBox('mzaAEx', 'الأصول')}</div>
@@ -208,6 +211,7 @@
     sm.onchange = paintEx; cm.onchange = paintRows;
     paintEx(); paintRows();
     document.getElementById('mzaCAdd').onclick = () => addRow('', 0);
+    if (window.gPerWire) gPerWire(app, () => { [['mzaSHz', 'mza_s'], ['mzaAHz', 'mza_a']].forEach(([el, id]) => { const x = document.getElementById(el); if (x) x.innerHTML = mzaHzOpts(id, x.value); }); });
     // الإصدار 123: تفريغ الخانات — المبالغ فاضية + كل القطاعات/الأصول مسموحة + النتيجة تتمسح
     document.querySelectorAll('.mza-clear').forEach(b => b.onclick = () => {
       const f = document.getElementById('mzaF-' + b.dataset.f); if (!f) return;

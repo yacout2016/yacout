@@ -300,18 +300,22 @@ function gWireGridRange(o){
   const row = hi.closest('.grid2') || hi.parentNode;
   const box = document.createElement('div'); box.className = 'g-range-box';
   const nm = o.prefix + '_rangeMode';
+  // الإصدار 144: المدد الظاهرة والافتراضي من «⏱ المدد والفترات» (المدة المحفوظة في الخطة بتفضل ظاهرة لصاحبها)
+  const perVis = window.gPerFilter ? gPerFilter('grid_rng', G_RANGE_PERIODS) : G_RANGE_PERIODS;
+  const perArr = G_RANGE_PERIODS.filter(x => perVis.includes(x) || x[0] === o.period);
   box.innerHTML = `<label>تحديد سقف وقاع النطاق</label>
     <div class="radio-row g-range-mode" role="radiogroup" aria-label="تحديد سقف وقاع النطاق">
       <label><input type="radio" name="${nm}" value="auto"> تلقائي — أعلى وأقل سعر للسهم خلال مدة تختارها</label>
       <label><input type="radio" name="${nm}" value="manual"> يدوي — أكتب السقف والقاع بنفسي</label>
     </div>
-    <label for="${o.prefix}_rangePeriod">المدة</label>
-    <select id="${o.prefix}_rangePeriod">${G_RANGE_PERIODS.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
+    <label for="${o.prefix}_rangePeriod">المدة ${window.gPerGear ? gPerGear('grid_rng') : ''}</label>
+    <select id="${o.prefix}_rangePeriod">${perArr.map(([v, l]) => `<option value="${v}">${l}${window.gPerIsHidden && window.__isAdmin && gPerIsHidden('grid_rng', v) ? ' (مخفي)' : ''}</option>`).join('')}</select>
     <div class="g-range-info u-fs12" id="${o.prefix}_rangeInfo" aria-live="polite"></div>`;
   row.parentNode.insertBefore(box, row);
   const per = box.querySelector('select'), info = box.querySelector('.g-range-info');
   const listed = () => o.isListed ? o.isListed() : true;
-  per.value = G_RANGE_PERIODS.some(x => x[0] === o.period) ? o.period : 'month';
+  per.value = perArr.some(x => x[0] === o.period) ? o.period : (window.gPerDef ? gPerDef('grid_rng') : 'month');
+  if (window.gPerWire) gPerWire(box, () => { const v = per.value; per.innerHTML = gPerFilter('grid_rng', G_RANGE_PERIODS).map(([k, l]) => `<option value="${k}">${l}${gPerIsHidden('grid_rng', k) ? ' (مخفي)' : ''}</option>`).join(''); per.value = v; });
   box.querySelector(`input[value="${o.mode === 'manual' ? 'manual' : 'auto'}"]`).checked = true;
   const mode = () => listed() ? ((box.querySelector('input:checked') || {}).value || 'auto') : 'manual';
   const perLabel = () => (G_RANGE_PERIODS.find(x => x[0] === per.value) || [,''])[1];
@@ -2086,7 +2090,7 @@ async function renderGridPlanForm(){
   if (prefill.price) document.getElementById('g_currentPrice').value = prefill.price;
   if (prefill.capital) document.getElementById('g_capital').value = prefill.capital;   // الإصدار 122: من «ميزان GRIFFINE AI»
   const gRange = gWireGridRange({ prefix: 'g', symId: 'g_symbol', getSym: () => document.getElementById('g_symbol').value, mktId: 'g_market', highId: 'g_high', lowId: 'g_low', listedName: 'g_listed',
-    isListed: () => (document.querySelector('input[name="g_listed"]:checked') || {}).value !== '0', mode: 'auto', period: 'month' });   // الإصدار 111
+    isListed: () => (document.querySelector('input[name="g_listed"]:checked') || {}).value !== '0', mode: 'auto', period: null });   // الإصدار 111 (144: المدة الافتراضية من «المدد والفترات»)
 
   function updatePreview(){
     const capital = parseFloat(document.getElementById('g_capital').value);

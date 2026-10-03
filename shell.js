@@ -50,7 +50,7 @@
      ===================================================================== */
 
   // رقم الإصدار - بيظهر في شاشة "حسابي" (غيّره مع ?v= في index.php و VERSION في sw.js)
-  const APP_VERSION = 143;
+  const APP_VERSION = 144;
 
   /* الاستعلامات المتكررة (الدردشة/التوصيات/قائمة المتابعة) - استعلام متكيّف (الإصدار 89)
      - بتقف لما التبويب يكون مخفي أو الموبايل مقفول
@@ -1151,21 +1151,30 @@
 
     const installCard = GS.installCardHtml();
 
+    // الإصدار 144: الرئيسية كاملة عند الأدمن + يتحكم في كل كارت (إخفاء / إظهار للكل) — العميل مبيشوفش الكارت المخفي
+    const HS = settings || {}, hOff = (k) => HS[k] === true, canH = !!window.__isAdmin && hasPermission('manage_admin_settings');
+    const HB = [['hide_home_hero', 'قيمة المحفظة'], ['hide_curve_home', 'منحنى الأداء'], ['hide_home_alerts', 'تنبيهات الأسعار'], ['hide_home_quick', 'الاختصارات'], ['hide_home_recs', 'أحدث التوصيات'], ['hide_home_holdings', 'استثماراتي']];
+    const hAt = (k) => !hOff(k) ? '' : (window.__isAdmin ? ' gs-hoff' : '');
+    const hSt = (k) => hOff(k) && !window.__isAdmin ? ' style="display:none"' : '';
+    const hTag = (k) => hOff(k) && window.__isAdmin ? `<div class="gs-hctl"><span class="u-muted">🙈 مخفي عن العملاء</span></div>` : '';
+    const hBar = canH ? `<div class="gs-hctl-bar"><b>🛠 التحكم في الرئيسية (بيتطبّق على الكل):</b>${HB.map(([k, l]) => `<button type="button" class="gs-hctl-b ${hOff(k) ? 'off' : ''}" data-hk="${k}" title="${hOff(k) ? 'مخفي عن العملاء — دوس للإظهار' : 'ظاهر للعملاء — دوس للإخفاء'}">${hOff(k) ? '🙈' : '👁'} ${l}${hOff(k) ? ' (مخفي)' : ''}</button>`).join('')}${window.gPerGear ? `<span class="u-muted">مدة المنحنى</span>${gPerGear('home_curve')}` : ''}</div>` : '';
+
     // ---- 3) رسم الشاشة ----
     app.innerHTML = `<div class="container gs-home">
       <div class="gs-greet">
         <div><div class="hello">${greeting()}</div><div class="name">${esc(displayName)}</div></div>
         <button type="button" class="gs-avatar" id="gsHomeAvatar" aria-label="حسابي">${avatar ? `<img src="${esc(avatar)}" alt="">` : esc(displayName.charAt(0).toUpperCase())}</button>
       </div>
+      ${hBar}
       ${accessGateCardHtml(acc)}
       ${installCard}
       <div class="gs-home-cols"><div class="c1">
-      <div id="gsHero"></div>
-      <div id="gsCurve"></div>
-      <div id="gsAlertsCard"></div>
-      ${quick.length ? `<div class="gs-quick" style="grid-template-columns:repeat(${quick.length},1fr)">${quick.map((q, i) => `<button type="button" data-i="${i}"><span class="ic ${q.brand ? 'brand' : ''}">${icon(q.ic)}</span>${q.label}</button>`).join('')}</div>` : ''}
-      <div id="gsRecs"></div>
-      </div><div class="c2">
+      ${hTag('hide_home_hero')}<div id="gsHero" class="gs-hblk${hAt('hide_home_hero')}"${hSt('hide_home_hero')}></div>
+      ${hTag('hide_curve_home')}<div id="gsCurve" class="gs-hblk${hAt('hide_curve_home')}"></div>
+      ${hTag('hide_home_alerts')}<div id="gsAlertsCard" class="gs-hblk${hAt('hide_home_alerts')}"${hSt('hide_home_alerts')}></div>
+      ${quick.length ? `${hTag('hide_home_quick')}<div class="gs-hblk${hAt('hide_home_quick')}"${hSt('hide_home_quick')}><div class="gs-quick" style="grid-template-columns:repeat(${quick.length},1fr)">${quick.map((q, i) => `<button type="button" data-i="${i}"><span class="ic ${q.brand ? 'brand' : ''}">${icon(q.ic)}</span>${q.label}</button>`).join('')}</div></div>` : ''}
+      ${hTag('hide_home_recs')}<div id="gsRecs" class="gs-hblk${hAt('hide_home_recs')}"${hSt('hide_home_recs')}></div>
+      </div><div class="c2 gs-hblk${hAt('hide_home_holdings')}"${hSt('hide_home_holdings')}>${hTag('hide_home_holdings')}
       <div class="gs-sec-head gs-hold-head"><h2>استثماراتي</h2>
         ${rows.length ? `<span class="gs-hold-ctl"><select id="gsHoldFilter" aria-label="عرض الصفقات"><option value="open">المفتوحة</option><option value="closed">المغلقة</option><option value="all">الكل</option></select>
         <button type="button" class="gs-link" id="gsAllHold" hidden></button></span>` : ''}</div>
@@ -1175,8 +1184,15 @@
     </div>`;
 
     $('#gsHomeAvatar').onclick = () => GS.renderAccount();
+    app.querySelectorAll('[data-hk]').forEach(b => b.onclick = async () => {   // الإصدار 144
+      b.disabled = true;
+      const r = await apiPost('/admin_settings_save.php', { key: b.dataset.hk, value: hOff(b.dataset.hk) ? 0 : 1 }).catch(() => null);
+      if (r && r.success) { GS.toast(hOff(b.dataset.hk) ? '👁 رجع يظهر للعملاء' : '🙈 اتخفى عن العملاء (إنت لسه شايفه باهت)', 'ok'); GS.renderHome(); }
+      else { b.disabled = false; GS.toast((r && r.message) || 'تعذّر الحفظ', 'err'); }
+    });
+    const hcb = app.querySelector('.gs-hctl-bar'); if (hcb && window.gPerWire) gPerWire(hcb, () => GS.renderHome());
     wireAccessGateCard(acc);   // الإصدار 85
-    if (typeof mkAfterHome === 'function') mkAfterHome(plans, grids, ccys, sel, email, { noCurve: hidden('hide_curve_home'), noAlerts: hidden('hide_alerts_screen') });   // منحنى الأداء + تنبيهات الأسعار (الإصدار 89: للأدمن والموظفين كمان)
+    if (typeof mkAfterHome === 'function') mkAfterHome(plans, grids, ccys, sel, email, { noCurve: hidden('hide_curve_home'), noAlerts: hidden('hide_alerts_screen') || hidden('hide_home_alerts') });   // منحنى الأداء + تنبيهات الأسعار (الإصدار 89: للأدمن والموظفين كمان)
     document.querySelectorAll('.gs-quick button').forEach(b => b.onclick = () => quick[+b.dataset.i].go());
     GS.wireInstallCard();
 

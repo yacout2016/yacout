@@ -70,7 +70,7 @@ const AN = { email: 'analyst129@example.com', pass: 'Test12345an' };   // حسا
   await a.selectOption('#rcTf', '3m'); await a.waitForTimeout(400); await a.click('#rcBtnScan');
   await a.waitForFunction(() => /اكتمل المسح/.test((document.getElementById('rcScTxt') || {}).textContent || ''), null, { timeout: 90000 }).catch(() => {});
   const sc = await a.evaluate(() => { const c = {}; document.querySelectorAll('#rcScDir button').forEach(b => c[b.dataset.d] = +b.querySelector('b').textContent);
-    return { hz: (document.querySelector('#rcScHz .on') || {}).dataset?.k, th: rcScHzTh.textContent, c, head: document.querySelector('.rc-scanhead').textContent, cls: !!document.querySelector('.rc-scan .bs-scan .bs-go') }; });
+    return { hz: document.querySelector('#rcScHz').value, th: rcScHzTh.textContent, c, head: document.querySelector('.rc-scanhead').textContent, cls: !!document.querySelector('.rc-scan .bs-scan .bs-go') }; });
   check('«مسح السوق» بنفس لون بصيرة + بيفتح نفس شاشة المسح على كل البورصة بالمدة المختارة (3 شهور)', /gradient/.test(scanBg) && sc.cls && sc.hz === '3m' && /3 شهور/.test(sc.th) && sc.c.all >= 5, JSON.stringify(sc) + ' ' + scanBg.slice(0, 40));
   check('المسح بيجيب الصاعد والهابط والمحايد (عشان توصية بيع أو إغلاق توصية)', sc.c.up >= 1 && sc.c.down >= 1 && sc.c.up + sc.c.down + sc.c.flat === sc.c.all, JSON.stringify(sc.c));
   await a.click('#rcScDir button[data-d="down"]');

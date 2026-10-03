@@ -190,6 +190,9 @@ const TA_PERIOD_LABELS = { '1m':'شهر', '2m':'شهرين', '3m':'3 شهور', 
 const TA_TIMEFRAME_LABELS = { '5min':'5 دقائق', '15min':'ربع ساعة', '30min':'نص ساعة', '1h':'ساعة', '2h':'ساعتين', '3h':'3 ساعات', '4h':'4 ساعات', 'day':'يوم', 'week':'أسبوع', 'month':'شهر' };
 // الفترة الزمنية اللي حصل خلالها أعلى/أقل سعر مُدخل في أداة فيبوناتشي/بيفوت (وصفية بس للعرض في النتيجة - مش جزء من معادلة الحساب نفسها)
 const TA_HL_PERIOD_LABELS = { day:'يوم', week:'أسبوع', month:'شهر', '2months':'شهرين', '3months':'3 شهور', '6months':'6 شهور', year:'سنة' };
+// الإصدار 144: الفترات الظاهرة + الافتراضي من «⏱ المدد والفترات» (الأدمن يتحكم من ⚙ جنب القائمة)
+function taHlOpts(sel){ const arr = Object.keys(TA_HL_PERIOD_LABELS).map(k => [k, TA_HL_PERIOD_LABELS[k]]);
+  return window.gPerOpts ? gPerOpts('scr_hl', arr, sel || gPerDef('scr_hl')) : arr.map(([k, l]) => `<option value="${k}" ${k === (sel || 'month') ? 'selected' : ''}>${l}</option>`).join(''); }
 
 async function renderScreener(){
   const __tok = screenToken();   // الإصدار 88
@@ -239,8 +242,8 @@ async function renderScreener(){
           <select id="ta_market">${Object.keys(MARKET_TO_CURRENCY_MAP).map(m=>`<option value="${m}">${m}</option>`).join('')}</select></div>
       </div>
 
-      <label class="u-mt10">الفترة الزمنية</label>
-      <select id="ta_hlPeriod">${Object.keys(TA_HL_PERIOD_LABELS).map(k=>`<option value="${k}" ${k==='month'?'selected':''}>${TA_HL_PERIOD_LABELS[k]}</option>`).join('')}</select>
+      <label class="u-mt10">الفترة الزمنية ${window.gPerGear ? gPerGear('scr_hl') : ''}</label>
+      <select id="ta_hlPeriod">${taHlOpts()}</select>
 
       <!-- الإصدار 76: جلب أعلى/أقل/آخر سعر تلقائيًا (الخانات أدناه تبقى قابلة للتعديل اليدوي) -->
       <button type="button" class="secondary u-mt10" id="ta_fetchBtn">⚡ جلب الأسعار تلقائيًا</button>
@@ -316,6 +319,7 @@ async function renderScreener(){
   taEl('ta_symbol').addEventListener('change', () => { if (taEl('ta_symbol').value.trim()) taFetchQuote(); });
   taEl('ta_symbol').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); taFetchQuote(true); } });
   ['ta_market', 'ta_hlPeriod'].forEach(id => taEl(id).addEventListener('change', () => { if (taEl('ta_symbol').value.trim()) taFetchQuote(); }));
+  if (window.gPerWire) gPerWire(app, () => { const s = taEl('ta_hlPeriod'); s.innerHTML = taHlOpts(s.value); });
   // أي تعديل يدوي في الأرقام ← المصدر يبقى يدوي
   ['ta_high', 'ta_low', 'ta_pivotClose'].forEach(id => taEl(id).addEventListener('input', () => { taSource = 'manual'; taEl('ta_closeNote').textContent = ''; }));
 

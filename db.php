@@ -133,6 +133,7 @@ function getAllAdminSettings($conn){
         'hide_install_icon' => false,     // الإصدار 116: أيقونة تثبيت التطبيق
         'hide_site_search' => false,      // الإصدار 116: البحث العام
         'hide_plan_watch' => false,       // الإصدار 119: متابعة خططك على آخر سعر
+        'hide_home_hero' => false, 'hide_home_quick' => false, 'hide_home_alerts' => false, 'hide_home_recs' => false, 'hide_home_holdings' => false,   // الإصدار 144: كروت الرئيسية
     ];
     $result = @$conn->query("SELECT setting_key, setting_value FROM admin_settings");
     if ($result) {

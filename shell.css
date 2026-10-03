@@ -1449,3 +1449,27 @@ select.pk-subplan{ min-width:150px; margin:0 0 4px !important; padding:5px 8px !
 body.g-shell #app table.g-one-line select.pk-subplan, table.g-one-line select.pk-subplan{ height:32px !important; min-height:0 !important; margin:0 6px 0 0 !important; padding:2px 6px !important; width:auto !important; display:inline-block !important; font-size:12.5px !important; }
 /* الإصدار 142: مدة منحنى المحفظة قائمة منسدلة */
 body.g-shell #app select.gs-curve-rngsel, select.gs-curve-rngsel{ width:auto !important; min-width:110px; margin:0 !important; padding:5px 10px !important; font-size:13px !important; }
+/* الإصدار 144: ⚙ التحكم في قوائم المدد (للأدمن) */
+.gper-gear, body.g-shell #app .gper-gear{ display:inline-flex !important; align-items:center; justify-content:center; width:28px !important; height:28px !important; min-height:0 !important; padding:0 !important; margin:0 4px !important; border-radius:50% !important; border:1px dashed var(--gs-brand,#C9A227) !important; background:var(--gs-brand-tint,rgba(201,162,39,.12)) !important; color:var(--gs-brand-strong,#A6811E) !important; font-size:14px !important; line-height:1; cursor:pointer; vertical-align:middle; flex:0 0 auto; box-shadow:none !important; }
+.gs-curve-rngw{ display:inline-flex; align-items:center; gap:2px; }
+.gper-ov{ position:fixed; inset:0; z-index:100000; background:rgba(2,6,23,.55); display:flex; align-items:center; justify-content:center; padding:16px; }
+.gper-dlg{ background:var(--gs-surface,#fff); color:var(--gs-text,#0F172A); border-radius:18px; width:min(420px,100%); max-height:88vh; overflow:auto; padding:16px; box-shadow:0 20px 60px rgba(0,0,0,.35); }
+.gper-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:8px; } .gper-head small{ display:block; color:var(--gs-muted,#64748B); font-size:12px; margin-top:2px; }
+.gper-x{ width:32px !important; height:32px !important; min-height:0 !important; padding:0 !important; margin:0 !important; border-radius:50% !important; background:var(--gs-surface-2,#F1F5F9) !important; color:inherit !important; border:0 !important; }
+.gper-sub{ font-size:12.5px; color:var(--gs-muted,#64748B); margin:8px 0; line-height:1.7; }
+.gper-list{ display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:6px; margin:6px 0 10px; }
+.gper-it{ display:flex; align-items:center; gap:6px; padding:8px 10px; border:1px solid var(--gs-border,#E5E7EB); border-radius:12px; cursor:pointer; font-size:13.5px; font-weight:600; margin:0 !important; }
+.gper-it input{ width:18px !important; height:18px !important; margin:0 !important; flex:0 0 auto; } .gper-it em{ font-style:normal; font-size:11px; color:#B91C1C; margin-inline-start:auto; }
+.gper-def{ display:block; font-size:13px; font-weight:700; } .gper-def select{ margin-top:6px !important; width:100% !important; }
+.gper-msg{ color:#B91C1C; font-size:12.5px; min-height:16px; margin-top:6px; }
+.gper-btns{ display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; } .gper-btns button{ width:auto !important; margin:0 !important; } .gper-save{ flex:1 1 auto; }
+.gper-row{ display:flex; justify-content:space-between; align-items:center; gap:8px; padding:10px 0; border-top:1px solid var(--gs-border,#E5E7EB); flex-wrap:wrap; }
+.gper-grp .gper-row:first-of-type{ border-top:0; } .gper-row-t small{ display:block; color:var(--gs-muted,#64748B); font-size:12px; margin-top:2px; }
+.gper-row-b{ display:flex; gap:6px; } .gper-row-b button{ width:auto !important; margin:0 !important; } .gper-hid{ color:#B91C1C; }
+/* الإصدار 144: الرئيسية عند الأدمن — التحكم في كل كارت */
+.gs-hctl{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:flex-end; margin:10px 0 4px; font-size:12px; }
+.gs-hctl-b, body.g-shell #app .gs-hctl-b{ width:auto !important; min-height:0 !important; margin:0 !important; padding:4px 10px !important; font-size:12px !important; border-radius:999px !important; border:1px dashed var(--gs-brand,#C9A227) !important; background:var(--gs-brand-tint,rgba(201,162,39,.12)) !important; color:var(--gs-brand-strong,#A6811E) !important; font-weight:700; box-shadow:none !important; }
+.gs-hctl-b.off, body.g-shell #app .gs-hctl-b.off{ border-color:#DC2626 !important; background:rgba(220,38,38,.08) !important; color:#B91C1C !important; }
+.gs-hblk.gs-hoff{ opacity:.45; outline:2px dashed rgba(220,38,38,.5); outline-offset:4px; border-radius:16px; }
+.gs-hctl-bar{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:10px 12px; margin:6px 0 12px; border:1px dashed var(--gs-brand,#C9A227); border-radius:14px; background:var(--gs-brand-tint,rgba(201,162,39,.08)); font-size:12.5px; }
+.gs-hctl-bar b{ color:var(--gs-brand-strong,#A6811E); }

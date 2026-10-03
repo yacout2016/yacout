@@ -190,7 +190,7 @@
   function buildUi(){
     if (!document.getElementById('gsStudioCss')) {
       const l = document.createElement('link');
-      l.id = 'gsStudioCss'; l.rel = 'stylesheet'; l.href = 'studio.css?v=143';
+      l.id = 'gsStudioCss'; l.rel = 'stylesheet'; l.href = 'studio.css?v=144';
       document.head.appendChild(l);
     }
     const root = document.createElement('div');
@@ -209,6 +209,7 @@
         <button type="button" id="gstPick" class="gst-btn">${icon('target')}<span>تحديد عنصر</span></button>
         <button type="button" id="gstThemes" class="gst-btn">${icon('grid')}<span>الثيمات</span></button>
         <button type="button" id="gstList" class="gst-btn">${icon('report')}<span>التعديلات <i id="gstCount">0</i></span></button>
+        <button type="button" id="gstHidden" class="gst-btn" title="كل العناصر المخفية في كل الشاشات">🙈<span>المخفي <i id="gstHidCount">0</i></span></button>
         <button type="button" id="gstMode" class="gst-btn" title="معاينة الوضع الليلي/النهاري">${icon('moon')}</button>
         <span class="gst-spacer"></span>
         <button type="button" id="gstSave" class="gst-btn gst-primary">${icon('check')}<span>حفظ</span></button>
@@ -221,6 +222,7 @@
     $('#gstPick').onclick = () => setPicking(!state.picking);
     $('#gstThemes').onclick = () => showPanel('themes');
     $('#gstList').onclick = () => showPanel('list');
+    $('#gstHidden').onclick = () => showPanel('hidden');
     $('#gstMode').onclick = () => GS.toggleTheme();
     $('#gstSave').onclick = save;
     $('#gstExit').onclick = exit;
@@ -256,6 +258,7 @@
     const n = (d.texts || []).length + (d.elTexts || []).length + (d.styles || []).length + (d.orders || []).length;
     const c = $('#gstCount'); if (c) c.textContent = n;
     const s = $('#gstSave'); if (s) s.classList.toggle('pulse', state.dirtyO || state.dirtyT);
+    updateHidCount();
   }
 
   // إطار حوالين العنصر (بيتحدّث مع السكرول)
@@ -336,13 +339,73 @@
   function showPanel(name){
     state.panel = name;
     $('#gstPanel').classList.remove('collapsed');
-    ['gstThemes', 'gstList'].forEach(id => { const b = $('#' + id); if (b) b.classList.toggle('on', (id === 'gstThemes' && name === 'themes') || (id === 'gstList' && name === 'list')); });
+    ['gstThemes', 'gstList', 'gstHidden'].forEach(id => { const b = $('#' + id); if (b) b.classList.toggle('on', (id === 'gstThemes' && name === 'themes') || (id === 'gstList' && name === 'list') || (id === 'gstHidden' && name === 'hidden')); });
     if (name === 'element' && state.el) renderElement();
     else if (name === 'themes') renderThemes();
     else if (name === 'list') renderList();
+    else if (name === 'hidden') { state.panel = 'hidden'; setBody('كل المخفي في الموقع', ''); }
     else renderWelcome();
   }
-  function setBody(title, html){ $('#gstPanelTitle').textContent = title; $('#gstBody').innerHTML = html; }
+  // الإصدار 144: «كل المخفي» في فاصل مستقل في كل لوح (الثيمات / العنصر المحدد / التعديلات) — كل بند قدامه شاشته + «إظهار»
+  function setBody(title, html){
+    $('#gstPanelTitle').textContent = title;
+    const hs = hiddenSecHtml(), atEnd = state.panel === 'element';
+    $('#gstBody').innerHTML = atEnd ? html + hs : hs + html;
+    wireHidden();
+  }
+
+  const HOME_CARDS = [['hide_home_hero', 'كارت «قيمة المحفظة»'], ['hide_curve_home', 'منحنى أداء المحفظة'], ['hide_home_alerts', 'كارت «تنبيهات الأسعار»'], ['hide_home_quick', 'الاختصارات'], ['hide_home_recs', 'أحدث التوصيات'], ['hide_home_holdings', 'استثماراتي']];
+  function hiddenItems(){
+    const out = [], d = state.draft || { styles: [] };
+    d.styles.forEach((r, i) => { if (r.css && r.css.display === 'none') out.push({ t: 'st', i, main: r.label || r.sel.split(' > ').slice(-1)[0], scr: screenLabel(r.screen), how: 'مخفي من الاستوديو' }); });
+    const hs = state.hset || {};
+    HOME_CARDS.forEach(([k, l]) => { if (hs[k] === true) out.push({ t: 'home', k, main: l, scr: 'الرئيسية', how: 'مخفي عن العملاء' }); });
+    const R = window.G_PERIODS || {};
+    Object.keys(R).forEach(id => R[id].o.forEach(([k, l]) => { if (window.gPerIsHidden && gPerIsHidden(id, k)) out.push({ t: 'per', id, k: String(k), main: `«${l}» في ${R[id].l}`, scr: R[id].scr, how: 'اختيار مخفي من القائمة' }); }));
+    return out;
+  }
+  function hiddenSecHtml(){
+    const L = hiddenItems(); updateHidCount(L.length);
+    return `<div class="gst-sec gst-hidsec"><div class="gst-sec-t">🙈 كل المخفي في الموقع (${L.length})</div>
+      ${L.map((x, n) => `<div class="gst-rule gst-hid"><span><b>${esc(x.main)}</b><small>📍 ${esc(x.scr)} · <em>${esc(x.how)}</em></small></span>
+        <span class="gst-hbtns">${x.t === 'st' ? `<button type="button" class="gst-ic" data-hgo="${n}" title="روح لمكانه">↗</button>` : ''}<button type="button" class="gst-btn gst-mini" data-hun="${n}">👁 إظهار</button></span></div>`).join('') || '<div class="gst-hint">مفيش حاجة مخفية دلوقتي.</div>'}
+      ${L.length ? '<div class="gst-hint">«إظهار» للعناصر المخفية من الاستوديو بيرجّعها في مكانها فورًا كمعاينة، وتتطبّق على الكل بعد «حفظ». الكروت والمدد بتتطبّق على الكل على طول.</div>' : ''}</div>`;
+  }
+  function updateHidCount(n){ const c = $('#gstHidCount'); if (c) c.textContent = n == null ? hiddenItems().length : n; }
+  async function loadHset(){ try { state.hset = await getAdminSettings(); } catch(e){ state.hset = {}; } }
+  async function goToRule(r){
+    if (!r) return;
+    const it = state.catalog.find(x => x.fnName.replace(/^GS:/, '') === r.screen);
+    if (it && r.screen !== '*' && r.screen !== screenNow()) { try { await (it.arg !== undefined ? it.fn(it.arg) : it.fn()); } catch(e){} await new Promise(ok => setTimeout(ok, 700)); }
+    let el = null; try { el = document.querySelector(r.sel); } catch(e){}
+    if (el) { try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch(e){} select(el); }
+    else GS.toast('العنصر مش ظاهر في الشاشة دي دلوقتي (ممكن يظهر مع بيانات معيّنة).', 'info');
+  }
+  function wireHidden(){
+    const body = $('#gstBody'); if (!body) return; const L = hiddenItems();
+    const again = () => showPanel(state.panel === 'element' && !state.el ? 'welcome' : state.panel);
+    body.querySelectorAll('[data-hgo]').forEach(b => b.onclick = () => { const x = L[+b.dataset.hgo]; if (x) goToRule(state.draft.styles[x.i]); });
+    body.querySelectorAll('[data-hun]').forEach(b => b.onclick = async () => {
+      const x = L[+b.dataset.hun]; if (!x) return; b.disabled = true;
+      if (x.t === 'st') {
+        const r = state.draft.styles[x.i]; delete r.css.display; if (!Object.keys(r.css).length) state.draft.styles.splice(x.i, 1);
+        markO(); GS.toast('👁 رجع يظهر في مكانه (معاينة) — دوس «حفظ» عشان يتطبّق على الكل', 'ok');
+        return goToRule(r).then(() => { if (!state.el) again(); });
+      }
+      if (x.t === 'home') {
+        const res = await apiPost('/admin_settings_save.php', { key: x.k, value: 0 }).catch(() => null);
+        if (res && res.success) { state.hset[x.k] = false; GS.toast('👁 رجع يظهر للعملاء في الرئيسية', 'ok'); if (screenNow() === 'renderHome') { try { GS.renderHome(); } catch(e){} } }
+        else GS.toast((res && res.message) || 'تعذّر الحفظ', 'err');
+      }
+      if (x.t === 'per') {
+        const c = (window.G_PERIODS || {})[x.id], h = c.o.map(o => String(o[0])).filter(k => k !== x.k && gPerIsHidden(x.id, k));
+        const res = await apiPost('/periods_api.php', { action: 'save', id: x.id, h: JSON.stringify(h), d: gPerDef(x.id) }).catch(() => null);
+        if (res && res.success) { await gPerLoad(true); GS.toast('👁 الاختيار رجع يظهر في القائمة للكل', 'ok'); }
+        else GS.toast((res && res.message) || 'تعذّر الحفظ', 'err');
+      }
+      again();
+    });
+  }
 
   function renderWelcome(){
     state.panel = 'welcome';
@@ -781,6 +844,7 @@
     buildUi();
     listen(true);
     renderWelcome();
+    Promise.all([loadHset(), window.gPerLoad ? gPerLoad(true) : null]).then(() => { if (state.isOpen && state.panel !== 'element') showPanel(state.panel); else updateHidCount(); });   // الإصدار 144
     updateCounters();
     loop();
     // الشاشة بتتغيّر ← نحدّث اختيار الشاشة في الشريط

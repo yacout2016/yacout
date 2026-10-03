@@ -15,7 +15,7 @@
   /* ---------- أسماء الأسهم بالعربي: من السيرفر (basira_names.json + اللي الأدمن أضافه من «تحليلات بصيرة AI») ---------- */
   let AR = {};
   const MKTS = ['مصر', 'السعودية', 'الإمارات', 'قطر', 'الكويت'];
-  let CFG = null, CUR = null, CUR_ID = null, RANGE = 'd', SHOW = { s20: true, s50: true, s200: true, bb: false };
+  let CFG = null, CUR = null, CUR_ID = null, RANGE = null, SHOW = { s20: true, s50: true, s200: true, bb: false };
   window.gArName = function(sym, market){
     const s = String(sym || '').toUpperCase(), cust = AR['*'] || {};
     if (cust[s]) return cust[s];
@@ -84,7 +84,7 @@
      بالدفعات (10 أسهم كل طلب) مع شريط تقدّم وإيقاف - والضغط على أي سهم بيفتح تحليله الكامل */
   const hzIn = (k) => k === 'day' ? 'يوم' : (HZ.find(h => h[0] === k) || [0, ''])[1];   // «خلال يوم» مش «خلال يومي»
   const HZ = [['day', 'يومي'], ['week', 'أسبوع'], ['month', 'شهر'], ['3m', '3 شهور'], ['6m', '6 شهور'], ['year', 'سنة']];
-  let SCAN = { items: [], total: 0, run: 0, hz: 'day', market: '', sector: '', sort: 'up', dir: -1 };
+  let SCAN = { items: [], total: 0, run: 0, hz: null, market: '', sector: '', sort: 'up', dir: -1 };
   // الإصدار 120: أعمدة جدول المسح (lock = مبيتخفاش) + إظهار/إخفاء محفوظ على الجهاز + الجدول جوه الصفحة من غير تمرير يمين وشمال
   // الإصدار 134: الكود والاسم والقطاع أعمدة منفصلة بعد المسلسل + كل الأعمدة تتخفي (ماعدا المسلسل)
   const SC_COLS = [
@@ -173,13 +173,14 @@
   }
   async function buildScan(tok, m0){
     const wrap = document.getElementById('bsScanWrap'), mk = allowedMkts();
-    const hz = HZ.filter(([k]) => !CFG.horizons || CFG.horizons[k] !== false);
-    if (!hz.find(([k]) => k === SCAN.hz)) SCAN.hz = (hz.find(([k]) => k === 'day') || hz[0] || ['day'])[0];
+    const hzAll = HZ.filter(([k]) => !CFG.horizons || CFG.horizons[k] !== false), hzV = window.gPerFilter ? gPerFilter('bs_scan', hzAll) : hzAll;
+    const hz = hzV.length ? hzV : hzAll;   // الإصدار 144: المدد الظاهرة + الافتراضي من «⏱ المدد والفترات»
+    if (!SCAN.hz || !hz.find(([k]) => k === SCAN.hz) || (window.gPerIsHidden && !window.__isAdmin && gPerIsHidden('bs_scan', SCAN.hz))) { const d = window.gPerDef ? gPerDef('bs_scan') : 'day'; SCAN.hz = (hz.find(([k]) => k === d) || hz.find(([k]) => k === 'day') || hz[0] || ['day'])[0]; }
     wrap.innerHTML = `<div class="bs-card bs-scan">
       <div class="bs-scrow">
         <div><label for="bsScMkt">البورصة</label><select id="bsScMkt">${mk.map(x => `<option ${x === m0 ? 'selected' : ''}>${E(x)}</option>`).join('')}</select></div>
         <div><label for="bsScSec">القطاع</label><select id="bsScSec"><option value="">كل البورصة</option></select></div>
-        <div><label for="bsScHz">الأسهم المتوقع صعودها خلال</label><select id="bsScHz">${hz.map(([k, l]) => `<option value="${k}" ${k === SCAN.hz ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+        <div><label for="bsScHz">الأسهم المتوقع صعودها خلال ${window.gPerGear ? gPerGear('bs_scan') : ''}</label><select id="bsScHz">${window.gPerOpts ? gPerOpts('bs_scan', hz, SCAN.hz) : hz.map(([k, l]) => `<option value="${k}" ${k === SCAN.hz ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
         <div class="bs-scbtns"><button type="button" class="bs-go" id="bsScGo">📊 ابدأ المسح</button><button type="button" class="secondary small" id="bsScStop" hidden>⏹ إيقاف</button></div>
       </div>
       <div class="bs-scprog" id="bsScProg" hidden><div class="bs-scbar"><i id="bsScBar"></i></div><small id="bsScTxt"></small></div>
@@ -199,7 +200,8 @@
       if (r && r.success) sec.innerHTML = `<option value="">كل البورصة (${r.total} سهم)</option>` + r.sectors.map(x => `<option value="${E(x.name)}">${E(x.name)} (${x.n})</option>`).join('');
     };
     mkt.onchange = () => { SCAN.run++; loadSecs(); };
-    document.getElementById('bsScHz').onchange = (e) => { SCAN.hz = e.target.value; paintScan(); };   // الإصدار 140: قائمة منسدلة (الافتراضي يومي)
+    document.getElementById('bsScHz').onchange = (e) => { SCAN.hz = e.target.value; paintScan(); };
+    if (window.gPerWire) gPerWire(wrap, () => { const sh = document.getElementById('bsScHz'); if (!sh) return; sh.innerHTML = gPerOpts('bs_scan', hz, SCAN.hz); });   // الإصدار 140: قائمة منسدلة (الافتراضي يومي)
     scWireCols();
     document.getElementById('bsScGo').onclick = () => runScan(tok);
     document.getElementById('bsScStop').onclick = () => { SCAN.run++; scanDone('اتوقف المسح — النتايج اللي اتحللت ظاهرة تحت.'); };
@@ -328,15 +330,24 @@
   }
 
   /* ===================== رسم التقرير ===================== */
+  // الإصدار 144: مدد الرسم والتوقع الظاهرة + الافتراضي من «⏱ المدد والفترات» (الأدمن يتحكم من ⚙ جنب كل قائمة)
+  const RNG = [['d', 'يوم'], [5, 'أسبوع'], [22, 'شهر'], [66, '3 شهور'], [132, '6 شهور'], [260, 'سنة']];
+  const hzOn = (k) => (!CFG || !CFG.horizons || CFG.horizons[k] !== false) && !(window.gPerIsHidden && gPerIsHidden('bs_hz', k));
+  function fixRange(){
+    const ok = (v) => v != null && (!window.gPerFilter || gPerFilter('bs_chart', RNG).some(x => String(x[0]) === String(v)));
+    if (!ok(RANGE)) { const d = window.gPerDef ? gPerDef('bs_chart') : 'd'; RANGE = d === 'd' ? 'd' : +d; }
+  }
   function paint(R, o){
     const rep = document.getElementById('bsReport'); if (!rep) return;
+    fixRange();
     rep.innerHTML = reportHtml(R, Object.assign({ actions: true }, o));
     drawCharts(R);
     wireReport(R);
+    if (window.gPerWire) gPerWire(rep, () => paint(R, o));
     if (RANGE === 'd') { const rg = document.getElementById('bsRng'); if (rg && rg.onchange) rg.onchange(); }   // الإصدار 142: الافتراضي «يوم» (أسعار اليوم)
   }
   function reportHtml(R, o){
-    const ar = R.arName || gArName(R.symbol, R.market), v = vk(R.score), hz = R.horizons.filter(h => !CFG || !CFG.horizons || CFG.horizons[h.key] !== false);
+    const ar = R.arName || gArName(R.symbol, R.market), v = vk(R.score), hz = R.horizons.filter(h => hzOn(h.key));
     const I = R.inds || [], ai = R.ai || {}, lv = R.levels || {};
     const hzY = (R.horizons || []).find(h => h.key === 'year');   // الإصدار 139: بالاسم مش بالترتيب (اتضاف «يومي» في الأول)
     const at = o.savedAt ? ('محفوظ ' + (typeof gServerDate === 'function' ? gServerDate(o.savedAt).toLocaleString('ar-EG') : o.savedAt)) : ('آخر تحديث ' + new Date(R.at).toLocaleString('ar-EG'));
@@ -365,7 +376,7 @@
       </div>
     </div>
 
-    <h2 class="bs-sec"><span class="bs-ic">🎯</span> التوقع حسب الفترة الزمنية</h2>
+    <h2 class="bs-sec"><span class="bs-ic">🎯</span> التوقع حسب الفترة الزمنية ${o.actions && window.gPerGear ? gPerGear('bs_hz') : ''}</h2>
     <div class="bs-hz">${hz.map(h => { const k = h.verdict === 'شراء' ? 'pos' : h.verdict === 'بيع' ? 'neg' : 'gold';
       return `<div class="bs-hzc bs-hz-${k}"><h5>خلال ${E(h.label)}</h5><div class="bs-hzv">${E(h.verdict)}</div><div class="bs-bar"><i style="width:${h.up}%"></i></div>
         <div class="bs-pr"><span class="pos">صعود ${h.up}%</span><span class="neg">هبوط ${h.dn}%</span></div>
@@ -373,7 +384,7 @@
 
     <h2 class="bs-sec"><span class="bs-ic">📈</span> الرسم البياني وتقاطع المؤشرات</h2>
     <div class="bs-card bs-chart">
-      <div class="bs-chead"><label class="bs-rngl">المدة <select id="bsRng" aria-label="مدة الرسم البياني">${[['d', 'يوم'], [5, 'أسبوع'], [22, 'شهر'], [66, '3 شهور'], [132, '6 شهور'], [260, 'سنة']].map(([d, l]) => `<option value="${d}" ${String(d) === String(RANGE) ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+      <div class="bs-chead"><label class="bs-rngl">المدة <select id="bsRng" aria-label="مدة الرسم البياني">${window.gPerOpts ? gPerOpts('bs_chart', RNG, RANGE) : RNG.map(([d, l]) => `<option value="${d}" ${String(d) === String(RANGE) ? 'selected' : ''}>${l}</option>`).join('')}</select>${o.actions && window.gPerGear ? gPerGear('bs_chart') : ''}</label>
         <div class="bs-legend" id="bsLegend">${[['s20', 'متوسط 20', '#60A5FA'], ['s50', 'متوسط 50', '#A78BFA'], ['s200', 'متوسط 200', '#F472B6'], ['bb', 'بولينجر', '#94A3B8']].map(([k, l, c]) => `<label><input type="checkbox" data-k="${k}" ${SHOW[k] ? 'checked' : ''}><i style="background:${c}"></i>${l}</label>`).join('')}
           <label class="bs-lx"><i class="bs-dotp"></i>تقاطع إيجابي</label><label class="bs-lx"><i class="bs-dotn"></i>تقاطع سلبي</label></div></div>
       <div class="bs-chartbox"><svg class="bs-svg" id="bsMain" viewBox="0 0 1000 320" preserveAspectRatio="none"></svg><div class="bs-tip" id="bsTip"></div></div>
@@ -528,7 +539,7 @@
   function printReport(R){
     const w = window.open('', '_blank'); if (!w) { toast('المتصفح منع فتح نافذة التقرير — اسمح بالنوافذ المنبثقة', 'err'); return; }
     const s = chartSvgs(R, Math.min(260, R.chart.c.length), { s20: true, s50: true, s200: true, bb: false }, true), ai = R.ai || {}, ar = R.arName || gArName(R.symbol, R.market);
-    const hz = R.horizons.filter(h => !CFG || !CFG.horizons || CFG.horizons[h.key] !== false);
+    const hz = R.horizons.filter(h => hzOn(h.key));
     const e = (x) => String(x == null ? '' : x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     w.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>${e((CFG ? CFG.name : 'بصيرة') + ' GRIFFINE AI — ' + R.symbol)}</title>
       <style>body{font-family:IBM Plex Sans Arabic,Tahoma,sans-serif;padding:24px;color:#111;background:#fff}h1{margin:0 0 4px;font-size:22px}h2{font-size:16px;margin:20px 0 8px;border-bottom:2px solid #eee;padding-bottom:6px}
@@ -571,7 +582,7 @@
         <button type="button" class="small u-wa u-m0 bs-plan" id="bsTry">جرّب ${E(CFG.name)} بنفسك</button></div>
       <div class="bs-disc" role="note">⚠️ <div><b>تنويه:</b> ${E(CFG.disclaimer)}</div></div>
       <div id="bsReport"></div></div>`;
-    const rep = document.getElementById('bsReport'); rep.innerHTML = reportHtml(CUR, { actions: false, savedAt: r.savedAt }) + '<div class="bs-acts"><button type="button" class="small secondary u-wa u-m0" id="bsPdf2">🖨 تقرير PDF</button></div>';
+    fixRange(); const rep = document.getElementById("bsReport"); rep.innerHTML = reportHtml(CUR, { actions: false, savedAt: r.savedAt }) + '<div class="bs-acts"><button type="button" class="small secondary u-wa u-m0" id="bsPdf2">🖨 تقرير PDF</button></div>';
     drawCharts(CUR); wireReport(CUR);
     document.getElementById('bsPdf2').onclick = () => printReport(CUR);
     document.getElementById('bsTry').onclick = async () => { if (await getSession()) window.renderBasira(CUR.symbol, CUR.market); else if (typeof renderRegister === 'function') renderRegister(); else renderLogin(); };

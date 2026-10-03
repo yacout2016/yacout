@@ -148,3 +148,9 @@ body.gs-studio-on #chatBubble, body.gs-studio-on #chatPanel{ display:none !impor
 #gsStudio .gst-seg button{ flex:1 1 auto; width:auto !important; min-width:0; min-height:0 !important; margin:0 !important; padding:7px 9px !important; border-radius:10px !important; border:1px solid var(--st-border) !important; background:var(--st-bg3) !important; color:var(--st-text) !important; font:inherit; font-size:12.5px !important; font-weight:600; cursor:pointer; white-space:nowrap; box-shadow:none !important; }
 #gsStudio .gst-seg button:hover{ border-color:var(--st-accent) !important; }
 #gsStudio .gst-seg button.on{ background:var(--st-accent-t) !important; border-color:var(--st-accent) !important; color:var(--st-accent) !important; }
+/* الإصدار 144: «كل المخفي» في فاصل مستقل */
+#gsStudio .gst-hidsec{ border:1px dashed rgba(220,38,38,.45); border-radius:14px; padding:10px; background:rgba(220,38,38,.05); }
+#gsStudio .gst-hidsec .gst-sec-t{ color:#B91C1C; }
+#gsStudio .gst-rule.gst-hid small em{ font-style:normal; color:#B91C1C; }
+#gsStudio .gst-hbtns{ display:flex; align-items:center; gap:4px; flex:0 0 auto; }
+#gsStudio .gst-btn.gst-mini{ padding:4px 10px; font-size:12px; min-height:0; }
