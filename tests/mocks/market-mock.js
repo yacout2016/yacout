@@ -39,6 +39,11 @@ http.createServer((req, res) => { let body = ''; req.on('data', c => body += c);
   // Yahoo chart (الإصدار 91): أسعار إغلاق يومية لآخر 400 يوم - خط من 70% لحد السعر الحالي
   const ym = u.pathname.match(/^\/([A-Z0-9-]+)\.CA$/);
   if (ym && prices[ym[1]] && u.searchParams.get('interval')) {
+    if (u.searchParams.get('interval') === '5m') {   // الإصدار 142: أسعار اليوم كل 5 دقايق (رسم «يوم»)
+      const p = prices[ym[1]], st = Math.floor(Date.now() / 86400000) * 86400 + 8 * 3600, ts = [], c = [];
+      for (let i = 0; i < 54; i++) { ts.push(st + i * 300); c.push(+(p * (0.985 + 0.015 * i / 53 + 0.004 * Math.sin(i / 3))).toFixed(3)); }
+      return send({ chart: { result: [{ meta: { currency: 'EGP' }, timestamp: ts, indicators: { quote: [{ high: c.map(x => x * 1.002), low: c.map(x => x * 0.998), close: c, volume: c.map(() => 500) }] } }] } });
+    }
     const p = prices[ym[1]], n = 400, now = Math.floor(Date.now() / 86400000) * 86400, ts = [], c = [], down = falling.has(ym[1]);
     for (let i = n - 1; i >= 0; i--) { ts.push(now - i * 86400); const f = (n - 1 - i) / (n - 1); c.push(+(p * (down ? 1.6 - 0.6 * f : 0.7 + 0.3 * f)).toFixed(3)); }
     const v = c.map((_, i) => i === c.length - 1 ? 3000 : 1000);   // حجم آخر يوم 3 أضعاف المتوسط

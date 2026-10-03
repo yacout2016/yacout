@@ -474,7 +474,7 @@ async function mkPortfolioCurve(el, ccys, sel, plans, grids, rangeKey){
   }
   // آخر نقطة = بطاقة المحفظة بالظبط (الاتنين دلوقتي بسعر السوق وبنفس تعريف التكلفة)
   const all = mkBuildSeries(positions, el.__hist, today, now ? now.value : null, now ? now.cost : null);
-  const RANGES = [['3m', '3 شهور', 92], ['6m', '6 شهور', 183], ['1y', 'سنة', 366], ['all', 'الكل', 99999]];
+  const RANGES = [['1d', 'يوم', 1], ['1w', 'أسبوع', 7], ['1m', 'شهر', 31], ['3m', '3 شهور', 92], ['6m', '6 شهور', 183], ['1y', 'سنة', 366], ['all', 'الكل', 99999]];
   rangeKey = rangeKey || el.__range || 'all'; el.__range = rangeKey;
   const lim = (RANGES.find(x => x[0] === rangeKey) || RANGES[3])[2];
   const cut = new Date(Date.now() - lim * 86400000).toISOString().slice(0, 10);
@@ -497,7 +497,7 @@ async function mkPortfolioCurve(el, ccys, sel, plans, grids, rangeKey){
     <div class="u-row" style="align-items:flex-start;flex-wrap:wrap;gap:6px;">
       <div><div class="section-title u-m0">📈 أداء إجمالي المحفظة (${escapeHtml(MK_CCY_AR[code] || code)})</div>
         <div class="u-fs13 u-mt4"><b class="g-num">${MK.n(last.v)}</b> <span class="u-muted">القيمة الحالية</span> · <span style="color:${color}" class="g-num">${up ? '▲' : '▼'} ${MK.n(Math.abs(pl))} (${Math.abs(plPct).toFixed(2)}%)</span> <span class="u-muted">مقابل المستثمر ${MK.n(last.c)}</span></div></div>
-      <div class="gs-curve-rng">${RANGES.map(([k, l]) => `<button type="button" class="${k === rangeKey ? 'on' : ''}" data-rng="${k}">${l}</button>`).join('')}</div>
+      <select class="gs-curve-rngsel" aria-label="مدة المنحنى">${RANGES.map(([k, l]) => `<option value="${k}" ${k === rangeKey ? 'selected' : ''}>${l}</option>`).join('')}</select>
     </div>
     <div class="gs-curve-box">
       <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" class="gs-curve-svg" role="img" aria-label="منحنى قيمة المحفظة">
@@ -513,7 +513,7 @@ async function mkPortfolioCurve(el, ccys, sel, plans, grids, rangeKey){
     <div class="gs-curve-legend"><span><i style="background:${color}"></i>القيمة السوقية</span><span><i class="dash"></i>المبلغ المستثمر</span><span class="u-muted">من ${escapeHtml(firstP.d)} · التغير في الفترة <b class="g-num" style="color:${chg >= 0 ? 'var(--gs-pos,#0E9F6E)' : 'var(--gs-neg,#E02424)'}">${chg >= 0 ? '+' : '−'}${MK.n(Math.abs(chg))}</b></span></div>
     <div class="u-hint u-mt4">القيمة في كل يوم = الكمية التي كانت لديك × سعر إغلاق السهم في ذلك اليوم (الأسعار متأخرة).${missing.length ? ` لا توجد أسعار تاريخية لـ ${missing.map(x => `<bdi>${escapeHtml(x)}</bdi>`).join('، ')} — حُسبت بآخر سعر تنفيذ.` : ''} آخر نقطة = قيمة المحفظة الحالية بسعر السوق (نفس البطاقة).</div>
   </div>`;
-  el.querySelectorAll('[data-rng]').forEach(b => b.onclick = () => mkPortfolioCurve(el, ccys, sel, plans, grids, b.dataset.rng));
+  const rs = el.querySelector('.gs-curve-rngsel'); if (rs) rs.onchange = () => mkPortfolioCurve(el, ccys, sel, plans, grids, rs.value);   // الإصدار 142: قائمة منسدلة (يوم ← الكل)
   const svg = el.querySelector('.gs-curve-svg'), tip = el.querySelector('.gs-curve-tip'), cur = el.querySelector('.gs-curve-cursor');
   const move = (ev) => {
     const r = svg.getBoundingClientRect(); const cx = (ev.touches ? ev.touches[0].clientX : ev.clientX) - r.left;

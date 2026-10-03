@@ -89,10 +89,10 @@ function opp_yahoo($ysym, $interval, $range){
 }
 function opp_candles($sym, $market, $tf){
     $m = MQ_MARKETS[$market] ?? MQ_MARKETS['مصر'];
-    $ttl = in_array($tf, ['1h', '4h'], true) ? 50 * 60 : 3 * 3600;
+    $ttl = $tf === '5m' ? 5 * 60 : (in_array($tf, ['1h', '4h'], true) ? 50 * 60 : 3 * 3600);   // الإصدار 142: 5m = رسم «يوم»
     $f = opp_cache_dir() . '/' . md5("c101|$sym|$market|$tf") . '.json';
     if (is_file($f) && time() - filemtime($f) < $ttl) { $j = json_decode((string)@file_get_contents($f), true); return $j ?: null; }
-    [$interval, $range] = ['1d' => ['1d', '2y'], '1wk' => ['1wk', '5y'], '1mo' => ['1mo', '10y'], '1h' => ['60m', '60d'], '4h' => ['60m', '120d']][$tf] ?? ['1d', '2y'];
+    [$interval, $range] = ['1d' => ['1d', '2y'], '1wk' => ['1wk', '5y'], '1mo' => ['1mo', '10y'], '1h' => ['60m', '60d'], '4h' => ['60m', '120d'], '5m' => ['5m', '1d']][$tf] ?? ['1d', '2y'];
     $out = null;
     foreach ($m[2] as $suffix) { $out = opp_yahoo($sym . $suffix, $interval, $range); if ($out) break; }
     if ($out && $tf === '4h') {   // تجميع كل 4 شموع ساعة في شمعة

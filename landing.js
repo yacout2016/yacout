@@ -205,7 +205,7 @@
         <div class="lp-phone">
           <div class="lp-pv-top"><div><small>قيمة المحفظة الحالية</small><div class="lp-pv-val"><span class="lp-num" id="lpPvVal">248,650.40</span><sub>EGP</sub></div>
             <span class="lp-chip lp-up" id="lpPvChgW" style="margin-top:8px"><span class="lp-num" id="lpPvChg">+18,420.75</span></span></div>
-            <div class="lp-seg" id="lpPvSeg"><button type="button" data-r="30">شهر</button><button type="button" data-r="90" class="on">3 شهور</button><button type="button" data-r="250">سنة</button></div></div>
+            <div class="lp-seg" id="lpPvSeg"><button type="button" data-r="2">يوم</button><button type="button" data-r="7">أسبوع</button><button type="button" data-r="30">شهر</button><button type="button" data-r="90" class="on">3 شهور</button><button type="button" data-r="250">سنة</button></div></div>
           <div class="lp-chart" id="lpHeroChart"></div>
           <div class="lp-hold">${[['COMI', 'DCA', 'مفتوحة', 82450, 12.4], ['TMGH', 'Grid', 'مفتوحة', 64120, 8.9], ['ABUK', 'DCA', 'مفتوحة', 41300, -2.1]].map(([s, t, st, v, p], i) => `<div class="lp-hrow"><span class="lp-sym" style="background:${SYM_COLORS[i]}">${s}</span><div class="m"><b>${s}<span class="lp-tag ${t === 'Grid' ? 'g' : ''}">${t}</span></b><small>مصر · ${st}</small></div><div class="e"><b class="lp-num">${fmt(v)}</b><small class="lp-num ${p >= 0 ? 'lp-up' : 'lp-down'}">${p >= 0 ? '+' : ''}${p}%</small></div></div>`).join('')}</div>
         </div>
@@ -218,7 +218,7 @@
   R.markets = (c) => `<div class="lp-wrap">${secHead(c.markets)}
       <div class="lp-tabs lp-rev" id="lpMkTabs"></div>
       <div class="lp-mk lp-rev"><div class="lp-mk-main"><div class="hd"><div><h3 id="lpMkName">—</h3><small style="color:var(--lp-muted)" id="lpMkSub"></small></div>
-        <div class="lp-seg" id="lpMkRange"><button type="button" data-r="30">شهر</button><button type="button" data-r="90" class="on">3 شهور</button><button type="button" data-r="180">6 شهور</button><button type="button" data-r="260">سنة</button></div></div>
+        <div class="lp-seg" id="lpMkRange"><button type="button" data-r="2">يوم</button><button type="button" data-r="7">أسبوع</button><button type="button" data-r="30">شهر</button><button type="button" data-r="90" class="on">3 شهور</button><button type="button" data-r="180">6 شهور</button><button type="button" data-r="260">سنة</button></div></div>
         <div style="margin-top:12px;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap"><span class="lp-big lp-num" id="lpMkVal">—</span><span class="lp-chip" id="lpMkChg"></span></div>
         <div class="lp-mk-chart" id="lpMkChart"></div></div>
         <div class="lp-mk-list" id="lpMkList"></div></div>
@@ -286,7 +286,7 @@
     return `<div class="lp-wrap"><div class="lp-custom ${lay}"><div class="lp-custom-t lp-rev">${s.eyebrow ? `<span class="lp-eyebrow">${esc(s.eyebrow)}</span>` : ''}${s.title ? `<h2>${T(s.title)}</h2>` : ''}${s.text ? `<p>${esc(s.text)}</p>` : ''}${s.btn ? btnHtml(s.btn, s.action === 'url' ? 'url:' + (s.url || '') : (s.action || 'register'), true) : ''}</div>${img ? `<div class="lp-rev"><img src="${esc(img)}" alt=""></div>` : ''}</div></div>`; };
 
   const logoHtml = (c) => { const lg = imgSrc(c.theme.logo);
-    return lg ? `<img src="${esc(lg)}" alt="GRIFFINE">` : `<img class="lp-logo-l" src="griffine-logo-light.webp?v=140" alt="GRIFFINE"><img class="lp-logo-d" src="griffine-logo-dark.webp?v=140" alt="GRIFFINE">`; };
+    return lg ? `<img src="${esc(lg)}" alt="GRIFFINE">` : `<img class="lp-logo-l" src="griffine-logo-light.webp?v=142" alt="GRIFFINE"><img class="lp-logo-d" src="griffine-logo-dark.webp?v=142" alt="GRIFFINE">`; };
   const IC = {
     moon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg>',
     login: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>',

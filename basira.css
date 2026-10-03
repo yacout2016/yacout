@@ -265,3 +265,6 @@ body.g-shell #app .bs-sctable .bs-scf, .bs-sctable .bs-scf{ width:100% !importan
 @media (max-width: 700px){ body.g-shell #app .bs-sctable .bs-scf, .bs-sctable .bs-scf{ padding:2px 3px !important; font-size:10.5px !important; } }
 /* الإصدار 139: 6 فترات (يومي ← سنة) — على الموبايل شبكة 3×2 مرتبة بدل ما تلف عشوائي */
 #bsScHz{ min-width:150px; }
+/* الإصدار 142: مدة الرسم البياني قائمة منسدلة */
+.bs-rngl{ display:inline-flex; align-items:center; gap:8px; font-size:13px; font-weight:700; color:var(--gs-muted,#64748B); }
+body.g-shell #app .bs-rngl select, .bs-rngl select{ width:auto !important; min-width:120px; margin:0 !important; padding:6px 10px !important; }

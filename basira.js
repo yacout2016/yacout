@@ -372,7 +372,7 @@
 
     <h2 class="bs-sec"><span class="bs-ic">📈</span> الرسم البياني وتقاطع المؤشرات</h2>
     <div class="bs-card bs-chart">
-      <div class="bs-chead"><div class="bs-seg" id="bsRng">${[[22, 'شهر'], [66, '3 شهور'], [132, '6 شهور'], [260, 'سنة']].map(([d, l]) => `<button type="button" data-r="${d}" class="${d === RANGE ? 'on' : ''}">${l}</button>`).join('')}</div>
+      <div class="bs-chead"><label class="bs-rngl">المدة <select id="bsRng" aria-label="مدة الرسم البياني">${[['d', 'يوم'], [5, 'أسبوع'], [22, 'شهر'], [66, '3 شهور'], [132, '6 شهور'], [260, 'سنة']].map(([d, l]) => `<option value="${d}" ${String(d) === String(RANGE) ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
         <div class="bs-legend" id="bsLegend">${[['s20', 'متوسط 20', '#60A5FA'], ['s50', 'متوسط 50', '#A78BFA'], ['s200', 'متوسط 200', '#F472B6'], ['bb', 'بولينجر', '#94A3B8']].map(([k, l, c]) => `<label><input type="checkbox" data-k="${k}" ${SHOW[k] ? 'checked' : ''}><i style="background:${c}"></i>${l}</label>`).join('')}
           <label class="bs-lx"><i class="bs-dotp"></i>تقاطع إيجابي</label><label class="bs-lx"><i class="bs-dotn"></i>تقاطع سلبي</label></div></div>
       <div class="bs-chartbox"><svg class="bs-svg" id="bsMain" viewBox="0 0 1000 320" preserveAspectRatio="none"></svg><div class="bs-tip" id="bsTip"></div></div>
@@ -471,13 +471,13 @@
     return { main, rsi: r, macd: m, mn, mx, x0, n };
   }
   function drawCharts(R){
-    const s = chartSvgs(R, RANGE, SHOW, false), svg = document.getElementById('bsMain'); if (!svg) return;
+    const s = chartSvgs(R, R.__day ? R.chart.c.length : (RANGE === 'd' ? 22 : RANGE), SHOW, false), svg = document.getElementById('bsMain'); if (!svg) return;
     svg.innerHTML = s.main + `<line id="bsCross" x1="0" x2="0" y1="0" y2="320" stroke="var(--gs-muted,#64748B)" stroke-dasharray="3 3" opacity="0" vector-effect="non-scaling-stroke"/><rect id="bsHover" x="0" y="0" width="1000" height="320" fill="transparent"/>`;
     document.getElementById('bsRsi').innerHTML = s.rsi; document.getElementById('bsMacd').innerHTML = s.macd;
     const tip = document.getElementById('bsTip'), cross = svg.querySelector('#bsCross'), C = R.chart;
     const move = (cx) => { const b = svg.getBoundingClientRect(), fx = Math.max(0, Math.min(1, (cx - b.left) / b.width)), i = Math.round(fx * (s.n - 1)), j = s.x0 + i;
       cross.setAttribute('x1', fx * 1000); cross.setAttribute('x2', fx * 1000); cross.setAttribute('opacity', 1);
-      tip.innerHTML = `<b>${new Date(C.t[j] * 1000).toISOString().slice(0, 10)}</b><br>السعر <b class="n">${n2(C.c[j])}</b>${C.s50[j] != null ? `<br>م50 <span class="n">${n2(C.s50[j])}</span>` : ''}${C.s200[j] != null ? ` — م200 <span class="n">${n2(C.s200[j])}</span>` : ''}<br>RSI <span class="n">${n2(C.rsi[j])}</span>`;
+      tip.innerHTML = `<b>${R.__day ? new Date(C.t[j] * 1000).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : new Date(C.t[j] * 1000).toISOString().slice(0, 10)}</b><br>السعر <b class="n">${n2(C.c[j])}</b>${C.s50[j] != null ? `<br>م50 <span class="n">${n2(C.s50[j])}</span>` : ''}${C.s200[j] != null ? ` — م200 <span class="n">${n2(C.s200[j])}</span>` : ''}<br>RSI <span class="n">${n2(C.rsi[j])}</span>`;
       tip.style.display = 'block'; const tx = cx - b.left; tip.style.left = (tx > b.width / 2 ? tx - tip.offsetWidth - 12 : tx + 12) + 'px'; tip.style.top = '8px'; };
     const hov = svg.querySelector('#bsHover');
     hov.addEventListener('mousemove', (e) => move(e.clientX));
@@ -486,7 +486,15 @@
   }
   function wireReport(R){
     const q = (id) => document.getElementById(id);
-    const rng = q('bsRng'); if (rng) rng.onclick = (e) => { const b = e.target.closest('[data-r]'); if (!b) return; RANGE = +b.dataset.r; rng.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); drawCharts(R); };
+    const rng = q('bsRng'); if (rng) rng.onchange = async () => { const v = rng.value;   // الإصدار 142: قائمة منسدلة (يوم / أسبوع / شهر / 3 / 6 شهور / سنة)
+      if (v !== 'd') { RANGE = +v; drawCharts(R); return; }
+      // الإصدار 142: «يوم» = أسعار اليوم كل 5 دقايق (من غير المتوسطات والمؤشرات اليومية)
+      RANGE = 'd';
+      if (!R.__intra) { const r = await apiGet(`/basira_api.php?action=intraday&symbol=${encodeURIComponent(R.symbol)}&market=${encodeURIComponent(R.market || '')}`).catch(() => null);
+        R.__intra = r && r.success ? r : { t: R.chart.t.slice(-2), c: R.chart.c.slice(-2), fallback: true }; }
+      const I = R.__intra, nl = I.c.map(() => null);
+      drawCharts(Object.assign({}, R, { cross: [], __day: true, chart: { t: I.t, c: I.c, s20: nl, s50: nl, s200: nl, bbU: nl, bbL: nl, rsi: nl, macd: nl, sig: nl, hist: nl } }));
+    };
     const lg = q('bsLegend'); if (lg) lg.onchange = (e) => { const k = e.target.dataset.k; if (k) { SHOW[k] = e.target.checked; drawCharts(R); } };
     const nt = q('bsNtabs'); if (nt) nt.onclick = (e) => { const b = e.target.closest('[data-f]'); if (!b) return; nt.querySelectorAll('button').forEach(x => { x.classList.toggle('on', x === b); x.classList.toggle('secondary', x !== b); }); q('bsNews').innerHTML = newsHtml(R.news || [], b.dataset.f); };
     const save = async () => {

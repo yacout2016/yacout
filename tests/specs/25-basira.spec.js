@@ -45,8 +45,15 @@ const http = (u) => fetch(u).then(r => r.json()).catch(() => ({}));
   check('الرأي بالمحرك المجاني (محرك GRIFFINE) لما مفيش مفتاح', /محرك GRIFFINE/.test(R.src));
   // تفاعل الرسم: الفترة + المؤشرات
   const p1 = await a.evaluate(() => document.getElementById('bsMain').innerHTML.length);
-  await a.click('#bsRng [data-r="22"]'); await a.click('#bsLegend input[data-k="bb"]'); await a.waitForTimeout(200);
+  await a.selectOption('#bsRng', '22'); await a.click('#bsLegend input[data-k="bb"]'); await a.waitForTimeout(200);
   check('تغيير فترة الرسم وإظهار بولينجر بيعيد الرسم', await a.evaluate((p1) => document.getElementById('bsMain').innerHTML.length !== p1 && /stroke-dasharray="4 4"/.test(document.getElementById('bsMain').innerHTML), p1));
+  // الإصدار 142: مدة الرسم قائمة منسدلة فيها يوم وأسبوع — «يوم» = أسعار اليوم كل 5 دقايق
+  const ro = await a.evaluate(() => [...document.querySelectorAll('#bsRng option')].map(o => o.textContent).join(','));
+  check('مدة الرسم قائمة منسدلة: يوم / أسبوع / شهر / 3 شهور / 6 شهور / سنة', ro === 'يوم,أسبوع,شهر,3 شهور,6 شهور,سنة', ro);
+  await a.selectOption('#bsRng', 'd'); await a.waitForTimeout(1200);
+  check('«يوم» بيرسم أسعار اليوم (من غير تقاطعات الأيام)', await a.evaluate(() => /<path/.test(document.getElementById('bsMain').innerHTML) && !/<ellipse/.test(document.getElementById('bsMain').innerHTML)));
+  await a.selectOption('#bsRng', '5'); await a.waitForTimeout(300);
+  check('«أسبوع» بيرسم آخر 5 جلسات', await a.evaluate(() => /<path/.test(document.getElementById('bsMain').innerHTML)));
   await a.click('#bsNtabs [data-f="market"]'); await a.waitForTimeout(100);
   check('تبويب أخبار السوق', await a.evaluate(() => [...document.querySelectorAll('#bsNews .bs-nw small')].every(x => /السوق والقطاع/.test(x.textContent))));
 

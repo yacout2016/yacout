@@ -95,6 +95,15 @@ try {
     }
     $cfg = bs_cfg($conn);
 
+    // الإصدار 142: رسم «يوم» — أسعار اليوم كل 5 دقايق (متأخرة 15 دقيقة)
+    if ($action === 'intraday') {
+        require_once __DIR__ . '/opps_lib.php';
+        $sym = strtoupper(preg_replace('/[^A-Za-z0-9.\-]/', '', (string)($_GET['symbol'] ?? ''))); $mk = (string)($_GET['market'] ?? 'مصر');
+        if ($sym === '') bs_out(["success" => false, "message" => "رمز غير صحيح."]);
+        $C = opp_candles($sym, $mk, '5m');
+        if (!$C || count($C['c'] ?? []) < 2) bs_out(["success" => false, "message" => "أسعار اليوم مش متاحة دلوقتي."]);
+        bs_out(["success" => true, "t" => array_values($C['t']), "c" => array_map(fn($v) => round((float)$v, 4), array_values($C['c']))]);
+    }
     if ($action === 'config') {
         bs_out(["success" => true, "config" => ['name' => $cfg['name'], 'tagline' => $cfg['tagline'], 'disclaimer' => $cfg['disclaimer'], 'horizons' => $cfg['horizons'],
             'shareOn' => !empty($cfg['share_on']), 'plansOn' => !empty($cfg['plans_on']), 'newsOn' => !empty($cfg['news_on']), 'names' => bs_names($cfg),
