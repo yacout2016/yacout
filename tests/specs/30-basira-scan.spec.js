@@ -11,7 +11,7 @@ const { check, summary, launch, page, loginAdmin, q } = require('../lib');
   await a.click('#bsTabScan'); await a.waitForFunction(() => document.querySelectorAll('#bsScSec option').length > 1, null, { timeout: 20000 }).catch(() => {});
   const ui = await a.evaluate(() => ({ one: document.getElementById('bsOneWrap').hidden, secs: [...document.querySelectorAll('#bsScSec option')].map(o => o.textContent), hz: [...document.querySelectorAll('#bsScHz button')].map(x => x.textContent), on: (document.querySelector('#bsScHz .on') || {}).textContent }));
   check('المسح: قائمة القطاعات من السوق بالعربي (كل البورصة + البنوك)', ui.one && ui.secs[0].includes('كل البورصة') && ui.secs.some(x => /البنوك \(2\)/.test(x)), ui.secs.join(' | '));
-  check('المسح: الفترات أسبوع / شهر / 3 شهور / 6 شهور / سنة (الافتراضي شهر)', ui.hz.join(',') === 'أسبوع,شهر,3 شهور,6 شهور,سنة' && ui.on === 'شهر', ui.hz.join(','));
+  check('المسح: الفترات يومي / أسبوع / شهر / 3 شهور / 6 شهور / سنة (الافتراضي شهر)', ui.hz.join(',') === 'يومي,أسبوع,شهر,3 شهور,6 شهور,سنة' && ui.on === 'شهر', ui.hz.join(','));
 
   // كل البورصة
   await a.click('#bsScGo');

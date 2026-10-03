@@ -82,7 +82,8 @@
   /* ===================== الإصدار 118: مسح السوق =====================
      كل أسهم البورصة (أو قطاع) ← نفس محرك بصيرة لكل سهم ← ترتيب حسب احتمال الصعود في الفترة المختارة
      بالدفعات (10 أسهم كل طلب) مع شريط تقدّم وإيقاف - والضغط على أي سهم بيفتح تحليله الكامل */
-  const HZ = [['week', 'أسبوع'], ['month', 'شهر'], ['3m', '3 شهور'], ['6m', '6 شهور'], ['year', 'سنة']];
+  const hzIn = (k) => k === 'day' ? 'يوم' : (HZ.find(h => h[0] === k) || [0, ''])[1];   // «خلال يوم» مش «خلال يومي»
+  const HZ = [['day', 'يومي'], ['week', 'أسبوع'], ['month', 'شهر'], ['3m', '3 شهور'], ['6m', '6 شهور'], ['year', 'سنة']];
   let SCAN = { items: [], total: 0, run: 0, hz: 'month', market: '', sector: '', sort: 'up', dir: -1 };
   // الإصدار 120: أعمدة جدول المسح (lock = مبيتخفاش) + إظهار/إخفاء محفوظ على الجهاز + الجدول جوه الصفحة من غير تمرير يمين وشمال
   // الإصدار 134: الكود والاسم والقطاع أعمدة منفصلة بعد المسلسل + كل الأعمدة تتخفي (ماعدا المسلسل)
@@ -173,7 +174,7 @@
   async function buildScan(tok, m0){
     const wrap = document.getElementById('bsScanWrap'), mk = allowedMkts();
     const hz = HZ.filter(([k]) => !CFG.horizons || CFG.horizons[k] !== false);
-    if (!hz.find(([k]) => k === SCAN.hz)) SCAN.hz = (hz[1] || hz[0] || ['month'])[0];
+    if (!hz.find(([k]) => k === SCAN.hz)) SCAN.hz = (hz.find(([k]) => k === 'month') || hz[0] || ['month'])[0];
     wrap.innerHTML = `<div class="bs-card bs-scan">
       <div class="bs-scrow">
         <div><label for="bsScMkt">البورصة</label><select id="bsScMkt">${mk.map(x => `<option ${x === m0 ? 'selected' : ''}>${E(x)}</option>`).join('')}</select></div>
@@ -226,11 +227,11 @@
       paintScan();
       if (!r.items.length || off >= r.total) break;
     }
-    scanDone(`✅ اكتمل المسح: ${SCAN.items.length} سهم متحلل${SCAN.total - SCAN.items.length > 0 ? ` (${SCAN.total - SCAN.items.length} مفيش ليهم بيانات كفاية)` : ''} — مترتبين حسب احتمال الصعود خلال ${(HZ.find(h => h[0] === SCAN.hz) || [0, ''])[1]}.`);
+    scanDone(`✅ اكتمل المسح: ${SCAN.items.length} سهم متحلل${SCAN.total - SCAN.items.length > 0 ? ` (${SCAN.total - SCAN.items.length} مفيش ليهم بيانات كفاية)` : ''} — مترتبين حسب احتمال الصعود خلال ${hzIn(SCAN.hz)}.`);
   }
   function paintScan(){
     const tb = document.querySelector('#bsScTable tbody'); if (!tb) return;
-    const hl = (HZ.find(h => h[0] === SCAN.hz) || [0, ''])[1];
+    const hl = hzIn(SCAN.hz);
     const th = document.getElementById('bsScHzTh'); if (th) th.textContent = window.innerWidth < 700 ? `الصعود (${hl})` : `احتمال الصعود (${hl})`;
     const up = (x) => (x.hz && x.hz[SCAN.hz] ? x.hz[SCAN.hz].up : 0);
     const val = { up, sym: (x) => x.symbol, nm: (x) => x.ar || gArName(x.symbol, SCAN.market) || x.name || '', sec: (x) => x.sector || '', chg: (x) => x.chg || 0, score: (x) => x.score || 0, y1: (x) => (x.y1 == null ? -1e9 : x.y1) };
@@ -336,6 +337,7 @@
   function reportHtml(R, o){
     const ar = R.arName || gArName(R.symbol, R.market), v = vk(R.score), hz = R.horizons.filter(h => !CFG || !CFG.horizons || CFG.horizons[h.key] !== false);
     const I = R.inds || [], ai = R.ai || {}, lv = R.levels || {};
+    const hzY = (R.horizons || []).find(h => h.key === 'year');   // الإصدار 139: بالاسم مش بالترتيب (اتضاف «يومي» في الأول)
     const at = o.savedAt ? ('محفوظ ' + (typeof gServerDate === 'function' ? gServerDate(o.savedAt).toLocaleString('ar-EG') : o.savedAt)) : ('آخر تحديث ' + new Date(R.at).toLocaleString('ar-EG'));
     const newsPos = (R.news || []).filter(n => n.m === 'pos').length, newsNeg = (R.news || []).filter(n => n.m === 'neg').length;
     return `
@@ -404,7 +406,7 @@
     <h2 class="bs-sec"><span class="bs-ic">🌍</span> الموقف العام والسوق</h2>
     <div class="bs-card"><div class="bs-lv bs-lv4">
       <div><span>الاتجاه القصير (أسبوع)</span><b class="${hz[0] && hz[0].verdict === 'شراء' ? 'pos' : hz[0] && hz[0].verdict === 'بيع' ? 'neg' : ''}">${E(hz[0] ? hz[0].verdict : '—')}</b></div>
-      <div><span>الاتجاه الطويل (سنة)</span><b class="${R.horizons[4] && R.horizons[4].verdict === 'شراء' ? 'pos' : R.horizons[4] && R.horizons[4].verdict === 'بيع' ? 'neg' : ''}">${E(R.horizons[4] ? R.horizons[4].verdict : '—')}</b></div>
+      <div><span>الاتجاه الطويل (سنة)</span><b class="${hzY && hzY.verdict === 'شراء' ? 'pos' : hzY && hzY.verdict === 'بيع' ? 'neg' : ''}">${E(hzY ? hzY.verdict : '—')}</b></div>
       <div><span>أداء السنة</span><b class="n ${cls(R.y1)}">${pct(R.y1)}</b></div>
       <div><span>مزاج الأخبار</span><b class="${newsPos > newsNeg ? 'pos' : newsNeg > newsPos ? 'neg' : ''}">${newsPos > newsNeg ? 'إيجابي' : newsNeg > newsPos ? 'سلبي' : 'محايد'}</b></div></div>
       ${ai.market_view ? `<p class="bs-mv">${E(ai.market_view)}</p>` : ''}</div>
@@ -569,7 +571,7 @@
     const r = await apiGet('/basira_api.php?action=admin_get').catch(() => null);
     if (screenStale(__tok)) return;
     if (!r || !r.success) { app.innerHTML = `<div class="container">${logoHeader()}<div class="error">${E((r && r.message) || 'غير مصرح.')}</div></div>`; return; }
-    const c = r.config, H = [['week', 'أسبوع'], ['month', 'شهر'], ['3m', '3 شهور'], ['6m', '6 شهور'], ['year', 'سنة']];
+    const c = r.config, H = [['day', 'يومي'], ['week', 'أسبوع'], ['month', 'شهر'], ['3m', '3 شهور'], ['6m', '6 شهور'], ['year', 'سنة']];
     window.__lastPageKey = 'basira_admin';
     app.innerHTML = `<div class="container wide bs-admin">${logoHeader()}
       <div class="topbar"><div>${typeof pageTitle === 'function' ? pageTitle('basira_admin', '🔮 تحليلات بصيرة AI') : '🔮 تحليلات بصيرة AI'}</div><button type="button" class="secondary small" id="bsaPrev">👁 فتح الشاشة</button></div>

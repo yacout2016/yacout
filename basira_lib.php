@@ -23,7 +23,8 @@ const BS_MODELS = [
     'claude-sonnet-5-5' => 'Claude Sonnet 5.5 — أسرع وأوفر',
     'claude-haiku-4-5'  => 'Claude Haiku 4.5 — الأوفر',
 ];
-const BS_HORIZONS = [['week', 'أسبوع', 5], ['month', 'شهر', 22], ['3m', '3 شهور', 66], ['6m', '6 شهور', 132], ['year', 'سنة', 252]];
+// الإصدار 139: «يومي» فترة أساسية في كل تحليل ومسح (قبل كده كانت بتبدأ من أسبوع)
+const BS_HORIZONS = [['day', 'يوم', 1], ['week', 'أسبوع', 5], ['month', 'شهر', 22], ['3m', '3 شهور', 66], ['6m', '6 شهور', 132], ['year', 'سنة', 252]];
 const BS_MARKET_Q = ['مصر' => 'البورصة المصرية', 'السعودية' => 'السوق السعودية تداول', 'الإمارات' => 'سوق دبي المالي أبوظبي', 'قطر' => 'بورصة قطر', 'الكويت' => 'بورصة الكويت'];
 const BS_INDEX = ['مصر' => 'EGX30', 'السعودية' => 'تاسي', 'الإمارات' => 'مؤشر سوق دبي', 'قطر' => 'مؤشر بورصة قطر', 'الكويت' => 'مؤشر السوق الأول'];
 
@@ -38,7 +39,7 @@ function bs_defaults(){
         'disclaimer' => 'ده تحليل آلي معتمد على المؤشرات الفنية والذكاء الاصطناعي والأخبار المنشورة، ومش نصيحة استثمارية ولا توصية بالشراء أو البيع. القرار قرارك، وممكن السوق يتحرك عكس أي توقع.',
         'ai_on' => true, 'model' => 'claude-opus-5-5', 'effort' => 'medium', 'ai_daily_max' => 150,
         'cache_min' => 60, 'scan_on' => true, 'scan_max' => 300, 'news_on' => true, 'news_max' => 8, 'watch_max' => 12, 'save_max' => 50, 'share_on' => true, 'plans_on' => true,
-        'horizons' => ['week' => true, 'month' => true, '3m' => true, '6m' => true, 'year' => true],
+        'horizons' => ['day' => true, 'week' => true, 'month' => true, '3m' => true, '6m' => true, 'year' => true],
         'ar_names' => '',   // سطر لكل سهم: SYMBOL=الاسم بالعربي (بيكمّل/بيغيّر القائمة الجاهزة)
     ];
 }
@@ -162,8 +163,8 @@ function bs_compute($sym, $market){
     $y1 = $n > 252 ? ($last / $c[$n - 253] - 1) : ($last / $c[0] - 1);
     $H = [];
     foreach (BS_HORIZONS as $k => [$key, $lab, $days]) {
-        $wS = [0.75, 0.6, 0.4, 0.3, 0.2][$k]; $wL = 1 - $wS;
-        $tilt = $wS * ($short / 7) * 22 + $wL * ($long / 3) * 22 + ($k >= 3 ? max(-6, min(6, $y1 * 20)) : 0);
+        $wS = [0.85, 0.75, 0.6, 0.4, 0.3, 0.2][$k]; $wL = 1 - $wS;
+        $tilt = $wS * ($short / 7) * 22 + $wL * ($long / 3) * 22 + ($k >= 4 ? max(-6, min(6, $y1 * 20)) : 0) + ($key === 'day' ? max(-4, min(4, $prev > 0 ? ($last / $prev - 1) * 100 : 0)) : 0);
         $up = (int)max(10, min(90, round(50 + $tilt)));
         $vol = $sigma * sqrt($days);
         $H[] = ['key' => $key, 'label' => $lab, 'days' => $days, 'up' => $up, 'dn' => 100 - $up, 'verdict' => $up >= 58 ? 'شراء' : ($up <= 42 ? 'بيع' : 'تعادل'),
@@ -244,7 +245,7 @@ function bs_ai_schema(){
             'opinion' => $str, 'positives' => ['type' => 'array', 'items' => $str], 'negatives' => ['type' => 'array', 'items' => $str],
             'bull' => $scen, 'base' => $scen, 'bear' => $scen,
             'horizons' => ['type' => 'array', 'items' => ['type' => 'object', 'additionalProperties' => false, 'required' => ['key', 'up', 'note'],
-                'properties' => ['key' => ['type' => 'string', 'enum' => ['week', 'month', '3m', '6m', 'year']], 'up' => ['type' => 'integer'], 'note' => $str]]],
+                'properties' => ['key' => ['type' => 'string', 'enum' => ['day', 'week', 'month', '3m', '6m', 'year']], 'up' => ['type' => 'integer'], 'note' => $str]]],
             'news_summary' => $str, 'market_view' => $str,
         ]];
 }
@@ -324,7 +325,7 @@ function bs_rule_opinion($A, $news){
     foreach ($A['cross'] as $x) { if ($x['k'] === 'pos' && count($pos) < 5) $pos[] = $x['t'] . ' من ' . $x['days'] . ' جلسة'; if ($x['k'] === 'neg' && count($negs) < 5) $negs[] = $x['t'] . ' من ' . $x['days'] . ' جلسة'; }
     if ($nN) $negs[] = 'فيه ' . $nN . ' خبر سلبي ممكن يضغط على السعر'; if ($pN) $pos[] = 'فيه ' . $pN . ' خبر إيجابي عن السهم أو السوق';
     if (!$negs) $negs[] = 'تقلبات السوق العام وأسعار الفائدة ممكن تغيّر الاتجاه';
-    $m = $A['horizons'][1]['up'] ?? 50; $bull = (int)round($m * 0.55); $bear = (int)round((100 - $m) * 0.55);
+    $m = (array_values(array_filter($A['horizons'], fn($h) => $h['key'] === 'month'))[0]['up'] ?? 50); $bull = (int)round($m * 0.55); $bear = (int)round((100 - $m) * 0.55);
     return ['opinion' => $op, 'positives' => $pos ?: ['مفيش إشارات إيجابية واضحة حاليًا'], 'negatives' => $negs,
         'bull' => ['prob' => $bull, 'text' => 'استهداف ' . $f($A['levels']['r2']) . ' لو اخترق ' . $f($A['levels']['r1'])],
         'base' => ['prob' => 100 - $bull - $bear, 'text' => 'تداول بين ' . $f($A['levels']['s1']) . ' و ' . $f($A['levels']['r1'])],
@@ -397,9 +398,9 @@ function bs_analyze($conn, $sym, $market, $arName = '', $fresh = false){
 /* تحليل خفيف لقائمة المتابعة (المؤشرات بس - من غير أخبار ولا ذكاء اصطناعي) */
 function bs_quick($conn, $sym, $market){
     $full = bs_cache_file($conn, $sym, $market);
-    if (is_file($full) && time() - filemtime($full) < 6 * 3600) { $j = json_decode((string)@file_get_contents($full), true); if (is_array($j) && !empty($j['ok'])) return ['ok' => true, 'score' => $j['score'], 'verdict' => $j['verdict'], 'last' => $j['last'], 'chg' => $j['chg'], 'week' => $j['horizons'][0]['verdict'] ?? ''] ; }
+    if (is_file($full) && time() - filemtime($full) < 6 * 3600) { $j = json_decode((string)@file_get_contents($full), true); if (is_array($j) && !empty($j['ok'])) return ['ok' => true, 'score' => $j['score'], 'verdict' => $j['verdict'], 'last' => $j['last'], 'chg' => $j['chg'], 'week' => (array_values(array_filter($j['horizons'] ?? [], fn($h) => ($h['key'] ?? '') === 'week'))[0]['verdict'] ?? '')] ; }
     $A = bs_compute($sym, $market); if (empty($A['ok'])) return ['ok' => false];
-    return ['ok' => true, 'score' => $A['score'], 'verdict' => $A['score'] >= 58 ? 'صاعد — إيجابي' : ($A['score'] <= 42 ? 'هابط — سلبي' : 'محايد — عرضي'), 'last' => $A['last'], 'chg' => $A['chg'], 'week' => $A['horizons'][0]['verdict']];
+    return ['ok' => true, 'score' => $A['score'], 'verdict' => $A['score'] >= 58 ? 'صاعد — إيجابي' : ($A['score'] <= 42 ? 'هابط — سلبي' : 'محايد — عرضي'), 'last' => $A['last'], 'chg' => $A['chg'], 'week' => (array_values(array_filter($A['horizons'], fn($h) => $h['key'] === 'week'))[0]['verdict'] ?? '')];
 }
 
 /* =====================================================================

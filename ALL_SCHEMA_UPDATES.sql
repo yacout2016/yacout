@@ -1,4 +1,4 @@
-/* GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 138) — كل التحديثات، آمن يتشغل أكتر من مرة. الصقه كله في تبويب SQL ← Go */
+/* GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 139) — كل التحديثات، آمن يتشغل أكتر من مرة. الصقه كله في تبويب SQL ← Go */
 /* v69: جدول login_attempts (حماية من تخمين كلمات المرور). */
 /* v72: جدول ui_customizations (استوديو التصميم) + جدول email… */
 /* v82: عمود allow_upload في chat_conversation_meta (الأدمن ب… */
@@ -27,6 +27,7 @@
 /* v136: ترتيب الباقات: المجانية ← الشهرية ← السنوية ← برو (مرة واحدة) */
 /* v137: مفيش تغيير في قاعدة البيانات (إخفاء / إظهار المميزات بيتحفظ في site_config) */
 /* v138: user_perks (مميزات إضافية / متشالة لكل مشترك) + الحسابات اللي مالهاش اشتراك ← الباقة المجانية (مرة واحدة) */
+/* v139: مفيش تغيير في قاعدة البيانات (فترة «يومي» في بصيرة) */
 /* v85: ترميز الاتصال UTF-8 عشان النصوص العربي اللي بتتضاف من… */
 SET NAMES utf8mb4;
 CREATE TABLE IF NOT EXISTS users (
@@ -808,4 +809,4 @@ INSERT INTO user_perks (account_email, minus_keys) SELECT LOWER(account_email), 
 UPDATE user_ai_access SET basira = 1, mizan = 1, mizanai = 1 WHERE NOT EXISTS (SELECT 1 FROM site_config WHERE config_key = 'mig_138_perks');
 INSERT INTO subscribers (account_email, name, phone, contact_email, plan_id, plan_name, amount, market, start_date, end_date, active) SELECT LOWER(u.username), SUBSTRING_INDEX(u.username, '@', 1), '', LOWER(u.username), p.id, p.name, 0, COALESCE(NULLIF(u.account_market, ''), 'مصر'), CURDATE(), DATE_ADD(CURDATE(), INTERVAL p.duration_days DAY), 1 FROM users u JOIN subscription_plans p ON p.id = 'trial' WHERE u.is_admin = 0 AND COALESCE(u.archived, 0) = 0 AND NOT EXISTS (SELECT 1 FROM subscribers s WHERE LOWER(s.account_email) = LOWER(u.username)) AND NOT EXISTS (SELECT 1 FROM site_config WHERE config_key = 'mig_138_perks');
 INSERT IGNORE INTO site_config (config_key, config_value) VALUES ('mig_138_perks', '1');
-SELECT 'GRIFFINE database is up to date (v138)' AS result;
+SELECT 'GRIFFINE database is up to date (v139)' AS result;

@@ -37,7 +37,7 @@ const http = (u) => fetch(u).then(r => r.json()).catch(() => ({}));
     scen: document.querySelectorAll('.bs-scen > div').length, news: [...document.querySelectorAll('.bs-nw')].map(x => [x.getAttribute('href'), x.target, x.rel]),
     src: [...document.querySelectorAll('.bs-sec')].map(x => x.textContent).join('|') }));
   check('تقرير السهم COMI (بالاسم العربي عند الوقوف)', R.sym === 'COMI' && /البنك التجاري الدولي/.test(R.title) && /البنك التجاري الدولي/.test(R.inputTitle), JSON.stringify({ t: R.title, i: R.inputTitle }));
-  check('التوقع لـ 5 فترات: أسبوع / شهر / 3 شهور / 6 شهور / سنة (شراء أو بيع أو تعادل)', R.hz.join(',') === 'خلال أسبوع,خلال شهر,خلال 3 شهور,خلال 6 شهور,خلال سنة' && R.hzV.every(v => /^(شراء|بيع|تعادل)$/.test(v)), R.hz.join(',') + ' / ' + R.hzV.join(','));
+  check('التوقع لـ 6 فترات: يوم / أسبوع / شهر / 3 شهور / 6 شهور / سنة (شراء أو بيع أو تعادل) — الإصدار 139', R.hz.join(',') === 'خلال يوم,خلال أسبوع,خلال شهر,خلال 3 شهور,خلال 6 شهور,خلال سنة' && R.hzV.every(v => /^(شراء|بيع|تعادل)$/.test(v)), R.hz.join(',') + ' / ' + R.hzV.join(','));
   check('12 مؤشر فني في الجدول', R.inds === 12, R.inds);
   check('الرسم البياني (سعر + متوسطات) + RSI + MACD', R.main >= 4 && R.rsi && R.macd > 20, JSON.stringify({ m: R.main, macd: R.macd }));
   check('الاتجاه العام + الدعم والمقاومة (5 مستويات) + الرأي + 3 سيناريوهات', /صاعد|هابط|محايد/.test(R.verdict) && R.lv >= 5 && R.ai > 40 && R.scen === 3, JSON.stringify({ v: R.verdict, lv: R.lv, ai: R.ai }));
