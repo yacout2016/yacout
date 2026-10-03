@@ -14,14 +14,14 @@ const CUST = { email: 'paytest@example.com', pass: process.env.GT_CUSTOMER_PASS 
   // 1) صفحة «⏱ المدد والفترات» في لوحة التحكم
   await a.evaluate(() => renderAdminHub()); await a.waitForSelector('#goPeriodsBtn', { timeout: 15000 }).catch(() => {});
   check('لوحة التحكم: زرار واحد «الشاشة الرئيسية والقوائم المنسدلة (مدد البحث)»', await a.evaluate(() => /الشاشة الرئيسية والقوائم المنسدلة/.test((document.getElementById('goPeriodsBtn') || {}).textContent || '')));
-  await a.click('#goPeriodsBtn'); await a.waitForSelector('.gper-row', { timeout: 15000 }).catch(() => {});
-  const pg = await a.evaluate(() => ({ n: document.querySelectorAll('.gper-row').length, t: document.getElementById('app').textContent }));
-  check('نفس الصفحة: كروت الشاشة الرئيسية (6) بزرار إخفاء / إظهار لكل كارت', await a.evaluate(() => document.querySelectorAll('#gperHome [data-hk]').length === 6));
+  await a.click('#goPeriodsBtn'); await a.waitForSelector('.gs-he-per .gper-row', { timeout: 30000 }).catch(() => {});
+  const pg = await a.evaluate(() => ({ n: document.querySelectorAll('.gs-he-per .gper-row').length, t: document.getElementById('app').textContent }));
+  check('الزرار بيفتح نفس شكل الشاشة الرئيسية (قيمة المحفظة) + أزرار إخفاء / إظهار على كل كارت (6)', await a.evaluate(() => !!document.querySelector('.gs-hctl-bar') && !!document.querySelector('#gsHero') && document.querySelectorAll('.gs-home [data-hk]').length === 6));
   check('الصفحة فيها كل قوائم المدد لكل شاشة (الرئيسية / بصيرة / المسح / الفرص / الكشاف / Grid / الميزان / الموقع العام)', pg.n >= 12 && /منحنى أداء المحفظة/.test(pg.t) && /مدة البحث/.test(pg.t) && /الإطار الزمني/.test(pg.t) && /النطاق التلقائي/.test(pg.t), pg.n);
 
-  await a.click('#gperHome [data-hk="hide_home_recs"]'); await a.waitForTimeout(1200); await a.waitForSelector('#gperHome', { timeout: 10000 }).catch(() => {});
-  check('من نفس الصفحة: إخفاء «أحدث التوصيات» ← اتحفظ ومكتوب «مخفي عن العملاء»', q("SELECT setting_value FROM admin_settings WHERE setting_key='hide_home_recs'") === '1' && await a.evaluate(() => /مخفي عن العملاء/.test(document.getElementById('gperHome').textContent)));
-  await a.click('#gperHome [data-hk="hide_home_recs"]'); await a.waitForTimeout(1200); await a.waitForSelector('#gperHome', { timeout: 10000 }).catch(() => {});
+  await a.click('[data-hk="hide_home_recs"]'); await a.waitForTimeout(1500); await a.waitForSelector('.gs-he-per', { timeout: 20000 }).catch(() => {});
+  check('من نفس الصفحة: إخفاء «أحدث التوصيات» ← اتحفظ ومكتوب «مخفي عن العملاء»', q("SELECT setting_value FROM admin_settings WHERE setting_key='hide_home_recs'") === '1' && await a.evaluate(() => /مخفي عن العملاء/.test(document.querySelector('[data-hk="hide_home_recs"]').textContent)));
+  await a.click('[data-hk="hide_home_recs"]'); await a.waitForTimeout(1500); await a.waitForSelector('.gs-he-per', { timeout: 20000 }).catch(() => {});
   check('ودوسة تانية ← رجع ظاهر للكل', q("SELECT setting_value FROM admin_settings WHERE setting_key='hide_home_recs'") === '0');
   // 2) منحنى الرئيسية: شيل «يوم» وخلي الافتراضي «أسبوع»
   await a.click('[data-ed="home_curve"]'); await a.waitForSelector('#gperOv', { timeout: 5000 });
@@ -44,14 +44,14 @@ const CUST = { email: 'paytest@example.com', pass: process.env.GT_CUSTOMER_PASS 
   check('العميل: منحنى الرئيسية بيفتح على «أسبوع» و«يوم» و«الكل» اتمسحوا من القائمة', cc && cc.v === '1w' && !cc.o.split(',').includes('1d') && !cc.o.split(',').includes('all'), JSON.stringify(cc));
   check('العميل مبيشوفش زرار ⚙', cc && !cc.gear);
 
-  // 4) الأدمن: الرئيسية كاملة + ⚙ جنب القائمة + المخفي مكتوب جنبه «مخفي»
-  await a.evaluate(async () => { await gPerLoad(true); renderHome(); }); await a.waitForSelector('.gs-hctl-bar', { timeout: 30000 }).catch(() => {});
-  const ah = await a.evaluate(() => ({ bar: document.querySelectorAll('.gs-hctl-b').length, hero: !!document.querySelector('#gsHero .gs-hero'), gear: !!document.querySelector('.gs-hctl-bar .gper-gear') }));
-  check('رئيسية الأدمن: شريط «🛠 التحكم في الرئيسية» فيه كل الكروت (6) + ⚙ مدة المنحنى + قيمة المحفظة ظاهرة', ah.bar === 6 && ah.hero && ah.gear, JSON.stringify(ah));
-
-  // 5) إخفاء كارت «الاختصارات» من الرئيسية للكل
-  await a.click('.gs-hctl-b[data-hk="hide_home_quick"]'); await a.waitForTimeout(1500); await a.waitForSelector('.gs-hctl-bar', { timeout: 20000 }).catch(() => {});
-  check('الأدمن خفى «الاختصارات» ← اتحفظ + لسه شايفه باهت ومكتوب «مخفي»', q("SELECT setting_value FROM admin_settings WHERE setting_key='hide_home_quick'") === '1' && await a.evaluate(() => !!document.querySelector('.gs-hblk.gs-hoff .gs-quick') && /مخفي/.test(document.querySelector('.gs-hctl-b[data-hk="hide_home_quick"]').textContent)));
+  // 4) وضع التحكم: إخفاء كارت «الاختصارات» للكل
+  await a.evaluate(async () => { await gPerLoad(true); renderHomeEdit(); }); await a.waitForSelector('.gs-hctl-bar', { timeout: 30000 }).catch(() => {});
+  await a.click('[data-hk="hide_home_quick"]'); await a.waitForTimeout(1500); await a.waitForSelector('.gs-hctl-bar', { timeout: 20000 }).catch(() => {});
+  check('وضع التحكم: خفيت «الاختصارات» ← اتحفظ + ظاهرة باهتة ومكتوب «مخفي»', q("SELECT setting_value FROM admin_settings WHERE setting_key='hide_home_quick'") === '1' && await a.evaluate(() => !!document.querySelector('.gs-hblk.gs-hoff .gs-quick') && /مخفي/.test(document.querySelector('[data-hk="hide_home_quick"]').textContent)));
+  // 5) الرئيسية العادية عند الأدمن: نفس شكل العميل بالظبط من غير أي أزرار تحكم
+  await a.evaluate(() => renderHome()); await a.waitForSelector('#gsHero', { timeout: 30000 }).catch(() => {}); await a.waitForTimeout(1500);
+  const ah = await a.evaluate(() => ({ bar: !!document.querySelector('.gs-hctl-bar'), hk: document.querySelectorAll('[data-hk]').length, gear: !!document.querySelector('.gper-gear'), per: !!document.querySelector('.gs-he-per'), quick: (() => { const g = document.querySelector('.gs-quick'); return !!g && g.offsetParent !== null; })() }));
+  check('الرئيسية العادية عند الأدمن: من غير أي أزرار تحكم (ولا ⚙) + الاختصارات المخفية مش ظاهرة', !ah.bar && !ah.hk && !ah.gear && !ah.per && !ah.quick, JSON.stringify(ah));
   await c.evaluate(() => renderHome()); await c.waitForSelector('#gsHero', { timeout: 20000 }).catch(() => {}); await c.waitForTimeout(600);
   check('العميل: «الاختصارات» اختفت من الرئيسية', await c.evaluate(() => { const g = document.querySelector('.gs-quick'); return !g || g.offsetParent === null; }));
 
@@ -63,7 +63,7 @@ const CUST = { email: 'paytest@example.com', pass: process.env.GT_CUSTOMER_PASS 
   const sh = await scanOf(c);
   check('العميل: مسح السوق بيفتح على «شهر» و«يوم» مش في القائمة (ومفيش ⚙)', sh && sh.v === 'month' && !/day:/.test(sh.o) && !sh.gear, JSON.stringify(sh));
   const sa = await scanOf(a);
-  check('الأدمن: ⚙ جنب «مدة البحث» + «يوم» ظاهر له ومكتوب جنبه «مخفي»', sa && sa.gear && /day:يومي \(مخفي\)/.test(sa.o) && sa.v === 'month', JSON.stringify(sa));
+  check('الأدمن في بصيرة: نفس شكل العميل (مفيش ⚙ ولا «يوم») — التحكم من لوحة التحكم بس', sa && !sa.gear && !/day:/.test(sa.o) && sa.v === 'month', JSON.stringify(sa));
 
   // 7) الاستوديو: «كل المخفي» في فاصل مستقل + كل بند قدامه شاشته + إظهار
   await a.evaluate(() => renderHome()); await a.waitForSelector('#gsHomeAvatar', { timeout: 20000 }).catch(() => {});

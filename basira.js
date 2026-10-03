@@ -175,7 +175,7 @@
     const wrap = document.getElementById('bsScanWrap'), mk = allowedMkts();
     const hzAll = HZ.filter(([k]) => !CFG.horizons || CFG.horizons[k] !== false), hzV = window.gPerFilter ? gPerFilter('bs_scan', hzAll) : hzAll;
     const hz = hzV.length ? hzV : hzAll;   // الإصدار 144: المدد الظاهرة + الافتراضي من «⏱ المدد والفترات»
-    if (!SCAN.hz || !hz.find(([k]) => k === SCAN.hz) || (window.gPerIsHidden && !window.__isAdmin && gPerIsHidden('bs_scan', SCAN.hz))) { const d = window.gPerDef ? gPerDef('bs_scan') : 'day'; SCAN.hz = (hz.find(([k]) => k === d) || hz.find(([k]) => k === 'day') || hz[0] || ['day'])[0]; }
+    if (!SCAN.hz || !hz.find(([k]) => k === SCAN.hz) || (window.gPerIsHidden && gPerIsHidden('bs_scan', SCAN.hz))) { const d = window.gPerDef ? gPerDef('bs_scan') : 'day'; SCAN.hz = (hz.find(([k]) => k === d) || hz.find(([k]) => k === 'day') || hz[0] || ['day'])[0]; }
     wrap.innerHTML = `<div class="bs-card bs-scan">
       <div class="bs-scrow">
         <div><label for="bsScMkt">البورصة</label><select id="bsScMkt">${mk.map(x => `<option ${x === m0 ? 'selected' : ''}>${E(x)}</option>`).join('')}</select></div>

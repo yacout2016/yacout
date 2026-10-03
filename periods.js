@@ -2,7 +2,7 @@
    GRIFFINE — periods.js (الإصدار 144) — التحكم في قوائم المدد في كل الموقع
    ---------------------------------------------------------------------
    كل قائمة مدة (يوم / أسبوع / شهر …) ليها اسم ثابت هنا (REG) ومكانها في الموقع.
-   الأدمن بيشوف جنب كل قائمة زرار ⚙ ← يشيل أي اختيار (يتمسح عند الكل) أو يغيّر الافتراضي.
+   الأدمن بيتحكم من لوحة التحكم: يشيل أي اختيار (يتمسح عند الكل) أو يغيّر الافتراضي.
    وكمان كلهم في صفحة واحدة: لوحة التحكم ← «🛠 الشاشة الرئيسية والقوائم المنسدلة (مدد البحث)» (كروت الرئيسية + كل القوائم) (renderAdminPeriods).
    التخزين: periods_api.php ← site_config.periods_cfg = { id: { h:[المخفي], d:'الافتراضي' } }
 
@@ -63,15 +63,16 @@
     return d;
   };
   window.gPerFilter = function(id, arr, kf){
-    kf = kf || (x => x[0]); if (!REG[id] || isAdm()) return arr;
+    kf = kf || (x => x[0]); if (!REG[id]) return arr;   // الأدمن بيشوف نفس اللي العملاء شايفينه
     const v = vis(id); const out = arr.filter(x => !keys(id).includes(String(kf(x))) || v.includes(String(kf(x))));
     return out.length ? out : arr;
   };
   window.gPerOpts = function(id, arr, sel, kf, lf){
     kf = kf || (x => x[0]); lf = lf || (x => x[1]);
-    return gPerFilter(id, arr, kf).map(x => { const k = String(kf(x)); return `<option value="${E(k)}" ${k === String(sel) ? 'selected' : ''}>${E(lf(x))}${isAdm() && gPerIsHidden(id, k) ? ' (مخفي)' : ''}</option>`; }).join('');
+    return gPerFilter(id, arr, kf).map(x => { const k = String(kf(x)); return `<option value="${E(k)}" ${k === String(sel) ? 'selected' : ''}>${E(lf(x))}</option>`; }).join('');
   };
-  window.gPerGear = (id) => (isAdm() && REG[id]) ? `<button type="button" class="gper-gear" data-gper="${id}" title="التحكم في هذه القائمة (للأدمن): إخفاء اختيارات + الافتراضي" aria-label="التحكم في القائمة">⚙</button>` : '';
+  // ⚙ بيظهر بس في «وضع التحكم» بتاع الرئيسية (من لوحة التحكم) — الشاشات العادية من غير أزرار تحكم
+  window.gPerGear = (id) => (isAdm() && REG[id] && window.__gperEdit === true && document.body.getAttribute('data-gs-screen') === 'renderHome') ? `<button type="button" class="gper-gear" data-gper="${id}" title="التحكم في هذه القائمة (للأدمن): إخفاء اختيارات + الافتراضي" aria-label="التحكم في القائمة">⚙</button>` : '';
   window.gPerWire = function(root, onSaved){
     (root || document).querySelectorAll('[data-gper]').forEach(b => {
       if (b.__gw) return; b.__gw = 1;
@@ -125,21 +126,11 @@
     q('#gperReset').onclick = async () => { try { done(await apiPost('/periods_api.php', { action: 'reset', id })); } catch(e){} };
   };
 
-  // صفحة لوحة التحكم: كل القوائم في كل الشاشات في مكان واحد
-  window.renderAdminPeriods = async function(){
-    const tok = typeof screenToken === 'function' ? screenToken() : 0;
-    pushNav(() => renderAdminPeriods());
-    const email = await getSession(); if (!email) return renderLogin();
-    if (!window.__isAdmin) return renderHome();
-    const [, HS] = await Promise.all([gPerLoad(true), typeof getAdminSettings === 'function' ? getAdminSettings().catch(() => ({})) : {}]);
-    if (typeof screenStale === 'function' && screenStale(tok)) return;
-    // الإصدار 144: كروت الشاشة الرئيسية (إخفاء / إظهار للكل) في نفس الصفحة
-    const HOME = [['hide_home_hero', 'قيمة المحفظة'], ['hide_curve_home', 'منحنى أداء المحفظة'], ['hide_home_alerts', 'تنبيهات الأسعار'], ['hide_home_quick', 'الاختصارات'], ['hide_home_recs', 'أحدث التوصيات'], ['hide_home_holdings', 'استثماراتي']];
-    const homeHtml = `<div class="section-card gper-grp" id="gperHome"><div class="section-title">🏠 كروت الشاشة الرئيسية</div>
-      <div class="gper-sub">دوسة على الكارت تخفيه عن كل العملاء (إنت بتفضل شايفه باهت في الرئيسية ومكتوب «مخفي»)، ودوسة تانية ترجّعه.</div>
-      ${HOME.map(([k, l]) => { const off = HS && HS[k] === true; return `<div class="gper-row"><div class="gper-row-t"><b>${E(l)}</b><small>${off ? '<span class="gper-hid">🙈 مخفي عن العملاء</span>' : '👁 ظاهر للكل'}</small></div>
-        <span class="gper-row-b"><button type="button" class="small ${off ? '' : 'secondary'}" data-hk="${k}" data-off="${off ? 1 : 0}">${off ? '👁 إظهار' : '🙈 إخفاء'}</button></span></div>`; }).join('')}
-      <div class="gper-row"><span class="gper-row-b"><button type="button" class="secondary small" id="gperGoHome">↗ افتح الشاشة الرئيسية</button></span></div></div>`;
+  // الإصدار 144: كل التحكم من لوحة التحكم ← «🛠 الشاشة الرئيسية والقوائم المنسدلة (مدد البحث)»
+  //   = نفس شكل الرئيسية + أزرار إخفاء/إظهار + تحتها كل القوائم المنسدلة. الشاشات العادية من غير أي أزرار تحكم.
+  window.renderHomeEdit = function(){ if (!isAdm()) return renderHome(); window.__homeEdit = true; return renderHome(); };
+  window.renderAdminPeriods = function(){ return renderHomeEdit(); };
+  window.gPerAdminListHtml = function(){
     const groups = {};
     Object.keys(REG).forEach(id => { (groups[REG[id].scr] = groups[REG[id].scr] || []).push(id); });
     const row = (id) => {
@@ -147,26 +138,14 @@
       const lbl = (k) => (r.o.find(x => String(x[0]) === String(k)) || [0, k])[1];
       return `<div class="gper-row"><div class="gper-row-t"><b>${E(r.l)}</b>
         <small>${r.multi ? '' : `الافتراضي: <b>${E(lbl(gPerDef(id)))}</b> · `}ظاهر: ${v.length} من ${r.o.length}${hh.length ? ` · <span class="gper-hid">مخفي: ${hh.map(x => E(x[1])).join('، ')}</span>` : ''}</small></div>
-        <span class="gper-row-b">${isAdm() ? `<button type="button" class="small" data-ed="${id}">⚙ تعديل</button>` : ''}${typeof window[r.go] === 'function' ? `<button type="button" class="secondary small" data-open="${r.go}">↗ الشاشة</button>` : ''}</span></div>`;
+        <span class="gper-row-b"><button type="button" class="small" data-ed="${id}">⚙ تعديل</button></span></div>`;
     };
-    app.innerHTML = `<div class="container">${typeof logoHeader === 'function' ? logoHeader() : ''}
-      <div class="topbar"><div>${typeof pageTitle === 'function' ? pageTitle('admin_periods', '🏠 الشاشة الرئيسية والقوائم المنسدلة (مدد البحث)') : '<h1>🏠 الشاشة الرئيسية والقوائم المنسدلة</h1>'}</div>
-        <button class="secondary small" id="gperBack">🛡️ رجوع للوحة التحكم</button></div>
-      ${homeHtml}
-      <h2 class="u-mt20">⏱ القوائم المنسدلة — مدد البحث والرسم في كل شاشة</h2>
-      <div class="info">كل قوائم المدة في الموقع (يوم / أسبوع / شهر …) لكل شاشة لوحدها. «⚙ تعديل» ← شيل أي اختيار يتمسح من عند الكل، أو غيّر الافتراضي اللي بيفتح عليه الكل. نفس الزرار ⚙ موجود جنب القائمة جوه كل شاشة (بيظهر لك إنت بس).</div>
-      ${Object.keys(groups).map(g => `<div class="section-card gper-grp"><div class="section-title">${E(g)}</div>${groups[g].map(row).join('')}</div>`).join('')}
-    </div>`;
-    document.getElementById('gperBack').onclick = () => (typeof renderAdminHub === 'function' ? renderAdminHub() : renderHome());
-    app.querySelectorAll('[data-hk]').forEach(b => b.onclick = async () => {
-      b.disabled = true;
-      const r = await apiPost('/admin_settings_save.php', { key: b.dataset.hk, value: b.dataset.off === '1' ? 0 : 1 }).catch(() => null);
-      if (r && r.success) { toast(b.dataset.off === '1' ? '👁 رجع يظهر للعملاء' : '🙈 اتخفى عن العملاء', 'ok'); renderAdminPeriods(); }
-      else { b.disabled = false; toast((r && r.message) || 'تعذّر الحفظ', 'err'); }
-    });
-    document.getElementById('gperGoHome').onclick = () => renderHome();
-    app.querySelectorAll('[data-ed]').forEach(b => b.onclick = () => gPerEdit(b.dataset.ed, () => renderAdminPeriods()));
-    app.querySelectorAll('[data-open]').forEach(b => b.onclick = () => { try { window[b.dataset.open](); } catch(e){} });
+    return `<h2 class="u-mt20">⏱ القوائم المنسدلة — مدد البحث والرسم في كل شاشة</h2>
+      <div class="info">لكل شاشة لوحدها: «⚙ تعديل» ← شيل أي اختيار يتمسح من القائمة عند الكل، واختار الافتراضي اللي بيفتح عليه الكل.</div>
+      ${Object.keys(groups).map(g => `<div class="section-card gper-grp"><div class="section-title">${E(g)}</div>${groups[g].map(row).join('')}</div>`).join('')}`;
+  };
+  window.gPerAdminListWire = function(root, onChange){
+    root.querySelectorAll('[data-ed]').forEach(b => b.onclick = () => gPerEdit(b.dataset.ed, onChange));
   };
 
   gPerLoad();

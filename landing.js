@@ -342,10 +342,10 @@
   function lpSegs(redraw){
     [['lpPvSeg', 'lp_hero'], ['lpMkRange', 'lp_mk']].forEach(([el, id]) => {
       const box = document.getElementById(el); if (!box) return;
-      const arr = window.gPerFilter ? gPerFilter(id, LP_RNG[id]).filter(x => !(gPerIsHidden(id, x[0]) && !window.__isAdmin)) : LP_RNG[id];
+      const arr = window.gPerFilter ? gPerFilter(id, LP_RNG[id]) : LP_RNG[id];
       const d = +(window.gPerDef ? gPerDef(id) : 2);
       if (id === 'lp_hero') heroRange = d; else mkRange = d;
-      box.innerHTML = arr.map(([k, l]) => `<button type="button" data-r="${k}" class="${+k === d ? 'on' : ''}">${l}${window.gPerIsHidden && gPerIsHidden(id, k) ? ' (مخفي)' : ''}</button>`).join('') + (window.gPerGear ? gPerGear(id) : '');
+      box.innerHTML = arr.map(([k, l]) => `<button type="button" data-r="${k}" class="${+k === d ? 'on' : ''}">${l}</button>`).join('') + (window.gPerGear ? gPerGear(id) : '');
       if (window.gPerWire) gPerWire(box, () => lpSegs(true));
     });
     if (redraw) { try { drawHero(true); drawMk(true); } catch(e){} }

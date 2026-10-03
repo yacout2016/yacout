@@ -476,7 +476,7 @@ async function mkPortfolioCurve(el, ccys, sel, plans, grids, rangeKey){
   const all = mkBuildSeries(positions, el.__hist, today, now ? now.value : null, now ? now.cost : null);
   const RANGES = [['1d', 'يوم', 1], ['1w', 'أسبوع', 7], ['1m', 'شهر', 31], ['3m', '3 شهور', 92], ['6m', '6 شهور', 183], ['1y', 'سنة', 366], ['all', 'الكل', 99999]];
   rangeKey = rangeKey || el.__range || (window.gPerDef ? gPerDef('home_curve') : '1d');   // الإصدار 142: الافتراضي يوم (144: من «⏱ المدد والفترات»)
-  if (window.gPerIsHidden && !window.__isAdmin && gPerIsHidden('home_curve', rangeKey)) rangeKey = gPerDef('home_curve');
+  if (window.gPerIsHidden && gPerIsHidden('home_curve', rangeKey)) rangeKey = gPerDef('home_curve');
   el.__range = rangeKey;
   const lim = (RANGES.find(x => x[0] === rangeKey) || RANGES[3])[2];
   const cut = new Date(Date.now() - lim * 86400000).toISOString().slice(0, 10);

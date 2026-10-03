@@ -309,13 +309,13 @@ function gWireGridRange(o){
       <label><input type="radio" name="${nm}" value="manual"> يدوي — أكتب السقف والقاع بنفسي</label>
     </div>
     <label for="${o.prefix}_rangePeriod">المدة ${window.gPerGear ? gPerGear('grid_rng') : ''}</label>
-    <select id="${o.prefix}_rangePeriod">${perArr.map(([v, l]) => `<option value="${v}">${l}${window.gPerIsHidden && window.__isAdmin && gPerIsHidden('grid_rng', v) ? ' (مخفي)' : ''}</option>`).join('')}</select>
+    <select id="${o.prefix}_rangePeriod">${perArr.map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}</select>
     <div class="g-range-info u-fs12" id="${o.prefix}_rangeInfo" aria-live="polite"></div>`;
   row.parentNode.insertBefore(box, row);
   const per = box.querySelector('select'), info = box.querySelector('.g-range-info');
   const listed = () => o.isListed ? o.isListed() : true;
   per.value = perArr.some(x => x[0] === o.period) ? o.period : (window.gPerDef ? gPerDef('grid_rng') : 'month');
-  if (window.gPerWire) gPerWire(box, () => { const v = per.value; per.innerHTML = gPerFilter('grid_rng', G_RANGE_PERIODS).map(([k, l]) => `<option value="${k}">${l}${gPerIsHidden('grid_rng', k) ? ' (مخفي)' : ''}</option>`).join(''); per.value = v; });
+  if (window.gPerWire) gPerWire(box, () => { const v = per.value; per.innerHTML = gPerFilter('grid_rng', G_RANGE_PERIODS).map(([k, l]) => `<option value="${k}">${l}</option>`).join(''); per.value = v; });
   box.querySelector(`input[value="${o.mode === 'manual' ? 'manual' : 'auto'}"]`).checked = true;
   const mode = () => listed() ? ((box.querySelector('input:checked') || {}).value || 'auto') : 'manual';
   const perLabel = () => (G_RANGE_PERIODS.find(x => x[0] === per.value) || [,''])[1];
