@@ -37,6 +37,14 @@ if (isset($_POST['base']) && $_POST['base'] !== '') {
     if (!is_object($base)) $base = null;
 }
 
+// الإصدار 135: خطة الداك / الجريد ميزة في الباقة — من غيرها: يتابع خططه الحالية بس ومايضيفش سهم جديد
+require_once __DIR__ . '/perks_lib.php';
+$pk = $key === 'grid_plans' ? 'grid' : 'dca';
+if (empty($_SESSION['is_admin']) && perk_has_col($conn) && !perk_has($conn, $email, $pk)) {
+    $cur = plans_get($conn, $email, $key); $have = $cur['value'] ? array_keys((array)json_decode($cur['value'])) : [];
+    $new = array_diff(array_map('strval', array_keys((array)$map)), array_map('strval', $have));
+    if ($new) { echo json_encode(perk_denied($conn, $email, $pk), JSON_UNESCAPED_UNICODE); exit(); }
+}
 try {
     $r = plans_save($conn, $email, $key, $map, $base);
     try { trades_rebuild($conn, $email, $key); } catch (Throwable $e) {}   // جدول الصفقات لتقارير الإدارة (الإصدار 89)

@@ -138,12 +138,10 @@
     return true;
   }
   function scWireFilters(){
-    const fb = document.getElementById('bsScFBtn'), fr = document.getElementById('bsScFr'), q = document.getElementById('bsScQ'); if (!fb || fb._w) return; fb._w = 1;
+    // الإصدار 135: صف الفلاتر ظاهر دايمًا على راس كل عمود (كمبيوتر وموبايل)
+    const fr = document.getElementById('bsScFr'), q = document.getElementById('bsScQ'); if (!fr || fr._w) return; fr._w = 1;
     SCAN.f = SCAN.f || {}; SCAN.q = SCAN.q || '';
-    let open = (() => { try { const v = localStorage.getItem('bs_scan_fopen'); if (v != null) return v === '1'; } catch(e){} return window.innerWidth >= 700; })();
-    const show = () => { fr.hidden = !open; fb.setAttribute('aria-expanded', String(open)); fb.classList.toggle('on', open); };
-    fb.onclick = () => { open = !open; try { localStorage.setItem('bs_scan_fopen', open ? '1' : '0'); } catch(e){} show(); };
-    show(); q.value = SCAN.q;
+    q.value = SCAN.q;
     let tmr = 0; const later = () => { clearTimeout(tmr); tmr = setTimeout(paintScan, 120); };
     q.addEventListener('input', () => { SCAN.q = q.value; later(); });
     fr.addEventListener('input', (e) => { const k = e.target.dataset && e.target.dataset.f; if (!k) return; SCAN.f[k] = e.target.value; later(); });
@@ -189,7 +187,6 @@
     <div id="bsScTop"></div>
     <div class="bs-card" id="bsScRes" hidden>
       <div class="bs-sctools"><input type="search" id="bsScQ" class="bs-scq" placeholder="🔎 بحث بالكود أو الاسم أو القطاع…" aria-label="بحث في نتايج المسح"><span class="u-muted u-fs12" id="bsScCount"></span>
-        <button type="button" class="bs-colbtn" id="bsScFBtn" aria-expanded="false">⚙ فلاتر الأعمدة <b id="bsScFOn"></b></button>
         <span class="bs-colbox"><button type="button" class="bs-colbtn" id="bsColBtn" aria-haspopup="true" aria-expanded="false">👁 إظهار / إخفاء الأعمدة <b id="bsColHid"></b></button><div class="bs-colmenu" id="bsColMenu" hidden></div></span></div>
       <div class="bs-scbody"><table id="bsScTable" class="bs-sctable g-no-enh"><thead><tr>${SC_COLS.map(c => `<th data-col="${c.k}"${c.sort ? ` data-sort="${c.sort}" tabindex="0" title="ترتيب"` : ''}>${c.k === 'up' ? '<span id="bsScHzTh">احتمال الصعود</span>' : c.k === 'go' ? '' : c.l}${c.sort ? '<i class="bs-sorti"></i>' : ''}</th>`).join('')}</tr>
         <tr class="bs-scfr" id="bsScFr">${SC_COLS.map(c => `<th data-col="${c.k}">${scFilterEl(c)}</th>`).join('')}</tr></thead><tbody></tbody></table></div></div>`;
@@ -243,7 +240,6 @@
       const want = '<option value="">الكل</option>' + secs.map(s => `<option${s === cur ? ' selected' : ''}>${E(s)}</option>`).join('');
       if (ss._h !== want) { ss.innerHTML = want; ss._h = want; } }
     const fOn = Object.values(SCAN.f || {}).filter(v => String(v || '').trim()).length + (String(SCAN.q || '').trim() ? 1 : 0);
-    const fb = document.getElementById('bsScFOn'); if (fb) fb.textContent = Object.values(SCAN.f || {}).filter(v => String(v || '').trim()).length ? `(${Object.values(SCAN.f).filter(v => String(v || '').trim()).length})` : '';
     const L = SCAN.items.filter(scMatch).sort((a, b) => { const A = f(a), B = f(b); const c = typeof A === 'string' ? A.localeCompare(B, 'ar') : A - B; return c * SCAN.dir || up(b) - up(a) || b.score - a.score; });
     document.querySelectorAll('#bsScTable th[data-sort]').forEach(th => { th.classList.toggle('on', th.dataset.sort === SCAN.sort); th.classList.toggle('asc', th.dataset.sort === SCAN.sort && SCAN.dir > 0); });
     const cnt = document.getElementById('bsScCount'); if (cnt) cnt.textContent = !SCAN.items.length ? '' : fOn ? `${L.length} من ${SCAN.items.length} سهم` : `${SCAN.items.length} سهم — اضغط على عنوان العمود للترتيب`;

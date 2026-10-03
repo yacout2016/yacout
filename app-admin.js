@@ -745,7 +745,7 @@ async function renderPlansManagementPage(){
     plans = ((res && res.success) ? res.plans : []).filter(p => !mf || (p.market || 'مصر') === mf);
     const ccyOfM = (m) => ((window.__acct && window.__acct.markets && window.__acct.markets[m || 'مصر']) || {}).ccy || '';
     wrap.innerHTML = plans.length ? `<table>
-      <thead><tr><th>السوق</th><th>الاسم</th><th>السعر</th><th>المدة</th><th>الحالة</th><th></th></tr></thead>
+      <thead><tr><th>السوق</th><th>الاسم</th><th>السعر</th><th>المدة</th><th>الحالة</th><th>المميزات</th><th></th></tr></thead>
       <tbody>
         ${plans.map(p=>`<tr>
           <td>${escapeHtml(p.market || 'مصر')}</td>
@@ -753,6 +753,7 @@ async function renderPlansManagementPage(){
           <td>${p.amount===0?'مجانًا':fmtMoney(p.amount) + ' ' + ccyOfM(p.market)}</td>
           <td>${escapeHtml(p.periodLabel)} (${p.durationDays} يوم)</td>
           <td><span class="tag ${p.isActive?'tag-done':'tag-wait'}">${p.isActive?'مفعّلة':'موقوفة'}</span></td>
+          <td class="pk-td" data-pkplan="${escapeHtml(String(p.id))}">…</td>
           <td style="white-space:nowrap;">
             <button class="small secondary u-wa" data-gcall="__editPlan" data-gargs="${gArgs([String(p.id)])}">تعديل</button>
             <button class="small ${p.isActive?'danger':'btn-lightgreen'} u-wa" data-gcall="__togglePlan" data-gargs="${gArgs([String(p.id)])}">${p.isActive?'إيقاف':'تفعيل'}</button>
@@ -761,6 +762,7 @@ async function renderPlansManagementPage(){
         </tr>`).join('')}
       </tbody>
     </table>` : '<p class="u-note">لا توجد خطط مضافة بعد.</p>';
+    if (window.pkAdminDecorate) window.pkAdminDecorate(wrap, plans);   // الإصدار 135: مميزات كل باقة (قائمة منسدلة)
   }
   await refreshPlansList();
   document.getElementById('planMarketInput').value = gAdminMarket() || 'مصر';

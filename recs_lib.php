@@ -267,7 +267,9 @@ function rc_expire_sweep($conn){
 }
 
 /* المستلمين: مشتركين اشتراكهم شغال في سوق التوصية */
-function rc_recipients($conn, $market){
+function rc_recipients($conn, $market, $perk = null){
+    // الإصدار 135: حسب ميزة الباقة (قصيرة / طويلة المدى) — بيشمل الحسابات الجديدة في الباقة المجانية
+    if ($perk !== null && is_file(__DIR__ . '/perks_lib.php')) { require_once __DIR__ . '/perks_lib.php'; if (perk_has_col($conn)) return perk_recipients($conn, $perk, $market); }
     $out = [];
     $res = $conn->query("SELECT DISTINCT LOWER(account_email) e FROM subscribers WHERE archived = 0 AND active = 1");
     while ($r = $res->fetch_assoc()) {
@@ -279,7 +281,9 @@ function rc_recipients($conn, $market){
 }
 /* الإرسال: إشعار المنصة فورًا — والإيميل / الواتساب في الطابور (حسب اختيار المحلل + قنوات كل مشترك) */
 function rc_dispatch($conn, $recId, $updId, $market, $title, $lines, $channels, $symbol, $push = true, $image = null){
-    $body = implode("\n", $lines); $subs = rc_recipients($conn, $market); $app = 0; $queued = 0;
+    $body = implode("\n", $lines); $app = 0; $queued = 0;
+    $vh = 0; try { $q = $conn->prepare("SELECT validity_hours FROM recommendations WHERE id = ?"); $q->bind_param("i", $recId); $q->execute(); $vh = (int)(($q->get_result()->fetch_row() ?: [0])[0]); $q->close(); } catch (Throwable $e) {}
+    $subs = rc_recipients($conn, $market, rc_is_long($conn, $vh) ? 'recs_long' : 'recs_short');
     // الإصدار 133: التوصية بتوصل للمحللين كمان (عشان يبقى واضح إيه اللي اتبعت ومايحصلش تكرار أو تضارب)
     $rcpt = array_values(array_unique(array_merge($subs, rc_analysts($conn), $push ? [strtolower(ADMIN_EMAIL)] : [])));
     $kind = $updId ? ($push ? 'rec' : 'rec_exp') : 'rec';

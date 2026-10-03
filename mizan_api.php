@@ -34,7 +34,8 @@ try {
     }
     ai_set_user($email, $isAdmin);   // الإصدار 127
     if (!ai_screen_ok($conn, $email, 'mizan', $isAdmin)) mz_out(["success" => false, "hidden" => true, "message" => "الشاشة غير متاحة لحسابك."]);
-    if (!$isAdmin && !hasActiveSubscription($conn, $email)) mz_out(["success" => false, "requiresSubscription" => true, "message" => "تقرير ميزان متاح للمشتركين فقط."]);
+    require_once __DIR__ . '/perks_lib.php';   // الإصدار 135
+    if (!$isAdmin && !perk_has($conn, $email, 'mizan')) mz_out(perk_denied($conn, $email, 'mizan'));
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') mz_out(["success" => false, "message" => "طلب غير صحيح."]);
     requireCsrf();
     $action = $_POST['action'] ?? '';

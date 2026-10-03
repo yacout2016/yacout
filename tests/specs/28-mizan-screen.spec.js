@@ -8,7 +8,7 @@ const CUST = { email: 'paytest@example.com', pass: process.env.GT_CUSTOMER_PASS 
   const oldO = q("SELECT data_value FROM ui_customizations WHERE ui_key='overrides'");
   const b = await launch(); const a = await page(b, { width: 1366, height: 900 }); await loginAdmin(a);
   await a.evaluate(() => renderHome()); await a.waitForTimeout(1500);
-  const vis = (p) => p.evaluate(() => Array.from(document.querySelectorAll('.gs-sidebar > .gs-side-item')).filter(x => x.offsetParent !== null)
+  const vis = (p) => p.evaluate(() => Array.from(document.querySelectorAll('.gs-sidebar > .gs-side-item:not(.gs-side-cta)')).filter(x => x.offsetParent !== null)
     .map(x => ({ k: x.getAttribute('data-gs-key'), top: Math.round(x.getBoundingClientRect().top), t: x.textContent.trim() })).sort((x, y) => x.top - y.top));
   let v = await vis(a);
   const ks = v.map(x => x.k);

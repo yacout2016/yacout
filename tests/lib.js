@@ -26,4 +26,6 @@ async function loginAdmin(p){
 // الإصدار 130: عوائد «ميزان GRIFFINE AI» أونلاين من السيرفر التجريبي (صفحة البنك المركزي + تقدير عقار) — اختبار 39 بيظبط إعداداته بنفسه
 try { q(`REPLACE INTO site_config (config_key, config_value) VALUES ('mizanai_rates_cfg', '{"re_est":"18","markets":{"مصر":{"index":"^CASE30","url":"http://127.0.0.1:8098/cbe","kw":"Overnight Deposit","fb":""}}}'), ('mizanai_live', '')`); } catch(e){}
 try { q("REPLACE INTO site_config (config_key, config_value) VALUES ('symbols_clean_at', '9999999999')"); q("DELETE FROM symbol_checks WHERE banned = 1 AND symbol NOT LIKE 'BAD%'"); } catch(e){}
+// الإصدار 135: مميزات الباقات — اختبارات الشاشات القديمة بتشتغل على الشهرية بكل المميزات (اختبار 41 بيجرّب الافتراضي بنفسه)
+try { q(`UPDATE subscription_plans SET perks = '["dca","grid","portfolio","opps","basira","basira_scan","mizan","mizanai","recs_short","recs_long","screener","alerts","watchlist"]' WHERE id = 'monthly'`); } catch(e){}
 module.exports = { BASE, ADMIN, check, summary, q, launch, page, loginAdmin };

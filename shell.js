@@ -50,7 +50,7 @@
      ===================================================================== */
 
   // رقم الإصدار - بيظهر في شاشة "حسابي" (غيّره مع ?v= في index.php و VERSION في sw.js)
-  const APP_VERSION = 134;
+  const APP_VERSION = 135;
 
   /* الاستعلامات المتكررة (الدردشة/التوصيات/قائمة المتابعة) - استعلام متكيّف (الإصدار 89)
      - بتقف لما التبويب يكون مخفي أو الموبايل مقفول
@@ -482,19 +482,21 @@
   // عناصر الشريط الجانبي على الكمبيوتر ({sec} = عنوان قسم)
   function sideItems(){
     const items = [
+      // الإصدار 135: زرار «الباقات والأسعار» بلون مميز فوق للمشترك (يختار / يرقّي باقته من غير ما يدوّر)
+      !window.__isAdmin && { screen:'renderSubscriptionPlans', cta:true, label:'💎 الباقات والأسعار', ic:'card', go:() => renderSubscriptionPlans() },
       { tab:'home', label:'الرئيسية', ic:'home', go:() => renderHome() },
-      !hidden('hide_dac_screen') && { tab:'plans', sub:'dca', label:'خطط تعزيز المتوسط (DCA)', ic:'layers', go:() => renderPlansList() },
-      !hidden('hide_grid_screen') && { tab:'plans', sub:'grid', label:'خطط الشبكة (Grid)', ic:'grid', go:() => renderGridPlansList() },
-      !hidden('hide_portfolio_screen') && { tab:'portfolio', label:'المحفظة والتقارير', ic:'pie', go:() => renderPortfolio() },
-      (window.__isAdmin || !hidden('hide_mizanai_screen')) && { tab:'mizanai', since:'122', label:'ميزان GRIFFINE AI', ic:'balance', go:() => renderMizanAi() },   // الإصدار 122: مخطِّط التوزيع (قبل كشاف الأسهم)
-      !hidden('hide_screener_screen') && { tab:'screener', label:'كشاف الأسهم', ic:'radar', go:() => renderScreener() },
-      (window.__isAdmin || !hidden('hide_mizan_screen')) && { tab:'mizan', since:'116', label:'ميزان محفظتك AI', ic:'balance', go:() => renderDiversificationReport() },   // الإصدار 116
-      (window.__isAdmin || !hidden('hide_basira_screen')) && { tab:'basira', since:'114', label:'بصيرة AI — تحليل الأسهم', ic:'bulb', go:() => renderBasira() },   // الإصدار 114
-      !hidden('hide_recommendations_screen') && { tab:'rec', label:'التوصيات', ic:'megaphone', go:() => renderRecommendationsCustomerPage() },
+      !hidden('hide_dac_screen') && { tab:'plans', sub:'dca', pk:'dca', label:'خطط تعزيز المتوسط (DCA)', ic:'layers', go:() => renderPlansList() },
+      !hidden('hide_grid_screen') && { tab:'plans', sub:'grid', pk:'grid', label:'خطط الشبكة (Grid)', ic:'grid', go:() => renderGridPlansList() },
+      !hidden('hide_portfolio_screen') && { tab:'portfolio', pk:'portfolio', label:'المحفظة والتقارير', ic:'pie', go:() => renderPortfolio() },
+      (window.__isAdmin || !hidden('hide_mizanai_screen')) && { tab:'mizanai', since:'122', pk:'mizanai', label:'ميزان GRIFFINE AI', ic:'balance', go:() => renderMizanAi() },   // الإصدار 122: مخطِّط التوزيع (قبل كشاف الأسهم)
+      !hidden('hide_screener_screen') && { tab:'screener', pk:'screener', label:'كشاف الأسهم', ic:'radar', go:() => renderScreener() },
+      (window.__isAdmin || !hidden('hide_mizan_screen')) && { tab:'mizan', since:'116', pk:'mizan', label:'ميزان محفظتك AI', ic:'balance', go:() => renderDiversificationReport() },   // الإصدار 116
+      (window.__isAdmin || !hidden('hide_basira_screen')) && { tab:'basira', since:'114', pk:'basira|basira_scan', label:'بصيرة AI — تحليل الأسهم', ic:'bulb', go:() => renderBasira() },   // الإصدار 114
+      !hidden('hide_recommendations_screen') && { tab:'rec', pk:'recs_short|recs_long', label:'التوصيات', ic:'megaphone', go:() => renderRecommendationsCustomerPage() },
       // الإصدار 88: قائمة المتابعة + تنبيهات الأسعار
-      !hidden('hide_watchlist_screen') && { screen:'renderWatchlistPage', label:'قائمة المتابعة', ic:'star', go:() => renderWatchlistPage() },
-      !hidden('hide_alerts_screen') && { screen:'renderAlertsPage', label:'تنبيهات الأسعار', ic:'alert', badge:'alerts', go:() => renderAlertsPage() },
-      !window.__isAdmin && !hidden('hide_trades_screen') && { screen:'renderTradesReportPage', label:'تقرير صفقاتي', ic:'trend', go:() => renderTradesReportPage() },
+      !hidden('hide_watchlist_screen') && { screen:'renderWatchlistPage', pk:'watchlist', label:'قائمة المتابعة', ic:'star', go:() => renderWatchlistPage() },
+      !hidden('hide_alerts_screen') && { screen:'renderAlertsPage', pk:'alerts', label:'تنبيهات الأسعار', ic:'alert', badge:'alerts', go:() => renderAlertsPage() },
+      !window.__isAdmin && !hidden('hide_trades_screen') && { screen:'renderTradesReportPage', pk:'portfolio', label:'تقرير صفقاتي', ic:'trend', go:() => renderTradesReportPage() },
       { sec:'حسابي' },
       { tab:'account', label:'حسابي والإعدادات', ic:'settings', go:() => GS.renderAccount() },
       { screen:'renderSubscriptionPlans', label:'الاشتراك والباقات', ic:'card', go:() => renderSubscriptionPlans() },
@@ -553,6 +555,7 @@
     GS.email = email || null;
     document.body.classList.toggle('gs-anon', !email);
     try { GS.allSettings = email ? await getAdminSettings() : {}; } catch(e){ GS.allSettings = {}; }
+    try { if (email && window.gPerksLoad) await window.gPerksLoad(); } catch(e){}   // الإصدار 135: مميزات الباقة (🔒 في القائمة)
     GS.settings = (email && !window.__isAdmin) ? (GS.allSettings || {}) : {};
     // الإصدار 96: سوق الحساب وعملته + الأسواق المفعّلة (الأدمن بيشتغل على الأسواق المفعّلة كلها)
     try { await GS.loadAccountMarket(true); } catch(e){}
@@ -589,11 +592,12 @@
     if (email) {
       const items = sideItems();
       // الإصدار 114: كل عنصر ليه اسم ثابت (data-gs-key) ← تعديلات استوديو التصميم بتتطبق على نفس العنصر عند كل المستخدمين مهما اختلفت القائمة
+      const pkOff = (it) => !!(it.pk && window.gPerk && !String(it.pk).split('|').some(k => window.gPerk(k)));   // الإصدار 135
       const skey = (it) => it.sec ? 'sec-' + ({ 'حسابي': 'account', 'الإدارة': 'admin' }[it.sec] || 'x') : (it.screen || (it.tab + (it.sub ? '-' + it.sub : '')));
       sb.innerHTML = `<div class="gs-side-brand" id="gsSideBrand" data-gs-key="side-brand"><img src="${brandSrc()}" alt="GRIFFINE"><span>GRIFFINE</span></div>
         ${items.map((it, i) => it.sec
           ? `<div class="gs-side-sec" data-gs-key="${skey(it)}">${it.sec}</div>`
-          : `<button type="button" class="gs-side-item" data-i="${i}" data-gs-key="${skey(it)}"${it.since ? ` data-gs-since="${it.since}"` : ''} ${it.tab ? `data-tab="${it.tab}"` : ''} ${it.screen ? `data-screen="${it.screen}"` : ''} ${it.sub ? `data-sub="${it.sub}"` : ''}>${icon(it.ic)}<span>${it.label}</span>${it.badge ? `<b class="gs-side-badge" data-gs-alerts-badge style="display:none"></b>` : ''}</button>`).join('')}
+          : `<button type="button" class="gs-side-item${it.cta ? ' gs-side-cta' : ''}${pkOff(it) ? ' gs-side-locked' : ''}" data-i="${i}" data-gs-key="${it.cta ? 'side-plans-cta' : skey(it)}"${it.since ? ` data-gs-since="${it.since}"` : ''} ${it.tab ? `data-tab="${it.tab}"` : ''} ${it.screen && !it.cta ? `data-screen="${it.screen}"` : ''} ${it.sub ? `data-sub="${it.sub}"` : ''}>${icon(it.ic)}<span>${it.label}</span>${pkOff(it) ? '<i class="gs-side-lock" title="مش ضمن باقتك">🔒</i>' : ''}${it.badge ? `<b class="gs-side-badge" data-gs-alerts-badge style="display:none"></b>` : ''}</button>`).join('')}
         <div class="gs-side-foot" data-gs-key="side-foot"><div class="gs-side-user" id="gsSideUser"><span class="gs-avatar" id="gsSideAvatar">${esc(email.charAt(0).toUpperCase())}</span><span class="t"><b>${esc(email)}</b><small>الملف الشخصي والإعدادات</small></span></div></div>`;
       sb.querySelectorAll('.gs-side-item').forEach(b => b.onclick = () => items[+b.dataset.i].go());
       $('#gsSideBrand').onclick = () => renderHome();
@@ -1076,6 +1080,7 @@
     if (!email) return renderLogin();
     setBackButtonVisible(false);
     // الإصدار 85: الرئيسية متاحة لأي حساب مفعّل - اللي ماشتركش بيشوف كارت "اختار باقتك" فوق
+    if (window.gPerksLoad && !window.__isAdmin) { try { await window.gPerksLoad(); } catch(e){} }   // الإصدار 135: المميزات لحظة بلحظة
     const acc = await ensureAccess({ soft: true });
     if (!acc) return;
     if (GS.seq !== my) return;
@@ -1303,7 +1308,8 @@
     setBackButtonVisible(false);
 
     const [subRes, avatar, settings] = await Promise.all([
-      getMySubscription().catch(() => null), GS.loadAvatar(), window.__isAdmin ? {} : getAdminSettings().catch(() => ({}))
+      getMySubscription().catch(() => null), GS.loadAvatar(), window.__isAdmin ? {} : getAdminSettings().catch(() => ({})),
+      window.gPerksLoad && !window.__isAdmin ? window.gPerksLoad().catch(() => null) : null   // الإصدار 135
     ]);
     if (GS.seq !== my) return;
     GS.settings = settings || {};
@@ -1333,6 +1339,8 @@
         <span style="min-width:0"><b>${esc(name)}</b><small>${esc(email)}</small><br>${subChip}</span>
       </div>${R('gsAccProfile','user','الملف الشخصي والصورة')}</div>
 
+      ${!window.__isAdmin ? `<button type="button" class="pk-cta pk-cta-wide" data-pk-plans>💎 الباقات والأسعار — اختار أو رقّي باقتك</button>` : ''}
+      ${!window.__isAdmin && window.pkMineHtml ? window.pkMineHtml() : ''}
       <div class="gs-list-title">الاشتراك</div>
       <div class="gs-list">
         ${R('gsAccSub','card','الباقات وتجديد الاشتراك')}

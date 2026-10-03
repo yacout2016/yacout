@@ -37,8 +37,8 @@ const CUST = { email: 'paytest@example.com', pass: process.env.GT_CUSTOMER_PASS 
   await c.evaluate(() => renderHome()); await c.waitForTimeout(2000);
   const cu = await c.evaluate(() => {
     const t = document.querySelector('.gs-sidebar [data-gs-key="renderTrashPage"] > span');
-    const items = Array.from(document.querySelectorAll('.gs-sidebar > .gs-side-item')).filter(x => x.offsetParent !== null).sort((x, y) => (+getComputedStyle(x).order) - (+getComputedStyle(y).order) || 0);
-    const vis = Array.from(document.querySelectorAll('.gs-sidebar > .gs-side-item')).map(x => ({ k: x.getAttribute('data-gs-key'), top: Math.round(x.getBoundingClientRect().top) })).sort((x, y) => x.top - y.top).map(x => x.k);
+    const items = Array.from(document.querySelectorAll('.gs-sidebar > .gs-side-item:not(.gs-side-cta)')).filter(x => x.offsetParent !== null).sort((x, y) => (+getComputedStyle(x).order) - (+getComputedStyle(y).order) || 0);
+    const vis = Array.from(document.querySelectorAll('.gs-sidebar > .gs-side-item:not(.gs-side-cta)')).map(x => ({ k: x.getAttribute('data-gs-key'), top: Math.round(x.getBoundingClientRect().top) })).sort((x, y) => x.top - y.top).map(x => x.k);
     return { color: t ? getComputedStyle(t).color : null, order: vis.filter(k => k !== 'basira' && k !== 'mizan').slice(0, 4), adminItems: !!document.querySelector('.gs-sidebar [data-gs-key="renderAdminHub"]') };
   });
   check('عند العميل: «سلة المحذوفات» باللون الأحمر (رغم إن قائمته أقصر من الأدمن)', cu.color === 'rgb(225, 29, 72)', JSON.stringify(cu));

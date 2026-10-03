@@ -41,6 +41,8 @@ try {
         mk_out(["success" => true, "items" => $items]);
     }
     if ($action === 'watch_add' && $isPost) {
+        require_once __DIR__ . '/perks_lib.php';   // الإصدار 135: قائمة المتابعة ميزة في الباقة
+        if (empty($_SESSION['is_admin']) && !perk_has($conn, $email, 'watchlist')) mk_out(perk_denied($conn, $email, 'watchlist'));
         $sym = mk_clean_symbol($_POST['symbol'] ?? ''); $mkt = mk_clean_market($_POST['market'] ?? '');
         if (!$sym) mk_out(["success" => false, "message" => "اكتب رمز السهم بالإنجليزية (مثل COMI)."]);
         $c = $conn->prepare("SELECT COUNT(*) c FROM user_watchlist WHERE account_email = ?"); $c->bind_param("s", $email); $c->execute();
@@ -194,6 +196,8 @@ try {
         mk_out(["success" => true, "alerts" => $list, "markets" => MK_CCY, "intervals" => MK_INTERVALS]);
     }
     if ($action === 'custom_add' && $isPost) {
+        require_once __DIR__ . '/perks_lib.php';   // الإصدار 135: تنبيهات الأسعار ميزة في الباقة
+        if (empty($_SESSION['is_admin']) && !perk_has($conn, $email, 'alerts')) mk_out(perk_denied($conn, $email, 'alerts'));
         $sym = mk_clean_symbol($_POST['symbol'] ?? ''); $mkt = mk_clean_market($_POST['market'] ?? '');
         if (!$sym) mk_out(["success" => false, "message" => "اكتب رمز السهم بالإنجليزية (مثل COMI)."]);
         $ccy = preg_replace('/[^A-Z]/', '', strtoupper((string)($_POST['currency'] ?? ''))) ?: (MK_CCY[$mkt] ?? 'EGP');

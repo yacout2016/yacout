@@ -19,7 +19,8 @@ if (!$email) { http_response_code(401); op_out(["success" => false, "message" =>
 if (!opp_ready($conn)) op_out(["success" => false, "message" => "شغّل ALL_SCHEMA_UPDATES.sql (الإصدار 101) أولًا."]);
 $isAdmin = !empty($_SESSION['is_admin']);
 if (!$isAdmin && getAdminSetting($conn, 'hide_opps_screen', false)) op_out(["success" => false, "message" => "الشاشة غير متاحة حاليًا."]);
-if (!$isAdmin && !hasActiveSubscription($conn, $email)) op_out(["success" => false, "requiresSubscription" => true, "message" => "البحث عن فرص متاح للمشتركين فقط."]);
+require_once __DIR__ . '/perks_lib.php';   // الإصدار 135: ميزة «فرصة» حسب الباقة
+if (!$isAdmin && !perk_has($conn, $email, 'opps')) op_out(perk_denied($conn, $email, 'opps'));
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 $isPost = $_SERVER['REQUEST_METHOD'] === 'POST';
 if ($isPost) requireCsrf();

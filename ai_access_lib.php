@@ -59,6 +59,8 @@ function ai_merge_hidden($conn, $email, $settings){
 function ai_has_pro($conn, $email){
     static $c = []; $e = strtolower($email); if (isset($c[$e])) return $c[$e];
     $ok = false;
+    if (!function_exists('perk_has') && is_file(__DIR__ . '/perks_lib.php')) require_once __DIR__ . '/perks_lib.php';
+    if (function_exists('perk_has') && perk_has_col($conn)) { try { return $c[$e] = perk_has($conn, $e, 'ai_pro'); } catch (Throwable $e3) {} }   // الإصدار 135: «الذكاء المتقدم» ميزة في الباقة
     try {
         $st = $conn->prepare("SELECT 1 FROM subscribers s JOIN subscription_plans p ON p.id = s.plan_id WHERE LOWER(s.account_email) = ? AND s.active = 1 AND COALESCE(s.archived, 0) = 0 AND s.end_date >= CURDATE() AND p.includes_ai = 1 LIMIT 1");
         $st->bind_param("s", $e); $st->execute(); $ok = (bool)$st->get_result()->fetch_row(); $st->close();

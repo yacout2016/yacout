@@ -3,7 +3,7 @@
    (اتفصل من griffine.js - كل الملفات بتتحمّل بالترتيب في index.php وبتشارك نفس المتغيرات العامة)
    ===================================================================== */
 /* GRIFFINE — كود الواجهة الأساسي (اتفصل من index.php في الإصدار 68) */
-const GRIFFINE_LOGO_B64 = location.origin + '/griffine-logo-light.webp?v=134';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
+const GRIFFINE_LOGO_B64 = location.origin + '/griffine-logo-light.webp?v=135';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
 /* ================== حسابات مساعدة ================== */
 function daysBetween(isoStart, isoEnd){
   if(!isoStart) return null;
@@ -1243,6 +1243,14 @@ async function ensureAccess(opts){
   if (emailForCheck && !window.__emailVerified) { renderVerifyEmailPrompt(emailForCheck); return false; }
   const r = await getMySubscription();
   const sub = (r && r.success) ? r.subscription : null;
+  // الإصدار 135: الحساب الجديد بياخد الباقة المجانية (أول 20 يوم كل المميزات ثم مميزات المجانية) — كل شاشة بتتقفل حسب ميزتها (perks.js)
+  let pk = window.gPerkState ? gPerkState() : null;
+  if (!pk && window.gPerksLoad) pk = await gPerksLoad();
+  if (pk && (pk.phase === 'full' || pk.phase === 'basic')) {
+    if (!soft) return true;
+    if (sub && !sub.active) return { soft: 'pending', sub };
+    return { soft: 'free', sub };
+  }
 
   if (!sub) { if (soft) return { soft: 'nosub', sub: null }; renderSubscriptionPlans(); return false; }
   if (!sub.active) { if (soft) return { soft: 'pending', sub }; renderPendingActivation(sub); return false; }
@@ -1258,6 +1266,7 @@ async function ensureAccess(opts){
 // كارت الرئيسية للحساب اللي بعد ماشتركش (الإصدار 85)
 function accessGateCardHtml(acc){
   if (!acc || !acc.soft) return '';
+  if (acc.soft === 'free') return window.pkHomeCardHtml ? window.pkHomeCardHtml() : '';   // الإصدار 135
   const t = {
     nosub:   ['🎉 أهلًا بك في GRIFFINE!', 'تم تفعيل حسابك. اختر باقتك (أو ابدأ التجربة المجانية) لتفتح خطط DCA و Grid والمحفظة والتوصيات.', 'اختار باقتك'],
     pending: ['⏳ اشتراكك بانتظار التفعيل', 'استلمنا طلبك وسيتفعّل فور مراجعة السداد. يمكنك تصفح الموقع حتى يتفعّل.', 'حالة الطلب'],
@@ -1309,9 +1318,9 @@ async function renderAccessExpired(sub){
 }
 
 const app = document.getElementById('app');
-const TOP7_LOGO_B64 = location.origin + '/top7-logo-light.webp?v=134';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
-const GRIFFINE_LOGO_DARK_B64 = location.origin + '/griffine-logo-dark.webp?v=134';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
-const TOP7_LOGO_DARK_B64 = location.origin + '/top7-logo-dark.webp?v=134';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
+const TOP7_LOGO_B64 = location.origin + '/top7-logo-light.webp?v=135';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
+const GRIFFINE_LOGO_DARK_B64 = location.origin + '/griffine-logo-dark.webp?v=135';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
+const TOP7_LOGO_DARK_B64 = location.origin + '/top7-logo-dark.webp?v=135';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
 /* الوضع الحالي (فاتح/ليلي) - الإصدار 71: بيتقري من الصفحة نفسها (data-theme) مش من التخزين بس،
    عشان الشعار يطلع صح حتى لو المتصفح مانع التخزين (وضع التصفح الخفي)
    (السكربت الصغير في index.php بيحط data-theme من التخزين قبل تحميل أي ملف، فالاتنين دايمًا متطابقين) */

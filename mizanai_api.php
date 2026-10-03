@@ -82,7 +82,8 @@ try {
     ai_set_user($email, $isAdmin);   // الإصدار 127
     if (!ai_screen_ok($conn, $email, 'mizanai', $isAdmin)) mza_out(["success" => false, "hidden" => true, "message" => "الشاشة غير متاحة لحسابك."]);
     if (!$isAdmin && getAdminSetting($conn, 'hide_mizanai_screen', false)) mza_out(["success" => false, "hidden" => true, "message" => "الشاشة غير متاحة حاليًا."]);
-    if (!$isAdmin && !hasActiveSubscription($conn, $email)) mza_out(["success" => false, "requiresSubscription" => true, "message" => "ميزان GRIFFINE AI متاح للمشتركين فقط."]);
+    require_once __DIR__ . '/perks_lib.php';   // الإصدار 135
+    if (!$isAdmin && !perk_has($conn, $email, 'mizanai')) mza_out(perk_denied($conn, $email, 'mizanai'));
     $cfg = mza_cfg($conn);
 
     if ($action === 'config') {

@@ -1409,3 +1409,31 @@ body.g-shell .rc-pvtabs button.on, .rc-pvtabs button.on{ background:#0F3D6E !imp
 .rc-log.rc-lst-pending{ border-inline-start:5px solid #F59E0B !important; background:linear-gradient(90deg, transparent, rgba(245,158,11,.08)) !important; }
 .rc-log.rc-lst-draft{ border-inline-start:5px solid #9CA3AF !important; }
 .rc-kindtag{ display:inline-block; font-size:12px; font-weight:800; padding:3px 10px; border-radius:8px; background:#EDE9FE; color:#5B21B6; margin-bottom:6px; }
+/* ===== الإصدار 135: مميزات الباقات ===== */
+body.g-shell .gs-sidebar .gs-side-item.gs-side-cta{ background:linear-gradient(135deg,#F59E0B,#D97706); color:#fff; font-weight:800; margin:6px 10px 10px; width:calc(100% - 20px); border-radius:14px; box-shadow:0 8px 20px -10px rgba(217,119,6,.9); }
+body.g-shell .gs-sidebar .gs-side-item.gs-side-cta svg{ color:#fff; stroke:#fff; }
+body.g-shell .gs-sidebar .gs-side-item.gs-side-cta:hover{ filter:brightness(1.06); }
+.gs-side-item.gs-side-locked > span{ opacity:.6; } .gs-side-lock{ font-style:normal; margin-inline-start:auto; font-size:12px; opacity:.85; }
+body.g-shell #app button.pk-cta, button.pk-cta{ background:linear-gradient(135deg,#F59E0B,#D97706) !important; color:#fff !important; border:0 !important; font-weight:800 !important; width:auto; box-shadow:0 6px 16px -8px rgba(217,119,6,.85); }
+body.g-shell #app button.pk-cta.pk-cta-wide, button.pk-cta.pk-cta-wide{ width:100% !important; margin:4px 0 14px !important; padding:13px !important; font-size:15px !important; border-radius:14px !important; }
+.pk-lock{ text-align:center; } .pk-lock-ic{ font-size:44px; line-height:1; margin:6px 0; } .pk-lock h2{ margin:6px 0 10px; }
+.pk-lock-btns{ display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:12px; } .pk-lock-btns button{ width:auto !important; margin:0 !important; }
+.pk-home .pk-lock-btns{ justify-content:flex-start; }
+.pk-chip{ display:inline-flex; align-items:center; gap:4px; background:var(--gs-surface-2,#F8FAFC); border:1px solid var(--gs-border,#E5E7EB); border-radius:99px; padding:3px 10px; font-size:12.5px; margin:2px; }
+.pk-banner{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; background:#FEF3C7; color:#78350F; border:1px solid #FCD34D; border-radius:12px; padding:10px 12px; margin:0 0 12px; font-size:13px; line-height:1.7; }
+.pk-banner button{ width:auto !important; margin:0 !important; }
+.pk-mine-h{ font-weight:800; font-size:15px; margin-bottom:6px; } .pk-phase{ font-size:13.5px; line-height:1.8; }
+.pk-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:6px; margin-top:10px; }
+.pk-it{ font-size:13px; padding:7px 10px; border-radius:10px; } .pk-it.on{ background:rgba(16,185,129,.1); } .pk-it.off{ background:var(--gs-surface-2,#F8FAFC); opacity:.75; }
+.pk-home.full{ border:2px solid #10B981; background:linear-gradient(135deg,rgba(16,185,129,.08),transparent); } .pk-home.basic{ border:2px solid #F59E0B; }
+.pk-plan{ text-align:right; margin:8px 0 10px; border-top:1px dashed var(--gs-border,#E5E7EB); padding-top:8px; }
+.pk-plan-h{ font-weight:800; font-size:12.5px; margin-bottom:4px; } .pk-plan-note{ font-size:12px; color:#047857; font-weight:700; margin-bottom:4px; }
+.pk-plan ul{ list-style:none; padding:0; margin:0; } .pk-plan li{ font-size:12.5px; padding:2px 0; } .pk-plan li.off{ opacity:.55; }
+.pk-adm-free{ margin:10px 0; font-size:13px; line-height:2.1; } .pk-num{ width:70px !important; display:inline-block !important; margin:0 4px !important; padding:4px 6px !important; }
+.pk-adm-add summary, .pk-dd summary{ cursor:pointer; font-weight:700; font-size:13px; }
+.pk-adm-row{ display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; } .pk-adm-row input, .pk-adm-row select{ flex:1 1 200px; margin:0 !important; }
+.pk-adm-cust{ margin-top:8px; } .pk-x{ width:auto !important; min-height:0 !important; padding:0 4px !important; margin:0 !important; background:none !important; color:#DC2626 !important; border:0 !important; }
+td.pk-td{ min-width:170px; white-space:normal !important; } .pk-dd summary b{ color:var(--gs-brand-strong,#A6811E); }
+.pk-dd-box{ margin-top:6px; padding:8px; border:1px solid var(--gs-border,#E5E7EB); border-radius:10px; background:var(--gs-surface,#fff); min-width:250px; }
+.pk-dd-it{ display:flex; align-items:center; gap:6px; font-size:12.5px; padding:3px 0; cursor:pointer; font-weight:500; } .pk-dd-it input{ width:16px; height:16px; margin:0; flex:0 0 auto; }
+.pk-dd-tools{ display:flex; gap:6px; flex-wrap:wrap; margin:6px 0; } .pk-dd-tools button{ margin:0 !important; }

@@ -87,7 +87,12 @@ try {
     ai_set_user($email, $isAdmin);   // الإصدار 127: المدفوع / المجاني حسب المشترك
     if (!ai_screen_ok($conn, $email, 'basira', $isAdmin)) bs_out(["success" => false, "hidden" => true, "message" => "الشاشة غير متاحة لحسابك."]);
     if (!$isAdmin && getAdminSetting($conn, 'hide_basira_screen', false)) bs_out(["success" => false, "hidden" => true, "message" => "الشاشة غير متاحة حاليًا."]);
-    if (!$isAdmin && !hasActiveSubscription($conn, $email)) bs_out(["success" => false, "requiresSubscription" => true, "message" => "تحليلات بصيرة متاحة للمشتركين فقط."]);
+    // الإصدار 135: مميزات الباقة — «تحليل سهم» (basira) و«مسح السوق» (basira_scan) كل واحدة لوحدها
+    require_once __DIR__ . '/perks_lib.php';
+    if (!$isAdmin) {
+        $pkOk = $action === 'scan' ? perk_has($conn, $email, 'basira_scan') : ($action === 'config' ? (perk_has($conn, $email, 'basira') || perk_has($conn, $email, 'basira_scan')) : perk_has($conn, $email, 'basira'));
+        if (!$pkOk) bs_out(perk_denied($conn, $email, $action === 'scan' ? 'basira_scan' : 'basira'));
+    }
     $cfg = bs_cfg($conn);
 
     if ($action === 'config') {

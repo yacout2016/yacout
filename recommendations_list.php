@@ -12,9 +12,12 @@ if (!isset($_SESSION['user_email'])) {
 }
 
 // التوصيات محتوى مدفوع: بتتعرض بس لفريق الإدارة أو لعميل اشتراكه شغال (كانت متاحة لأي حساب)
-if (empty($_SESSION['is_admin']) && !hasActiveSubscription($conn, $_SESSION['user_email'])) {
-    echo json_encode(["success" => true, "recommendations" => [], "requiresSubscription" => true]);
-    exit();
+// الإصدار 135: حسب مميزات الباقة — قصيرة المدى (recs_short) / طويلة المدى (recs_long)
+require_once __DIR__ . '/perks_lib.php';
+$pkShort = true; $pkLong = true;
+if (empty($_SESSION['is_admin'])) {
+    $pkShort = perk_has($conn, $_SESSION['user_email'], 'recs_short'); $pkLong = perk_has($conn, $_SESSION['user_email'], 'recs_long');
+    if (!$pkShort && !$pkLong) { echo json_encode(["success" => true, "recommendations" => [], "requiresSubscription" => true] + perk_denied($conn, $_SESSION['user_email'], 'recs_short'), JSON_UNESCAPED_UNICODE); exit(); }
 }
 
 cleanupExpiredRecommendations($conn);
@@ -31,7 +34,12 @@ if ($hasRecMkt && empty($_SESSION['is_admin'])) {
     $result = $conn->query("SELECT * FROM recommendations WHERE $scope ORDER BY archived, created_at DESC");
 }
 $rows = [];
+$pkHidden = 0;
 while ($r = $result->fetch_assoc()) {
+    if (!$pkShort || !$pkLong) {
+        $isLong = function_exists('rc_is_long') ? rc_is_long($conn, (int)$r['validity_hours']) : (int)$r['validity_hours'] >= 336;
+        if (($isLong && !$pkLong) || (!$isLong && !$pkShort)) { $pkHidden++; continue; }
+    }
     $rows[] = [
         "id" => (string)$r['id'],
         "symbol" => $r['symbol'],
@@ -56,7 +64,7 @@ while ($r = $result->fetch_assoc()) {
 }
 // الإصدار 129: نصوص الكارت من لوحة التحكم (النصوص بس — مفيش أي إعداد حساس)
 $cfg = function_exists('rc_cfg') ? array_filter(rc_cfg($conn), fn($k) => strpos($k, 't_') === 0, ARRAY_FILTER_USE_KEY) : null;
-echo json_encode(["success" => true, "recommendations" => $rows] + ($cfg ? ["cfg" => $cfg] : []));
+echo json_encode(["success" => true, "recommendations" => $rows, "perkHidden" => $pkHidden, "perkLocked" => !$pkLong ? 'recs_long' : (!$pkShort ? 'recs_short' : null)] + ($cfg ? ["cfg" => $cfg] : []));
 
 // الإصدار 128: بيانات التوصية الجديدة (النوع / المدة / الوقف / الملاحظة) + رسائل المتابعة
 function rc_extra($conn, $r){

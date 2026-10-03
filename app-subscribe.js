@@ -87,6 +87,9 @@ async function renderSubscriptionPlans(){
     }
     // التجربة المجانية مرة واحدة بس - متظهرش حتى عنده اشتراك بالفعل
     const plans = mySub ? res.plans.filter(p => Number(p.amount) > 0) : res.plans;
+    // الإصدار 135: مميزات كل باقة تحتها + الحساب الجديد شغال على الباقة المجانية تلقائي
+    window.__pkFullDays = res.fullDays || 0;
+    const pkS = window.gPerkState ? gPerkState() : null, freeNow = !!(pkS && (pkS.phase === 'full' || pkS.phase === 'basic'));
 
     grid.innerHTML = plans.map(p => `
       <div class="price-card ${p.badge==='الأكثر توفيرًا'?'featured':''} ${mySub && mySub.planId===p.id ? 'selected':''}" data-plan="${p.id}">
@@ -96,8 +99,9 @@ async function renderSubscriptionPlans(){
         <div class="u-fs12 u-muted">${escapeHtml(p.periodLabel)}</div>
         ${p.saveNote?`<div class="price-save">${p.saveNote.replace('عن السعر', (((window.__acct && window.__acct.markets && window.__acct.markets[market]) || {}).short || 'جنيه') + ' عن السعر')}</div>`:'<div style="height:18px;"></div>'}
         <ul class="price-features">${(p.features||[]).map(f=>`<li>${f}</li>`).join('')}</ul>
-        <button class="small choosePlanBtn u-w100" data-plan="${p.id}">
-          ${mySub ? (mySub.planId===p.id ? 'باقتك الحالية' : 'طلب التحويل لهذه الباقة') : (p.amount===0?'ابدأ التجربة المجانية':'اشترك الآن')}
+        ${window.pkPlanPerksHtml ? window.pkPlanPerksHtml(p, res.perkCatalog) : ''}
+        <button class="small choosePlanBtn u-w100" data-plan="${p.id}" ${!mySub && p.amount===0 && freeNow ? 'disabled' : ''}>
+          ${mySub ? (mySub.planId===p.id ? 'باقتك الحالية' : 'طلب التحويل لهذه الباقة') : (p.amount===0 ? (freeNow ? '✅ أنت على الباقة المجانية دلوقتي' : 'ابدأ التجربة المجانية') : 'اشترك الآن')}
         </button>
       </div>`).join('');
 
