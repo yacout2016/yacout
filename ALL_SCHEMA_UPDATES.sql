@@ -1,4 +1,4 @@
-/* GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 151) — كل التحديثات، آمن يتشغل أكتر من مرة. الصقه كله في تبويب SQL ← Go */
+/* GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 152) — كل التحديثات، آمن يتشغل أكتر من مرة. الصقه كله في تبويب SQL ← Go */
 /* v69: جدول login_attempts (حماية من تخمين كلمات المرور). */
 /* v72: جدول ui_customizations (استوديو التصميم) + جدول email… */
 /* v82: عمود allow_upload في chat_conversation_meta (الأدمن ب… */
@@ -39,6 +39,7 @@
 /* v149: مفيش تغيير في قاعدة البيانات (الزائر بيحمّل ملفات الصفحة العامة بس) */
 /* v150: جدول rate_limits (حماية من سحب البيانات بالبوتات) */
 /* v151: جدول site_events (تحليلات الزوار — البحث والتطوير) + جدول mkt_items (التسويق) */
+/* v152: الإيميل الجديد info@griffine.app — أي نص محفوظ فيه الإيميل القديم بيتغيّر مرة واحدة (صفحات النصوص / المساعد الذكي / اللاندينج / الإعدادات) */
 /* v85: ترميز الاتصال UTF-8 عشان النصوص العربي اللي بتتضاف من… */
 SET NAMES utf8mb4;
 CREATE TABLE IF NOT EXISTS users (
@@ -825,4 +826,10 @@ INSERT IGNORE INTO site_config (config_key, config_value) VALUES ('mig_146_stats
 CREATE TABLE IF NOT EXISTS rate_limits (k VARCHAR(100) NOT NULL PRIMARY KEY, n INT NOT NULL DEFAULT 0, win INT NOT NULL DEFAULT 0) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE IF NOT EXISTS site_events (id BIGINT AUTO_INCREMENT PRIMARY KEY, ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP, day DATE NOT NULL, ev VARCHAR(12) NOT NULL, vid VARCHAR(40) NOT NULL, screen VARCHAR(60) NOT NULL DEFAULT '', src VARCHAR(40) NOT NULL DEFAULT 'direct', device VARCHAR(10) NOT NULL DEFAULT '', browser VARCHAR(20) NOT NULL DEFAULT '', os VARCHAR(20) NOT NULL DEFAULT '', country VARCHAR(4) NOT NULL DEFAULT '', logged TINYINT NOT NULL DEFAULT 0, ms INT NOT NULL DEFAULT 0, x VARCHAR(200) NOT NULL DEFAULT '', KEY ix_day_ev (day, ev), KEY ix_vid (vid)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE IF NOT EXISTS mkt_items (id INT AUTO_INCREMENT PRIMARY KEY, kind VARCHAR(10) NOT NULL, platform VARCHAR(20) NOT NULL DEFAULT '', title VARCHAR(200) NOT NULL, body TEXT NULL, campaign VARCHAR(40) NOT NULL DEFAULT '', status VARCHAR(12) NOT NULL DEFAULT 'todo', due DATE NULL, url VARCHAR(300) NOT NULL DEFAULT '', auto_key VARCHAR(60) NULL, created_by VARCHAR(190) NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, done_at DATETIME NULL, UNIQUE KEY ux_auto (auto_key)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-SELECT 'GRIFFINE database is up to date (v151)' AS result;
+UPDATE page_contents SET content = REPLACE(content, 'info@griffine.store', 'info@griffine.app') WHERE content LIKE '%info@griffine.store%' AND NOT EXISTS (SELECT 1 FROM site_config WHERE config_key = 'mig_152_mail');
+UPDATE chat_faq SET answer = REPLACE(answer, 'info@griffine.store', 'info@griffine.app') WHERE answer LIKE '%info@griffine.store%' AND NOT EXISTS (SELECT 1 FROM site_config WHERE config_key = 'mig_152_mail');
+UPDATE ui_customizations SET data_value = REPLACE(data_value, 'info@griffine.store', 'info@griffine.app') WHERE data_value LIKE '%info@griffine.store%' AND NOT EXISTS (SELECT 1 FROM site_config WHERE config_key = 'mig_152_mail');
+UPDATE site_config SET config_value = REPLACE(config_value, 'info@griffine.store', 'info@griffine.app') WHERE config_value LIKE '%info@griffine.store%' AND NOT EXISTS (SELECT 1 FROM (SELECT config_key FROM site_config WHERE config_key = 'mig_152_mail') x);
+UPDATE site_content SET content_value = REPLACE(content_value, 'info@griffine.store', 'info@griffine.app') WHERE content_value LIKE '%info@griffine.store%' AND NOT EXISTS (SELECT 1 FROM site_config WHERE config_key = 'mig_152_mail');
+INSERT IGNORE INTO site_config (config_key, config_value) VALUES ('mig_152_mail', '1');
+SELECT 'GRIFFINE database is up to date (v152)' AS result;

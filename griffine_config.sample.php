@@ -15,7 +15,7 @@ define('DB_USER', 'اكتب_اسم_مستخدم_القاعدة');
 define('DB_PASS', 'اكتب_كلمة_سر_القاعدة');
 define('DB_NAME', 'اكتب_اسم_القاعدة');
 
-// كلمة سر صندوق info@griffine.store (الإرسال عن طريق SMTP هوستنجر - أضمن طريقة إن الإيميل ميروحش Spam)
+// كلمة سر صندوق info@griffine.app (الإرسال عن طريق SMTP هوستنجر - أضمن طريقة إن الإيميل ميروحش Spam)
 define('MAIL_SMTP_PASS', 'اكتب_كلمة_سر_إيميل_info');
 
 // مفتاح رابط الـ Cron Job بتاع تذكيرات الاشتراك (send_reminders.php?key=...)

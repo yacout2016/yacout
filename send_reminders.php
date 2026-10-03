@@ -52,7 +52,7 @@ while ($sub = $result->fetch_assoc()) {
     $endDateFormatted = date('d-m-Y', $endTs);
     $daysWord = ($daysLeft === 0) ? 'النهاردة' : ($daysLeft . ' يوم');
 
-    // الإصدار 72: عن طريق mailer.php (من info@griffine.store + سجل الإيميلات)
+    // الإصدار 72: عن طريق mailer.php (من info@griffine.app + سجل الإيميلات)
     $res = griffine_notify($conn, $toEmail, 'تذكير بقرب انتهاء اشتراكك - GRIFFINE', 'اشتراكك يقترب من الانتهاء',
         ["مرحبًا $name،", "نذكّرك إن اشتراكك في باقة «$planName» سينتهي بتاريخ: $endDateFormatted", "الأيام المتبقية: $daysWord",
          'جدّد اشتراكك قبل انتهاء المدة لتستمر في الاستفادة من كل مميزات GRIFFINE دون انقطاع.'],

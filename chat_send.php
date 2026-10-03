@@ -95,7 +95,7 @@ if ($stmt->execute()) {
     } catch (Throwable $e) { error_log('GRIFFINE chat_send reactivate: ' . $e->getMessage()); }
     // الإصدار 83: لا يوجد إشعارات Push على الشاشة للشات - التنبيه بيبقى نقطة حمرا على أيقونة الشات بس (زي ماسنجر)
 
-    // الإصدار 72: أول رسالة في محادثة جديدة ← إيميل تنبيه على info@griffine.store (مش مع كل رسالة)
+    // الإصدار 72: أول رسالة في محادثة جديدة ← إيميل تنبيه على info@griffine.app (مش مع كل رسالة)
     try {
         $cnt = $conn->prepare("SELECT COUNT(*) AS c FROM chat_messages WHERE COALESCE(visitor_id, visitor_email) = ?");
         $cnt->bind_param("s", $visitorId); $cnt->execute();

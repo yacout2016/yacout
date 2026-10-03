@@ -34,7 +34,7 @@ if ($result->num_rows > 0) {
     $ins->execute();
     $ins->close();
 
-    // الإصدار 72: من info@griffine.store عن طريق mailer.php (بيتسجّل في سجل الإيميلات)
+    // الإصدار 72: من info@griffine.app عن طريق mailer.php (بيتسجّل في سجل الإيميلات)
     $resetLink = MAIL_SITE_URL . "/index.php?reset_token=" . $token;
     griffine_notify($conn, $email, 'إعادة تعيين كلمة المرور - GRIFFINE', 'إعادة تعيين كلمة المرور',
         ['طلبت إعادة تعيين كلمة المرور لحسابك في GRIFFINE.', 'اضغط على الزر أدناه لتعيين كلمة مرور جديدة (الرابط صالح لمدة ساعة).', 'إذا لم تطلب ذلك، فتجاهل هذه الرسالة - حسابك في أمان.'],

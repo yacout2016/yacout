@@ -6,7 +6,7 @@
      قبل كده كل ملف كان بيبعت بـ mail() لوحده ومن عنوان no-reply@www.griffine.store
      (عنوان غير موجود) ومن غير تشفير للعنوان العربي - فالإيميلات كانت بتتحجز أو تروح Spam.
    دلوقتي:
-     1) المرسل دايمًا info@griffine.store (صندوق حقيقي على الدومين) + Return-Path صحيح
+     1) المرسل دايمًا info@griffine.app (صندوق حقيقي على الدومين) + Return-Path صحيح
      2) لو كلمة سر الصندوق متحطة في db.php (MAIL_SMTP_PASS) ← الإرسال عن طريق SMTP هوستنجر
         (أضمن طريقة للوصول لـ Gmail/Outlook) - غير كده ← mail() العادية كاحتياطي
      3) العنوان العربي متشفّر (UTF-8)، والرسالة فيها نسخة نص + نسخة HTML منسّقة
@@ -31,14 +31,14 @@
 // ---------------------------------------------------------------------
 // 01. الإعدادات - القيم الافتراضية (أي قيمة متعرّفة في db.php بتغلبها)
 // ---------------------------------------------------------------------
-defined('MAIL_FROM')        || define('MAIL_FROM', 'info@griffine.store');
+defined('MAIL_FROM')        || define('MAIL_FROM', 'info@griffine.app');
 defined('MAIL_FROM_NAME')   || define('MAIL_FROM_NAME', 'GRIFFINE');
-defined('MAIL_ADMIN_TO')    || define('MAIL_ADMIN_TO', 'info@griffine.store');   // تنبيهات الإدارة ونسخ الشات
+defined('MAIL_ADMIN_TO')    || define('MAIL_ADMIN_TO', 'info@griffine.app');   // تنبيهات الإدارة ونسخ الشات
 defined('MAIL_SITE_URL')    || define('MAIL_SITE_URL', 'https://griffine.store');
 defined('MAIL_SMTP_HOST')   || define('MAIL_SMTP_HOST', 'smtp.hostinger.com');
 defined('MAIL_SMTP_PORT')   || define('MAIL_SMTP_PORT', 465);                    // 465 = SSL ، 587 = STARTTLS
-defined('MAIL_SMTP_USER')   || define('MAIL_SMTP_USER', 'info@griffine.store');
-defined('MAIL_SMTP_PASS')   || define('MAIL_SMTP_PASS', '');                     // ← كلمة سر info@griffine.store (في db.php)
+defined('MAIL_SMTP_USER')   || define('MAIL_SMTP_USER', 'info@griffine.app');
+defined('MAIL_SMTP_PASS')   || define('MAIL_SMTP_PASS', '');                     // ← كلمة سر info@griffine.app (في db.php)
 defined('MAIL_MAX_ATTACH')  || define('MAIL_MAX_ATTACH', 18 * 1024 * 1024);     // أقصى حجم مرفقات في الإيميل الواحد
 
 // ---------------------------------------------------------------------
@@ -232,7 +232,12 @@ function griffine_mail($conn, $to, $subject, $opts = []){
     if (gm_smtp_enabled()) {
         $ok = gm_smtp_send($to, $subject, $headers, $body, $err);
         $transport = 'smtp';
-        if (!$ok) error_log('GRIFFINE mail SMTP failed to ' . $to . ': ' . $err);
+        if (!$ok) {
+            error_log('GRIFFINE mail SMTP failed to ' . $to . ': ' . $err);
+            // الإصدار 152: لو SMTP فشل (مثلًا كلمة سر الصندوق لسه القديمة بعد تغيير الإيميل) ← الإرسال بـ mail() العادية عشان الإيميلات ماتقفش
+            $ok = @mail($to, gm_encode_header($subject), $body, implode("\r\n", $headers), '-f' . MAIL_FROM);
+            if ($ok) { $transport = 'mail'; $err = 'SMTP فشل (' . $err . ') — اتبعت بـ mail() كاحتياطي'; }
+        }
     } else {
         // mail(): العنوان بيتبعت منفصل، والمرسل الحقيقي (Return-Path) بالباراميتر -f
         $ok = @mail($to, gm_encode_header($subject), $body, implode("\r\n", $headers), '-f' . MAIL_FROM);

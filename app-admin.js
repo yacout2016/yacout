@@ -866,7 +866,7 @@ async function renderChatAdminPage(){
       <div>${pageTitle('chat_admin','💬 الدردشة الفورية')} <span style="color:var(--green);font-size:11px;">🟢 أنت متصل الآن</span></div>
       <button class="secondary small" id="backToAdminFromChatBtn">🛡️ رجوع للوحة التحكم</button>
     </div>
-    <div class="info">الشات هنا مباشر بينك وبين العميل. تصلك رسالة تنبيه على info@griffine.store عندما يبدأ عميل محادثة جديدة (وليس مع كل رسالة). عند انتهاء المحادثة اضغط "📧 إنهاء وإرسال نسخة" وستصلك كاملة مع الصور والملفات كمرفقات. فتح المحادثة يجعلها مقروءة تلقائيًا. لا يستطيع العميل إرسال صور أو ملفات إلا عندما تضغط "افتح للعميل رفع ملف/صورة"، وبجانبه تكتب أقصى حجم للملف بالميجا (مثلًا 100 أو 500) - ويُغلق تلقائيًا عند إنهاء المحادثة. التنبيهات نقطة حمراء + صوت على أيقونة الشات (دون رسائل منبثقة). تتحدّث المحادثات كل 3 ثوانٍ.</div>
+    <div class="info">الشات هنا مباشر بينك وبين العميل. تصلك رسالة تنبيه على info@griffine.app عندما يبدأ عميل محادثة جديدة (وليس مع كل رسالة). عند انتهاء المحادثة اضغط "📧 إنهاء وإرسال نسخة" وستصلك كاملة مع الصور والملفات كمرفقات. فتح المحادثة يجعلها مقروءة تلقائيًا. لا يستطيع العميل إرسال صور أو ملفات إلا عندما تضغط "افتح للعميل رفع ملف/صورة"، وبجانبه تكتب أقصى حجم للملف بالميجا (مثلًا 100 أو 500) - ويُغلق تلقائيًا عند إنهاء المحادثة. التنبيهات نقطة حمراء + صوت على أيقونة الشات (دون رسائل منبثقة). تتحدّث المحادثات كل 3 ثوانٍ.</div>
     <div class="radio-row std-filter-tabs u-mb10">
       <button class="small secondary period-preset std-filter-tab btn-active" id="tabActiveBtn">المحادثات النشطة</button>
       <button class="small secondary period-preset std-filter-tab" id="tabArchivedBtn">🗄️ الأرشيف</button>
@@ -1000,7 +1000,7 @@ async function renderChatAdminPage(){
 
     const endBtn = document.getElementById('chatEndConvBtn');
     if (endBtn) endBtn.onclick = async () => {
-      if(!await gConfirm('سيتم إرسال نسخة كاملة من هذه المحادثة إلى info@griffine.store. متأكد؟')) return;
+      if(!await gConfirm('سيتم إرسال نسخة كاملة من هذه المحادثة إلى info@griffine.app. متأكد؟')) return;
       const r = await endChatConversation(visitorId);
       alert(r.message || (r.success ? 'تم إرسال نسخة المحادثة بالإيميل.' : 'حصل خطأ'));
       // الإصدار 82: إنهاء المحادثة بيقفل رفع الملفات عند العميل تلقائيًا

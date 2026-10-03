@@ -854,7 +854,7 @@ async function renderContactInfo(){
   const svcWa = String(svcPhone).replace(/\D/g, '').replace(/^00/, '').replace(/^0(1\d{9})$/, '20$1');
   const defaultHtml = `
       <p style="font-size:13px;color:#555;margin:0 0 10px;">تطبيق GRIFFINE تابع لشركة Top7</p>
-      <div style="font-size:14px;margin:10px 0;"><strong>📧 البريد الإلكتروني:</strong> <a href="mailto:info@griffine.store" style="color:var(--green-dark);font-weight:600;">info@griffine.store</a></div>
+      <div style="font-size:14px;margin:10px 0;"><strong>📧 البريد الإلكتروني:</strong> <a href="mailto:info@griffine.app" style="color:var(--green-dark);font-weight:600;">info@griffine.app</a></div>
       <div style="font-size:14px;margin:10px 0;"><strong>📱 رقم التواصل:</strong> <span dir="ltr">${escapeHtml(svcPhone)}</span></div>
       <div style="font-size:14px;margin:10px 0;display:flex;align-items:center;gap:8px;">
         <strong>واتساب:</strong>

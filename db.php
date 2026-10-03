@@ -44,15 +44,15 @@ date_default_timezone_set('UTC');
 define('ADMIN_EMAIL', 'top72026@gmail.com');
 
 // ===================== إعدادات الإيميل (الإصدار 72) =====================
-// كل إيميلات الموقع بتتبعت من info@griffine.store عن طريق mailer.php
+// كل إيميلات الموقع بتتبعت من info@griffine.app عن طريق mailer.php
 // كلمة سر الصندوق (MAIL_SMTP_PASS) ومفتاح الـ Cron في griffine_config.php (الإصدار 84)
-define('MAIL_FROM', 'info@griffine.store');
+define('MAIL_FROM', 'info@griffine.app');
 define('MAIL_FROM_NAME', 'GRIFFINE');
-define('MAIL_ADMIN_TO', 'info@griffine.store');
+define('MAIL_ADMIN_TO', 'info@griffine.app');
 define('MAIL_SITE_URL', 'https://griffine.store');
 define('MAIL_SMTP_HOST', 'smtp.hostinger.com');
 define('MAIL_SMTP_PORT', 465);
-define('MAIL_SMTP_USER', 'info@griffine.store');
+if (!defined('MAIL_SMTP_USER')) define('MAIL_SMTP_USER', 'info@griffine.app');   // الإصدار 152: الصندوق الجديد (كلمة سره MAIL_SMTP_PASS في griffine_config.php)
 if (!defined('MAIL_SMTP_PASS')) define('MAIL_SMTP_PASS', '');   // بتتعرّف في griffine_config.php
 if (!defined('CRON_KEY')) define('CRON_KEY', '');
 require_once __DIR__ . '/mailer.php';
@@ -87,7 +87,7 @@ function sendVerificationEmail($conn, $email){
     $ins->execute();
     $ins->close();
 
-    // الإصدار 72: عن طريق mailer.php (من info@griffine.store + سجل الإيميلات)
+    // الإصدار 72: عن طريق mailer.php (من info@griffine.app + سجل الإيميلات)
     $verifyLink = MAIL_SITE_URL . "/index.php?verify_token=" . $token;
     $r = griffine_notify($conn, $email, 'تفعيل بريدك الإلكتروني - GRIFFINE', 'مرحبًا بك في GRIFFINE!',
         ['اضغط على الزر أدناه لتفعيل حسابك (الرابط صالح لمدة 24 ساعة).', 'إذا لم تكن مسجّلًا لدينا، فتجاهل هذه الرسالة.'],
@@ -673,7 +673,7 @@ function send_single_push($conn, $endpoint, $p256dh, $auth, $title, $body, $url,
     $vapid = get_vapid_keys($conn);
     $urlParts = parse_url($endpoint);
     $audience = $urlParts['scheme'] . '://' . $urlParts['host'];
-    $jwt = build_vapid_jwt($audience, 'mailto:info@griffine.store', $vapid['privateKey']);
+    $jwt = build_vapid_jwt($audience, 'mailto:info@griffine.app', $vapid['privateKey']);
 
     $payload = json_encode(['title' => $title, 'body' => $body, 'url' => $url] + ($image ? ['image' => $image] : []));   // الإصدار 129: صورة الرسم في الإشعار (أندرويد / كروم)
     $encryptedBody = webpush_encrypt_payload($payload, $p256dh, $auth);

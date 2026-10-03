@@ -299,7 +299,7 @@
     return `<div class="lp-wrap"><div class="lp-custom ${lay}"><div class="lp-custom-t lp-rev">${s.eyebrow ? `<span class="lp-eyebrow">${esc(s.eyebrow)}</span>` : ''}${s.title ? `<h2>${T(s.title)}</h2>` : ''}${s.text ? `<p>${esc(s.text)}</p>` : ''}${s.btn ? btnHtml(s.btn, s.action === 'url' ? 'url:' + (s.url || '') : (s.action || 'register'), true) : ''}</div>${img ? `<div class="lp-rev"><img src="${esc(img)}" alt=""></div>` : ''}</div></div>`; };
 
   const logoHtml = (c) => { const lg = imgSrc(c.theme.logo);
-    return lg ? `<img src="${esc(lg)}" alt="GRIFFINE">` : `<img class="lp-logo-l" src="griffine-logo-light.webp?v=151" alt="GRIFFINE"><img class="lp-logo-d" src="griffine-logo-dark.webp?v=151" alt="GRIFFINE">`; };
+    return lg ? `<img src="${esc(lg)}" alt="GRIFFINE">` : `<img class="lp-logo-l" src="griffine-logo-light.webp?v=152" alt="GRIFFINE"><img class="lp-logo-d" src="griffine-logo-dark.webp?v=152" alt="GRIFFINE">`; };
   const IC = {
     moon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg>',
     login: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>',
