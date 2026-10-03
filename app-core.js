@@ -3,7 +3,7 @@
    (اتفصل من griffine.js - كل الملفات بتتحمّل بالترتيب في index.php وبتشارك نفس المتغيرات العامة)
    ===================================================================== */
 /* GRIFFINE — كود الواجهة الأساسي (اتفصل من index.php في الإصدار 68) */
-const GRIFFINE_LOGO_B64 = location.origin + '/griffine-logo-light.webp?v=148';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
+const GRIFFINE_LOGO_B64 = location.origin + '/griffine-logo-light.webp?v=149';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
 /* ================== حسابات مساعدة ================== */
 function daysBetween(isoStart, isoEnd){
   if(!isoStart) return null;
@@ -749,6 +749,17 @@ async function getSession(){
   return __sessionPromise;
 }
 function invalidateSessionCache(){ __sessionPromise = null; }
+/* الإصدار 149: علامة «مسجّل دخول» (كوكي g_in من غير أي بيانات) — السيرفر بيستخدمها عشان الزائر يحمّل ملفات الصفحة العامة بس */
+function gAuthMark(on){ try { document.cookie = 'g_in=' + (on ? '1' : '') + '; path=/; SameSite=Lax' + (location.protocol === 'https:' ? '; Secure' : '') + (on ? '; max-age=2592000' : '; max-age=0'); } catch(e){} }
+const gIsLite = () => !!(document.body && document.body.dataset.glite === '1');
+// صفحة الزائر الخفيفة ← بعد الدخول نحمّل الموقع كامل (ومعانا الشاشة اللي كان رايحلها)
+function gReloadFull(){
+  try { if (window.__afterLoginTarget) sessionStorage.setItem('g_alt', window.__afterLoginTarget); } catch(e){}
+  const pg = new URLSearchParams(location.search).get('page'), q = [];
+  if (pg === 'delete-account') q.push('page=delete-account');
+  if (!/(^|;\s*)g_in=1/.test(document.cookie)) q.push('full=1');   // الكوكيز مقفولة على الجهاز ← من غير لفّة تحميل
+  location.replace('/index.php' + (q.length ? '?' + q.join('&') : ''));
+}
 // الإصدار 113: بعد تسجيل الخروج ← واجهة الموقع (صفحة اللاندينج لو مفعّلة، غير كده شاشة الترحيب) بدل شاشة تسجيل الدخول
 function gAfterLogout(){ try { window.scrollTo(0, 0); } catch(e){} if (typeof renderPublicHome === 'function') return renderPublicHome(); return renderLogin(); }
 async function setSession(email){
@@ -756,6 +767,7 @@ async function setSession(email){
   invalidateSessionCache();
   if (!email) {
     try{ await apiPost('/logout.php', {}); }catch(e){}
+    gAuthMark(false);   // الإصدار 149
     window.__isAdmin = false; window.__isSuperAdmin = false; window.__myPermissions = [];
     resetGuestChatIdentity();   // الإصدار 83: أيقونة الشات بعد الخروج تبدأ فاضية (مش محادثة الحساب)
   }
@@ -1195,6 +1207,8 @@ async function openAfterLoginScreen(){
   renderHome();
 }
 async function postLoginRedirect(email){
+  gAuthMark(true);   // الإصدار 149
+  if (gIsLite()) return gReloadFull();
   await refreshTopNav();
   // حذف الحساب لازم يكون متاح لأي حد مسجّل (حتى من غير اشتراك أو تفعيل)
   if (window.__afterLoginTarget === 'deleteAccount') { window.__afterLoginTarget = null; return GShell.renderDeleteAccount(); }
@@ -1318,9 +1332,9 @@ async function renderAccessExpired(sub){
 }
 
 const app = document.getElementById('app');
-const TOP7_LOGO_B64 = location.origin + '/top7-logo-light.webp?v=148';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
-const GRIFFINE_LOGO_DARK_B64 = location.origin + '/griffine-logo-dark.webp?v=148';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
-const TOP7_LOGO_DARK_B64 = location.origin + '/top7-logo-dark.webp?v=148';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
+const TOP7_LOGO_B64 = location.origin + '/top7-logo-light.webp?v=149';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
+const GRIFFINE_LOGO_DARK_B64 = location.origin + '/griffine-logo-dark.webp?v=149';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
+const TOP7_LOGO_DARK_B64 = location.origin + '/top7-logo-dark.webp?v=149';   // الإصدار 84: ملف صورة (بيتخزّن في المتصفح) بدل Base64 جوه الكود
 /* الوضع الحالي (فاتح/ليلي) - الإصدار 71: بيتقري من الصفحة نفسها (data-theme) مش من التخزين بس،
    عشان الشعار يطلع صح حتى لو المتصفح مانع التخزين (وضع التصفح الخفي)
    (السكربت الصغير في index.php بيحط data-theme من التخزين قبل تحميل أي ملف، فالاتنين دايمًا متطابقين) */

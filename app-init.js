@@ -24,6 +24,10 @@
     primePageTitles(), // تحميل عناوين الشاشات المخصصة من لوحة التحكم قبل أول عرض لأي شاشة
     primePageBackgrounds(), // تحميل خلفيات الشاشات المخصصة قبل أول عرض لأي شاشة
   ]);
+  // الإصدار 149: صفحة الزائر الخفيفة + حساب مسجّل ← تحميل الموقع كامل مرة واحدة / الصفحة الكاملة من غير حساب ← المرة الجاية خفيفة
+  gAuthMark(!!email);
+  if (email && gIsLite()) return gReloadFull();
+  try { const t = sessionStorage.getItem('g_alt'); if (t) { window.__afterLoginTarget = t; sessionStorage.removeItem('g_alt'); } } catch(e){}
   await refreshTopNav();
   initChatWidget(email);
   // الإصدار 114: رابط تحليل «بصيرة» متشارك (للقراءة بس - من غير تسجيل دخول)
