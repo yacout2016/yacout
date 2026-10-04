@@ -97,14 +97,14 @@ $gSite = 'https://www.griffine.app';
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="theme-boot.js?v=157"></script>
-<link rel="stylesheet" href="griffine.css?v=157">
-<link rel="stylesheet" href="shell.css?v=157">
-<link rel="stylesheet" href="landing.css?v=157">
+<script src="theme-boot.js?v=158"></script>
+<link rel="stylesheet" href="griffine.css?v=158">
+<link rel="stylesheet" href="shell.css?v=158">
+<link rel="stylesheet" href="landing.css?v=158">
 <?php if (!$gLite): ?>
-<link rel="stylesheet" href="basira.css?v=157">
-<link rel="stylesheet" href="mizan.css?v=157">
-<link rel="stylesheet" href="mizanai.css?v=157">
+<link rel="stylesheet" href="basira.css?v=158">
+<link rel="stylesheet" href="mizan.css?v=158">
+<link rel="stylesheet" href="mizanai.css?v=158">
 <?php endif; ?>
 </head>
 <body<?php echo $gLite ? ' data-glite="1"' : ''; ?>>
@@ -112,57 +112,58 @@ $gSite = 'https://www.griffine.app';
 <h1>GRIFFINE جريفين — نظّم استثمارك في البورصة بخطة واضحة</h1>
 <p><?php echo $gE($gDesc); ?></p>
 <ul><li>خطط تعزيز المتوسط (DCA) وخطط الشبكة (Grid) بمستويات شراء وبيع محسوبة</li><li>توصيات محللين بنقاط دخول وأهداف ووقف خسارة</li><li>بصيرة AI لتحليل الأسهم وميزان GRIFFINE AI لتوزيع الاستثمار</li><li>البحث عن الفرص بالمؤشرات الفنية وتنبيهات الأسعار على الموقع والإيميل والواتساب</li></ul>
+<p>📚 دليل المستثمر: <a href="guide.html">كل الشروحات</a> · <a href="dca-strategy.html">تعزيز المتوسط DCA</a> · <a href="grid-trading.html">استراتيجية الشبكة Grid</a> · <a href="technical-indicators.html">المؤشرات الفنية</a> · <a href="investment-strategies.html">استراتيجيات الاستثمار</a> · <a href="portfolio-diversification.html">تنويع المحفظة</a> · <a href="ai-stock-analysis.html">تحليل الأسهم بالذكاء الاصطناعي</a> · <a href="stock-recommendations.html">توصيات الأسهم</a> · <a href="stock-alerts.html">تنبيهات الأسعار</a> · <a href="egypt-gulf-stocks.html">البورصة المصرية والخليج</a></p>
 <p>شغّل JavaScript في المتصفح عشان تستخدم الموقع. للتواصل: info@griffine.app</p></div></noscript>
 
 <div id="app"></div>
 <!-- الإصدار 100: الشاشات الطارئة (صيانة / انقطاع النت / السيرفر / التحميل البطيء) - لازم تبقى قبل أي ملف تاني -->
-<script src="emergency.js?v=157"></script>
+<script src="emergency.js?v=158"></script>
 <?php if ($gLite): ?>
-<script src="lite-stubs.js?v=157"></script>
+<script src="lite-stubs.js?v=158"></script>
 <?php endif; ?>
 
-<script src="shell.js?v=157"></script>
+<script src="shell.js?v=158"></script>
 <!-- الإصدار 72: استوديو التصميم - يطبّق الثيم وتعديلات الأدمن على كل الشاشات (شاشة التعديل نفسها studio-editor.js تُحمَّل للأدمن فقط) -->
-<script src="studio.js?v=157"></script>
+<script src="studio.js?v=158"></script>
 <!-- الإصدار 88: griffine.js قُسّم إلى ملفات حسب الأقسام (بالترتيب نفسه) - يجب أن يبقى app-init.js آخر ملف -->
-<script src="app-core.js?v=157"></script>
-<script src="app-public.js?v=157"></script>
-<script src="app-subscribe.js?v=157"></script>
+<script src="app-core.js?v=158"></script>
+<script src="app-public.js?v=158"></script>
+<script src="app-subscribe.js?v=158"></script>
 <?php if (!$gLite): ?>
-<script src="app-admin.js?v=157"></script>
-<script src="app-plans.js?v=157"></script>
-<script src="app-screener.js?v=157"></script>
+<script src="app-admin.js?v=158"></script>
+<script src="app-plans.js?v=158"></script>
+<script src="app-screener.js?v=158"></script>
 <?php endif; ?>
-<script src="app-chat.js?v=157"></script>
-<script src="app-nav.js?v=157"></script>
+<script src="app-chat.js?v=158"></script>
+<script src="app-nav.js?v=158"></script>
 <?php if (!$gLite): ?>
-<script src="hr.js?v=157"></script>
-<script src="markets.js?v=157"></script>
-<script src="trades.js?v=157"></script>
-<script src="faq.js?v=157"></script>
-<script src="trash.js?v=157"></script>
+<script src="hr.js?v=158"></script>
+<script src="markets.js?v=158"></script>
+<script src="trades.js?v=158"></script>
+<script src="faq.js?v=158"></script>
+<script src="trash.js?v=158"></script>
 <?php endif; ?>
-<script src="promo.js?v=157"></script>
+<script src="promo.js?v=158"></script>
 <?php if (!$gLite): ?>
-<script src="notify.js?v=157"></script>
-<script src="ai_access.js?v=157"></script>
-<script src="recs.js?v=157"></script>
-<script src="opps.js?v=157"></script>
+<script src="notify.js?v=158"></script>
+<script src="ai_access.js?v=158"></script>
+<script src="recs.js?v=158"></script>
+<script src="opps.js?v=158"></script>
 <?php endif; ?>
-<script src="landing.js?v=157"></script>
+<script src="landing.js?v=158"></script>
 <?php if (!$gLite): ?>
-<script src="landing-admin.js?v=157"></script>
-<script src="basira.js?v=157"></script>
-<script src="mizan.js?v=157"></script>
-<script src="mizanai.js?v=157"></script>
-<script src="perks.js?v=157"></script>
+<script src="landing-admin.js?v=158"></script>
+<script src="basira.js?v=158"></script>
+<script src="mizan.js?v=158"></script>
+<script src="mizanai.js?v=158"></script>
+<script src="perks.js?v=158"></script>
 <?php endif; ?>
-<script src="periods.js?v=157"></script>
+<script src="periods.js?v=158"></script>
 <?php if (!$gLite): ?>
-<script src="admin-search.js?v=157"></script>
-<script src="rd.js?v=157"></script>
-<script src="mkt.js?v=157"></script>
+<script src="admin-search.js?v=158"></script>
+<script src="rd.js?v=158"></script>
+<script src="mkt.js?v=158"></script>
 <?php endif; ?>
-<script src="app-init.js?v=157"></script>
+<script src="app-init.js?v=158"></script>
 </body>
 </html>

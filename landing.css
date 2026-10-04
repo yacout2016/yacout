@@ -285,7 +285,7 @@ html[data-theme="dark"] .lp-phone::after{ background:var(--gs-surface-3,#1C2835)
 .lp .lp-final .lp-btn-ghost{ background:transparent; border-color:rgba(255,255,255,.25); color:#fff; }
 .lp .lp-final .lp-btn-main{ background:linear-gradient(135deg,#E6C45A,#D4AF37 55%); color:#111; }
 .lp-foot{ border-top:1px solid var(--lp-border); padding:46px 0 26px; background:var(--lp-bg2); position:relative; z-index:1; }
-.lp-foot .g{ display:grid; grid-template-columns:1.4fr 1fr 1fr 1fr; gap:28px; }
+.lp-foot .g{ display:grid; grid-template-columns:1.4fr 1fr 1fr 1fr 1fr; gap:28px; }
 .lp-foot h5{ font-size:15px; margin-bottom:12px; font-weight:800; }
 .lp .lp-foot button{ display:block; color:var(--lp-muted); font-size:14px; padding:4px 0; }
 .lp .lp-foot button:hover{ color:var(--lp-gold); }
@@ -394,3 +394,5 @@ html[data-theme="dark"] .lp-phone::after{ background:var(--gs-surface-3,#1C2835)
 .lpa-save{ justify-content:flex-start; padding-inline-end:88px; }
 .lpa-save #lpaDirty{ margin-inline-end:0; margin-inline-start:auto; order:3; }
 .lp-screen main > .gs-ad-banner{ max-width:1160px; margin:16px auto 0 !important; position:relative; z-index:2; }
+/* الإصدار 158: روابط «دليل المستثمر» في الفوتر (صفحات ثابتة جوجل بيقراها) */
+.lp-foot .lp-guide a{ display:block; color:inherit; opacity:.85; text-decoration:none; padding:3px 0; font-size:14px; } .lp-foot .lp-guide a:hover{ opacity:1; text-decoration:underline; }

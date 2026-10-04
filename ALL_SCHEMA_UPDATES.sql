@@ -1,4 +1,4 @@
-/* GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 157) — كل التحديثات، آمن يتشغل أكتر من مرة. الصقه كله في تبويب SQL ← Go */
+/* GRIFFINE — ALL_SCHEMA_UPDATES.sql (الإصدار 158) — كل التحديثات، آمن يتشغل أكتر من مرة. الصقه كله في تبويب SQL ← Go */
 /* v69: جدول login_attempts (حماية من تخمين كلمات المرور). */
 /* v72: جدول ui_customizations (استوديو التصميم) + جدول email… */
 /* v82: عمود allow_upload في chat_conversation_meta (الأدمن ب… */
@@ -45,6 +45,7 @@
 /* v155: مفيش تغيير في الجداول (شعار GRIFFINE في الإيميلات والإشعارات) */
 /* v156: جدول broadcast_recipients (الرسائل لأشخاص بالاسم + 📥 الوارد بين الأدمن والموظفين) */
 /* v157: مفيش تغيير في الجداول («🔎 الظهور في جوجل» بيتحفظ في site_config) */
+/* v158: مفيش تغيير في الجداول (صفحات «📚 دليل المستثمر» الثابتة) */
 /* v85: ترميز الاتصال UTF-8 عشان النصوص العربي اللي بتتضاف من… */
 SET NAMES utf8mb4;
 CREATE TABLE IF NOT EXISTS users (
@@ -845,4 +846,4 @@ UPDATE site_content SET content_value = REPLACE(content_value, 'griffine.store',
 INSERT IGNORE INTO site_config (config_key, config_value) VALUES ('mig_153_domain', '1');
 CREATE TABLE IF NOT EXISTS broadcasts (id INT AUTO_INCREMENT PRIMARY KEY, title VARCHAR(200) NOT NULL, body TEXT NOT NULL, btn_label VARCHAR(80) NOT NULL DEFAULT '', btn_url VARCHAR(300) NOT NULL DEFAULT '', ch_app TINYINT NOT NULL DEFAULT 1, ch_mail TINYINT NOT NULL DEFAULT 1, audience VARCHAR(12) NOT NULL DEFAULT 'all', total INT NOT NULL DEFAULT 0, sent_app INT NOT NULL DEFAULT 0, sent_mail INT NOT NULL DEFAULT 0, status VARCHAR(10) NOT NULL DEFAULT 'sending', last_uid INT NOT NULL DEFAULT 0, created_by VARCHAR(190) NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, finished_at DATETIME NULL, deleted TINYINT NOT NULL DEFAULT 0, deleted_at DATETIME NULL, deleted_by VARCHAR(190) NULL, KEY ix_del (deleted, id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE IF NOT EXISTS broadcast_recipients (id INT AUTO_INCREMENT PRIMARY KEY, broadcast_id INT NOT NULL, email VARCHAR(190) NOT NULL, KEY ix_b (broadcast_id, id), KEY ix_e (email)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-SELECT 'GRIFFINE database is up to date (v157)' AS result;
+SELECT 'GRIFFINE database is up to date (v158)' AS result;

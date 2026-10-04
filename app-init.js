@@ -39,6 +39,7 @@
   // رابط مباشر لسياسة الخصوصية: /index.php?page=privacy
   if (params.get('page') === 'privacy') { renderPrivacyPolicyPage(); return; }
   if (params.get('page') === 'terms') { renderTermsPage(); return; }   // الإصدار 147
+  if (params.get('page') === 'register' && !email) { renderRegister(); return; }   // الإصدار 158: زرار «ابدأ مجانًا» في صفحات الدليل
   if (params.get('page') === 'delete-account') { window.__afterLoginTarget = 'deleteAccount'; if (email) { GShell.renderDeleteAccount(); } else { renderLogin(); } return; }
   // الإصدار 84: رابط دخول الإدارة السري ← شاشة "دخول الإدارة"
   if (params.get('staff') === '1') { try { history.replaceState(null, '', '/index.php'); } catch(e){} if (!email) { window.__staffGate = true; renderLogin(); return; } }
