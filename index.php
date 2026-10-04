@@ -51,91 +51,118 @@ header("Content-Security-Policy: default-src 'self'; "
 <meta name="apple-mobile-web-app-title" content="GRIFFINE">
 <meta name="copyright" content="© GRIFFINE — جميع الحقوق محفوظة">
 <!-- © GRIFFINE (griffine.app) — جميع الحقوق محفوظة. الكود والتصميم والمحتوى ملك GRIFFINE، وممنوع نسخه أو إعادة استخدامه. -->
-<meta name="description" content="GRIFFINE — خطط تعزيز المتوسط (DCA) والشبكة (Grid) ومتابعة محفظتك في البورصة المصرية والخليجية.">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>GRIFFINE — منصة تنظيم الاستثمار في الأسهم: خطط DCA وGrid وتوصيات وتحليلات</title>
-<?php $gSite = 'https://' . (preg_match('/^(www\.)?griffine\.(app|com)$/i', $_SERVER['HTTP_HOST'] ?? '') ? strtolower($_SERVER['HTTP_HOST']) : 'www.griffine.app'); ?>
+<?php
+/* الإصدار 157: «🔎 الظهور في جوجل» — العنوان والتعريف وأكواد التحقق (Google / Bing) من لوحة التحكم
+   بتتقري من ملف صغير (griffine_seo.json) من غير قاعدة البيانات — ولو مش موجود بيتعرض النص الافتراضي */
+$gSeo = [];
+foreach ([dirname(__DIR__) . '/griffine_seo.json', __DIR__ . '/griffine_seo.json'] as $__f) { if (is_file($__f)) { $__j = json_decode((string)@file_get_contents($__f), true); if (is_array($__j)) { $gSeo = $__j; break; } } }
+$gE = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
+$gTitle = !empty($gSeo['title']) ? $gSeo['title'] : 'GRIFFINE جريفين — منصة تنظيم الاستثمار في البورصة: خطط DCA وGrid وتوصيات';
+$gDesc = !empty($gSeo['desc']) ? $gSeo['desc'] : 'جريفين GRIFFINE منصة عربية لتنظيم استثمارك في البورصة المصرية والخليجية: خطط تعزيز المتوسط (DCA) والشبكة (Grid)، توصيات محللين، تحليلات بصيرة AI، فرص بالمؤشرات الفنية، وتنبيهات أسعار فورية. ابدأ مجانًا.';
+$gSite = 'https://www.griffine.app';
+?>
+<title><?php echo $gE($gTitle); ?></title>
+<meta name="description" content="<?php echo $gE($gDesc); ?>">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<?php if (!empty($gSeo['google'])): ?><meta name="google-site-verification" content="<?php echo $gE($gSeo['google']); ?>">
+<?php endif; if (!empty($gSeo['bing'])): ?><meta name="msvalidate.01" content="<?php echo $gE($gSeo['bing']); ?>">
+<?php endif; ?>
 <!-- الإصدار 146: الظهور في جوجل والمشاركة على واتساب / فيسبوك (صورة + عنوان + وصف) -->
 <link rel="canonical" href="<?php echo $gSite; ?>/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="GRIFFINE">
 <meta property="og:locale" content="ar_AR">
 <meta property="og:url" content="<?php echo $gSite; ?>/">
-<meta property="og:title" content="GRIFFINE — نظّم استثمارك في البورصة بخطة واضحة">
-<meta property="og:description" content="خطط تعزيز المتوسط (DCA) والشبكة (Grid)، توصيات وتحليلات، فرص بالمؤشرات الفنية، وتنبيهات فورية — البورصة المصرية والخليج.">
+<meta property="og:title" content="<?php echo $gE($gTitle); ?>">
+<meta property="og:description" content="<?php echo $gE($gDesc); ?>">
 <meta property="og:image" content="<?php echo $gSite; ?>/icon-512.png">
 <meta property="og:image:width" content="512"><meta property="og:image:height" content="512">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="GRIFFINE — نظّم استثمارك في البورصة بخطة واضحة">
+<meta name="twitter:title" content="<?php echo $gE($gTitle); ?>">
+<meta name="twitter:description" content="<?php echo $gE($gDesc); ?>">
 <meta name="twitter:image" content="<?php echo $gSite; ?>/icon-512.png">
+<!-- الإصدار 157: تعريف الموقع لجوجل (اسم + شعار + وصف) — بيساعد إن اسم GRIFFINE وشعاره يظهروا في نتايج البحث -->
+<script type="application/ld+json"><?php echo json_encode(['@context' => 'https://schema.org', '@graph' => [
+    ['@type' => 'Organization', '@id' => $gSite . '/#org', 'name' => 'GRIFFINE', 'alternateName' => ['جريفين', 'Griffine'], 'url' => $gSite . '/', 'logo' => $gSite . '/icon-512.png', 'email' => 'info@griffine.app', 'description' => $gDesc],
+    ['@type' => 'WebSite', '@id' => $gSite . '/#site', 'name' => 'GRIFFINE', 'alternateName' => 'جريفين', 'url' => $gSite . '/', 'inLanguage' => 'ar', 'publisher' => ['@id' => $gSite . '/#org']],
+    ['@type' => 'WebApplication', 'name' => 'GRIFFINE', 'url' => $gSite . '/', 'applicationCategory' => 'FinanceApplication', 'operatingSystem' => 'Web, Android, iOS', 'inLanguage' => 'ar', 'description' => $gDesc,
+        'offers' => ['@type' => 'Offer', 'price' => '0', 'priceCurrency' => 'EGP', 'description' => 'باقة مجانية للبداية']],
+]], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG); ?></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="theme-boot.js?v=156"></script>
-<link rel="stylesheet" href="griffine.css?v=156">
-<link rel="stylesheet" href="shell.css?v=156">
-<link rel="stylesheet" href="landing.css?v=156">
+<script src="theme-boot.js?v=157"></script>
+<link rel="stylesheet" href="griffine.css?v=157">
+<link rel="stylesheet" href="shell.css?v=157">
+<link rel="stylesheet" href="landing.css?v=157">
 <?php if (!$gLite): ?>
-<link rel="stylesheet" href="basira.css?v=156">
-<link rel="stylesheet" href="mizan.css?v=156">
-<link rel="stylesheet" href="mizanai.css?v=156">
+<link rel="stylesheet" href="basira.css?v=157">
+<link rel="stylesheet" href="mizan.css?v=157">
+<link rel="stylesheet" href="mizanai.css?v=157">
 <?php endif; ?>
 </head>
 <body<?php echo $gLite ? ' data-glite="1"' : ''; ?>>
+<noscript><div style="max-width:760px;margin:40px auto;padding:20px;font-family:Tahoma,sans-serif;direction:rtl;line-height:2">
+<h1>GRIFFINE جريفين — نظّم استثمارك في البورصة بخطة واضحة</h1>
+<p><?php echo $gE($gDesc); ?></p>
+<ul><li>خطط تعزيز المتوسط (DCA) وخطط الشبكة (Grid) بمستويات شراء وبيع محسوبة</li><li>توصيات محللين بنقاط دخول وأهداف ووقف خسارة</li><li>بصيرة AI لتحليل الأسهم وميزان GRIFFINE AI لتوزيع الاستثمار</li><li>البحث عن الفرص بالمؤشرات الفنية وتنبيهات الأسعار على الموقع والإيميل والواتساب</li></ul>
+<p>شغّل JavaScript في المتصفح عشان تستخدم الموقع. للتواصل: info@griffine.app</p></div></noscript>
+
 <div id="app"></div>
 <!-- الإصدار 100: الشاشات الطارئة (صيانة / انقطاع النت / السيرفر / التحميل البطيء) - لازم تبقى قبل أي ملف تاني -->
-<script src="emergency.js?v=156"></script>
+<script src="emergency.js?v=157"></script>
 <?php if ($gLite): ?>
-<script src="lite-stubs.js?v=156"></script>
+<script src="lite-stubs.js?v=157"></script>
 <?php endif; ?>
 
-<script src="shell.js?v=156"></script>
+<script src="shell.js?v=157"></script>
 <!-- الإصدار 72: استوديو التصميم - يطبّق الثيم وتعديلات الأدمن على كل الشاشات (شاشة التعديل نفسها studio-editor.js تُحمَّل للأدمن فقط) -->
-<script src="studio.js?v=156"></script>
+<script src="studio.js?v=157"></script>
 <!-- الإصدار 88: griffine.js قُسّم إلى ملفات حسب الأقسام (بالترتيب نفسه) - يجب أن يبقى app-init.js آخر ملف -->
-<script src="app-core.js?v=156"></script>
-<script src="app-public.js?v=156"></script>
-<script src="app-subscribe.js?v=156"></script>
+<script src="app-core.js?v=157"></script>
+<script src="app-public.js?v=157"></script>
+<script src="app-subscribe.js?v=157"></script>
 <?php if (!$gLite): ?>
-<script src="app-admin.js?v=156"></script>
-<script src="app-plans.js?v=156"></script>
-<script src="app-screener.js?v=156"></script>
+<script src="app-admin.js?v=157"></script>
+<script src="app-plans.js?v=157"></script>
+<script src="app-screener.js?v=157"></script>
 <?php endif; ?>
-<script src="app-chat.js?v=156"></script>
-<script src="app-nav.js?v=156"></script>
+<script src="app-chat.js?v=157"></script>
+<script src="app-nav.js?v=157"></script>
 <?php if (!$gLite): ?>
-<script src="hr.js?v=156"></script>
-<script src="markets.js?v=156"></script>
-<script src="trades.js?v=156"></script>
-<script src="faq.js?v=156"></script>
-<script src="trash.js?v=156"></script>
+<script src="hr.js?v=157"></script>
+<script src="markets.js?v=157"></script>
+<script src="trades.js?v=157"></script>
+<script src="faq.js?v=157"></script>
+<script src="trash.js?v=157"></script>
 <?php endif; ?>
-<script src="promo.js?v=156"></script>
+<script src="promo.js?v=157"></script>
 <?php if (!$gLite): ?>
-<script src="notify.js?v=156"></script>
-<script src="ai_access.js?v=156"></script>
-<script src="recs.js?v=156"></script>
-<script src="opps.js?v=156"></script>
+<script src="notify.js?v=157"></script>
+<script src="ai_access.js?v=157"></script>
+<script src="recs.js?v=157"></script>
+<script src="opps.js?v=157"></script>
 <?php endif; ?>
-<script src="landing.js?v=156"></script>
+<script src="landing.js?v=157"></script>
 <?php if (!$gLite): ?>
-<script src="landing-admin.js?v=156"></script>
-<script src="basira.js?v=156"></script>
-<script src="mizan.js?v=156"></script>
-<script src="mizanai.js?v=156"></script>
-<script src="perks.js?v=156"></script>
+<script src="landing-admin.js?v=157"></script>
+<script src="basira.js?v=157"></script>
+<script src="mizan.js?v=157"></script>
+<script src="mizanai.js?v=157"></script>
+<script src="perks.js?v=157"></script>
 <?php endif; ?>
-<script src="periods.js?v=156"></script>
+<script src="periods.js?v=157"></script>
 <?php if (!$gLite): ?>
-<script src="admin-search.js?v=156"></script>
-<script src="rd.js?v=156"></script>
-<script src="mkt.js?v=156"></script>
+<script src="admin-search.js?v=157"></script>
+<script src="rd.js?v=157"></script>
+<script src="mkt.js?v=157"></script>
 <?php endif; ?>
-<script src="app-init.js?v=156"></script>
+<script src="app-init.js?v=157"></script>
 </body>
 </html>

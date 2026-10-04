@@ -19,7 +19,7 @@ echo json_encode(["success" => true, "config" => [
     "payPaymob"       => site_config_on($conn, 'pay_paymob') && paymob_ready($conn),
     "versionLabel"    => site_config_get($conn, 'app_version_label'),   // الإصدار 96
     // الإصدار 102: رقم بناء الملفات اللي على السيرفر - الجهاز اللي شغال بنسخة أقدم بيحدّث نفسه تلقائيًا
-    "build"           => 156,
+    "build"           => 157,
     // الإصدار 100: الشاشات الطارئة + وضع الصيانة + الدعاية (العروض والبانرات)
     "emergency"       => json_decode(site_config_get($conn, 'emergency_cfg') ?: 'null', true),
     "maintenance"     => site_config_on($conn, 'maint_on'),

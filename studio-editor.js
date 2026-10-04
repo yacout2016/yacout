@@ -190,7 +190,7 @@
   function buildUi(){
     if (!document.getElementById('gsStudioCss')) {
       const l = document.createElement('link');
-      l.id = 'gsStudioCss'; l.rel = 'stylesheet'; l.href = 'studio.css?v=156';
+      l.id = 'gsStudioCss'; l.rel = 'stylesheet'; l.href = 'studio.css?v=157';
       document.head.appendChild(l);
     }
     const root = document.createElement('div');

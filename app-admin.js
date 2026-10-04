@@ -39,6 +39,7 @@ function adminNavButtonsHtml(){
     { title: 'التطوير والتسويق', items: [
       { id:'goRdBtn', perm:['manage_admin_settings', 'view_reports'], icon:'🔬', label:'البحث والتطوير (تحليلات الزوار واقتراحات التطوير)' },
       { id:'goMktBtn', perm:['manage_admin_settings', 'manage_plans'], icon:'📣', label:'التسويق (محتوى لكل منصة · جدول نشر · مطلوب منك · الأداء)' },
+      { id:'goSeoBtn', perm:['manage_admin_settings', 'edit_site_design'], icon:'🔎', label:'الظهور في جوجل (العنوان والتعريف وأكواد التحقق)' },
     ]},
     { title: 'المحتوى والتنسيق', items: [
       { id:'goLandingBtn', perm:'edit_site_design', icon:'🏁', label:'صفحة اللاندينج (واجهة الموقع قبل الدخول)' },
@@ -88,6 +89,7 @@ function wireAdminNavButtons(){
     goPeriodsBtn: () => renderAdminPeriods(),
     goRdBtn: () => renderAdminRD(),                       // الإصدار 151 (rd.js)
     goBroadcastBtn: () => renderAdminBroadcast(),          // الإصدار 154 (mkt.js)
+    goSeoBtn: () => renderAdminSeo(),                    // الإصدار 157 (mkt.js)
     goMktBtn: () => renderAdminMkt(),                     // الإصدار 151 (mkt.js)            // الإصدار 144 (periods.js)
     goEmergencyBtn: () => renderEmergencyAdminPage(),   // الإصدار 100 (promo.js)
     goAdsBtn: () => renderAdsAdminPage(),               // الإصدار 100 (promo.js)

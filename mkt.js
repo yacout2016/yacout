@@ -258,6 +258,47 @@
     on('bcPurgeSel', () => bcAct('purge', sel(), 'حذف المحدد نهائي؟ مش هتقدر ترجّعه تاني.'));
     on('bcEmpty', async () => { if (await gConfirm('تفريغ السلة كلها نهائي؟')) { const r = await apiPost('/broadcast_api.php', { action: 'empty_trash' }).catch(() => null); if (r && r.success) renderAdminBroadcast('trash'); } });
   }
+  // الإصدار 157: «🔎 الظهور في جوجل» (seo_api.php) — عنوان البحث + التعريف + أكواد التحقق من Google / Bing + الخطوات
+  const SEO_DEF = { title: 'GRIFFINE جريفين — منصة تنظيم الاستثمار في البورصة: خطط DCA وGrid وتوصيات', desc: 'جريفين GRIFFINE منصة عربية لتنظيم استثمارك في البورصة المصرية والخليجية: خطط تعزيز المتوسط (DCA) والشبكة (Grid)، توصيات محللين، تحليلات بصيرة AI، فرص بالمؤشرات الفنية، وتنبيهات أسعار فورية. ابدأ مجانًا.' };
+  window.renderAdminSeo = async function(){
+    const tok = screenToken(); pushNav(() => renderAdminSeo()); window.__lastPageKey = 'admin_seo';
+    const email = await getSession(); if (!email) return renderLogin();
+    if (!window.__isAdmin) return renderHome();
+    const d = await apiGet('/seo_api.php').catch(() => null);
+    if (screenStale(tok)) return;
+    if (!d || !d.success) { app.innerHTML = `<div class="container"><div class="section-card error">${E((d && d.message) || 'تعذّر التحميل')}</div></div>`; return; }
+    const c = d.cfg || {};
+    app.innerHTML = `<div class="container wide seo">${logoHeader()}
+      <div class="topbar"><div>${pageTitle('admin_seo', '🔎 الظهور في جوجل')}</div><button class="secondary small" id="seoBack">🛡️ رجوع للوحة التحكم</button></div>
+      <div class="section-card"><div class="section-title">👁 شكل الموقع في نتايج البحث</div>
+        <div class="seo-pv"><div class="seo-pv-u"><img src="icon-192.png" alt="" width="26" height="26"><span><b>GRIFFINE</b><small dir="ltr">https://www.griffine.app</small></span></div><div class="seo-pv-t" id="seoPvT"></div><div class="seo-pv-d" id="seoPvD"></div></div></div>
+      <div class="section-card"><div class="section-title">✍️ العنوان والتعريف</div>
+        <label class="bc-f">عنوان البحث <span class="u-muted u-fs12" id="seoTn"></span><input id="seoT" maxlength="90" value="${E(c.title || '')}" placeholder="${E(SEO_DEF.title)}"></label>
+        <label class="bc-f">تعريف الموقع (اللي بيظهر تحت العنوان) <span class="u-muted u-fs12" id="seoDn"></span><textarea id="seoD" rows="3" maxlength="300" placeholder="${E(SEO_DEF.desc)}">${E(c.desc || '')}</textarea></label>
+        <div class="u-fs12 u-muted">فاضي = النص الافتراضي. الأفضل: العنوان أقل من 60 حرف والتعريف من 120 لـ 160 حرف، وفيهم «جريفين» و«GRIFFINE».</div></div>
+      <div class="section-card"><div class="section-title">✅ أكواد التحقق (عشان جوجل يقرا الموقع بسرعة)</div>
+        <label class="bc-f">كود Google Search Console <input id="seoG" dir="ltr" value="${E(c.google || '')}" placeholder='<meta name="google-site-verification" content="...">'></label>
+        <label class="bc-f">كود Bing Webmaster (اختياري) <input id="seoB" dir="ltr" value="${E(c.bing || '')}" placeholder='<meta name="msvalidate.01" content="...">'></label>
+        <div class="u-fs12 u-muted">الصق الـ meta tag كله أو الكود اللي جوه content — الاتنين ينفعوا.</div>
+        <div class="mk-row u-mt6"><button type="button" id="seoSave">💾 حفظ</button></div>${c.at ? `<div class="u-fs12 u-muted u-mt6">آخر حفظ: ${E(c.at)} — ${E(c.by || '')}</div>` : ''}</div>
+      <div class="section-card"><div class="section-title">🧭 الخطوات (مرة واحدة)</div><ol class="seo-steps">
+        <li>افتح <a href="https://search.google.com/search-console" target="_blank" rel="noopener">Google Search Console</a> بإيميل جوجل بتاعك ← «Add property» ← اختار <b>URL prefix</b> واكتب <code dir="ltr">https://www.griffine.app</code>.</li>
+        <li>اختار طريقة <b>HTML tag</b> ← انسخ الكود ← الصقه فوق في «كود Google» ← احفظ ← ارجع لجوجل ودوس <b>Verify</b>.</li>
+        <li>من القائمة ← <b>Sitemaps</b> ← اكتب <code dir="ltr">sitemap.xml</code> ← Submit.</li>
+        <li>من فوق ← <b>URL inspection</b> ← اكتب <code dir="ltr">https://www.griffine.app/</code> ← <b>Request indexing</b>.</li>
+        <li>(اختياري) نفس الكلام في <a href="https://www.bing.com/webmasters" target="_blank" rel="noopener">Bing Webmaster</a> — وتقدر تستورد الموقع من Search Console بضغطة.</li>
+        <li>جوجل بياخد من يومين لأسبوعين عشان يظهر الموقع. للتأكد اكتب في جوجل: <code dir="ltr">site:griffine.app</code></li></ol></div></div>`;
+    const $ = (id) => document.getElementById(id);
+    const pv = () => { const t = $('seoT').value.trim() || SEO_DEF.title, ds = $('seoD').value.trim() || SEO_DEF.desc;
+      $('seoPvT').textContent = t.length > 60 ? t.slice(0, 60) + '…' : t; $('seoPvD').textContent = ds.length > 160 ? ds.slice(0, 160) + '…' : ds;
+      $('seoTn').textContent = `(${t.length} حرف)`; $('seoDn').textContent = `(${ds.length} حرف)`; };
+    $('seoT').oninput = $('seoD').oninput = pv; pv();
+    $('seoBack').onclick = () => renderAdminHub();
+    $('seoSave').onclick = async () => {
+      const r = await apiPost('/seo_api.php', { action: 'save', title: $('seoT').value, desc: $('seoD').value, google: $('seoG').value, bing: $('seoB').value }).catch(() => null);
+      GShell.toast((r && r.message) || 'تعذّر الحفظ', r && r.success ? 'ok' : 'err'); if (r && r.success) renderAdminSeo();
+    };
+  };
   window.renderAdminDomainNotice = () => renderAdminBroadcast();   // اسم الإصدار 153
   window.__mktGen = gen;   // للاختبارات
 })();

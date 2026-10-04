@@ -1,8 +1,9 @@
-# GRIFFINE — الإصدار 146
+# GRIFFINE — الإصدار 157
 User-agent: *
 Allow: /$
 Allow: /index.php
 Allow: /manifest.json
 Allow: /icon-512.png
+Allow: /icon-192.png
 Disallow: /*.php$
 Sitemap: https://www.griffine.app/sitemap.xml
