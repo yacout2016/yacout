@@ -18,6 +18,8 @@ const fs = require('fs'), path = require('path');
   check('صفحة تعزيز المتوسط فيها الكلمات المهمة + أسئلة شائعة (FAQPage)', /تعزيز المتوسط/.test(dca) && /متوسط التكلفة/.test(dca) && /"FAQPage"/.test(dca) && /<details>/.test(dca));
   check('مفيش أسماء منافسين ولا .store', !urls.some(u => /griffine\.store/.test(fs.readFileSync(path.join(root, u), 'utf8'))));
   const rb = fs.readFileSync(path.join(root, 'robots.txt'), 'utf8');
+  const fav = await fetch(BASE + '/favicon.ico');
+  check('الإصدار 159: favicon.ico موجود (شعار جريفين في نتايج جوجل والمتصفح) ومربوط في الصفحات', fav.status === 200 && /image/.test(fav.headers.get('content-type') || '') && /href="favicon\.ico"/.test(dca) && /href="favicon-48\.png"/.test(await (await fetch(BASE + '/index.php')).text()));
   check('robots.txt بيسمح بصفحات الدليل', /Allow: \/\*\.html\$/.test(rb) && /Allow: \/guide\.css/.test(rb));
   const b = await launch();
   const g = await page(b, { width: 390, height: 844 }, { lite: true }); g.__errors = [];

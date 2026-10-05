@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 import json, html, sys
 sys.path.insert(0, sys.argv[1]); from pages import PAGES, HUB, SITE, REG
-OUT = sys.argv[2]; DATE = '2026-10-04'
+OUT = sys.argv[2]; DATE = '2026-10-05'
 e = lambda s: html.escape(s, quote=True)
 def ld(obj): return '<script type="application/ld+json">' + json.dumps(obj, ensure_ascii=False).replace('</', '<\\/') + '</script>'
 def head(title, desc, url, extra=''):
     return f'''<!doctype html>
 <html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{e(title)}</title><meta name="description" content="{e(desc)}"><meta name="robots" content="index, follow, max-image-preview:large">
-<link rel="canonical" href="{url}"><link rel="icon" type="image/png" href="icon-192.png"><link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="canonical" href="{url}"><link rel="icon" href="favicon.ico" sizes="any"><link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png"><link rel="icon" type="image/png" sizes="192x192" href="icon-192.png"><link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta property="og:type" content="article"><meta property="og:site_name" content="GRIFFINE"><meta property="og:locale" content="ar_AR"><meta property="og:url" content="{url}">
 <meta property="og:title" content="{e(title)}"><meta property="og:description" content="{e(desc)}"><meta property="og:image" content="{SITE}/icon-512.png">
 <meta name="twitter:card" content="summary"><meta name="copyright" content="© GRIFFINE — جميع الحقوق محفوظة">

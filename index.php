@@ -52,7 +52,10 @@ header("Content-Security-Policy: default-src 'self'; "
 <meta name="copyright" content="© GRIFFINE — جميع الحقوق محفوظة">
 <!-- © GRIFFINE (griffine.app) — جميع الحقوق محفوظة. الكود والتصميم والمحتوى ملك GRIFFINE، وممنوع نسخه أو إعادة استخدامه. -->
 <link rel="manifest" href="manifest.json">
-<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png">
+<link rel="icon" type="image/png" sizes="96x96" href="favicon-96.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -97,14 +100,14 @@ $gSite = 'https://www.griffine.app';
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="theme-boot.js?v=158"></script>
-<link rel="stylesheet" href="griffine.css?v=158">
-<link rel="stylesheet" href="shell.css?v=158">
-<link rel="stylesheet" href="landing.css?v=158">
+<script src="theme-boot.js?v=159"></script>
+<link rel="stylesheet" href="griffine.css?v=159">
+<link rel="stylesheet" href="shell.css?v=159">
+<link rel="stylesheet" href="landing.css?v=159">
 <?php if (!$gLite): ?>
-<link rel="stylesheet" href="basira.css?v=158">
-<link rel="stylesheet" href="mizan.css?v=158">
-<link rel="stylesheet" href="mizanai.css?v=158">
+<link rel="stylesheet" href="basira.css?v=159">
+<link rel="stylesheet" href="mizan.css?v=159">
+<link rel="stylesheet" href="mizanai.css?v=159">
 <?php endif; ?>
 </head>
 <body<?php echo $gLite ? ' data-glite="1"' : ''; ?>>
@@ -117,53 +120,53 @@ $gSite = 'https://www.griffine.app';
 
 <div id="app"></div>
 <!-- الإصدار 100: الشاشات الطارئة (صيانة / انقطاع النت / السيرفر / التحميل البطيء) - لازم تبقى قبل أي ملف تاني -->
-<script src="emergency.js?v=158"></script>
+<script src="emergency.js?v=159"></script>
 <?php if ($gLite): ?>
-<script src="lite-stubs.js?v=158"></script>
+<script src="lite-stubs.js?v=159"></script>
 <?php endif; ?>
 
-<script src="shell.js?v=158"></script>
+<script src="shell.js?v=159"></script>
 <!-- الإصدار 72: استوديو التصميم - يطبّق الثيم وتعديلات الأدمن على كل الشاشات (شاشة التعديل نفسها studio-editor.js تُحمَّل للأدمن فقط) -->
-<script src="studio.js?v=158"></script>
+<script src="studio.js?v=159"></script>
 <!-- الإصدار 88: griffine.js قُسّم إلى ملفات حسب الأقسام (بالترتيب نفسه) - يجب أن يبقى app-init.js آخر ملف -->
-<script src="app-core.js?v=158"></script>
-<script src="app-public.js?v=158"></script>
-<script src="app-subscribe.js?v=158"></script>
+<script src="app-core.js?v=159"></script>
+<script src="app-public.js?v=159"></script>
+<script src="app-subscribe.js?v=159"></script>
 <?php if (!$gLite): ?>
-<script src="app-admin.js?v=158"></script>
-<script src="app-plans.js?v=158"></script>
-<script src="app-screener.js?v=158"></script>
+<script src="app-admin.js?v=159"></script>
+<script src="app-plans.js?v=159"></script>
+<script src="app-screener.js?v=159"></script>
 <?php endif; ?>
-<script src="app-chat.js?v=158"></script>
-<script src="app-nav.js?v=158"></script>
+<script src="app-chat.js?v=159"></script>
+<script src="app-nav.js?v=159"></script>
 <?php if (!$gLite): ?>
-<script src="hr.js?v=158"></script>
-<script src="markets.js?v=158"></script>
-<script src="trades.js?v=158"></script>
-<script src="faq.js?v=158"></script>
-<script src="trash.js?v=158"></script>
+<script src="hr.js?v=159"></script>
+<script src="markets.js?v=159"></script>
+<script src="trades.js?v=159"></script>
+<script src="faq.js?v=159"></script>
+<script src="trash.js?v=159"></script>
 <?php endif; ?>
-<script src="promo.js?v=158"></script>
+<script src="promo.js?v=159"></script>
 <?php if (!$gLite): ?>
-<script src="notify.js?v=158"></script>
-<script src="ai_access.js?v=158"></script>
-<script src="recs.js?v=158"></script>
-<script src="opps.js?v=158"></script>
+<script src="notify.js?v=159"></script>
+<script src="ai_access.js?v=159"></script>
+<script src="recs.js?v=159"></script>
+<script src="opps.js?v=159"></script>
 <?php endif; ?>
-<script src="landing.js?v=158"></script>
+<script src="landing.js?v=159"></script>
 <?php if (!$gLite): ?>
-<script src="landing-admin.js?v=158"></script>
-<script src="basira.js?v=158"></script>
-<script src="mizan.js?v=158"></script>
-<script src="mizanai.js?v=158"></script>
-<script src="perks.js?v=158"></script>
+<script src="landing-admin.js?v=159"></script>
+<script src="basira.js?v=159"></script>
+<script src="mizan.js?v=159"></script>
+<script src="mizanai.js?v=159"></script>
+<script src="perks.js?v=159"></script>
 <?php endif; ?>
-<script src="periods.js?v=158"></script>
+<script src="periods.js?v=159"></script>
 <?php if (!$gLite): ?>
-<script src="admin-search.js?v=158"></script>
-<script src="rd.js?v=158"></script>
-<script src="mkt.js?v=158"></script>
+<script src="admin-search.js?v=159"></script>
+<script src="rd.js?v=159"></script>
+<script src="mkt.js?v=159"></script>
 <?php endif; ?>
-<script src="app-init.js?v=158"></script>
+<script src="app-init.js?v=159"></script>
 </body>
 </html>

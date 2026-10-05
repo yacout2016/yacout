@@ -1,10 +1,14 @@
-# GRIFFINE — الإصدار 158
+# GRIFFINE — الإصدار 159
 User-agent: *
 Allow: /$
 Allow: /index.php
 Allow: /manifest.json
 Allow: /icon-512.png
 Allow: /icon-192.png
+Allow: /favicon.ico
+Allow: /favicon-48.png
+Allow: /favicon-96.png
+Allow: /apple-touch-icon.png
 Allow: /*.html$
 Allow: /guide.css
 Allow: /griffine-logo-light.webp
